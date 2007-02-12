@@ -1,0 +1,111 @@
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+defaultTextStr = '<#Hover over labels for a description#>';
+</script>
+
+<div class="divtable shade1">
+<form name="config" action="{url _base=$PHP_SELF c=$c}" method="POST">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+<input name="submit" value="1" type="hidden" />
+	<div class="table-hdr">
+		<h3><#Clantag Definitions#></h3>
+		<p>
+		<!--#CLANTAG_BLURB#-->
+		Clantag definitions are used to detect related players into different clans.
+		</p>
+	</div>
+	{include file='block_form_tabs.html' formtabs=$sections selected=$s}
+
+	<div class="row-spacer" style="text-align: left">
+		&nbsp;&nbsp;
+		<input name="export" value="<#Export#>" type="submit" class="btn" onmouseover="statusText('<#Exports all clantags as a CSV file for you to download#>')" onmouseout="notext()" /> 
+		&nbsp;
+		<input name="import" value="<#Import#>" type="submit" class="btn" onmouseover="statusText('<#Allows you to import (upload) a CSV file of clantags#>')" onmouseout="notext()" /> 
+		&nbsp;|&nbsp;
+		<input name="new" value="<#New#>" type="submit" class="btn" />
+	</div>
+
+{if $msg}
+	<center><div id="msg-success" class="row row-err-success">{$msg|escape}</div></center>
+	<div class="row-spacer"></div>
+{/if}
+
+	<div id="form_plain"{if $s != 'plain'} style="display: none"{/if}>
+<table width=100%" border="0" cellspacing="0" cellpadding="2">
+	<tr>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.idx.statustext|escape:'quotes'}')" onmouseout="notext()"><#Order#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.clantag.statustext|escape:'quotes'}')" onmouseout="notext()"><#Clantag#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.overridetag.statustext|escape:'quotes'}')" onmouseout="notext()"><#Override#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.pos.statustext|escape:'quotes'}')" onmouseout="notext()"><#Position#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.example.statustext|escape:'quotes'}')" onmouseout="notext()"><#Example#></td>
+	</tr>
+
+{foreach name='clantags' from=$plainlist item='tag'}
+	<tr class="{cycle values="odd,even"}">
+		<td align="center">
+{if !$smarty.foreach.clantags.last and $smarty.foreach.clantags.total > 1}
+				<a href="{url _base=$PHP_SELF c=$c move='1' id=$tag.id}"><img src="{$imagesurl}arrow-down.png" width="15" height="15" alt="down" title="<#Move Down#>"></a>
+{else}
+				<img src="{$spacerimg}" height="15" width="15">
+{/if}
+{if !$smarty.foreach.clantags.first and $smarty.foreach.clantags.total > 1}
+				<a href="{url _base=$PHP_SELF c=$c move='-1' id=$tag.id}"><img src="{$imagesurl}arrow-up.png" width="15" height="15" alt="up" title="<#Move Up#>"></a>
+{else}
+				<img src="{$spacerimg}" height="15" width="15">
+{/if}
+		</td>
+		<td class="text" align="center"><a href="{url _base=$PHP_SELF c=$c act='edit' id=$tag.id}">{$tag.clantag|escape}</a></td>
+		<td class="text" align="center">{$tag.overridetag|escape}</td>
+		<td class="text" align="center">{$tag.pos|escape}</td>
+		<td class="text" align="center"><a href="{url _base=$PHP_SELF c=$c act='edit' id=$tag.id}">{$tag.example|escape}</a></td>
+	</tr>
+{foreachelse}
+	<tr>
+		<td colspan="5" class="label" align="center"><#No plain clantags found#></td>
+	</tr>
+{/foreach}
+</table>
+	</div>
+
+
+	<div id="form_regex"{if $s != 'regex'} style="display: none"{/if}>
+
+<table width=100%" border="0" cellspacing="0" cellpadding="2">
+	<tr>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.idx.statustext|escape:'quotes'}')" onmouseout="notext()"><#Order#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.clantag.statustext|escape:'quotes'}')" onmouseout="notext()"><#Clantag#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.overridetag.statustext|escape:'quotes'}')" onmouseout="notext()"><#Override#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.example.statustext|escape:'quotes'}')" onmouseout="notext()"><#Example#></td>
+	</tr>
+
+{foreach name='clantags' from=$regexlist item='tag'}
+	<tr class="{cycle values="odd,even"}">
+		<td align="center">
+{if !$smarty.foreach.clantags.last and $smarty.foreach.clantags.total > 1}
+				<a href="{url _base=$PHP_SELF c=$c move='1' id=$tag.id s='regex'}"><img src="{$imagesurl}arrow-down.png" width="15" height="15" alt="down" title="<#Move Down#>"></a>
+{else}
+				<img src="{$spacerimg}" height="15" width="15">
+{/if}
+{if !$smarty.foreach.clantags.first and $smarty.foreach.clantags.total > 1}
+				<a href="{url _base=$PHP_SELF c=$c move='-1' id=$tag.id s='regex'}"><img src="{$imagesurl}arrow-up.png" width="15" height="15" alt="up" title="<#Move Up#>"></a>
+{else}
+				<img src="{$spacerimg}" height="15" width="15">
+{/if}
+		</td>
+		<td class="text" align="center"><a href="{url _base=$PHP_SELF c=$c act='edit' id=$tag.id}">{$tag.clantag|escape}</a></td>
+		<td class="text" align="center">{$tag.overridetag|escape}</td>
+		<td class="text" align="center"><a href="{url _base=$PHP_SELF c=$c act='edit' id=$tag.id}">{$tag.example|escape}</a></td>
+	</tr>
+{foreachelse}
+	<tr>
+		<td colspan="4" class="label" align="center"><#No regex clantags found#></td>
+	</tr>
+{/foreach}
+</table>
+
+	</div>
+
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>

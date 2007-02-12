@@ -1,0 +1,40 @@
+<div class="frame1">
+	<table width="99%" align="center" border="0" cellspacing="0" cellpadding="2">
+		<tr valign="middle">
+			<td align="left" class="text-small">{$rankedclans|commify} <#of#> {$totalclans|commify} <#clans are ranked#></td>
+			<td align="right" class="text"><b>{$pagerstr}</b></td>
+		</tr>
+	</table>
+<div align="center">
+<div class="frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+		<tr align="center">
+			<td class="header-cell">#</td>
+			<td class="header-cell{if $sort=='clantag'}-selected{/if}" align="left">{sortheader label='<#Clantag#>' sort='clantag' baseurl=$PHP_SELF order=$order cursort=$sort}</td>
+			<td class="header-cell{if $sort=='name'}-selected{/if}" align="left">{sortheader label='<#Clan Name#>' sort='name' order=$order}</td>
+			<td class="header-cell{if $sort=='totalmembers'}-selected{/if}">{sortheader label='<#Members#>' sort='totalmembers' order=$order}</td>
+			<td class="header-cell{if $sort=='kills'}-selected{/if}">{sortheader label='<#Kills#>' sort='kills' order=$order}</td>
+			<td class="header-cell{if $sort=='deaths'}-selected{/if}">{sortheader label='<#Deaths#>' sort='deaths' order=$order}</td>
+			<td class="header-cell{if $sort=='killsperdeath'}-selected{/if}">{sortheader label='<#K:D#>' sort='killsperdeath' order=$order title='<#Kills Per Death#>'}</td>
+			<td class="header-cell{if $sort=='skill'}-selected{/if}" align="right">{sortheader label='<#Skill#>' sort='skill' order=$order}&nbsp;&nbsp;</td>
+		</tr>
+{foreach name='clans' from=$clans item='c'}
+	<tr align="center" class="{cycle values='odd,even'}{if $c.clanid == $user.clanid} row-highlight{/if}">
+		<td class="text" align="center">{$smarty.foreach.clans.iteration+$start}</td>
+		<td class="text" align="left"><b><a href="{url _base='clan.php' id=$c.clanid}">{iconimg icon=$c.icon}{$c.clantag|escape}</a></b></td>
+		<td class="text" align="left"><b><a href="{url _base='clan.php' id=$c.clanid}">{$c.name|default:'-'|escape}</a></b></td>
+		<td class="text">{$c.totalmembers|commify}</td>
+		<td class="text">{$c.kills|commify}</td>
+		<td class="text">{$c.deaths|commify}</td>
+		<td class="text">{$c.killsperdeath}</td>
+		<td class="text" align="right">{$c.skill}</td>
+	</tr>
+{foreachelse}
+	<tr align="center" class="shade1">
+		<td class="text" colspan="8"><br><b><#No clans to display#></b><br><br></td>
+	</tr>
+{/foreach}
+  </table>
+</div>
+</div>
+</div>

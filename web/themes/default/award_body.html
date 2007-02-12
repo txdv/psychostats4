@@ -1,0 +1,33 @@
+<div class="frame1">
+	<table width="99%" align="center" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('awardplrlist')">
+			<td class="box-hdr">{$playerlist|@count} <#Top Players#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='awardplrlist'}</td>
+		</tr>
+	</table>
+<div id="box_awardplrlist_frame" align="center" {boxframe id='awardplrlist'}>
+<div class="frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+		<tr align="right">
+		<td class="header-cell text"><b>#</b></td>
+                <td class="header-cell"><#Rank#></td>
+                <td class="header-cell" align="center"><#Player Name#></td>
+                <td class="header-cell"><#Skill#></td>
+                <td class="header-cell"><#Value#></td>
+              </tr>
+{foreach from=$playerlist item='p' name="plrlist"}
+              <tr class="{cycle values="odd,even"}" align="right">
+		<td class="text">{$smarty.foreach.plrlist.index+1}</td>
+                <td class="text">{$p.rank|default:'-'}</td>
+		<td class="text" align="left"><b><a href="{url _base='player.php' id=$p.plrid}">{iconimg icon=$p.icon} {flagimg cc=$p.cc cn=$p.cn} {$p.name|escape}</a></b></td>
+                <td class="text">{$p.skill}</td>
+                <td class="text">{$p.value|award_format:$p.format|escape}</td>
+              </tr>
+{foreachelse}
+              <tr class="shade1"><td colspan="5" align="center" class="text"><br><b><#No players to display#></b><br><br></td></tr>
+{/foreach}
+            </table>
+</div>
+</div>
+</div>
+<br>

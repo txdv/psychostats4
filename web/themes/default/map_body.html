@@ -1,0 +1,18 @@
+{if $teamblockfile}
+	{include
+		file	= $teamblockfile
+		thing	= $map
+		id	= $id
+	}
+{/if}
+
+{if $toptenblockfile}
+	{foreach name='topten' from=$topten item='list' key='key'}
+		{include
+			file	= $toptenblockfile
+			list	= $list
+			key	= $key
+		}
+	{/foreach}
+{/if}
+

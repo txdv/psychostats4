@@ -1,0 +1,16 @@
+<table align="center" width="99%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 10px">
+  <tr>
+    <td width="4" height="33" background="{$imagesurl}title_left.png"></td>
+    <td background="{$imagesurl}title_bg.png"><font class="text2-lrg"><b>{$headertitle}</b></font></td>
+    <td width="4" height="33" background="{$imagesurl}title_right.png"></td>
+  </tr>
+</table>
+{if $viewbuttons}
+<div align="right" style="padding-right: 10px">
+	[ <b>Views:</b> 
+	<a href="#" onclick="return web.toggle_all_box()">Toggle</a> &#149;
+	<a href="#" onclick="return web.toggle_all_box(1)">Open</a> &#149;
+	<a href="#" onclick="return web.toggle_all_box(0)">Close</a>
+	]
+</div>
+{/if}

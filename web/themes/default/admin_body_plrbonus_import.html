@@ -1,0 +1,54 @@
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+</script>
+
+<div class="divtable shade1">
+<form name="profile" action="{url _base=$PHP_SELF c=$c}" method="POST" enctype="multipart/form-data">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+<input name="submit" value="1" type="hidden" />
+	<div class="table-hdr">
+		<h3><#Import Player Bonuses#></h3>
+		<p>
+		<!--#IMPORT_PLRBONUS_BLURB#-->
+		Import player bonuses from an uploaded CSV file (eg: a file that was previously exported
+		from the 'Player Bonus -> export' admin control) or download bonuses from psychostats.com.
+		</p>
+	</div>
+	<div class="row-spacer"></div>
+
+	<div class="row{if $form.srvimport.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.srvimport.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.srvimport.label}</span>
+		<span class="input">{if $lastmod}{$lastmod|escape}{else}{$servermsg}{/if}{if $form.srvimport.error}<p class="err">{$form.srvimport.error}</p>{/if}</span>
+	</div>
+	<div class="row">
+		<div class="form-actions">
+{if $lastmod}
+			<input name="srvimport" value="<#Download from psychostats.com#>" type="submit" class="btn" />
+			<input name="cancel" value="<#Cancel#>" type="submit" class="btn" />
+{else}
+			<input value="<#No server updates available#>" type="button" class="btn" disabled="disabled" />
+{/if}
+		</div>
+	</div>
+
+	<div class="row-spacer"></div>
+	<div class="row shade2"><b>- <#Or#> -</b></div>
+	<div class="row-spacer"></div>
+
+	<div class="row{if $form.csvfile.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.csvfile.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.csvfile.label}</span>
+		<span class="input"><input name="csvfile" type="file" size="50" class="field" />{if $form.csvfile.error}<p class="err">{$form.csvfile.error}</p>{/if}</span>
+	</div>
+	<div class="row-spacer"></div>
+	<div class="row">
+		<div class="form-actions">
+			<input name="upload" value="<#Upload Bonuses#>" type="submit" class="btn" />
+			<input name="cancel" value="<#Cancel#>" type="submit" class="btn" />
+		</div>
+	</div>
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>
+<br>
+

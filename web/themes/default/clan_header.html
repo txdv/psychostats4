@@ -1,0 +1,31 @@
+<table align="center" width="99%" cellspacing="0" cellpadding="0" border="0" style="margin-top: 10px">
+  <tr>
+    <td width="4" height="33" background="{$imagesurl}title_left.png"></td>
+    <td background="{$imagesurl}title_bg.png">
+      <table align="center" width="100%" cellspacing="0" cellpadding="0">
+        <tr>
+          <td align="left" class="text2-lrg" style="padding-left: 5px">
+		<b>{$headertitle|escape}</b>
+		{iconimg icon=$clan.icon}
+{if user_logged_on() && ($user.clanid == $clan.clanid || user_is_clanadmin())}
+		<font class="text2-small">[ <a href="{url _base='editclan.php' id=$clan.clanid ref=$REQUEST_URI}" class="text2-small"><#edit#></a> ]</font>
+{/if}
+          </td>
+          <td align="right" class="text2-lrg" style="padding-right: 5px">
+{if $clan.name != ''}
+	<b>{$clan.name|escape}</b>
+{/if}
+	  </td>
+        </tr>
+      </table>
+    <td width="4" height="33" background="{$imagesurl}title_right.png"></td>
+  </tr>
+</table>
+<div align="right" style="padding-right: 10px">
+	[ <b>Views:</b> 
+	<a href="#" onclick="return web.toggle_all_box()">Toggle</a> &#149;
+	<a href="#" onclick="return web.toggle_all_box(1)">Open</a> &#149;
+	<a href="#" onclick="return web.toggle_all_box(0)">Close</a>
+	]
+</div>
+

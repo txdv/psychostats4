@@ -1,0 +1,67 @@
+{if !user_logged_on()}
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+</script>
+<div class="divtable shade1">
+<form name="login" action="{url}" method="POST">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+	<div class="table-hdr">
+		<h3><#User Login#></h3>
+		<p>
+			<!--#LOGIN_BLURB#-->
+			You must register your player before being able to login. 
+			Goto the registration page if you have not registered yet.
+
+			<a href="{url _base='register.php'}"><#Register Now#></a>
+		</p>
+	</div>
+{if $invalidlogin}
+	<center><div class="row row-err-fatal">{$invalidlogin}</div></center>
+	<div class="row-spacer"></div>
+{/if}
+	<div class="row{if $form.username.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.username.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.username.label}</span>
+		<span class="input"><input name="username" value="{$username|escape}" type="text" size="40" class="field" />{if $form.username.error}<p class="err">{$form.username.error}</p>{/if}</span>
+	</div>
+	<div class="row{if $form.password.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.password.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.password.label}</span>
+		<span class="input"><input name="password" value="" type="password" size="40" class="field" />{if $form.password.error}<p class="err">{$form.password.error}</p>{/if}</span>
+	</div>
+	<div class="row">
+		<span onmouseover="statusText('{$form.autologin.statustext|escape:'quotes'}')" onmouseout="notext()" class="input">
+			<b><label for="autologin"><input id="autologin" name="autologin" value="1" type="checkbox" /> {$form.autologin.label}</label></b>
+		</span>
+	</div>
+	<div class="row">
+		<div class="form-actions">
+			<input name="submit" value="<#Login#>" type="submit" class="btn" />
+			<input name="cancel" value="<#Cancel#>" type="submit" class="btn" />
+		</div>
+	</div>
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>
+
+{literal}
+<script language="javascript" type="text/javascript">
+// focus the username field automatically
+if (document.forms.login) 
+	if (document.forms.login.username) {
+		document.forms.login.username.focus();
+		document.forms.login.username.select();
+	}
+</script>
+{/literal}
+
+{else}	 {* if user_logged_on() *}
+
+<div class="frame2" style="width: 300px; padding: 20px;">
+
+	<p class="label"><#You are already logged in#></p>
+
+	<#User#>: <p style="display: inline;" class="label">{$user.username|escape}</p>
+
+</div>
+
+{/if}

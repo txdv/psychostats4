@@ -1,0 +1,324 @@
+{if $plr.logo and !$hide_logo}
+<div class="text2" style="text-align: center; margin-bottom: 10px; width: 250px; overflow: hidden; border: none;">{$plr.logo}</div>
+{/if}
+
+{if $themeconf.map.google_key}
+<div id="map" style="width: 250px; height: 160px; border: 1px solid black"></div><br>
+<script type="text/javascript">
+var map;
+function doPageLoad() {ldelim}
+	map = new GMap2(document.getElementById("map"));
+	map.addControl(new GSmallMapControl());
+	ip2loc('{$plr.iplist|@join:','}');
+{rdelim}
+</script>
+{/if}
+
+{if !$hide_history}
+<form action="{url id=$plr.plrid}" method="GET">
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('qhistory')">
+			<td class="box-hdr">&nbsp;<#Quick History#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='qhistory'}</td>
+		</tr>
+	</table>
+<div id="box_qhistory_frame" align="center" {boxframe id='qhistory'}>
+	<div class="small-frame2"><img id="chartimg" name="chartimg" src="{url _base="imgquick.php" _img=1 plrid=$plr.plrid v=$v}" width="240" height="160"></div>
+</div>
+	<div align="right">
+	<select class='field' onchange="chartimg.src = '{url _base="imgquick.php" _img=1 plrid=$plr.plrid}&v=' + this.options[this.selectedIndex].value">
+		<option value='skill'><#Skill#></option>
+		<option value='kills'><#Kills#></option>
+		<option value='onlinetime'><#Onlinetime#></option>
+	</select>
+	<noscript><input value="<#Go#>" type="submit"></noscript>
+	</div>
+</div>
+</form>
+<br>
+{/if}
+
+
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('plrrundown')">
+			<td class="box-hdr">&nbsp;{$rundown_title|default:'<#Player Rundown#>'|escape}</td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='plrrundown'}</td>
+		</tr>
+	</table>
+<div id="box_plrrundown_frame" align="center" {boxframe id='plrrundown'}>
+	<div class="small-frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+{if $plr.aim}
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#AIM#>:</td>
+		<td align="right" class="text-small">[ <a class="text-small" href="aim:goim?screenname={$plr.aim|escape}" title="{$plr.aim|escape}"><#Click Me#></a> ]</td>
+              </tr>
+{/if}
+{if $plr.icq}
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#ICQ#>:</td>
+		<td align="right" class="text-small">[ <a class="text-small" href="http://wwp.icq.com/scripts/search.dll?to={$plr.icq|escape}" title="{$plr.icq|escape}"><#Click Me#></a> ]</td>
+              </tr>
+{/if}
+{if $plr.msn}
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#MSN#>:</td>
+		<td align="right" class="text-small">{$plr.msn|escape}</td>
+              </tr>
+{/if}
+{if $plr.email}
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Email#>:</td>
+		<td align="right" class="text-small">[ <a class="text-small" href="mailto:{$plr.email|escape}" title="{$plr.email|escape}"><#Click Me#></a> ]</td>
+              </tr>
+{/if}
+{if $plr.website}
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Website#>:</td>
+		<td align="right" class="text-small">[ <a class="text-small" href="{$plr.website|escape}" title="{$plr.website|escape}" target="_blank"><#Click Me#></a> ]</td>
+              </tr>
+{/if}
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><acronym class="acro-tip" title="<#Ranks last updated on#> {$info.daily_ranks.lastupdate|datetime}"><#Rank#>:</acronym></td>
+		<td align="right" class="text">{rankchange plr=$plr} {$plr.rank|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Previous Rank#>:</td>
+		<td align="right" class="text">{$plr.prevrank|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Skill#>:</td>
+		<td align="right" class="text">{skillchange plr=$plr} {$plr.skill|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Previous Skill#>:</td>
+		<td align="right" class="text">{$plr.prevskill|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Games#>:</td>
+		<td align="right" class="text">{$plr.games|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Rounds#>:</td>
+		<td align="right" class="text">{$plr.rounds|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Maps#>:</td>
+		<td align="right" class="text">{$plr.totalmaps}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Awards#>:</td>
+		<td align="right" class="text">{$plr.totalawards}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Kicked#>:</td>
+		<td align="right" class="text">{$plr.kicked|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Banned#>:</td>
+		<td align="right" class="text">{$plr.banned|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Connects#>:</td>
+		<td align="right" class="text">{$plr.connections|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Online Time#>:</td>
+		<td align="right" class="text">{$plr.onlinetime|compacttime}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Last Played#>:</td>
+		<td align="right" class="text-small">{$plr.lasttime|datetime}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#First Seen#>:</td>
+		<td align="right" class="text-small">{$plr.firstseen|datetime}</td>
+              </tr>
+            </table>
+
+	</div>
+</div>
+</div>
+<br>
+
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('killprofile')">
+			<td class="box-hdr">&nbsp;{$killprofile_title|default:'<#Kill Profile#>'|escape}</td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='killprofile'}</td>
+		</tr>
+	</table>
+<div id="box_killprofile_frame" align="center" {boxframe id='killprofile'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="1" cellpadding="1">
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Kills#>:</td>
+		<td align="right" class="text">{$plr.kills|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Deaths#>:</td>
+		<td align="right" class="text">{$plr.deaths|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#K:D Ratio#>:</td>
+		<td align="right" class="text">{$plr.killsperdeath|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#K:M Ratio#>:</td>
+		<td align="right" class="text">{$plr.killsperminute|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Kill Streak#>:</td>
+		<td align="right" class="text">{$plr.kills_streak}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Death Streak#>:</td>
+		<td align="right" class="text">{$plr.deaths_streak}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#FF Kills#>:</td>
+		<td align="right" class="text">{$plr.ffkills} [{$plr.ffkillspct|digits2}%]</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#FF Deaths#>:</td>
+		<td align="right" class="text">{$plr.ffdeaths} [{$plr.ffdeathspct|digits2}%]</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Damage#>:</td>
+		<td align="right" class="text">{$plr.damage|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Shots#>:</td>
+		<td align="right" class="text">{$plr.shots|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Hits#>:</td>
+		<td align="right" class="text">{$plr.hits|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Accuracy#>:</td>
+		<td align="right" class="text">{$plr.accuracy|digits2}%</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#S:K Ratio#>:</td>
+		<td align="right" class="text">{$plr.shotsperkill|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Headshots#>:</td>
+		<td align="right" class="text">{$plr.headshotkills|commify} [{$plr.headshotpct|digits2}%]</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Suicides#>:</td>
+		<td align="right" class="text">{$plr.suicides|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Bonus Points#>:</td>
+		<td align="right" class="text">{$plr.totalbonus|commify}</td>
+              </tr>
+            </table>
+
+	</div>
+</div>
+</div>
+<br>
+
+{if !$hide_names}
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('plraliases')">
+			<td class="box-hdr">&nbsp;<#Player Names#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='plraliases'}</td>
+		</tr>
+	</table>
+<div id="box_plraliases_frame" align="center" {boxframe id='plraliases'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="0" cellpadding="2">
+              <tr align="left">
+		<td class="text-hdr-small">#</td>
+		<td class="text-hdr-small"><#Name#></td>
+		<td align="right" class="text-hdr-small"><#Uses#>&nbsp;</td>
+              </tr>
+{foreach name='ident' from=$plr.ids.names item='total' key='ident'}
+              <tr valign="top" class="{cycle name="names" values="odd,even"}{if ($plr.ids.names|@count > 1 and $plr.ids.first.name == $ident)} row-highlight{/if}">
+		<td align="center" class="text-small" width="1%">&nbsp;{$smarty.foreach.ident.iteration}&nbsp;</td>
+		<td align="left" class="text-small">{$ident|escape}</td>
+		<td align="right" class="text-small">{$total|commify}&nbsp;</td>
+              </tr>
+{/foreach}
+            </table>
+	</div>
+{if ($plr.ids.names|@count > 1)}
+		<div class="under-box text-small"><#First used is highlighted#></div>
+{/if}
+</div>
+</div>
+<br>
+{/if}
+
+{if !$hide_worldids}
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('plrworldids')">
+			<td class="box-hdr">&nbsp;<#Player Steamids#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='plrworldids'}</td>
+		</tr>
+	</table>
+<div id="box_plrworldids_frame" align="center" {boxframe id='plrworldids'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="0" cellpadding="2">
+              <tr align="left">
+		<td class="text-hdr-small">#</td>
+		<td class="text-hdr-small"><#Steamid#></td>
+		<td align="right" class="text-hdr-small"><#Uses#>&nbsp;</td>
+              </tr>
+{foreach name='ident' from=$plr.ids.worldids item='total' key='ident'}
+              <tr valign="top" class="{cycle name="worldids" values="odd,even"}{if ($plr.ids.worldids|@count > 1 and $plr.ids.first.worldid == $ident)} row-highlight{/if}">
+		<td align="center" class="text-small" width="1%">&nbsp;{$smarty.foreach.ident.iteration}&nbsp;</td>
+		<td align="left" class="text-small">{$ident|escape}</td>
+		<td align="right" class="text-small">{$total|commify}&nbsp;</td>
+              </tr>
+{/foreach}
+            </table>
+	</div>
+{if ($plr.ids.worldids|@count > 1)}
+		<div class="under-box text-small"><#First used is highlighted#></div>
+{/if}
+</div>
+</div>
+<br>
+{/if}
+
+{if (($themeconf.show_ips || user_is_admin()) && !$hide_ips)}
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('plrips')">
+			<td class="box-hdr">&nbsp;<#Player IPs#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='plrips'}</td>
+		</tr>
+	</table>
+<div id="box_plrips_frame" align="center" {boxframe id='plrips'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="0" cellpadding="2">
+              <tr align="left">
+		<td class="text-hdr-small">#</td>
+		<td class="text-hdr-small"><#IP Address#></td>
+		<td align="right" class="text-hdr-small"><#Uses#>&nbsp;</td>
+              </tr>
+{foreach name='ident' from=$plr.ids.ipaddrs item='total' key='ident'}
+              <tr valign="top" class="{cycle name="ipaddrs" values="odd,even"}{if ($plr.ids.ipaddrs|@count > 1 and $plr.ids.first.ipaddr == $ident)} row-highlight{/if}">
+		<td align="center" class="text-small" width="1%">&nbsp;{$smarty.foreach.ident.iteration}&nbsp;</td>
+		<td align="left" class="text-small">{if $ident}<a href="{url _base='index.php' search=$ident|int2ip submit='go'}">{$ident|int2ip}</a>{else}<#unknown#>{/if}</td>
+		<td align="right" class="text-small">{$total|commify}&nbsp;</td>
+              </tr>
+{/foreach}
+            </table>
+	</div>
+{if ($plr.ids.ipaddrs|@count > 1)}
+		<div class="under-box text-small"><#First used is highlighted#></div>
+{/if}
+</div>
+</div>
+<br>
+{/if}

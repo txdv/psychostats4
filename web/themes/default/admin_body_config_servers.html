@@ -1,0 +1,51 @@
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+</script>
+
+<div class="divtable shade1">
+<form name="profile" action="{url _base=$PHP_SELF c=$c t=$t}" method="POST">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+	<div class="table-hdr">
+		<h3><#Edit Live Servers#></h3>
+		<p>
+		<!--#_BLURB#-->
+		</p>
+	</div>
+<table width=100%" border="0" cellspacing="0" cellpadding="2">
+	<tr>
+		<td class="header-cell" align="center" onmouseover="statusText('{$formfields.section.statustext|escape:'quotes'}')" onmouseout="notext()">{$formfields.section.label|escape}</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$formfields.querytype.statustext|escape:'quotes'}')" onmouseout="notext()">{$formfields.querytype.label|escape}</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$formfields.rcon.statustext|escape:'quotes'}')" onmouseout="notext()">{$formfields.rcon.label|escape}</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$formfields.enabled.statustext|escape:'quotes'}')" onmouseout="notext()">{$formfields.enabled.label|escape}</td>
+	</tr>
+{foreach name="loop" from=$servers item='s' key='ip'}
+	<tr align="center">
+		<td><div{if $form[$ip].section.error} class="row-err"{/if}>
+			<input name="srv[{$smarty.foreach.loop.iteration}][section]" value="{$ip|escape}" type="text" size="25" class="field">
+			{if $form[$ip].section.error}<p class='err'>{$form[$ip].section.error|escape}</p>{/if}
+		</div></td>
+		<td><div{if $form[$ip].querytype.error} class="row-err"{/if}>
+			<select name="srv[{$smarty.foreach.loop.iteration}][querytype]" class="field">
+				<option value="halflife"><#Halflife 1 or 2#></option>
+				<option value="oldhalflife"{if $s.querytype == 'oldhalflife'} selected{/if}><#Halflife (no steam)#></option>
+			</select>
+			{if $form[$ip].querytype.error}<p class='err'>{$form[$ip].querytype.error|escape}</p>{/if}
+		</div></td>
+		<td><input name="srv[{$smarty.foreach.loop.iteration}][rcon]" value="{$s.rcon|escape}" type="text" size="10" class="field"></td>
+		<td><input name="srv[{$smarty.foreach.loop.iteration}][enabled]" value="1" type="checkbox"{if $s.enabled} checked{/if}></td>
+	</tr>
+{/foreach}
+</table>
+
+	<div class="row-spacer"></div>
+	<div class="row">
+		<div class="form-actions">
+			<input name="submit" value="<#Save Configuration#>" type="submit" class="btn" />
+			<input name="cancel" value="<#Cancel#>" type="submit" class="btn" />
+		</div>
+	</div>
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>
+

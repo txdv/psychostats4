@@ -1,0 +1,40 @@
+<div class="frame1">
+	<table width="99%" align="center" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('plrlist')">
+			<td class="box-hdr">{$toptenkills|@count} <#Top Players#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='plrlist'}</td>
+		</tr>
+	</table>
+<div id="box_plrlist_frame" align="center" {boxframe id='plrlist'}>
+<div class="frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+		<tr align="right">
+		<td class="header-cell text"><b>#</b></td>
+                <td class="header-cell{if $sort=='name'}-selected{/if}" align="center">{sortheader label='<#Player#>' sort='name' baseurl="$PHP_SELF?id=`$role.roleid`" order=$order cursort=$sort}</td>
+                <td class="header-cell{if $sort=='kills'}-selected{/if}">{sortheader label='<#Kills#>' sort='kills' order=$order}</td>
+                <td class="header-cell{if $sort=='deaths'}-selected{/if}">{sortheader label='<#Deaths#>' sort='deaths' order=$order}</td>
+                <td class="header-cell{if $sort=='accuracy'}-selected{/if}">{sortheader label='<#Accuracy#>' sort='accuracy' order=$order}</td>
+                <td class="header-cell{if $sort=='headshotpct'}-selected{/if}">{sortheader label='<#HS%#>' sort='headshotpct' order=$order title="<#Headshot Percentage#>"}</td>
+                <td class="header-cell{if $sort=='shotsperkill'}-selected{/if}">{sortheader label='<#S:K#>' sort='shotsperkill' order=$order title="<#Shots per kill#>"}</td>
+                <td class="header-cell{if $sort=='damage'}-selected{/if}">{sortheader label='<#Damage#>' sort='damage' order=$order}</td>
+              </tr>
+{foreach from=$toptenkills item='p' name="toptenkills"}
+              <tr class="{cycle values="odd,even"}" align="right">
+		<td class="text">{$smarty.foreach.toptenkills.index+1}</td>
+		<td class="text" align="left"><b><a href="{url _base='player.php' id=$p.plrid}">{iconimg icon=$p.icon} {flagimg cc=$p.cc cn=$p.cn} {$p.name|escape}</a>
+		</b></td>
+                <td class="text">{$p.kills|commify}</td>
+                <td class="text">{$p.deaths|commify}</td>
+                <td class="text"><acronym title="{$p.hits|commify} <#hits#> / {$p.shots|commify} <#shots#>">{$p.accuracy}%</acronym></td>
+                <td class="text"><acronym title="{$p.headshotkills|commify} <#Headshots#>">{$p.headshotpct}%</acronym></td>
+                <td class="text">{$p.shotsperkill|digits2}</td>
+                <td class="text">{$p.damage|commify}</td>
+              </tr>
+{foreachelse}
+              <tr class="shade1"><td colspan="9" align="center" class="text"><br><b><#No roles to display#></b><br><br></td></tr>
+{/foreach}
+            </table>
+</div>
+</div>
+</div>
+<br>

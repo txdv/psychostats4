@@ -1,0 +1,82 @@
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+defaultTextStr = '<#Hover over labels for a description#>';
+</script>
+
+<div class="divtablewide shade1">
+<form name="config" action="{url _base=$PHP_SELF c=$c}" method="POST">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+<input name="submit" value="1" type="hidden" />
+	<div class="table-hdr">
+		<h3><#Player Bonuses#></h3>
+		<p>
+		<!--#PLRBONUS_BLURB#-->
+		Player bonuses are points that are given to or taken away from players (or teams) 
+		based on events triggered in game.
+		</p>
+	</div>
+
+	<div class="row-spacer" style="text-align: left">
+		&nbsp;<#Filter#>: 
+		<select name="g" class="field">
+			<option value="">- <#All#> -</option>
+{foreach from=$gametypes item='i'}
+			<option {if $i == $g}selected{/if}>{$i|escape}</option>
+{/foreach}
+		</select>
+		::
+		<select name="m" class="field">
+			<option value="">- <#All#> -</option>
+{foreach from=$modtypes item='i'}
+			<option {if $i == $m}selected{/if}>{$i|escape}</option>
+{/foreach}
+		</select>
+		::
+		<input name="filter" type="text" value="{$filter|escape}" size="10" class="field" />
+		<input value="<#Go#>" type="submit" class="btn" />
+		&nbsp;|&nbsp;
+		<input name="export" value="<#Export#>" type="submit" class="btn" onmouseover="statusText('<#Exports the filtered events as a CSV file for you to download#>')" onmouseout="notext()" /> 
+		&nbsp;
+		<input name="import" value="<#Import#>" type="submit" class="btn" onmouseover="statusText('<#Allows you to import (upload) a CSV file of events#>')" onmouseout="notext()" /> 
+		&nbsp;|&nbsp;
+		<input name="new" value="<#New#>" type="submit" class="btn" />
+	</div>
+
+{if $msg}
+	<center><div id="msg-success" class="row row-err-success">{$msg|escape}</div></center>
+	<div class="row-spacer"></div>
+{/if}
+
+<table width=100%" border="0" cellspacing="0" cellpadding="2">
+	<tr>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.event.statustext|escape:'quotes'}')" onmouseout="notext()">Event</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.gametype.statustext|escape:'quotes'}')" onmouseout="notext()">Gametype</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.modtype.statustext|escape:'quotes'}')" onmouseout="notext()">Modtype</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.enactor.statustext|escape:'quotes'}')" onmouseout="notext()">Enactor</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.enactor_team.statustext|escape:'quotes'}')" onmouseout="notext()">Enactor Team</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.victim.statustext|escape:'quotes'}')" onmouseout="notext()">Victim</td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.victim_team.statustext|escape:'quotes'}')" onmouseout="notext()">Victim Team</td>
+	</tr>
+
+{foreach from=$bonuslist item='b'}
+	<tr class="{cycle values="odd,even"}">
+		<td class="label" align="center"><a href="{url _base=$PHP_SELF c=$c act='edit' id=$b.id}" onmouseover="statusText('{$b.desc|escape:'quotes'}')" onmouseout="notext()">{$b.event|escape}</a></td>
+		<td class="text" align="center">{$b.gametype|default:"*"|escape}</td>
+		<td class="text" align="center">{$b.modtype|default:"*"|escape}</td>
+		<td class="text" align="center" {if $b.enactor}style="color: {if $b.enactor < 0}red{else}green{/if}"{/if}>{$b.enactor}</td>
+		<td class="text" align="center" {if $b.enactor_team}style="color: {if $b.enactor_team < 0}red{else}green{/if}"{/if}>{$b.enactor_team}</td>
+		<td class="text" align="center" {if $b.victim}style="color: {if $b.victim < 0}red{else}green{/if}"{/if}>{$b.victim}</td>
+		<td class="text" align="center" {if $b.victim_team}style="color: {if $b.victim_team < 0}red{else}green{/if}"{/if}>{$b.victim_team}</td>
+	</tr>
+{foreachelse}
+	<tr>
+		<td colspan="7" class="label" align="center"><#No bonuses found#></td>
+	</tr>
+{/foreach}
+
+</table>
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>
+

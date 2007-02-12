@@ -1,0 +1,78 @@
+<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" 
+	codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0" 
+	width="500" height="300" id="hitbox" align="middle">
+<param name="allowScriptAccess" value="sameDomain" />
+<param name="movie" value="{$themeurl}hitbox.swf?weaponxml={$PHP_SELF}&id={$thingid}&confxml={$themeurl}config.xml&imgpath={$themeconf.largeweaponsurl}" />
+<param name="quality" value="high" />
+<embed src="{$themeurl}hitbox.swf?weaponxml={$PHP_SELF}&id={$thingid}&confxml={$themeurl}config.xml&imgpath={$themeconf.largeweaponsurl}" quality="high" width="500" height="300" name="hitbox" align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" />
+</object><br>
+<a name="weapons"></a>
+<div class="frame1">
+	<table width="99%" align="center" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('weaponlist')">
+			<td class="box-hdr"><#Weapons#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='weaponlist'}</td>
+		</tr>
+	</table>
+<div id="box_weaponlist_frame" align="center" {boxframe id='weaponlist'}>
+<div class="frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+              <tr align="right">
+		<td class="header-cell{if $wsort=='uniqueid'}-selected{/if}" align="center">{sortheader label="<#Weapon#>" sort="uniqueid" baseurl="$PHP_SELF?id=$thingid" prefix="w" order=$worder cursort=$wsort urltail="weapons"}</td>
+		<td class="header-cell{if $wsort=='kills'}-selected{/if}">{sortheader label="<#Kills#>" sort="kills" order=$worder}</td>
+		<td class="header-cell{if $wsort=='deaths'}-selected{/if}">{sortheader label="<#Deaths#>" sort="deaths" order=$worder}</td>
+		<td class="header-cell{if $wsort=='headshotkills'}-selected{/if}">{sortheader label="<#Headshots#>" sort="headshotkills" order=$worder}</td>
+		<td class="header-cell{if $wsort=='headshotpct'}-selected{/if}">{sortheader label="<#HS%#>" sort="headshotpct" order=$worder title="<#Headshot percentage#>"}</td>
+		<td class="header-cell{if $wsort=='accuracy'}-selected{/if}">{sortheader label="<#Accuracy#>" sort="accuracy" order=$worder}</td>
+		<td class="header-cell{if $wsort=='shotsperkill'}-selected{/if}">{sortheader label="<#S:K#>" sort="shotsperkill" order=$worder title="<#Shots per kill#>"}</td>
+		<td class="header-cell{if $wsort=='damage'}-selected{/if}">{sortheader label="<#Damage#>" sort="damage" order=$worder}</td>
+              </tr>
+{foreach name="wlist" from=$weaponlist item="w"}
+	<tr align="right" class="{cycle values="odd,even"}">
+		<td class="text" align="center"><a onmouseover="web.open_box('{$w.uniqueid}',this)" onmouseout="web.close_box()" href="{url _base='weapon.php' id=$w.weaponid}">{weaponimg weapon=$w}</a></td>
+		<td class="text">{$w.kills|commify}</td>
+		<td class="text">{$w.deaths|commify}</td>
+		<td class="text">{$w.headshotkills|commify}</td>
+		<td class="text">{$w.headshotpct|digits2}%</td>
+		<td class="text"><acronym title="{$w.hits|commify} <#hits#> / {$w.shots|commify} <#shots#>">{$w.accuracy|digits2}%</acronym></td>
+		<td class="text">{$w.shotsperkill}</td>
+		<td class="text">{$w.damage|commify}</td>
+	</tr>
+{foreachelse}
+	<tr align="center" class="shade1">
+		<td class="text" colspan="8"><br><b><#No weapons to display#></b><br><br></td>
+	</tr>
+{/foreach}
+{*
+{if count($weaponlist)}
+	      <tr align="right" class="shade3">
+		<td class="text-small" align="center"><b><#Overall Values#>:</b></td>
+		<td class="text-small">{$weaponlist|@sum:'kills'|commify}</td>
+		<td class="text-small">{$weaponlist|@sum:'deaths'|commify}</td>
+		<td class="text-small">{$weaponlist|@sum:'headshots'|commify}</td>
+		<td class="text-small">{$weaponlist|@avg:'headshotpct':2}%</td>
+		<td class="text-small">{$weaponlist|@avg:'accuracy':2}%</td>
+		<td class="text-small">{$weaponlist|@avg:'shotsperkill':2}</td>
+		<td class="text-small">{$weaponlist|@sum:'damage'|commify}</td>
+	      </tr>
+{/if}
+*}
+            </table>
+
+</div>
+	<table width="99%" border="0" cellspacing="0" cellpadding="2">
+		<tr valign="middle">
+			<td align="left" class="text-small">{$weaponlist|@count} <#of#> {$thing.totalweapons|commify} <#weapons shown#></td>
+			<td align="right" class="text">{$weaponpager}</td>
+		</tr>
+	</table>
+</div>
+</div>
+
+{foreach name="wlist" from=$weaponlist item="w"}
+<div class="box" style="background-color: white" id="box_{$w.uniqueid}">
+{weaponimg weapon=$w path="large" noimg=" - <#No Image Available#> - "}
+<div class="shade1"><b>{$w.name|default:$w.uniqueid|escape}</b></div>
+</div>
+{/foreach}
+<br>

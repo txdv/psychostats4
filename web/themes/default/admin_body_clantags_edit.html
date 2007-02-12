@@ -1,0 +1,99 @@
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+</script>
+
+<div class="divtable shade1">
+<form name="config" action="{url _base=$PHP_SELF c=$c act='edit' id=$id}" method="POST">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+<input name="idx" value="{$idx|escape}" type="hidden" />
+<input name="submit" value="1" type="hidden" />
+	<div class="table-hdr">
+		<h3>{if $id}<#Edit#>{else}<#Create#>{/if} <#Clantag#></h3>
+		<p>
+			<b>{$tag.example|escape}</b>
+		</p>
+	</div>
+
+	<div class="row{if $form.clantag.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.clantag.statustext|escape:'quotes'}')" class="label">
+			{$form.clantag.label|escape}
+		</span>
+		<span class="input">
+			<input name="clantag" value="{$clantag|escape}" type="text" size="40" class="field" />
+			{if $form.clantag.error}<p class="err">{$form.clantag.error|escape}</p>{/if}
+		</span>
+	</div>
+
+	<div class="row{if $form.example.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.example.statustext|escape:'quotes'}')" class="label">
+			{$form.example.label|escape}
+		</span>
+		<span class="input">
+			<input name="example" value="{$example|escape}" type="text" size="40" class="field" />
+			{if $form.example.error}<p class="err">{$form.example.error|escape}</p>{/if}
+		</span>
+	</div>
+
+	<div class="row{if $form.overridetag.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.overridetag.statustext|escape:'quotes'}')" class="label">
+			{$form.overridetag.label|escape}
+		</span>
+		<span class="input">
+			<input name="overridetag" value="{$overridetag|escape}" type="text" size="40" class="field" />
+			{if $form.overridetag.error}<p class="err">{$form.overridetag.error|escape}</p>{/if}
+		</span>
+	</div>
+
+	<div class="row{if $form.type.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.type.statustext|escape:'quotes'}')" class="label">
+			{$form.type.label|escape}
+		</span>
+		<span class="input">
+{*
+			<select name="type" class="field">
+				<option value="plain" {if $type == 'plain'}selected{/if}><#Plain#></option>
+				<option value="regex" {if $type == 'regex'}selected{/if}><#Regex#></option>
+			</select>
+*}
+			<input id="type1" name="type" type="radio" value="plain" {if $type != 'regex'}checked{/if}> <label for="type1"><#Plain#></label>
+			<input id="type2" name="type" type="radio" value="regex" {if $type == 'regex'}checked{/if}> <label for="type2"><#Regex#></label>
+			{if $form.type.error}<p class="err">{$form.type.error|escape}</p>{/if}
+		</span>
+	</div>
+
+	<div class="row{if $form.pos.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.pos.statustext|escape:'quotes'}')" class="label">
+			{$form.pos.label|escape}
+		</span>
+		<span class="input">
+{*
+			<select name="pos" class="field">
+				<option value="left" {if $p == 'left'}selected{/if}><#Left#></option>
+				<option value="right" {if $p == 'right'}selected{/if}><#Right#></option>
+			</select>
+*}
+			<input id="pos1" name="pos" type="radio" value="left" {if $pos != 'right'}checked{/if}> <label for="pos1"><#Left#></label>
+			<input id="pos2" name="pos" type="radio" value="right" {if $pos == 'right'}checked{/if}> <label for="pos2"><#Right#></label>
+			{if $form.pos.error}<p class="err">{$form.pos.error|escape}</p>{/if}
+		</span>
+	</div>
+
+	<div class="row-spacer"></div>
+	<div class="row">
+		<div class="form-actions">
+			<div style="float: right">
+				<input value="<#Save#>" type="submit" class="btn" />
+				<input name="cancel" value="<#Cancel#>" type="submit" class="btn" />
+			</div>
+{if $id}
+			<div style="float: left">
+				<input name="del" value="<#Delete Clantag#>" type="submit" class="btn" onclick="return window.confirm('<#Are you sure you want to delete the clantag?#>')" />
+			</div>
+{/if}
+		</div>
+	</div>
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>
+

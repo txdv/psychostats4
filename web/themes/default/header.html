@@ -1,0 +1,209 @@
+<script src="{$themeurl}quickprefs.js" type="text/javascript"></script>
+{*********
+<script type="text/javascript">
+var comparelist = new Array();
+{foreach from=$compare item='c' key='i'}
+comparelist[{$i}] = {$c};
+{/foreach}
+{literal}
+function addcompare(c) {
+	if (!c || !c.value) return;
+	if (c.checked) {
+		comparelist.push(c.value);
+	} else {
+		newlist = new Array();
+		for (i=0; i<comparelist.length; i++) {
+			if (comparelist[i] != c.value && comparelist[i] != 0) newlist.push(comparelist[i]);
+		}
+		comparelist = newlist.length ? newlist : new Array();
+	}
+	web.save_opt('compare', comparelist.join(','));
+	web.getObj('clearcomparebtn').style.display = comparelist.length ? '' : 'none';
+	web.getObj('comparemenu').style.display = comparelist.length ? '' : 'none';
+	updatecomparebtn();
+}
+function clearcompare() {
+	comparelist = new Array();
+	web.save_opt('compare', '');
+	var inputs = document.getElementsByTagName('input');
+	for (i=0; i<inputs.length; i++) {
+		e = inputs[i];
+		if (e.id.indexOf('compare_') == 0) e.checked = false;
+	}	
+	web.getObj('clearcomparebtn').style.display = 'none';
+	web.getObj('comparemenu').style.display = 'none';
+	updatecomparebtn();
+}
+function updatecomparebtn() {
+	b = web.getObj('comparebtn');
+	if (!b) return;
+	str = "<#Compare Players#>";
+	if (comparelist.length) {
+		str += " (" + comparelist.length + ")";
+		b.disabled = false;
+	} else {
+		b.disabled = true;
+	}
+	b.value = str;
+}
+{/literal}
+</script>
+***************}
+{if $load_google}
+<script src="http://maps.google.com/maps?file=api&amp;v=2&amp;key={$themeconf.map.google_key}" type="text/javascript"></script>
+<script type="text/javascript">
+var req;
+{literal}
+function ip2loc(ip) {
+	if (!ip || ip == '0.0.0.0') return false;
+	url = encodeURI('iplookup.php?ip=' + ip);
+	req = web.httpRequest(); 
+	req.onreadystatechange = handleRequest;
+	req.open("GET",url,true);
+	req.send(null);
+}
+function handleRequest() {
+	if (req.readyState == 4) {
+		if (req.status == 200) {
+//			alert("Got headers:\n" + req.getAllResponseHeaders() + "\nGot Text:\n" + req.responseText);
+			var lines = req.responseText.split("\n");
+			for (var i=0; i<lines.length; i++) {
+				if (lines[i] == '') continue;
+				var latlng = lines[i].split(',');
+				var ip  = latlng[0];
+				var lat = Number(latlng[1]);
+				var lng = Number(latlng[2].replace("\n", ""));
+				var p = new GLatLng(lat,lng);
+				if (i == 0) map.setCenter(p, 3);
+				map.addOverlay( createMarker(p, i+1, ip) );
+				if (i > 10) break;	// don't want too many ip's
+			}
+		} else {
+//			alert("Error with HTTP request:\n" + req.statusText);
+		}
+	}
+}
+function createMarker(point, number, ip) {
+	var marker = new GMarker(point);
+//	GEvent.addListener(marker, "click", function() {
+//		marker.openInfoWindow(number + ": " + ip);
+//	});
+	return marker;
+}
+
+{/literal}
+</script>
+{/if}
+<div class="main-header-logo-outer">
+	<div class="main-header-logo-inner">
+	</div>
+</div>
+<div id="menu">
+<span id="leftmenu">
+<ul>
+	<li class="first"><a class="nav-index" href="{url _base='index.php'}"><span>&#149;</span> <#Players#></a></li>
+{*
+	<li id="comparemenu"{if !count($compare)} style="display: none"{/if}><a class="nav-compare" href="{url _base='compare.php'}"><span>&#149;</span> <#Compare#></a></li>
+*}
+	<li><a class="nav-clans" href="{url _base='clans.php'}"><span>&#149;</span> <#Clans#></a></li>
+	<li><a class="nav-weapons" href="{url _base='weapons.php'}"><span>&#149;</span> <#Weapons#></a></li>
+{if $use_roles}
+	<li><a class="nav-roles" href="{url _base='roles.php'}"><span>&#149;</span> <#Roles#></a></li>
+{/if}
+	<li><a class="nav-awards" href="{url _base='awards.php'}"><span>&#149;</span> <#Awards#></a></li>
+	<li><a class="nav-maps" href="{url _base='maps.php'}"><span>&#149;</span> <#Maps#></a></li>
+	<li><a class="nav-server" href="{url _base='server.php'}"><span>&#149;</span> <#Server#></a></li>
+	<li><a class="nav-overview" href="{url _base='overview.php'}"><span>&#149;</span> <#Overview#></a></li>
+</ul>
+</span>
+<span id="rightmenu">
+<ul>
+	<li><a href="javascript:toggle_quickprefs()"><img id="quickimg" src="{$imagesurl}header-menu-pref.gif" align="absmiddle" alt="<#Quick Settings#>"></a></li>
+
+{if user_logged_on()}
+	{if $user.plrid}
+	<li><a href="{url _base='player.php' id=$user.plrid}"><#Your Stats#> <span>&#149;</span></a></li>
+	<li><a class="nav-editplr" href="{url _base='editplr.php'}"><#Your Profile#> <span>&#149;</span></a></li>
+{*
+		{if $user.clanid and user_is_clanadmin()}
+		<li><a class="nav-editclan" href="{url _base='editclan.php'}"><#Clan Admin#> <span>&#149;</span></a></li>
+		{/if}
+*}
+	{elseif $user.userid}
+	<li><a class="nav-edituser" href="{url _base='edituser.php'}"><#User Profile#> <span>&#149;</span></a></li>
+	{/if}
+{*
+	{if user_is_admin()}
+	<li><a class="nav-admin" href="{url _base='admin.php'}"><#Admin#> <span>&#149;</span></a></li>
+	{/if}
+*}
+{/if}
+{if !user_logged_on()}
+	{if $themeconf.show_register}
+	<li><a class="nav-register" href="{url _base='register.php'}"><#Register#> <span>&#149;</span></a></li>
+	{/if}
+	{if $themeconf.show_login}
+	<li><a class="nav-login" href="{url _base='login.php'}"><#Login#> <span>&#149;</span></a></li>
+	{/if}
+{elseif $themeconf.show_login}
+	<li><a class="nav-logout" href="{url _base='logout.php'}" title="<#Logged in as#>: {$user.username|escape}"><#Logout#> <span>&#149;</span></a></li>
+{/if}
+</ul>
+</span>
+<div class="spacer"></div>
+</div>
+{if $headercontentfile}
+  {include file=$headercontentfile}
+{/if}
+
+<div id="quickprefs" style="display: none">
+<form action="{url _base=$REQUEST_URI}" method="POST">
+<table cellspacing="3" cellpadding="3" border="0">
+{if user_is_admin()}
+	<tr align="center">
+		<td colspan="2"><b>[ <a href="{url _base='admin.php'}"><#Admin Page#></a> ]</b></td>
+	</tr>
+{/if}
+	<tr>
+		<td class="label" align="right"><#Language#>:</td>
+		<td>
+		<select name="newlang" size="1" class="field">
+			<option value="">-<#Select#>-</option>
+{foreach from=$languagelist item="i"}
+			<option value="{$i|escape}" {if $user_opts.lang == $i}selected{/if}>{$i|escape}</option>
+{/foreach}
+		</select>
+		</td>
+	</tr>
+{if $themeconf.allow_user_change || user_is_admin()}
+	<tr>
+		<td class="label" align="right"><#Theme#>:</td>
+		<td>
+		<select name="newtheme" size="1" class="field">
+			<option value="">-<#Select#>-</option>
+{foreach from=$themelist item="i"}
+			<option value="{$i|escape}" {if $theme == $i}selected{/if}>{$i|escape}</option>
+{/foreach}
+		</select>
+		</td>
+	</tr>
+{/if}
+	<tr>
+		<td class="label" align="right"><#Style#>:</td>
+		<td>
+		<select name="newcss" size="1" class="field">
+			<option value="">-<#Select#>-</option>
+{foreach from=$stylelist item="i"}
+			<option value="{$i|escape}" {if $user_opts.stylesheet == $i}selected{/if}>{$i|escape}</option>
+{/foreach}
+		</select>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2" align="center">
+			<div class="quickprefs_submit"><input value="<#Update Settings#>" type="submit" class="btn"></div>
+		</td>
+	</tr>
+</table>
+</form>
+</div>

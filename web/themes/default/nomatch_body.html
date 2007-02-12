@@ -1,0 +1,19 @@
+<div class="frame2">
+
+<p>
+{if $errormsg}
+  <b>{$errormsg}</b>
+{else}
+  <b><#Nothing matches your request criteria!#></b>
+{/if}
+</p>
+
+<p>
+{if $redirect}
+  {$redirect}
+{else}
+  <a href="{url _base='index.php'}"><#Return to the index#></a>
+{/if}
+</p>
+
+</div>

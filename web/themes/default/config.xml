@@ -1,0 +1,51 @@
+<?xml version="1.0" ?>
+<config>
+	<hitbox bgcolor="#000044">
+		<title>%s Hitbox</title>
+		<target bullets="10"></target>
+	</hitbox>
+
+	<quickimg margin="#d7d7d7" antialias="0" interval="3000">
+		<frame width="1" color="gray">
+			<title font="FF_FONT1">Quick History</title>
+			<ygrid show="1" color1="whitesmoke" color2="azure2" />
+			<xgrid show="1" />
+			<plot color="blue@0.90" weight="1">Total</plot>
+			<plot color="khaki4" weight="2">Average</plot>
+		</frame>
+		<legend x="5" y="5" halign="right" valign="top" color="lightblue@0.5" font="FF_FONT0">
+			<shadow color="gray@0.5" width="2" />
+		</legend>
+	</quickimg>
+	<sessimg>
+		<frame color1="gray" color2="whitesmoke" type="GRAD_LEFT_REFLECTION" style="BGRAD_MARGIN">
+			<title>Player Sessions</title>
+			<header bgcolor="lightyellow:1.5" />
+			<hgrid show="1" color1="whitesmoke" color2="azure2" />
+			<bar color="lightblue" fill="darkblue" type="BAND_RDIAG" showempty="1" />
+		</frame>
+	</sessimg>
+	<connimg>
+		<frame color1="gray" color2="whitesmoke" type="GRAD_LEFT_REFLECTION" style="BGRAD_MARGIN">
+			<title font="FF_FONT1">Connections Per Day</title>
+			<ygrid show="1" color1="whitesmoke" color2="azure2" />
+			<bar color1="#3658F5" color2="#030C36" type="GRAD_HOR">Maximum</bar>
+			<plot color="khaki4" weight="2">Average</plot>
+		</frame>
+		<legend x="10" y="10" halign="right" valign="top" color="lightblue@0.5" font="FF_FONT1">
+			<shadow color="gray@0.5" width="2" />
+		</legend>
+	</connimg>
+	<ccimg margin="#d7d7d7" antialias="0" timeframe="0">
+		<frame color1="gray" color2="whitesmoke" type="GRAD_LEFT_REFLECTION" style="BGRAD_MARGIN">
+			<title font="FF_FONT1">Breakdown of Countries</title>
+		</frame>
+		<slices border="0" total="10" theme="earth" />
+	</ccimg>
+	<images>
+		<footer show="1" color="black@0.5" font="FF_FONT0">
+			<left>PsychoStats v%s</left>
+			<right>M d @ H:i:s</right>
+		</footer>
+	</images>
+</config>

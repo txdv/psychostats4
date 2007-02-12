@@ -1,0 +1,234 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>{$pq.name|default:"Unknown server name"|escape}</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<link href="{$themeurl}styles.css" rel="stylesheet" type="text/css">
+<script src="{$themeurl}webcore.js" type="text/javascript"></script>
+{literal}
+<style type="text/css">
+
+/* Override the LVHA styles or they'll look strange */
+.frame2 div table tr td, 
+.frame2 div table tr td a, 
+.frame2 div table tr td a:link, 
+.frame2 div table tr td a:visited, 
+.frame2 div table tr td a:hover, 
+.frame2 div table tr td a:active, 
+.frame2 div {
+	font-size: 8pt;
+}
+
+.frame2 div table {
+	filter: alpha(opacity=65);
+	-moz-opacity: .65;
+	opacity: .65;
+}
+
+.frame2 {
+{/literal}
+	background: url({$imagesurl}pqleft-bg.png) repeat-x;
+{literal}
+}
+#pqleft {
+	border-right: 1px solid #777777;
+	height: 270px;
+	float: left;
+	width: 160px;
+	text-align: center;
+	overflow: hidden;
+}
+#pqright {
+	height: 270px;
+	overflow: auto;
+{/literal}
+/*	background: url({$imagesurl}pqright-bg.png) no-repeat 25px 125px;*/
+	background: url({$imagesurl}pqright-bg.png) no-repeat right 80% fixed;
+{literal}
+}
+
+div.maprow {
+/*	border: 1px solid black; */
+}
+
+div.connectrow {
+	clear: both;
+	font-weight: bold;
+	background-color: #CBCBAE;
+	border: 1px solid black;
+}
+
+#pqleft div.row1 {
+	clear: both;
+	font-weight: bold;
+}
+
+#pqleft div.row {
+	clear: both;
+	padding: 3px 0 0 0;
+	margin: 0;
+}
+
+#pqplrlist {
+	position: relative;
+	display: block;
+}
+#pqrulelist {
+	position: relative;
+	display: none;
+}
+#pqrcon {
+	position: relative;
+	display: none;
+	text-align: left;
+}
+#pqrcon pre {
+	padding: 0; 
+	margin: 0;
+	font-size: 8pt;
+}
+</style>
+{/literal}
+</head>
+<body>
+
+{literal}
+<script language="javascript" type="text/javascript">
+var web = new webcore();
+var maxcount = 30;
+var count = maxcount;
+var re = window.setTimeout('refresh()', 1000);
+var isPaused = 0;
+function refresh() {
+	re = window.setTimeout('refresh()', 1000);
+	if (parent.pauseQuery) {
+		if (!isPaused) {
+			web.write("<#Auto refresh paused#> (<a href='#' onclick='window.location.reload(); return false;'><#Refresh Now#></a>)", 'timertext');
+			isPaused = 1;
+		}
+		return;
+	} else if (!parent.pauseQuery && isPaused) {
+		web.write("<#Will refresh in#> " + count + " <#seconds#> (<a href='#' onclick='window.location.reload(); return false;'><#Refresh Now#></a>)", 'timertext');
+		isPaused = 0;
+		return;
+	}
+
+	if (count <= 0) {
+		window.clearTimeout(re);
+		window.location = window.location;
+	} else {
+		if ((count == maxcount) || (count % 5 == 0) || (count <= 5)) {
+			web.write("<#Will refresh in#> " + count + " <#seconds#> (<a href='#' onclick='window.location.reload(); return false;'><#Refresh Now#></a>)", 'timertext');
+		}
+	}
+	count--;
+}
+
+function openPlrs() {
+	web.getObj('pqrcon').style.display='none';
+	web.getObj('pqrulelist').style.display='none'; 
+	web.getObj('pqleft').style.display='block';
+	web.getObj('pqplrlist').style.display='block';
+}
+
+function openRules() {
+	web.getObj('pqplrlist').style.display='none';
+	web.getObj('pqrcon').style.display='none';
+	web.getObj('pqleft').style.display='block';
+	web.getObj('pqrulelist').style.display='block'; 
+}
+
+function openRcon() {
+	web.getObj('pqleft').style.display='none';
+	web.getObj('pqplrlist').style.display='none';
+	web.getObj('pqrulelist').style.display='none';
+	web.getObj('pqrcon').style.display='block';
+	if (document.forms.rcon.cmd.value == '') document.forms.rcon.cmd.value = 'status';
+	document.forms.rcon.cmd.focus();
+	document.forms.rcon.cmd.select();
+}
+</script>
+{/literal}
+
+<div class="frame1">
+	<div class="label">{if $pq.timedout}<#Server#> {$server.ip} <#did not respond#>{else}{flagimg cc=$server.cc cn=$server.cn} {$pq.name|escape}{/if}</div>
+<div class="frame2">
+	<div id="pqleft">
+{if !$pq.timedout}
+		<div class="maprow">{mapimg map=$pq.map noimg=" - <#No Image Available#> - " pq=$pqobj}</div>
+{if $pq.connect_url}
+		<div class="connectrow"><a href="{$pq.connect_url}"><#Connect Now#></a></div>
+{/if}
+		<div class="row1">{$server.ip}</div>
+		<div class="row1">{$pq.map}</div>
+		<div class="row">{$pq.gamename}</div>
+{if $pq.rules.amx_timeleft != ''}
+		<div class="row"><b>{$pq.rules.amx_timeleft}</b> <#time left#></div>
+{/if}
+		<div class="row"><b>{$pq.activeplayers} / {$pq.maxplayers}</b>{if $pq.maxbots} ({$pq.maxbots} <#bots#>){/if} <#players online#></div>
+		<div class="row">{if $pq.serveros == 'l'}<#Linux#>{else}<#Windows#>{/if} ({if $pq.servertype == 'd'}<#dedicated#>{else}<#listen#>{/if})</div>
+{if $pq.serversecure != ''}
+		<div class="row">{if !$pq.serversecure}<#Not VAC secured#>{else}<#VAC secured#>{/if}</div>
+{/if}
+		<div class="row"><#Ping#> <b>{$pq.ping}</b> ms</div>
+{/if}
+	</div>
+	<div id="pqright">
+{if !$pq.timedout}
+		<div align="left">
+{if user_is_admin()}
+		[ <a href="javascript:openRcon()">RCON</a> ]
+{/if}
+		[ <a href="javascript:openPlrs()">Players</a> ]
+		[ <a href="javascript:openRules()">Rules</a> ]
+		</div>
+		<div id="pqplrlist">
+		<table width="99%" border="0" cellspacing="0" cellpadding="2">
+			<tr>
+				<td class="header-cell" align="center"><#Player#></td>
+				<td class="header-cell" align="right"><#Kills#></td>
+				<td class="header-cell" align="right"><#Online#></td>
+			</tr>
+{foreach name='plrs' from=$pq.players item='p'}
+			<tr class="{cycle values="odd,even"}">
+				<td align="left"><a href="{url _base='index.php' search=$p.name submit='go'}" target="_parent">{$p.name|escape}</a></td>
+				<td align="right">{$p.kills}</td>
+				<td align="right">{$p.onlinetime|compacttime}</td>
+			</tr>
+{foreachelse}
+			<tr><td colspan="3" class="label shade1" align="center"><br><#No players online#><br><br></td></tr>
+{/foreach}
+			<tr><td colspan="3" align="center" style="border-top: 2px solid black;">&nbsp;</td></tr>
+		</table>
+		</div>
+		<div id="pqrulelist">
+		<table width="99%" border="0" cellspacing="0" cellpadding="2">
+			<tr>
+				<td class="header-cell" align="center"><#Rules#></td>
+			</tr>
+{foreach name='rules' from=$pq.rules item='value' key='rule'}
+			<tr class="{cycle values="odd,even"}">
+				<td align="left">{$rule|escape} = <b>{$value|escape}</b></td>
+			</tr>
+{/foreach}
+			<tr><td colspan="3" align="center" style="border-top: 2px solid black;">&nbsp;</td></tr>
+		</table>
+		</div>
+		<div id="pqrcon">
+			<form name="rcon" action="{url _base=$PHP_SELF ip=$server.ip}" method="POST">
+			<input name="cmd" type="text" value="{$cmd|escape}" size="65" class="field">
+			<input type="submit" value="<#Send#>" class="btn">
+			</form>
+			<pre>{$rcon_result|escape}</pre>
+		</div>
+{/if} {* If !$pq.timedout *}
+	</div>
+</div>
+	<div id="timertext" class="under-box">&nbsp;<noscript>(<a href="{url _base=$PHP_SELF ip=$server.ip}"><#Refresh Now#></a>)</noscript></div>
+</div>
+</body>
+</html>
+
+{if $cmd != ''}
+<script language="javascript" type="text/javascript">openRcon();</script>
+{/if}

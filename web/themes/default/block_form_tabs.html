@@ -1,0 +1,7 @@
+<div align="left">
+<ul>
+{foreach from=$formtabs item='tab'}
+	<li id="tab_{$tab.label}"{if $selected==$tab.label} class="selected"{/if}><a href="javascript:toggleFormTab('{$tab.label|escape:'quotes'}')" onmouseover="statusText('{$tab.comment|escape:'quotes'}')" onmouseout="notext()" onclick="this.blur()">{$tab.label|default:"general"|escape}</a></li>
+{/foreach}
+</ul>
+</div>

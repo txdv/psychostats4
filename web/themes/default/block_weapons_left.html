@@ -1,0 +1,35 @@
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('weaponleftlist')">
+			<td class="box-hdr">&nbsp;<#Weapon List#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='weaponleftlist'}</td>
+		</tr>
+	</table>
+<div id="box_weaponleftlist_frame" align="center" {boxframe id='weaponleftlist'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="0" cellpadding="1">
+              <tr align="left">
+		<td class="text-hdr-small">&nbsp;<#Weapon#></td>
+		<td align="right" class="text-hdr-small"><#Kills#></td>
+		<td align="right" class="text-hdr-small"><acronym title="<#Headshot Percentage#>"><#HS#>%</acronym></td>
+              </tr>
+{foreach from=$weapons item='w'}
+              <tr valign="top" class="{cycle values="odd,even"}{if $w.weaponid==$id or $w.uniqueid==$wname} row-highlight{/if}">
+		<td align="left" class="text" nowrap="nowrap">
+			&nbsp;<a href="{url _base=$PHP_SELF id=$w.weaponid}" title="{$w.name|default:$w.uniqueid|escape}">{if $w.weaponid == $id}<b><u>{$w.uniqueid}</u></b>{else}{$w.uniqueid}{/if}</a>
+		</td>
+		<td align="right" class="text">{$w.kills|commify}</td>
+		<td align="right" class="text"><acronym title="{$w.headshotkills|commify} <#headshots#>">{$w.headshotpct|digits2}%</acronym></td>
+{*
+		<td align="right" class="text"><acronym title="{$w.headshotpct|digits2}%">{$w.headshotkills|commify}</acronym></td>
+*}
+              </tr>
+{/foreach}
+            </table>
+	</div>
+		<div class="under-box text-small">{$weapons|@count} <#weapons used#></div>
+
+</div>
+</div>
+<br>
+

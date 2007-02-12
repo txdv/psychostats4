@@ -1,0 +1,95 @@
+{$calendar}
+<br>
+
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('awardsleft')">
+			<td class="box-hdr">&nbsp;{$time|date:'F'} <#Award Views#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='awardsleft'}</td>
+		</tr>
+	</table>
+<div id="box_awardsleft_frame" align="center" {boxframe id='awardsleft'}>
+	<div class="small-frame2" align="left">
+	<ul>
+{foreach from=$datelist item='list' key='range'}
+		<li class="label">{$range|ucfirst}</li>
+		<ul>
+	{foreach from=$list item='r'}
+			<li{if $date == $r.date} class='row-highlight'{/if}><a href="{url _base=$PHP_SELF y=$r.y m=$r.m d=$r.d type=$type w=$w}">
+		{if $range == 'month'}
+			{$r.time|date:"F Y"}
+		{elseif $range == 'week'}
+			{$r.week|string_format:'%02d'}: {$r.time|date:"F jS"}
+		{else}
+			{$r.time|date:"D"} <#the#> {$r.time|date:"jS"}
+		{/if}
+		</a></li>
+	{/foreach}
+		</ul>
+{foreachelse}
+		<b><#No awards available#></b>
+{/foreach}
+	</ul>
+	</div>
+
+</div>
+</div>
+<br>
+
+{if $type == 'weapon'}
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('weaponleftlist')">
+			<td class="box-hdr">&nbsp;<#Weapon List#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='weaponleftlist'}</td>
+		</tr>
+	</table>
+<div id="box_weaponleftlist_frame" align="center" {boxframe id='weaponleftlist'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="0" cellpadding="1">
+              <tr align="left">
+		<td class="text-hdr-small">&nbsp;<#Weapon#></td>
+		<td align="right" class="text-hdr-small"><#Kills#></td>
+              </tr>
+{foreach from=$weaponlist item='weap'}
+              <tr valign="top" class="{cycle values="odd,even"}{if $weap.uniqueid==$w} row-highlight{/if}">
+		<td align="left" class="text" nowrap="nowrap">
+			&nbsp;<a href="{url _base=$PHP_SELF y=$y m=$m d=$d type=$type w=$weap.uniqueid}" title="{$weap.name|default:$weap.uniqueid|escape}">{if $weap.uniqueid == $w}<b><u>{$weap.uniqueid}</u></b>{else}{$weap.uniqueid}{/if}</a>
+		</td>
+		<td align="right" class="text">{$weap.kills|commify}</td>
+              </tr>
+{/foreach}
+            </table>
+	</div>
+		<div class="under-box text-small">{$weaponlist|@count} <#weapons used#></div>
+
+</div>
+</div>
+<br>
+{elseif $type == 'weaponclass'}
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('classleftlist')">
+			<td class="box-hdr">&nbsp;<#Weapon Classes#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='classleftlist'}</td>
+		</tr>
+	</table>
+<div id="box_classleftlist_frame" align="center" {boxframe id='classleftlist'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="0" cellpadding="1">
+              <tr align="left">
+		<td class="text-hdr-small">&nbsp;<#Weapon Class#></td>
+              </tr>
+{foreach from=$weaponclasses item='class'}
+              <tr valign="top" class="{cycle values="odd,even"}{if $class==$w} row-highlight{/if}">
+		<td align="left" class="text" nowrap="nowrap">
+			&nbsp;<a href="{url _base=$PHP_SELF y=$y m=$m d=$d type=$type w=$class}">{if $class == $w}<b><u>{$class}</u></b>{else}{$class}{/if}</a>
+		</td>
+              </tr>
+{/foreach}
+            </table>
+	</div>
+</div>
+</div>
+<br>
+{/if}

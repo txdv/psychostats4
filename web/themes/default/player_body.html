@@ -1,0 +1,46 @@
+{include 
+	file 		= "block_plrsessions.html"
+	thing 		= $plr
+	thingid 	= $id
+	sessionlist 	= $plr.sessions
+}
+
+{include 
+	file 		= "block_weapons.html"
+	thing 		= $plr
+	thingid 	= $id
+	weaponlist 	= $plr.weapons
+}
+
+{if $roleblockfile}
+	{include
+		file	 = $roleblockfile
+		thing	 = $plr
+		thingid	 = $id
+		rolelist = $plr.roles
+	}
+{/if}
+
+{if $mapblockfile}
+	{include 
+		file	= $mapblockfile
+		thing	= $plr
+		thingid	= $id
+		maplist	= $plr.maps
+	}
+{/if}
+
+{include 
+	file		= "block_victims.html"
+	thing		= $plr
+	thingid		= $id
+	victimlist	= $plr.victims
+}
+
+{if $teamblockfile}
+	{include
+		file	= $teamblockfile
+		thing	= $plr
+		thingid	= $id
+	}
+{/if}

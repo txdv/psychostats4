@@ -1,0 +1,141 @@
+{if $clan.logo}
+<div class="text2" style="text-align: center; margin-bottom: 10px; width: 250px; overflow: hidden; border: none;">
+{$clan.logo}</div>
+{/if}
+
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('clanrundown')">
+			<td class="box-hdr">&nbsp;<#Clan Rundown#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='clanrundown'}</td>
+		</tr>
+	</table>
+<div id="box_clanrundown_frame" align="center" {boxframe id='clanrundown'}>
+	<div class="small-frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+{if $clan.website}
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Website#>:</td>
+		<td align="right" class="text-small">[ <a class="text-small" href="{$clan.website|escape}" title="{$clan.website|escape}" target="_blank"><#Click Me#></a> ]</td>
+              </tr>
+{/if}
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Skill#>:</td>
+		<td align="right" class="text">{$clan.skill|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Games#>:</td>
+		<td align="right" class="text">{$clan.games|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Rounds#>:</td>
+		<td align="right" class="text">{$clan.rounds|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Maps#>:</td>
+		<td align="right" class="text">{$clan.totalmaps}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Kicked#>:</td>
+		<td align="right" class="text">{$clan.kicked|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Banned#>:</td>
+		<td align="right" class="text">{$clan.banned|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Connects#>:</td>
+		<td align="right" class="text">{$clan.connections|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Online Time#>:</td>
+		<td align="right" class="text">{$clan.onlinetime|compacttime}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Last Played#>:</td>
+		<td align="right" class="text">{$clan.lasttime|date}<br>{$clan.lasttime|date:"H:i:s"}</td>
+              </tr>
+            </table>
+
+	</div>
+</div>
+</div>
+<br>
+
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('clankillprofile')">
+			<td class="box-hdr">&nbsp;<#Kill Profile#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='clankillprofile'}</td>
+		</tr>
+	</table>
+<div id="box_clankillprofile_frame" align="center" {boxframe id='clankillprofile'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="1" cellpadding="1">
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Kills#>:</td>
+		<td align="right" class="text">{$clan.kills|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Deaths#>:</td>
+		<td align="right" class="text">{$clan.deaths|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#K:D Ratio#>:</td>
+		<td align="right" class="text">{$clan.killsperdeath|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#K:M Ratio#>:</td>
+		<td align="right" class="text">{$clan.killsperminute|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Kill Streak#>:</td>
+		<td align="right" class="text">{$clan.kills_streak}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Death Streak#>:</td>
+		<td align="right" class="text">{$clan.deaths_streak}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#FF Kills#>:</td>
+		<td align="right" class="text">{$clan.ffkills} [{$clan.ffkillspct|digits2}%]</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#FF Deaths#>:</td>
+		<td align="right" class="text">{$clan.ffdeaths} [{$clan.ffdeathspct|digits2}%]</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Damage#>:</td>
+		<td align="right" class="text">{$clan.damage|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Shots#>:</td>
+		<td align="right" class="text">{$clan.shots|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Hits#>:</td>
+		<td align="right" class="text">{$clan.hits|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Accuracy#>:</td>
+		<td align="right" class="text">{$clan.accuracy|digits2}%</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#S:K Ratio#>:</td>
+		<td align="right" class="text">{$clan.shotsperkill|digits2}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Headshots#>:</td>
+		<td align="right" class="text">{$clan.headshotkills|commify} [{$clan.headshotpct|digits2}%]</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Suicides#>:</td>
+		<td align="right" class="text">{$clan.suicides|commify}</td>
+              </tr>
+            </table>
+
+	</div>
+</div>
+</div>
+<br>
+

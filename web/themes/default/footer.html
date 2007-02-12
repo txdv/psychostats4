@@ -1,0 +1,27 @@
+{if $footercontentfile}
+  {include file=$footercontentfile}
+{/if}
+
+<div style="position: absolute; right: 10px; font-size: 9px;">
+	[ <a href="cookies.php" onclick="return confirm('Clear all cookies created by PsychoStats?\nThis will also log you out and you\'ll be returned to the main page.')"><#clear all cookies#></a> ]
+</div>
+<div align="center" class="footer">
+	{if user_is_admin()}<b>[ <a href="{url _base='admin.php'}"><#Click here for administration page#></a> ]</b><br>{/if}
+	<#Powered by#> <a href="http://www.psychostats.com/">PsychoStats</a> v{$info.version} &copy; 2006<br>
+
+{if $themeconf.page_benchmark}
+	<#Page processed in <!--PAGELOADTIME--> seconds#> ({db info='totalqueries'} <#SQL queries#>)
+
+{/if}
+{if $THEME_DEV}
+	{* 
+	If THEME_DEV is true then each page in the theme is re-compiled at every request. 
+	Which really slows things down. Always make sure theme_dev is disabled whenever possible.
+	*}
+	<br><b><#Note#>: <#Theme development is enabled. Page performance will be slower.#></b>
+{/if}
+</div>
+
+{if $DB_DEBUG}
+	<pre style="border: 3px solid black; padding: 1em; width: 90%; margin: 10px auto; overflow: auto">{db info='queries'}</pre>
+{/if}

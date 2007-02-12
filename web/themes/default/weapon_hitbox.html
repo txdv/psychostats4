@@ -1,0 +1,34 @@
+{hitboxswfurl var="swfvars" weapon=$weapon}
+<table border="0" cellpadding="1" cellspacing="0" class="tbl-frame1">
+  <tr><td><table width="100%" border="0" cellpadding="5" cellspacing="0" class="tbl-shade1">
+    <tr><td class="text" align="center">
+      <font class="text-hdr">{$weapon.desc|default:$weapon.name|escape} <#Hitbox#></font>
+      <table width="100%" border="0" cellpadding="1" cellspacing="0" class="tbl-frame1">
+        <tr><td><table width="100%" border="0" cellpadding="1" cellspacing="0" class="tbl-shade4">
+          <tr><td class="text" align="center">
+
+<OBJECT classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" WIDTH="273" HEIGHT="258" ALIGN="" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,0,0" id="hitbox_final">
+<PARAM NAME=movie VALUE="{$conf.imagesurl}hitbox.swf?{$swfvars}">
+<PARAM NAME=quality VALUE=high> 
+<PARAM NAME=wmode VALUE=transparent> 
+<PARAM NAME=bgcolor VALUE=#FFFFFF> 
+<EMBED src="{$conf.imagesurl}hitbox.swf?{$swfvars}" 
+ quality="high" 
+ wmode="transparent" 
+ bgcolor="#FFFFFF"  
+ WIDTH="273" 
+ HEIGHT="258" 
+ ALIGN=""
+ NAME="hitbox_final" 
+ TYPE="application/x-shockwave-flash" 
+ PLUGINSPAGE="http://www.macromedia.com/go/getflashplayer">
+</EMBED>
+</OBJECT>
+
+	  </td></tr>
+        </table></td></tr>
+      </table>
+      <div align="right" class="text-small"><a href="{url _base='weapon.php' id=$weapon.weaponid}"><#View global stats for the#> <b>{$weapon.desc|default:$weapon.name|escape}</b></a></div>
+    </td></tr>
+  </table>
+</td></tr></table>

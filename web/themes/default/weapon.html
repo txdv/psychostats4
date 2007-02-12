@@ -1,0 +1,12 @@
+{assign var="weaponlabel" value=$weapon.name|default:$weapon.uniqueid|escape}
+{include
+	file			= 'main_body.html'
+	title 			= "<#Weapon Profile:#> `$weaponlabel`"
+	headercontentfile 	= 'default_header.html'
+	headertitle		= "<#Weapon Profile:#> `$weaponlabel`"
+	viewbuttons		= 1
+	leftblock		= 1
+	contentfile		= 'weapon_body.html'
+	topleftcontent		= 'weapon_left.html'
+}
+

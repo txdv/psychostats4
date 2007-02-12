@@ -1,0 +1,705 @@
+a {
+	font-size: 		10pt;
+	font-family: 		Tahoma, Sans-serif;
+}
+
+a:link,
+a:visited,
+a:hover,
+a:active {
+	text-decoration: 	underline;
+	color: 			#363636;
+	font-size: 		10pt;
+	font-family: 		Tahoma, Sans-serif;
+}
+a:hover,
+a:active {
+	color: 			#892201;
+}
+
+body {
+	margin: 		0px 0px;
+	padding: 		0px 0px;
+}
+
+
+td,div {
+	font-family: tahoma, sans-serif;
+	font-size: 10pt;
+	font-weight: normal;
+}
+
+/* footer area (usually very small) */
+div.footer {
+	background-color: 	#E1E1E1;
+	color: 			#363636;
+	font-size: 		8pt;
+	font-family: 		Tahoma, Sans-serif;
+	border-top: 		1px dashed #C5C8D0;
+	border-bottom: 		1px dashed #C5C8D0;
+}
+div.footer a {
+	font-size: 		8pt !important;
+}
+
+fieldset {
+	border: 1px inset;
+	padding: 4px;
+}
+
+img {
+	border: 0px;
+}
+
+label {
+	cursor: pointer;
+}
+
+acronym {
+	cursor: help;
+	border: none;
+	white-space: nowrap;
+}
+
+form {
+	margin: 0;
+	padding: 0;
+}
+
+.wide { width: 100% }
+
+/* 	All btn* classes define styles for BUTTON/SUBMIT INPUT tags only */
+input.btn {
+	background: #CDCDCD;
+	border: 1px solid;
+	border-color: #FFFFFF #535353 #535353 #FFFFFF;
+	color: #323232;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 10pt;
+}
+
+/* standard input field */
+input.field {
+	background: #D6D6D6;
+	border: 1px solid;
+	border-color: #A3A3A3 #FFFFFF #FFFFFF #A3A3A3;
+	color: #892201;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 9pt;
+	padding-bottom: 2px;
+	padding-left: 2px;
+}
+select.field {
+	background: #D6D6D6;
+	color: #892201;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 9pt;
+}
+
+textarea.field {
+	background: #D6D6D6;
+	border: 1px solid;
+	border-color: #282E22 #889180 #889180 #282E22;
+	color: #892201;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 9pt;
+	padding-bottom: 2px;
+	padding-left: 2px;
+}
+
+
+/* A label is the text that shows up on forms (this does not get used with <LABEL> tags directly) */
+.label {
+	color: #363636;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 10pt;
+	font-weight: bold;
+}
+
+/* a larger 'label' */
+.label-lrg {
+	color: #B9B9B9;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 12pt;
+}
+
+/* ---------------- NAVIGATION MENU --------------------- */
+
+#menu {
+	background: 		#e1e1e1 url(images/header-menu-bg.png) repeat-x;
+	vertical-align: 	middle;
+	border-top: 		1px solid #C5C8D0;
+	border-bottom: 		1px solid #C5C8D0;
+	width: 100%;
+}
+
+#leftmenu {
+	float: left;
+	padding: 4px 0 4px 5px;
+}
+#rightmenu {
+	float: right;
+	padding: 4px 5px 4px 0;
+}
+
+#menu ul {
+	display: inline;
+	margin-left: 0;
+	padding-left: 0;
+}
+
+#menu ul li,
+#menu ul li.first {
+	margin-left: 0;
+	list-style: none;
+	display: inline;
+}
+
+#menu ul li span {
+	color: black;
+}
+
+#menu a {
+	color: #892201;
+	font-size: 9pt;
+	font-weight: bold;
+	padding: 3px;
+}
+
+/* 
+   There should be a "#page-<PAGE> #menu a.nav-<PAGE>" selector for each page in the menu bar.
+   This allows for automatic highlighting of each menu option w/o any changes in the HTML.
+*/
+#page-index #menu a.nav-index,
+#page-players #menu a.nav-players,
+#page-player #menu a.nav-player,
+#page-awards #menu a.nav-awards,
+#page-weapons #menu a.nav-weapons,
+#page-weapon #menu a.nav-weapon,
+#page-maps #menu a.nav-maps,
+#page-map #menu a.nav-map,
+#page-clans #menu a.nav-clans,
+#page-clan #menu a.nav-clan,
+#page-server #menu a.nav-server,
+#page-overview #menu a.nav-overview,
+#page-login #menu a.nav-login,
+#page-register #menu a.nav-register,
+#page-admin #menu a.nav-admin,
+#page-edituser #menu a.nav-edituser,
+#page-editplr #menu a.nav-editplr,
+#page-editclan #menu a.nav-editclan,
+#menu a:hover,
+#menu a:active {
+	color: #000;
+	background-color: #ccc;
+	border: 1px solid #999;
+	padding: 2px 2px;
+}
+
+/* ---------------------------- box frames ------------------------ */
+div.frame1, div.small-frame1 {
+	border: 1px solid #C5C8D0;
+	background-color: #EEEEEE;
+	padding-bottom: 4px;
+	text-align: center;
+}
+
+div.frame2 {
+	margin-top: 2px;
+	border: 1px solid #C5C8D0;
+	background-color: #DDDDDD;
+	width: 99%;
+}
+
+div.frame-footer {
+	width: 99%;
+}
+
+/* small frames are used for the side boxes */
+div.small-frame2 {
+	margin-top: 2px;
+	border: 1px solid #C5C8D0;
+	background-color: #DDDDDD;
+	width: 97%;
+}
+
+div.small-frame-footer {
+	width: 95%;
+}
+
+.main-header-logo-outer {
+	background: url("images/header-bg.png") repeat-x;
+	width: 100%;
+	height: 122px;
+}
+.main-header-logo-inner {
+	background: url("images/header-logo.png") no-repeat;
+	width: 100%;
+	height: 122px;
+}
+.main-header-logo-inner p,
+.main-header-logo-inner p.sub {
+	position: absolute;
+	margin: 0px;
+	font-family: Tahoma, Sans-serif;
+	font-weight: bold;
+	font-size: 14pt;
+	color: #892201;
+}
+.main-header-logo-inner p {
+	left: 400px;
+	top: 50px;
+}
+.main-header-logo-inner p.sub {
+	left: 410px;
+	top: 69px;
+	font-size: 10pt;
+	font-weight: normal;
+}
+
+.header-cell {
+	cursor: default;
+	color: black;
+	font-weight: bold;
+	background-color: #9D9D9D;
+	background-image: url("images/hdr-bg.gif");
+}
+.header-cell-selected {
+	color: black;
+	font-weight: bold;
+	background-color: #9D9D9D;
+	background-image: url("images/hdr-bg-selected.gif");
+}
+
+.shade1 {
+	background-color: #EEEEEE;
+	color: #363636;
+}
+
+.shade2 {
+	background-color: #d7d7d7;
+	color: #363636;
+}
+
+.shade3 {
+	background-color: #c3c3c3;
+	color: #363636;
+}
+
+.row-highlight {
+	background-color: #CBCBAE;
+}
+
+/* override the text used on the side bar for highlighted rows */
+.row-highlight .text,
+.row-highlight .text-small {
+	border-top: 1px solid #aaa;
+	border-bottom: 1px solid #aaa;
+	color: #777;
+	font-weight: bold;	
+}
+
+/* standard text font styles used through the site. Be sure that the color of the shades work well with this */
+.text {
+	color: #363636;
+	font-family: Tahoma, Sans-serif;
+	font-size: 10pt;
+	font-weight: normal;
+}
+
+/* an alternate to the other 'text' class. This is generally only used on text that is not displayed within a TABLE or DIV */
+.text2 {
+	color: #363636;
+	font-family: Tahoma, Sans-serif;
+	font-size: 10pt;
+	font-weight: normal;
+}
+
+/* a larger version of 'text2' */
+.text2-lrg {
+	color: #363636;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 12pt;
+	font-weight: normal;
+}
+
+/* a smaller version of 'text2' */
+.text2-small {
+	color: #363636;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 8pt;
+	font-weight: normal;
+}
+
+/* defines the class for 'text' that goes in a 'header' row */
+.text-hdr {
+	color: #363636;
+	font-family: tahoma, sans-serif;
+	font-size: 12pt;
+	font-weight: bold;
+}
+
+/* a larger version of 'text-hdr' */
+.text-hdr-lrg {
+	color: #363636;
+	font-family: tahoma, sans-serif;
+	font-size: 12pt;
+	font-weight: bold;
+}
+
+/* a smaller version of 'text-hdr' */
+.text-hdr-small {
+	color: #363636;
+	font-family: tahoma, sans-serif;
+	font-size: 10pt;
+	font-weight: bold;
+}
+
+/* a larger version of 'text' */
+.text-lrg {
+	color: #FFFFFF;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 12pt;
+	font-weight: normal;
+}
+
+/* a smaller version of 'text' */
+.text-small {
+	color: #363636;
+	font-family: 		Tahoma, Sans-serif;
+	font-size: 8pt;
+	font-weight: normal;
+}
+
+.box-hdr {
+	cursor: pointer;
+	color: #363636;
+	font-family: Tahoma, Sans-serif;
+	font-size: 12pt;
+	font-weight: bold;
+}
+
+.under-box {
+	padding-right: 5px;
+	text-align: right;
+	font-size: 8pt;
+}
+
+acronym.acro-tip {
+	border-bottom: 2px dashed #CBCBAE;
+}
+
+/* ---------------- Table mimicing styles ---------------- */
+div.divtablewide,
+div.divtable {
+	width: 550px;
+	text-align: center;
+	margin: 0px auto;
+	border: 2px inset;
+}
+div.divtablewide { 
+	width: 95%;
+}
+
+div.divtable .table-hdr a {	/* IE requires 3 levels here to work properly? ... O_o */
+	text-decoration: underline;
+}
+
+/* form-tabs */
+div.divsmall ul,
+div.divtablewide ul,
+div.divtable ul {
+	position: relative;
+	display: inline;
+	margin-left: 0;
+	padding-left: 0;
+	top: -10px;
+}
+div.divsmall ul li,
+div.divtablewide ul li,
+div.divtable ul li {
+	padding: 0 3px;
+	margin: 0 3px;
+	list-style: none;
+	display: inline;
+	border-right: 2px solid #333;
+	border-bottom: 2px solid #333;
+	border-left: 2px solid #333;
+}
+div.divsmall ul li.selected,
+div.divtablewide ul li.selected,
+div.divtable ul li.selected {
+	background-color: #d7d7d7;
+	border-top: 2px solid #d7d7d7;
+	border-right: 2px solid #333;
+	border-bottom: 2px solid #333;
+	border-left: 2px solid #333;
+}
+
+div.divsmall ul {
+	top: 0px;
+}
+div.divsmall ul li.selected {
+	background-color: white;
+	border-top: none;
+}
+
+div.table-hdr {
+	clear: both;
+	padding: 0 5px 4px 5px;
+	text-align: justify;
+	font-weight: bold;
+	background-color: #d7d7d7;
+	color: #363636;
+	margin-bottom: 10px;
+	border-bottom: 2px solid #333;
+	line-height: 1.2em;
+}
+div.table-hdr h3 {
+	margin: 0;
+	line-height: 1.5em;
+}
+div.table-hdr p {
+	margin: 0;
+	font-weight: normal;
+}
+
+div.table-ftr {
+	clear: both;
+	padding-right: 10px;
+	text-align: right;
+	font-weight: bold;
+	background-color: #d7d7d7;
+	color: #363636;
+	margin-top: 5px;
+/*	border-top: 1px dashed #333;*/
+	border-top: 1px inset;
+}
+div.table-ftr #statustext,
+div.table-ftr #statustext1,
+div.table-ftr #statustext2
+{
+	float: left;
+	padding-left: 5px;
+	font-weight: normal;
+	text-align: left;
+}
+#helptext {
+	padding: 5px;
+	font-weight: normal;
+}
+
+div.row {
+	clear: both;
+	/* overflow + width are needed for the row container to properly enclose the floated label and inputs */
+	overflow: hidden;
+	width: 100%;
+	padding: 2px 0;
+	margin-bottom: 5px;
+}
+
+/* include this with a 'row' class to indicate there was an error in the users input: class="row row-err" */
+div.row-err {
+	margin: 0 auto;
+	width: 95%;
+	background-color: #FFFFDD;
+	border: 1px dashed darkred;
+}
+/* Generally used for 'errors' that are not associated with a single form variable and are on a row by itself */
+div.row-err-fatal {
+	background-color: #FFFFDD;
+	border: 1px solid darkred;
+	font-weight: bold;
+	font-size: 10pt;
+	text-align: center;
+	padding: 10px 0;
+}
+div.row-err-success {
+	margin: 0 auto;
+	width: 95%;
+	background-color: lightblue;
+	border: 1px solid darkblue;
+	font-weight: bold;
+	font-size: 10pt;
+	text-align: center;
+	padding: 10px 0;
+}
+div.row-err p.err {
+	margin: 0px;
+	padding: 0px;
+	font-size: 9pt;
+	font-weight: bold;
+}
+
+
+div.row-spacer {
+	clear: both;
+	padding-bottom: 10px;
+}
+div.row-desc {
+	clear: both;
+	overflow: hidden;
+	width: 100%;
+	text-align: left;
+	font-size: 10pt;
+	padding: 0 10px 10px 10px;
+}
+div.divtable div.row-desc a { text-decoration: underline }
+
+div.row span.label {
+	float: left;
+	width: 30%;
+	text-align: right;
+	font-weight: bold;
+	cursor: default;
+}
+
+div.row span.input {
+	float: right;
+	width: 68%;
+	text-align: left;
+} 
+span.label p {
+	font-size: 8pt;
+	font-weight: normal;
+	padding-left: 5px;
+	margin: 0;
+}
+div.divtable span.input a,
+div.divtable span.label p a {
+	text-decoration: underline;
+}
+span.input p {
+	font-size: 8pt;
+	margin: 0;
+}
+
+div.row div.form-actions {
+	text-align: right;
+	margin: 0 10px;
+}
+
+/* Don't usually want buttons to bump up directly next to each other (and using &nbsp; is ugly) */
+div.form-actions input.btn {
+	margin-right: 10px;
+}
+
+.box {
+	position: absolute; 
+	display: none;
+}
+
+div.spacer {
+	height: 0;
+	line-height: 0;
+	font-size: 0;
+	clear: both;
+}
+
+/* ---------------- Calendar styles -------------------------- */
+
+.calendar {
+	border: 1px solid #DDD;
+}
+
+.calendar-hdr {
+	text-align: center;
+	background-color: #DDD;
+}
+
+.calendar-cell a, 
+.calendar-cell a:hover {
+	font-size: 7pt;
+}
+
+.calendar-hdr-sun,
+.calendar-hdr-mon,
+.calendar-hdr-tue,
+.calendar-hdr-wed,
+.calendar-hdr-thu,
+.calendar-hdr-fri,
+.calendar-hdr-sat,
+.calendar-hdr-week
+{
+	font-size: 8pt;
+	font-weight: bold;
+	border-bottom: 1px solid black;
+}
+.calendar-hdr-week {
+	border-right: 1px solid black;
+}
+
+.calendar-cell-sun,
+.calendar-cell-mon,
+.calendar-cell-tue,
+.calendar-cell-wed,
+.calendar-cell-thu,
+.calendar-cell-fri,
+.calendar-cell-sat { }
+
+.calendar-week, 
+.calendar-cell {
+	font-size: 7pt;
+	font-weight: normal;
+	text-align: center;
+	background-color: #EEEEFF;
+	padding-top: 6px;
+	padding-bottom: 6px;
+	border-right: 1px solid white;
+	border-bottom: 1px solid white;
+}
+
+.calendar-week {
+	border-right: 1px solid black;
+	background-color: #EEE;
+}
+
+.calendar-cell-hasdata {
+	font-weight: bold;
+	background-color: #FFDDDD;
+	padding-top: 2px;
+	padding-bottom: 2px;
+}
+
+.calendar-cell-overflow {
+	color: #363636;
+	background-color: #FFF;
+	border-right: 1px solid #EEEEFF;
+	border-bottom: 1px solid #EEEEFF;
+}
+
+.calendar-cell-overflowdata {
+	color: #363636;
+	background-color: #FFF;
+	border-right: 1px solid #EEEEFF;
+	border-bottom: 1px solid #EEEEFF;
+	font-weight: bold;
+	background-color: #FFEEEE;
+	padding-top: 2px;
+	padding-bottom: 2px;
+}
+
+.calendar-cell-selected {
+	font-weight: bold;
+	padding-top: 2px;
+	padding-bottom: 3px;
+	border: 1px dashed #888;
+	background-color: #DDFFDD;
+}
+
+.calendar-cell-today {
+	font-weight: bold;
+	padding-top: 2px;
+	padding-bottom: 3px;
+	border: 1px dashed #888;
+	background-color: lightyellow;
+}
+
+.calendar-hover {
+	padding-top: 2px;
+	padding-bottom: 3px;
+	border: 1px solid #999999;
+	background-color: #DDDDFF;
+}
+
+

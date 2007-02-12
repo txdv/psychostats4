@@ -1,0 +1,96 @@
+package PS::Award;
+
+use base qw( PS::Debug );
+use strict;
+use warnings;
+
+use FindBin;
+use File::Spec::Functions;
+use POSIX qw( strftime );
+use util qw( :date :time :strings );
+
+our $VERSION = '1.00';
+
+sub new {
+	my ($proto, $award, $game) = @_;
+	my $baseclass = ref($proto) || $proto;
+	my $self = { 
+		award => $award,
+		game => $game, conf => $game->{conf}, db => $game->{db},
+		debug => 0, 
+	};
+	my $class;
+	my $path = catfile($FindBin::Bin,'lib','PS','Award');
+
+	# find the required plugin object for this award
+	my $awardclass = $self->{award}{class} || $self->{award}{type};
+	$self->{file} = catfile($path, $awardclass . ".pm");
+	if (!-f $self->{file}) {
+		$@ = "Award plugin file $self->{file} does not exist!";
+		return undef;
+	}
+
+	$class = "PS::Award::" . $self->{award}{type};
+	eval "require $class";
+	return undef if $@;
+
+	$self->{class} = $class;
+	bless($self, $class);
+	return $self->_init;
+}
+
+
+sub _init { 
+	my $self = shift;
+	return $self->init_award;
+}
+
+# award plugins need to override this to initialize themselves
+# return a reference to the award object ($self)
+sub init_award { $_[0] }
+
+# returns the end date relative to the start date according to the range given
+sub end_date {
+	my ($self, $range, $date) = @_;
+	my $start = ymd2time($date);
+	my $end = $start;
+	if (lc $range eq 'month') {
+		$end += 60*60*24 * (daysinmonth(split('-', strftime("%Y-%m", localtime))) - 1);
+	} elsif (lc $range eq 'week') {
+		$end += 60*60*24 * 6;
+	} else {
+		$end += 60*60*24;
+	}
+	return strftime("%Y-%m-%d", localtime($end));
+}
+
+# calculates the award with the dates and range specified
+# all subclasses will want to override this
+sub calc { 
+	my $self = shift;
+	my $range = shift;	# 'month', 'week' or 'day'
+	my $dates = ref $_[0] ? shift : [ @_ ];
+	# ...
+}
+
+# takes an array of dates and returns the dates that are not already marked as complete.
+sub valid_dates {
+	my $self = shift;
+	my $range = shift;	# 'month', 'week' or 'day'
+	my $dates = ref $_[0] ? shift : [ @_ ];
+	my $db = $self->{db};
+	my $a = $self->{award};
+	my @valid;
+
+	foreach my $date (@$dates) {
+		next if $db->select($db->{t_awards}, 'awardcomplete', 
+			[ awardid => $a->{id}, awarddate => time2ymd($date), awardrange => $range ]
+		);
+		push(@valid, $date);
+	}
+
+	return wantarray ? @valid : [ @valid ];
+}
+
+1;
+

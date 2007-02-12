@@ -1,0 +1,86 @@
+<div style="text-align: center; margin-bottom: 10px; width: 250px; overflow: hidden; border: none;">
+{mapimg map=$map noimg=""}</div>
+
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('mapprofile')">
+			<td class="box-hdr">&nbsp;<#Map Profile#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='mapprofile'}</td>
+		</tr>
+	</table>
+<div id="box_mapprofile_frame" align="center" {boxframe id='mapprofile'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="1" cellpadding="1">
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Games#>:</td>
+		<td align="right" class="text">{$map.games|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Rounds#>:</td>
+		<td align="right" class="text">{$map.rounds|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Kills#>:</td>
+		<td align="right" class="text">{$map.kills|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><acronym class="acro-tip" title="<#Friendly fire kills#>"><#FF Kills#></acronym>:</td>
+		<td align="right" class="text">{$map.ffkills|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap">&nbsp;</td>
+		<td align="right" class="text">{$map.ffkillspct|digits2}%</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Suicides#>:</td>
+		<td align="right" class="text">{$map.suicides|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Connects#>:</td>
+		<td align="right" class="text">{$map.connections|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Online Time#>:</td>
+		<td align="right" class="text">{$map.onlinetime|compacttime}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Last Played#>:</td>
+		<td align="right" class="text-small">{$map.lasttime|datetime}</td>
+              </tr>
+            </table>
+	</div>
+</div>
+</div>
+<br>
+
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('mapleftlist')">
+			<td class="box-hdr">&nbsp;<#Map List#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='mapleftlist'}</td>
+		</tr>
+	</table>
+<div id="box_mapleftlist_frame" align="center" {boxframe id='mapleftlist'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="0" cellpadding="1">
+              <tr align="left">
+		<td class="text-hdr-small"><#Map#></td>
+		<td align="right" class="text-hdr-small"><#Games#></td>
+		<td align="right" class="text-hdr-small"><#Kills#></td>
+              </tr>
+{foreach from=$maps item='m'}
+              <tr valign="top" class="{cycle values="odd,even"}{if $m.mapid eq $id} row-highlight{/if}">
+		<td align="left" class="text" nowrap="nowrap">
+			<a href="{url _base='map.php' id=$m.mapid}" title="<#Last played on#>: {$m.lasttime|date:'D M j G:i:s T Y'}">{if $m.mapid == $id}<b><u>{$m.uniqueid}</u></b>{else}{$m.uniqueid}{/if}</a>
+		</td>
+		<td align="right" class="text">{$m.games|commify}</td>
+		<td align="right" class="text">{$m.kills|commify}</td>
+              </tr>
+{/foreach}
+            </table>
+	</div>
+		<div class="under-box text-small">{$totalmaps} <#total maps#>{if $totalmaps > $maxmaps} ({$maxmaps} <#shown#>){/if}</div>
+
+</div>
+</div>
+<br>

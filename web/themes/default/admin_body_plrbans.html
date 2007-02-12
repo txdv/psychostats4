@@ -1,0 +1,96 @@
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+defaultTextStr = '<#Hover over labels for a description#>';
+</script>
+
+<div class="divtablewide shade1">
+<form name="config" action="{url _base=$PHP_SELF c=$c}" method="POST">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+<input name="submit" value="1" type="hidden" />
+	<div class="table-hdr">
+		<h3><#Player Bans#></h3>
+		<p>
+		<!--#PLRBANS_BLURB#-->
+		Players that are BANNED are ignored from the stats. 
+		New BANS added only effect new logs that are scanned from the game server.
+		Note: 'worldid' is the same as 'steamid'.
+		</p>
+	</div>
+
+	<div class="row-spacer" style="text-align: left">
+		&nbsp;<#Filter#>: 
+		<select name="matchtype" class="field">
+			<option value="">- <#All#> -</option>
+			<option value="worldid" {if $matchtype == 'worldid'}selected{/if}>World ID</option>
+			<option value="ipaddr" {if $matchtype == 'ipaddr'}selected{/if}><#IP Address#></option>
+			<option value="name" {if $matchtype == 'name'}selected{/if}><#Name#></option>
+		</select>
+		::
+		<input name="filter" type="text" value="{$filter|escape}" size="20" class="field" />
+		<input value="<#Go#>" type="submit" class="btn" />
+		&nbsp;|&nbsp;
+		<input name="export" value="<#Export#>" type="submit" class="btn" onmouseover="statusText('<#Exports the filtered list as a CSV file for you to download#>')" onmouseout="notext()" /> 
+		&nbsp;
+		<input name="import" value="<#Import#>" type="submit" class="btn" onmouseover="statusText('<#Allows you to import (upload) a CSV file of player bans#>')" onmouseout="notext()" /> 
+		&nbsp;|&nbsp;
+		<input name="new" value="<#New#>" type="submit" class="btn" />
+		<div style="float: right">{$pagerstr}&nbsp;&nbsp;</div>
+		<div class="spacer"></div>
+	</div>
+
+{if $errors.fatal}
+	<center><div id="msg-error" class="row row-err>{$errors.fatal|escape}</div></center>
+	<div class="row-spacer"></div>
+{/if}
+{if $msg}
+	<center><div id="msg-success" class="row row-err-success">{$msg|escape}</div></center>
+	<div class="row-spacer"></div>
+{/if}
+
+<table width=100%" border="0" cellspacing="0" cellpadding="2">
+	<tr>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.matchstr.statustext|escape:'quotes'}')" onmouseout="notext()"><#Match String#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.matchtype.statustext|escape:'quotes'}')" onmouseout="notext()"><#Type#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('<#Date player was BANNED#>')" onmouseout="notext()"><#Date#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('{$form.reason.statustext|escape:'quotes'}')" onmouseout="notext()"><#Reason#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('<#Is the BAN enabled?#>')" onmouseout="notext()"><#Enabled#></td>
+		<td class="header-cell" align="center" onmouseover="statusText('<#Select all visible bans#>')" onmouseout="notext()"><input name="deleteall" type="checkbox" onclick="toggleChecked(this.form,this.checked,'actionlist'); this.blur()" /></td>
+	</tr>
+
+{foreach name='list' from=$banlist item='b'}
+	<tr class="{cycle values="odd,even"}">
+		<td class="label" align="center"><a href="{url _base=$PHP_SELF c=$c act='edit' id=$b.id}">{$b.matchstr|escape}</a></td>
+		<td class="text" align="center">{$b.matchtype|escape}</td>
+		<td class="text" align="center">{$b.bandate|datetime}</td>
+		<td class="text" align="center">{$b.reason|default:'-'|escape}</td>
+{if $b.enabled}
+		<td class="text" align="center" style="color: green"><#Yes#></td>
+{else}
+		<td class="text" align="center" style="color: red"><#No#></td>
+{/if}
+		<td class="text" align="center">
+			<input id="actionlist{$smarty.foreach.list.index+1}" name="actionlist[]" value="{$b.id}" type="checkbox" onclick="this.form.elements.deleteall.checked = false" />
+		</td>
+	</tr>
+{foreachelse}
+	<tr>
+		<td colspan="6" class="label" align="center"><#No player bans found#></td>
+	</tr>
+{/foreach}
+
+</table>
+	<div style="float: right">{$pagerstr}&nbsp;&nbsp;</div>
+	<div class="row-spacer"></div>
+	<div class="row">
+		<div class="form-actions">
+			<b><#With Selected#>:</b>
+			<input name="delete" value="<#Delete#>" type="submit" class="btn" onclick="return window.confirm('<#Really delete selected bans?#>')" />
+			<input name="enable" value="<#Enable#>" type="submit" class="btn" />
+			<input name="disable" value="<#Disable#>" type="submit" class="btn" />
+		</div>
+	</div>
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>
+

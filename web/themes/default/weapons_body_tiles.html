@@ -1,0 +1,74 @@
+{literal}
+<style type="text/css">
+#weapontiles { margin: 0 auto; text-align: center; }
+#weapontiles div.tile {
+        float: left;
+        width: 250px;
+        overflow: auto;
+        padding: 0;
+        margin-right: 10px;
+        margin-bottom: 10px;
+        border: 3px solid black;
+        cursor: pointer;
+}
+#weapontiles div.tile div.tileinfo {
+	border-top: 3px dashed #888;
+}
+</style>
+{/literal}
+<div id="weapontiles">
+{foreach name="wlist" from=$weapons item="w"}
+<div class="tile" onclick="window.location='weapon.php?id={$w.weaponid}'" title="<#Click to view weapon stats#>">
+	<div style="height: 60px"><a href="{url _base='weapon.php' id=$w.weaponid}">{weaponimg weapon=$w path="large" noimg=""}</a></div>
+	<div class="frame1 tileinfo">
+		<b>{$w.name|default:$w.uniqueid|escape}</b>
+            <table align="center" width="225" border="0" cellspacing="1" cellpadding="1">
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Kills#>:</td>
+		<td align="right" class="text">{$w.kills|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><acronym class="acro-tip" title="<#Friendly fire kills#>"><#FF Kills#></acronym>:</td>
+		<td align="right" class="text">{$w.ffkills|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"></td>
+		<td align="right" class="text">{$w.ffkillspct|digits2}%</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Headshots#>:</td>
+		<td align="right" class="text">{$w.headshotkills|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"></td>
+		<td align="right" class="text">{$w.headshotpct|digits2}%</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Damage#>:</td>
+		<td align="right" class="text">{$w.damage|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Shots#>:</td>
+		<td align="right" class="text">{$w.shots|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Hits#>:</td>
+		<td align="right" class="text">{$w.hits|commify}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Accuracy#>:</td>
+		<td align="right" class="text">{$w.accuracy|digits2}%</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><acronym class="acro-tip" title="<#Shots per kill#>"><#S:K#></acronym>:</td>
+		<td align="right" class="text">{$w.shotsperkill}</td>
+              </tr>
+              <tr valign="top">
+		<td align="left" class="label" nowrap="nowrap"><#Class#>:</td>
+		<td align="right" class="text">{$w.class|default:'-'}</td>
+              </tr>
+            </table>
+	</div>
+</div>
+{/foreach}
+</div>

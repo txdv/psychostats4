@@ -1,0 +1,72 @@
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+</script>
+
+<div class="divtable shade1">
+<form name="conf" action="{url _base=$PHP_SELF c=$c id=$id}" method="POST">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+	<div class="table-hdr">
+		<h3><#Edit Configuration Option#></h3>
+		<p>
+			<!--#NEW_CONFIG_BLURB#-->
+			This form allows you to add new or edit options that appear in the configuration editor.
+			This is for advanced usage only and most users will never have to use this form.
+		</p>
+	</div>
+
+	<div class="row-spacer"></div>
+	<div class="row{if $form.conftype.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.conftype.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.conftype.label}</span>
+		<span class="input"><input name="conftype" value="{$conftype|escape}" type="text" size="40" class="field" />{if $form.conftype.error}<p class="err">{$form.conftype.error}</p>{/if}</span>
+	</div>
+	<div class="row{if $form.section.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.section.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.section.label}</span>
+		<span class="input"><input name="section" value="{$section|escape}" type="text" size="40" class="field" />{if $form.section.error}<p class="err">{$form.section.error}</p>{/if}</span>
+	</div>
+	<div class="row{if $form.var.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.var.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.var.label}</span>
+		<span class="input"><input name="var" value="{$var|escape}" type="text" size="40" class="field" />{if $form.var.error}<p class="err">{$form.var.error}</p>{/if}</span>
+	</div>
+	<div class="row{if $form.value.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.value.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.value.label}</span>
+		<span class="input"><input name="value" value="{$value|escape}" type="text" size="40" class="field" />{if $form.value.error}<p class="err">{$form.value.error}</p>{/if}</span>
+	</div>
+	<div class="row-spacer"></div>
+	<div class="row shade2"><b><#Input Layout Options#></b></div>
+
+	<div class="row{if $form.type.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.type.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.type.label}</span>
+		<span class="input">
+			<select name="type" class="field">
+{foreach from=$validtypes item='i'}
+				<option{if $i == $type} selected{/if}>{$i}</option>
+{/foreach}
+			</select>
+			{if $form.type.error}<p class="err">{$form.type.error}</p>{/if}
+		</span>
+	</div>
+	<div class="row{if $form.verifycodes.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.verifycodes.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.verifycodes.label}</span>
+		<span class="input"><input name="verifycodes" value="{$verifycodes|escape}" verifycodes="text" size="10" class="field" />{if $form.verifycodes.error}<p class="err">{$form.verifycodes.error}</p>{/if}</span>
+	</div>
+	<div class="row{if $form.options.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.options.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.options.label}</span>
+		<span class="input"><textarea name="options" rows="3" cols="50" class="field" style="width: 95%" wrap="virtual" />{$options|escape}</textarea>{if $form.options.error}<p class="err">{$form.options.error}</p>{/if}</span>
+	</div>
+	<div class="row{if $form.comment.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.comment.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.comment.label}</span>
+		<span class="input"><textarea name="comment" rows="8" cols="50" class="field" style="width: 95%" wrap="virtual" />{$comment|escape}</textarea>{if $form.comment.error}<p class="err">{$form.comment.error}</p>{/if}</span>
+	</div>
+
+	<div class="row-spacer"></div>
+	<div class="row">
+		<div class="form-actions">
+			<input name="submit" value="<#Save Configuration#>" type="submit" class="btn" />
+			<input name="cancel" value="<#Cancel#>" type="submit" class="btn" />
+		</div>
+	</div>
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>
+

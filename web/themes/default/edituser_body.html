@@ -1,0 +1,106 @@
+<script language="javascript" type="text/javascript">
+{include file="form_js.html"}
+{if $profile.userid}
+{literal}
+function togglePw() {
+	f = document.forms.edituser;
+	e = f.elements.password;
+	row = web.getObj('oldpassword');
+	if (e.value != '') {
+		if (row.style.display != 'block') {
+			row.style.display = 'block';
+		}
+	} else {
+		if (row.style.display != 'none') {
+			row.style.display = 'none';
+		}
+	}
+}
+{/literal}
+{else}
+{literal}
+function togglePw() { }
+{/literal}
+{/if}
+</script>
+<div class="divtable shade1">
+<form name="edituser" action="{url _base=$PHP_SELF id=$id}" method="POST">
+<input name="ref" value="{$ref|escape}" type="hidden" />
+<input name="new" value="{$new|escape}" type="hidden" />
+	<div class="table-hdr">
+		<h3><#Edit User Profile#></h3>
+		<p>
+{if $new}
+			<#Creating a new user account#><br><#This user will not be associated with any player#><br>
+{else}
+			<#Profile for#> <b>{$profile.username|escape}</b>
+{/if}
+		</p>
+	</div>
+
+{if $errors.fatal}
+	<div class="row row-err">{$errors.fatal}</div>
+	<div class="row-spacer"></div>
+{/if}
+
+{if $allow_username_change}
+	<div class="row{if $form.username.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.username.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.username.label}</span>
+		<span class="input"><input name="username" value="{$username|escape}" type="text" size="40" class="field" />
+		{if $form.username.error}<p class="err">{$form.username.error}</p>{/if}</span>
+	</div>
+{else}
+	<div class="row">
+		<span class="label">{$form.username.label}</span>
+		<span class="input">{$username|escape}</span>
+	</div>
+{/if}
+{if user_is_admin() and $profile.userid != $user.userid}
+	<div class="row{if $form.accesslevel.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.accesslevel.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.accesslevel.label}</span>
+		<span class="input">
+			<select name="accesslevel" size="1" class="field">
+				<option value="{$ACL_NONE}"{if $accesslevel == $ACL_NONE} selected{/if}><#No Access#></option>
+				<option value="{$ACL_USER}"{if $accesslevel == $ACL_USER or $accesslevel==''} selected{/if}><#Normal User#></option>
+				<option value="{$ACL_CLANADMIN}"{if $accesslevel == $ACL_CLANADMIN} selected{/if}><#Clan Admin#></option>
+				<option value="{$ACL_ADMIN}"{if $accesslevel == $ACL_ADMIN} selected{/if}><#Administrator#></option>
+			</select>
+			{if $form.accesslevel.error}<p class="err">{$form.accesslevel.error}</p>{/if}</span>
+	</div>
+{/if}
+{*
+{if user_is_admin()}
+	<div class="row{if $form.plrid.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.plrid.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.plrid.label}</span>
+		<span class="input"><input name="plrid" value="{$plrid|escape}" type="text" size="6" class="field" />
+		<input onclick="o=window.open('{url _base='plrsearch.php' f='edituser' v='plrid'}', '_plrsearch', 'height=250,width=400,resizable=1,scrollbars=1'); o.focus(); return false;" type="button" value="<#Player Search#>" class="btn">
+		{if $form.plrid.error}<p class="err">{$form.plrid.error}</p>{/if}</span>
+	</div>
+{/if}
+*}
+	<div class="row-spacer"></div>
+	<div class="row{if $form.password.error} row-err{/if}" onkeyup="togglePw()" onchange="togglePw()">
+		<span onmouseover="statusText('{$form.password.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.password.label}</span>
+		<span class="input"><input name="password" value="" type="password" size="40" class="field" /> {if $profile.userid}(<span id="pwoptional"><#Optional#></span>){/if}{if $form.password.error}<p class="err">{$form.password.error}</p>{/if}</span>
+	</div>
+	<div class="row{if $form.password2.error} row-err{/if}">
+		<span onmouseover="statusText('{$form.password2.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.password2.label}</span>
+		<span class="input"><input name="password2" value="" type="password" size="40" class="field" />{if $form.password2.error}<p class="err">{$form.password2.error}</p>{/if}</span>
+	</div>
+{if $require_oldpassword}
+	<div class="row{if $form.oldpassword.error} row-err{/if}" id="oldpassword" {if !$form.oldpassword.error}style="display: none"{/if}>
+		<span onmouseover="statusText('{$form.oldpassword.statustext|escape:'quotes'}')" onmouseout="notext()" class="label">{$form.oldpassword.label}</span>
+		<span class="input"><input name="oldpassword" value="" type="password" size="40" class="field" />{if $form.oldpassword.error}<p class="err">{$form.oldpassword.error}</p>{/if}<p>{$form.oldpassword.statustext|escape:'quotes'}</p></span>
+	</div>
+{/if}
+	<div class="row-spacer"></div>
+	<div class="row">
+		<div class="form-actions">
+			<input name="submit" value="<#Save Profile#>" type="submit" class="btn" />
+			<input name="cancel" value="<#Cancel#>" type="submit" class="btn" />
+		</div>
+	</div>
+	{include file='block_form_footer.html'}
+</form>
+<div class="spacer"></div>
+</div>

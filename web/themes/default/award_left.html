@@ -1,0 +1,71 @@
+{$calendar}<br>
+{*
+{include 
+	file='player_left.html' 
+	plr=$topplr 
+	rundown_title='<#Top Player Rundown#>' 
+	killprofile_title='<#Top Player Kill Profile#>'
+	hide_logo=1
+	hide_history=1 
+	hide_names=1 
+	hide_worldids=1 
+	hide_ips=1
+}
+*}
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('otherdates')">
+			<td class="box-hdr">&nbsp;<#Other Dates#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='otherdates'}</td>
+		</tr>
+	</table>
+<div id="box_otherdates_frame" align="center" {boxframe id='otherdates'}>
+	<div class="small-frame2" align="left">
+	<ul>
+{foreach from=$datelist item='list' key='mon'}
+		<li class="label">{$mon|ucfirst}</li>
+		<ul class="text">
+	{foreach from=$list item='r'}
+			<li{if $id == $r.id} class='row-highlight'{/if}><a href="{url _base=$PHP_SELF id=$r.id}">
+		{if $r.awardrange == 'month'}
+			{$r.time|date:"F Y"}
+		{elseif $r.awardrange == 'week'}
+			{$r.week|string_format:'%02d'}: {$r.time|date:"F jS"}
+		{else}
+			{$r.time|date:"D"} <#the#> {$r.time|date:"jS"}
+		{/if}
+		</a></li>
+	{/foreach}
+		</ul>
+{foreachelse}
+		<b><#No awards available#></b>
+{/foreach}
+	</ul>
+	</div>
+		<div class="under-box">+/- {$maxdaterange} <#maximum days of current award#></div>
+</div>
+</div>
+<br>
+
+<div class="small-frame1">
+	<table width="99%" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('otherawards')">
+			<td class="box-hdr">&nbsp;<#Awards On This Date#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='otherawards'}</td>
+		</tr>
+	</table>
+<div id="box_otherawards_frame" align="center" {boxframe id='otherawards'}>
+	<div class="small-frame2">
+            <table width="100%" border="0" cellspacing="0" cellpadding="1">
+{foreach from=$awardlist item='a'}
+              <tr valign="top" class="{cycle values="odd,even"}{if $a.id == $id} row-highlight{/if}">
+		<td align="left" class="text">
+			<a href="{url _base=$PHP_SELF id=$a.id}" title="">{$a.awardname|escape}</a>
+		</td>
+              </tr>
+{/foreach}
+            </table>
+	</div>
+</div>
+</div>
+<br>

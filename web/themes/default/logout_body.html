@@ -1,0 +1,33 @@
+<script language="javascript" type="text/javascript">
+{literal}
+count = 10;
+window.setTimeout('boom()',1000);
+function boom() {
+	count--;
+	if (count > 0) {
+		web.write('This page will self destruct in ' + count + ' seconds', 'lol');
+	} else {
+		if (count == 0) {
+			web.write('<em>BoOOOooOOOOooooOOoOoOOoooOM!!!</em>', 'lol');
+		} else if (count == -3) {
+			web.write('... What are you waiting for?','lol');
+		} else if (count == -7) {
+			web.write('NOTHING TO SEE HERE!! GO AWAY!','lol');
+		} else if (count < -10) {
+			web.write('You just wasted about 20 seconds of your life!<br/>How does that make you feel?', 'lol');
+		}
+	}
+	if (count >= -10) {
+		window.setTimeout('boom()',1000);
+	}
+}
+{/literal}
+</script>
+
+<div class="frame2" style="width: 300px; padding: 20px">
+
+	<p class="label"><#You have been logged out#></p>
+
+	<p><span id="lol">This page will self destruct in 10 seconds</span></p>
+
+</div>

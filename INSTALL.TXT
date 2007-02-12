@@ -1,0 +1,30 @@
+PsychoStats Version 3.0 Installation
+------------------------------------
+See the online documentation for detailed information
+http://www.psychostats.com/wiki/PsychoStats_Installation
+
+The instructions below are for users running Linux. If you 
+are running Windows please see the documentation linked above. The 
+documentation also has more detailed information for Linux.
+
+1) Uncompress the PsychoStats archive (which you've already done)
+
+	This will create a new directory named "psychostats<version>".
+	Where <version> is the current version of the software.
+
+2) Copy the contents of the 'web' sub directory to your website. 
+The rest of the archive directory should remain where it is. There is
+no need to move it anywhere. However, make sure its NOT within your 
+WWW or public_html directory tree. Otherwise remote users would be able 
+to view your stats.cfg and gain access to your database. 
+
+	mkdir -p /path/to/website/stats
+	cp -r web/* /path/to/website/stats
+
+3) Run install.php from your stats website. Browse to your stats page:
+
+	http://yoursite.com/stats/install/index.php
+
+4) Edit stats.cfg with your DB settings
+
+5) All done! run the stats.pl to start updating your stats.

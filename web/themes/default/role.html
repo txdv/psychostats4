@@ -1,0 +1,12 @@
+{assign var="rolelabel" value=$role.name|default:$role.uniqueid|escape}
+{include
+	file			= 'main_body.html'
+	title 			= "<#Role Profile:#> `$rolelabel`"
+	headercontentfile 	= 'default_header.html'
+	headertitle		= "<#Role Profile:#> `$rolelabel`"
+	viewbuttons		= 1
+	leftblock		= 1
+	contentfile		= 'role_body.html'
+	topleftcontent		= 'role_left.html'
+}
+
