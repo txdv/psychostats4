@@ -47,7 +47,7 @@ sub event_ns_teamtrigger {
 
 sub event_plrtrigger {
 	my ($self, $timestamp, $args) = @_;
-	my ($plrstr, $trigger, $props) = @$args;
+	my ($plrstr, $trigger, $propstr) = @$args;
 	my $p1 = $self->get_plr($plrstr) || return;
 	return if $self->isbanned($p1);
 
@@ -60,6 +60,11 @@ sub event_plrtrigger {
 	$self->plrbonus($trigger, 'enactor', $p1);
 	if ($trigger eq 'weaponstats' or $trigger eq 'weaponstats2') {
 		$self->event_weaponstats($timestamp, $args);
+
+	} elsif ($trigger eq 'address') {	# PIP 'address' events
+		my $props = $self->parseprops($propstr);
+		return unless $p1->{uid} and $props->{address};
+		$self->{ipcache}{$p1->{uid}} = ip2int($props->{address});
 
 	} elsif ($trigger eq '') {
 #		@vars = ( $p1->{team} . 'flagsblocked', 'flagsblocked' );

@@ -916,14 +916,14 @@ sub event_plugin {
 #	}
 }
 
-sub event_ipaddress {
-	my ($self, $timestamp, $args) = @_;
-	my ($plrstr, $propstr) = @$args;
-	my $plr = $self->get_plr($plrstr,1) || return;		# does not create a player object
-	my $props = $self->parseprops($propstr);
-	return unless $plr->{uid} and $props->{address};
-	$self->{ipcache}{$plr->{uid}} = ip2int($props->{address});	# save the IP address
-}
+#sub event_ipaddress {
+#	my ($self, $timestamp, $args) = @_;
+#	my ($plrstr, $propstr) = @$args;
+#	my $plr = $self->get_plr($plrstr,1) || return;		# does not create a player object
+#	my $props = $self->parseprops($propstr);
+#	return unless $plr->{uid} and $props->{address};
+#	$self->{ipcache}{$plr->{uid}} = ip2int($props->{address});	# save the IP address
+#}
 
 sub event_rcon {
 	my ($self, $timestamp, $args) = @_;
@@ -997,8 +997,9 @@ __DATA__
   regex = /^World triggered "([^"]+)"(.*)/
 
 ## PsychoStats PIP records these for more accurate IP ADDR tracking on players
-[ipaddress]
-  regex = /^"([^"]+)" triggered "(?:ip)?address"(.*)/
+# handled in the plrtrigger event directly
+#[ipaddress]
+#  regex = /^"([^"]+)" triggered "(?:ip)?address"(.*)/
 
 ## any 3rd party plugin that has a prefix: [BLAH]
 [plugin]

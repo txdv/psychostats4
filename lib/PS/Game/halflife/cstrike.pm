@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use base qw( PS::Game::halflife );
 
+use util qw( :net );
+
 our $VERSION = '1.01';
 
 
@@ -42,7 +44,7 @@ sub event_logstartend {
 
 sub event_plrtrigger {
 	my ($self, $timestamp, $args) = @_;
-	my ($plrstr, $trigger, $props) = @$args;
+	my ($plrstr, $trigger, $propstr) = @$args;
 	my $p1 = $self->get_plr($plrstr) || return;
 	$self->_do_connected($timestamp, $p1) unless $p1->{_connected};
 	return if $self->isbanned($p1);
@@ -55,6 +57,11 @@ sub event_plrtrigger {
 	$self->plrbonus($trigger, 'enactor', $p1);
 	if ($trigger eq 'weaponstats' or $trigger eq 'weaponstats2') {
 		$self->event_weaponstats($timestamp, $args);
+
+	} elsif ($trigger eq 'address') {	# PIP 'address' (ipaddress) events
+		my $props = $self->parseprops($propstr);
+		return unless $p1->{uid} and $props->{address};
+		$self->{ipcache}{$p1->{uid}} = ip2int($props->{address});
 
 	} elsif ($trigger =~ /^(killed|touched|rescued)_a_hostage/) {
 		$p1->{mod_maps}{ $m->{mapid} }{$1.'hostages'}++;
