@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use base qw( PS::Game::halflife );
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 
 sub _init { 
@@ -143,24 +143,6 @@ sub event_plrtrigger {
 	}
 }
 
-sub event_dods_round {
-	my ($self, $timestamp, $args) = @_;
-	my ($trigger, $props) = @$args;
-	my $m = $self->get_map;
-
-	$trigger = lc $trigger;
-	if ($trigger eq 'round_start') {
-		$m->{basic}{rounds}++;
-		while (my ($uid, $p1) = each %{$self->{plrs}}) {
-			$p1->{basic}{lasttime} = $timestamp;
-			$p1->{isdead} = 0;
-			$p1->{basic}{rounds}++;
-			$p1->{maps}{ $m->{mapid} }{rounds}++;
-			$p1->save if $self->{plr_save_on_round};
-		}
-	}
-}
-
 sub event_dod_changed_role {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $rolestr) = @$args;
@@ -184,9 +166,6 @@ __DATA__
   regex = /^"([^"]+)" triggered(?: a)? "([^"]+)"(.*)/
 
 ## new dod:s events
-
-[dods_round]
-  regex = /^World triggered "([^"]+)"(.*)/
 
 [dods_scores]
   regex = /^Team "([^"]+)" (scored|captured)/

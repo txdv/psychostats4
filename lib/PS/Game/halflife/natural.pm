@@ -1,4 +1,4 @@
-package PS::Game::halflife::ns;
+package PS::Game::halflife::natural;
 
 use strict;
 use warnings;
@@ -11,7 +11,7 @@ sub _init {
 	my $self = shift;
 	$self->SUPER::_init;
 	$self->load_events(*DATA);
-	$self->{conf}->load('game_halflife_ns');
+	$self->{conf}->load('game_halflife_natural');
 
 	$self->{plr_save_on_round} = ($self->{plr_save_on} eq 'round');
 
@@ -89,24 +89,8 @@ sub event_ns_mapinfo {
 
 }
 
-sub event_ns_round {
-	my ($self, $timestamp, $args) = @_;
-	my ($trigger, $props) = @$args;
-	my $m = $self->get_map;
-
-	$trigger = lc $trigger;
-	if ($trigger eq 'round_start') {
-		$m->{basic}{rounds}++;
-		while (my ($uid, $p1) = each %{$self->{plrs}}) {
-			$p1->{basic}{lasttime} = $timestamp;
-			$p1->{isdead} = 0;
-			$p1->{basic}{rounds}++;
-			$p1->{maps}{ $m->{mapid} }{rounds}++;
-			$p1->save if $self->{plr_save_on_round};
-		}
-	}
-}
-
+# can't use the built in halflife::change_role since NS likes 
+# to do things a little differently
 sub event_ns_changed_role {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $rolestr) = @$args;

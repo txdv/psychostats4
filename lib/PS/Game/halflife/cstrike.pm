@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use base qw( PS::Game::halflife );
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 
 sub _init { 
@@ -122,43 +122,6 @@ sub event_plrtrigger {
 
 }
 
-#my $max = 0;
-sub event_cs_round {
-	my ($self, $timestamp, $args) = @_;
-	my ($trigger, $props) = @$args;
-	my $m = $self->get_map;
-
-	$trigger = lc $trigger;
-	if ($trigger eq 'round_start') {
-#		$max = scalar keys %{$self->{plrs}} if scalar keys %{$self->{plrs}} > $max;
-#		print scalar keys %{$self->{plrs}}, " players in memory at round start.\n";
-#		print "max = $max\n";
-
-#		my $ct = $self->get_team('ct');
-#		my $terr = $self->get_team('terrorist');
-
-#		print scalar(keys %{$self->{plrs}}) . " plrs\n";
-#		print scalar(keys %{$self->{c}{signature}}) . " signatures\n";
-#		print scalar(keys %{$self->{c}{uniqueid}}) . " uniqueids\n\n";
-#		foreach my $key (keys %{$self->{c}{signature}}) {
-#			my $p = $self->{c}{signature}{$key};
-#			print exists $self->{c}{uniqueid}{ $p->uniqueid } ? $self->{c}{uniqueid}{ $p->uniqueid }->uid : 'undef';
-#			print "\t = $key\n";
-#		}
-
-#		print "round start ----------\n" if $self->{plr_save_on_round};
-		$m->{basic}{rounds}++;
-		while (my ($uid, $p1) = each %{$self->{plrs}}) {
-			$p1->{basic}{lasttime} = $timestamp;
-			$p1->{isdead} = 0;
-			$p1->{basic}{rounds}++;
-			$p1->{maps}{ $m->{mapid} }{rounds}++;
-#			print "saving plr->{$p1->{plrid}} on round\n" if $self->{plr_save_on_round};
-			$p1->save if $self->{plr_save_on_round};
-		}
-#		print "----------------------\n" if $self->{plr_save_on_round};
-	}
-}
 
 sub event_cs_teamtrigger {
 	my ($self, $timestamp, $args) = @_;
@@ -308,9 +271,6 @@ sub has_mod_tables { 1 }
 1;
 
 __DATA__
-
-[cs_round]
-  regex = /^World triggered "([^"]+)"(.*)/
 
 [cs_teamscore]
   regex = /^Team "([^"]+)" scored "([^"]+)" with "([^"]+)" players/

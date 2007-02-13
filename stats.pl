@@ -74,8 +74,8 @@ use PS::Game;
 use util qw( :win compacttime );
 
 # The $VERSION and $PACKAGE_DATE are automatically updated via the packaging script.
-our $VERSION = '3.0.4b';
-our $PACKAGE_DATE = 1171142101;
+our $VERSION = '3.0';
+our $PACKAGE_DATE = time;
 
 our $DEBUG = 0;					# Global DEBUG level
 our $DEBUGFILE = undef;				# Global debug file to write debug info too

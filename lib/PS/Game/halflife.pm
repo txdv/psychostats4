@@ -572,6 +572,24 @@ sub event_suicide {
 
 }
 
+# standard round start/end for several mods
+sub event_round {
+	my ($self, $timestamp, $args) = @_;
+	my ($trigger, $props) = @$args;
+	my $m = $self->get_map;
+
+	$trigger = lc $trigger;
+	if ($trigger eq 'round_start') {
+		$m->{basic}{rounds}++;
+		while (my ($uid, $p1) = each %{$self->{plrs}}) {
+			$p1->{basic}{lasttime} = $timestamp;
+			$p1->{isdead} = 0;
+			$p1->{basic}{rounds}++;
+			$p1->{maps}{ $m->{mapid} }{rounds}++;
+			$p1->save if $self->{plr_save_on_round};
+		}
+	}
+}
 
 # watch all chat events for player settings
 sub event_chat {
@@ -974,6 +992,9 @@ __DATA__
 
 [plrtrigger]
   regex = /^"([^"]+)" triggered "([^"]+)"(.*)/
+
+[round]
+  regex = /^World triggered "([^"]+)"(.*)/
 
 ## PsychoStats PIP records these for more accurate IP ADDR tracking on players
 [ipaddress]
