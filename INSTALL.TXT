@@ -1,4 +1,4 @@
-PsychoStats Version 3.0 Installation
+PsychoStats Version 3.0 Installation!
 ------------------------------------
 See the online documentation for detailed information
 http://www.psychostats.com/wiki/PsychoStats_Installation
