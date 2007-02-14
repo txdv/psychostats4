@@ -50,6 +50,7 @@ sub _getOptions {
 		'help|?'	=> \$self->{param}{help},
 		'modtype=s'	=> \$self->{param}{modtype},
 		'reset:s'	=> \$self->{param}{reset},
+		'unknown'	=> \$self->{param}{unknown},
 		'v|verbose'	=> \$self->{param}{verbose},
 		'V|version'	=> \$self->{param}{version},
 		'quiet'		=> \$self->{param}{quiet},

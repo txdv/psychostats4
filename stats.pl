@@ -177,6 +177,11 @@ if (defined $conf->get_opt('award') and $conf->get_opt('start')) {
 	$opt->set('daily', 'awards');
 }
 
+# if -unknown is specified, temporarily enable report_unknown
+if ($opt->get('unknown')) {
+	$conf->set('errlog.report_unknown', 1, 'main');
+}
+
 # if a modtype was specified update the config
 if (defined $opt->get('modtype') and $conf->getconf('modtype','main') ne $opt->get('modtype')) {
 	$db->update($db->{t_config}, { value => $opt->get('modtype') }, [ conftype => 'main', section => '', var => 'modtype' ]);

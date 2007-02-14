@@ -142,9 +142,17 @@ sub set {
 	my $num = scalar(@_) - 1;			# how many 'parts' make up the 'variable' (excludes the last arg)
 
 	while (@_ > 1) {
-		my $subvar = shift;
-		$c->{$subvar} = {} if !defined($c->{$subvar});
-		$c = $c->{$subvar};
+		my $var = shift;
+		foreach my $subvar (split(/\./, $var)) {
+			$c->{$subvar} = {} if !defined($c->{$subvar});
+			if (ref $c->{$subvar}) {
+				$c = $c->{$subvar};
+			} else {
+				$old = $c->{$subvar};
+				$c->{$subvar} = shift;
+				return $old;
+			}
+		}
 	}
 
 	$old = $c;
