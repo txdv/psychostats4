@@ -1,4 +1,7 @@
 #!/usr/bin/perl
+#
+#	$Id$
+#
 
 # FindBin isn't going to work on systems that run the stats.pl as SETUID
 BEGIN { 
