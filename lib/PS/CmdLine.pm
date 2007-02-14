@@ -311,6 +311,11 @@ be emptied and repopulated.
 
 This forces a "-daily clans" update.
 
+=item B<-unknown>
+
+Temporarily enables the errlog.report_unknown option from the config. This does
+not update the database and only lasts for the current process.
+
 =item B<-verbose>
 
 Enable stats progress output. As stats are updated the progress is displayed.
