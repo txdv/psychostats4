@@ -54,6 +54,8 @@ define("CACHE_FILE_GROUP", "");
 // We must load the proper JPGRAPH version depending on our version of PHP
 define("JPGRAPH_DIR", dirname(__FILE__) . '/jpg' . substr(PHP_VERSION,0,1));
 
+define("CATCH_PHPERRMSG", false);
+
 // all JPG constants MUST be defined BEFORE the jpgraph core routines are included
 include(JPGRAPH_DIR . '/jpgraph.php');
 
