@@ -83,7 +83,6 @@ if ($map['mapid'] and $data['toptenblockfile']) {
 				'flagscaptured'		=> array( 'label' => $ps_lang->trans("Most flags captured")),
 				'areascaptured'		=> array( 'label' => $ps_lang->trans("Most flags captured")),
 			);
-		}
 
 		// natural
 		} elseif ($modtype == 'natural') {
