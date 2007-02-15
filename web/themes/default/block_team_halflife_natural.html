@@ -1,0 +1,97 @@
+<div class="frame1">
+	<table width="99%" align="center" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('teamcompare')">
+			<td class="box-hdr"><#Team Comparison#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='teamcompare'}</td>
+		</tr>
+	</table>
+<div id="box_teamcompare_frame" align="center" {boxframe id='teamcompare'}>
+<div class="frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+              <tr align="center">
+		<td class="header-cell"><#Team#></td>
+		<td class="header-cell"><#Kills#></td>
+		<td class="header-cell"><#Won#></td>
+		<td class="header-cell"><#Lost#></td>
+		<td class="header-cell"><#Joined#></td>
+              </tr>
+              <tr align="center" class="shade1">
+		<td class="label"><#Marines#></td>
+		<td class="text">{$thing.marinekills|commify}</td>
+		<td class="text">{$thing.marinewon|commify} [{$thing.marinewonpct|digits:0}%]</td>
+		<td class="text">{$thing.marinelost|commify} [{$thing.marinewonpct-100|abs|digits:0}%]</td>
+		<td class="text">{$thing.joinedmarine|commify}</td>
+              </tr>
+              <tr align="center" class="shade1">
+		<td class="label"><#Aliens#></td>
+		<td class="text">{$thing.alienkills|commify}</td>
+		<td class="text">{$thing.alienwon|commify} [{$thing.alienwonpct|digits:0}%]</td>
+		<td class="text">{$thing.alienlost|commify} [{$thing.alienwonpct-100|abs|digits:0}%]</td>
+		<td class="text">{$thing.joinedalien|commify}</td>
+              </tr>
+              <tr align="center" class="shade1">
+                <td class="label"><b><#Spectator#></b></td>
+                <td class="text">-</td>
+                <td class="text">-</td>
+                <td class="text">-</td>
+                <td class="text">{$thing.joinedspectator|commify}</td>
+              </tr>
+              <tr align="center" class="shade1">
+                <td class="text">&nbsp;</td>
+                <td class="text">&nbsp;</td>
+		<td class="text" colspan="2">{pctbar2 pct1=$thing.marinewonpct pct2=$thing.alienwonpct color1='blue' color2='red' width=100}</td>
+                <td class="text">&nbsp;</td>
+              </tr>
+            </table>
+</div>
+</div>
+</div>
+<br>
+
+{****************
+<div class="frame1">
+	<table width="99%" align="center" cellspacing="0" cellpadding="0" border="0">
+		<tr valign="middle" onclick="web.toggle_box('teamactions')">
+			<td class="box-hdr"><#Team Actions#></td>
+			<td class="box-hdr" align="right" style="padding-right: 5px">{boximg id='teamactions'}</td>
+		</tr>
+	</table>
+<div id="box_teamactions_frame" align="center" {boxframe id='teamactions'}>
+<div class="frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+              <tr align="center"> 
+		<td class="header-cell" width="20%" nowrap="nowrap"><#Stat#></td>
+		<td class="header-cell" width="40%" colspan="2"><#Aliens#></td>
+		<td class="header-cell" width="40%" colspan="2"><#Marines#></td>
+              </tr>
+              <tr align="left" class="shade1"> 
+		<td class="label" nowrap="nowrap"><#Structures Built#>:</td>
+                <td class="text">{$thing.alienflagscaptured|commify}</td>
+                <td class="text">{$thing.alienflagscapturedpct|digits2}%</td>
+
+                <td class="text">{$thing.marineflagscaptured|commify}</td>
+                <td class="text">{$thing.marineflagscapturedpct|digits2}%</td>
+              </tr>
+              <tr align="left" class="shade1"> 
+		<td class="label" nowrap="nowrap"><#Flags Blocked#>:</td>
+                <td class="text">{$thing.alienflagsblocked|commify}</td>
+                <td class="text">{$thing.alienflagsblockedpct|digits2}%</td>
+
+                <td class="text">{$thing.marineflagsblocked|commify}</td>
+                <td class="text">{$thing.marineflagsblockedpct|digits2}%</td>
+              </tr>
+              <tr align="left" class="shade1"> 
+		<td class="label" nowrap="nowrap"><#Score#>:</td>
+                <td class="text">{$thing.alienscore|commify}</td>
+                <td class="text">{$thing.alienscorepct|digits2}%</td>
+
+                <td class="text">{$thing.marinescore|commify}</td>
+                <td class="text">{$thing.marinescorepct|digits2}%</td>
+              </tr>
+            </table>
+</div>
+</div>
+</div>
+<br>
+*********}
+

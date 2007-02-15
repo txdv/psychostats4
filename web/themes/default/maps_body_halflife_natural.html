@@ -1,0 +1,59 @@
+<div class="frame1">
+	<table width="99%" align="center" border="0" cellspacing="0" cellpadding="2">
+		<tr valign="middle">
+			<td align="left" class="text-small">{$totalmaps|commify} <#maps played#></td>
+			<td align="right" class="text"><b>{$pagerstr}</b></td>
+		</tr>
+	</table>
+<div align="center">
+<div class="frame2">
+	<table width="100%" border="0" cellspacing="0" cellpadding="2">
+              <tr align="right">
+		<td class="header-cell{if $sort=='uniqueid'}-selected{/if}" colspan="2" align="center">{sortheader label="<#Map#>" sort="uniqueid" baseurl="$PHP_SELF" order=$order cursort=$sort}</td>
+		<td class="header-cell{if $sort=='kills'}-selected{/if}">{sortheader label="<#Kills#>" sort="kills" order=$order}</td>
+		<td class="header-cell{if $sort=='ffkills'}-selected{/if}">{sortheader label="<#FF Kills#>" sort="ffkills" order=$order title="<#Friendly file kills#>"}</td>
+		<td class="header-cell{if $sort=='ffkillspct'}-selected{/if}">{sortheader label="<#FF#>%" sort="ffkillspct" order=$order title="<#Friendly file kill percentage#>"}</td>
+		<td class="header-cell{if $sort=='games'}-selected{/if}">{sortheader label="<#Games#>" sort="games" order=$order}</td>
+		<td class="header-cell{if $sort=='rounds'}-selected{/if}">{sortheader label="<#Rounds#>" sort="rounds" order=$order}</td>
+                <td class="header-cell{if substr($sort,-3) =='won'}-selected{/if}"><#Wins#> (
+			{sortheader label="<#Marines#>" title="<#Marines Wins#>" sort="marinewon" order=$order} /
+			{sortheader label="<#Aliens#>" title="<#Aliens Wins#>" sort="alienwon" order=$order} )
+		</td>
+		<td class="header-cell{if $sort=='onlinetime'}-selected{/if}">{sortheader label="<#Online Time#>" sort="onlinetime" order=$order}</td>
+		<td class="header-cell{if $sort=='lasttime'}-selected{/if}">{sortheader label="<#Last Played#>" sort="lasttime" order=$order}</td>
+              </tr>
+{foreach name="mlist" from=$maps item="m"}
+		<tr align="right" class="{cycle values="odd,even"}">
+		<td class="text-small" width="40"><a onmouseover="web.open_box('{$m.uniqueid}',this)" onmouseout="web.close_box()" href="{url _base='map.php' id=$m.mapid}">{mapimg map=$m noimg='' width=40 heigth=30}</a></td>
+		<td class="label" align="left">&nbsp;<a href="{url _base='map.php' id=$m.mapid}">{$m.uniqueid}</a></td>
+		<td class="text">{$m.kills|commify}</td>
+		<td class="text">{$m.ffkills|commify}</td>
+		<td class="text">{$m.ffkillspct}%</td>
+		<td class="text">{$m.games|commify}</td>
+		<td class="text">{$m.rounds|commify}</td>
+                <td class="text">{$m.marinewon|commify} [{$m.marinewonpct|digits}%] / {$m.alienwon|commify} [{$m.alienwonpct|digits}%]
+			{pctbar2 pct1=$m.marinewonpct pct2=$m.alienwonpct color1='blue' color2='red' width=125}
+		</td>
+		<td class="text">{$m.onlinetime|compacttime}</td>
+		<td class="text">{if $m.lasttime}{$m.lasttime|date}{else}<#unknown#>{/if}</td>
+		</tr>
+{foreachelse}
+		<tr align="center" class="shade1">
+			<td class="text" colspan="10"><br><b><#No maps to display#></b><br><br></td>
+		</tr>
+{/foreach}
+	</table>
+</div>
+	<table width="99%" border="0" cellspacing="0" cellpadding="2">
+		<tr valign="middle">
+			<td align="left" class="text-small">{$totalmaps|commify} <#maps played#></td>
+			<td align="right" class="text"><b>{$pagerstr}</b></td>
+		</tr>
+	</table>
+</div>
+</div>
+
+{foreach name="mlist" from=$maps item="m"}
+<div class="box" id="box_{$m.uniqueid}">{mapimg map=$m noimg=' - <#No Image Available#> - '}</div>
+{/foreach}
+
