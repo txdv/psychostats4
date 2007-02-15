@@ -84,6 +84,16 @@ if ($map['mapid'] and $data['toptenblockfile']) {
 				'areascaptured'		=> array( 'label' => $ps_lang->trans("Most flags captured")),
 			);
 		}
+
+		// natural
+		} elseif ($modtype == 'natural') {
+			$vars = array_merge($vars, array('structuresbuilt', 'structuresdestroyed', 'structuresrecycled'));
+			$data['toptendesc'] += array(
+				'structuresbuilt'	=> array( 'label' => $ps_lang->trans("Structures Built")),
+				'structuresdestroyed'	=> array( 'label' => $ps_lang->trans("Structures Destroyed")),
+				'structuresrecycled'	=> array( 'label' => $ps_lang->trans("Structures Recycled")),
+			);
+		}
 	}
 
 	// load the top10 data for each $var discovered above ...
