@@ -345,7 +345,7 @@ CREATE TABLE `ps_plr_ids` (
   `id` int(10) unsigned NOT NULL default '0',
   `plrid` int(10) unsigned NOT NULL default '0',
   `name` varchar(128) NOT NULL default '',
-  `worldid` varchar(32) NOT NULL default '',
+  `worldid` varchar(128) NOT NULL,
   `ipaddr` int(10) unsigned NOT NULL default '0',
   `totaluses` int(10) unsigned NOT NULL default '1',
   PRIMARY KEY  (`id`),
@@ -532,8 +532,8 @@ CREATE TABLE `ps_state_plrs` (
   `team` varchar(32) NOT NULL default '',
   `role` varchar(32) NOT NULL default '',
   `plrsig` varchar(255) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `worldid` varchar(32) NOT NULL default '',
+  `name` varchar(128) NOT NULL,
+  `worldid` varchar(128) NOT NULL,
   `ipaddr` int(10) unsigned NOT NULL default '0',
   PRIMARY KEY  (`id`,`plrid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -605,4 +605,4 @@ CREATE TABLE `ps_weapon_data` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2007-02-14 22:37:38
+-- Dump completed on 2007-02-15  3:38:35
