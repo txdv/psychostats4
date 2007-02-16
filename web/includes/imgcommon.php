@@ -17,7 +17,8 @@ define("NO_CONTENT_TYPE", 1);
 include(dirname(__FILE__) . "/common.php");
 
 // XML Image Config
-$imgconf = XML_unserialize(implode("", file(THEME_DIR . "/config.xml")));
+$xmlconfig = implode("", file(THEME_DIR . "/config.xml"));
+$imgconf = XML_unserialize($xmlconfig);
 $imgconf = $imgconf['config'];
 if (!is_array($imgconf)) $imgconf = array();
 
