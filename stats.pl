@@ -100,10 +100,11 @@ $DEBUG = $opt->get('debug') || 0;		# sets global debugging for ALL CLASSES
 
 # display our version and exit
 if ($opt->get('version')) {
-	print "PsychoStats version $VERSION (r$REVISION) (Perl " . sprintf("%vd", $^V) . ")\n";
+	print "PsychoStats version $VERSION (rev $REVISION)\n"; # (Perl " . sprintf("%vd", $^V) . ")\n";
 	print "Packaged on " . scalar(localtime $PACKAGE_DATE) . "\n";
-	print "Author:  Jason Morriss <stormtrooper\@psychostats.com>\n";
+#	print "Author:  Jason Morriss <stormtrooper\@psychostats.com>\n";
 	print "Website: http://www.psychostats.com/\n";
+	print "Perl version " . sprintf("%vd", $^V) . " ($^O)\n";
 	print "Loaded Modules:\n";
 	my $len = 1;
 	foreach my $pm (keys %PM_LOADED) {	# get max length first, so we can be pretty
