@@ -18,6 +18,18 @@ sub _init {
 	return $self;
 }
 
+# override default event so we can reset per-log variables
+sub event_logstartend {
+	my ($self, $timestamp, $args) = @_;
+	my ($startedorclosed) = @$args;
+	$self->SUPER::event_logstartend($timestamp, $args);
+
+	return unless lc $startedorclosed eq 'started';
+
+	# reset some tracking vars
+	$self->{dod_teamscore} = undef;
+}
+
 sub event_dod_teamtrigger {
 	my ($self, $timestamp, $args) = @_;
 	my ($team, $trigger, $props) = @$args;
@@ -159,6 +171,71 @@ sub event_dod_changed_role {
 
 	$p1->{roles}{ $r1->{roleid} }{joined}++;
 	$r1->{basic}{joined}++ if $r1;
+}
+
+# Original DOD 'team scored' event. The only way to tell which team won with old DOD
+# is to compare the 2 'scored' events and see which team had more points.
+# this can also be used to count 'rounds'
+sub event_dod_teamscore {
+	my ($self, $timestamp, $args) = @_;
+	my ($team, $score, $numplrs) = @$args;
+	$team = lc $team;
+
+	# if there's no team score known yet, record it and return.
+	# there are always 2 'team scored' events per round.
+	if (!$self->{dod_teamscore}) {
+		$self->{dod_teamscore} = { team => $team, score => $score, numplrs => $numplrs };
+		return;
+	}
+
+	my $m = $self->get_map;
+	my $teams = {
+		allies	=> $self->get_team('allies', 1) || [],
+		axis	=> $self->get_team('axis',   1) || [],
+	};
+
+#	print "allies = " . scalar(@{$self->get_team('allies', 1)}) . "\n";
+#	print "axis   = " . scalar(@{$self->get_team('axis', 1)}) . "\n";
+
+	# increase everyone's rounds
+	$m->{rounds}++;
+	for (@{$teams->{allies}}, @{$teams->{axis}}) {
+		$_->{rounds}++;
+		$_->{maps}{ $m->{mapid} }{rounds}++;
+	}
+
+	# determine who won and lost
+	my ($won, $lost, $teamwon, $teamlost);
+	if ($score > $self->{dod_teamscore}{score}) {
+		$teamwon  = $team;
+		$teamlost = $team eq 'axis' ? 'allies' : 'axis';
+		$won  = $teams->{ $teamwon };
+		$lost = $teams->{ $teamlost };
+	} elsif ($self->{dod_teamscore}{score} > $score) {
+		$teamwon  = $self->{dod_teamscore}{team};
+		$teamlost = $self->{dod_teamscore}{team} eq 'axis' ? 'allies' : 'axis';
+		$won  = $teams->{ $teamwon };
+		$lost = $teams->{ $teamlost };
+	} else {
+		# do mot count 'draws'
+	}
+
+	# clear the previous team score
+	$self->{dod_teamscore} = undef;
+
+	return unless $teamwon;	# no one 'won'; it's a draw.
+
+	# assign won/lost values to all players
+	$m->{mod}{$teamwon  . 'won'}++;
+	$m->{mod}{$teamlost . 'lost'}++;
+	for (@$won) {
+		$_->{mod}{$teamwon.'won'}++;
+		$_->{mod_maps}{ $m->{mapid} }{$teamwon.'won'}++;
+	}
+	for (@$lost) {
+		$_->{mod}{$teamlost.'lost'}++;
+		$_->{mod_maps}{ $m->{mapid} }{$teamlost.'lost'}++;
+	}
 }
 
 sub has_mod_tables { 1 }
