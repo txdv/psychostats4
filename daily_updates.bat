@@ -18,4 +18,4 @@ echo.
 
 rem -- remove the line below if you plan on scheduling this through Window's explorer.
 echo (remove the @pause command from this file if you do not want it to pause here)
-@pause
+pause
