@@ -62,15 +62,20 @@ sub event_dod_teamtrigger {
 		my $var = $team . 'won';
 		my $var2 = $team2 . 'lost';
 		foreach my $p1 (@$winners) {
+			$p1->{basic}{rounds}++;
+			$p1->{maps}{ $m->{mapid} }{basic}{rounds}++;
 			$p1->{mod_maps}{ $m->{mapid} }{$var}++;
 			$p1->{mod}{$var}++;
 		}
 		foreach my $p1 (@$losers) {
+			$p1->{basic}{rounds}++;
+			$p1->{maps}{ $m->{mapid} }{basic}{rounds}++;
 			$p1->{mod_maps}{ $m->{mapid} }{$var2}++;
 			$p1->{mod}{$var2}++;
 		}
 		$m->{mod}{$var}++;
 		$m->{mod}{$var2}++;
+		$m->{basic}{rounds}++;
 
 	} elsif ($trigger eq 'captured_loc') {
 	} elsif ($trigger eq 'team_scores') {
@@ -198,9 +203,9 @@ sub event_dod_teamscore {
 #	print "axis   = " . scalar(@{$self->get_team('axis', 1)}) . "\n";
 
 	# increase everyone's rounds
-	$m->{rounds}++;
+	$m->{basic}{rounds}++;
 	for (@{$teams->{allies}}, @{$teams->{axis}}) {
-		$_->{rounds}++;
+		$_->{basic}{rounds}++;
 		$_->{maps}{ $m->{mapid} }{rounds}++;
 	}
 
