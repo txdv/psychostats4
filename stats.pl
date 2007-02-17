@@ -79,6 +79,7 @@ use util qw( :win compacttime );
 # The $VERSION and $PACKAGE_DATE are automatically updated via the packaging script.
 our $VERSION = '3.0';
 our $PACKAGE_DATE = time;
+our $REVISION = '$Rev$';
 
 our $DEBUG = 0;					# Global DEBUG level
 our $DEBUGFILE = undef;				# Global debug file to write debug info too
@@ -99,7 +100,7 @@ $DEBUG = $opt->get('debug') || 0;		# sets global debugging for ALL CLASSES
 
 # display our version and exit
 if ($opt->get('version')) {
-	print "PsychoStats version $VERSION (Perl " . sprintf("%vd", $^V) . ")\n";
+	print "PsychoStats version $VERSION (r$REVISION) (Perl " . sprintf("%vd", $^V) . ")\n";
 	print "Packaged on " . scalar(localtime $PACKAGE_DATE) . "\n";
 	print "Author:  Jason Morriss <stormtrooper\@psychostats.com>\n";
 	print "Website: http://www.psychostats.com/\n";
