@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use base qw( PS::Game::halflife );
 
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 
 sub _init { 
