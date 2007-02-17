@@ -1,0 +1,3 @@
+The 'web' directory has been renamed 'stats'.
+
+You can delete this file. It serves no actual purpose.

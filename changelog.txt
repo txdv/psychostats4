@@ -5,6 +5,10 @@ Version 3.0.5 beta ()
 + Implemented game support for halflife:natural (Natural Selection)
 * Bug #8 fixed (I hope).
 * Bug #9 fixed.
++ Added a couple of batch files for Windows users. These are just
+shortcuts for a couple of common tasks for stats.pl.
++ the 'web' directory has been renamed to 'stats' to avoid confusion
+with users.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors
