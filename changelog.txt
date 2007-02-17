@@ -3,6 +3,8 @@ Version 3.0.5 beta ()
 * Fixed PS::Config->set(); would not set sub vars (var.subvar = value)
 * Fixed event plrtrigger 'address'; would not track player IP addresses
 + Implemented game support for halflife:natural (Natural Selection)
+* Bug #8 fixed (I hope).
+* Bug #9 fixed.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors
