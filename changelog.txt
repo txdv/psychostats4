@@ -9,6 +9,8 @@ Version 3.0.5 beta ()
 shortcuts for a couple of common tasks for stats.pl.
 + the 'web' directory has been renamed to 'stats' to avoid confusion
 with users.
++ Added 'dod_teamscore' event so that win/loses for non-source DOD servers
+will properly track for players and maps.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors
