@@ -1,4 +1,4 @@
-Version 3.0.5 beta ()
+Version 3.0.5 beta (not released)
 * Fixed "constant CACHE_FILE_GROUP already defined" errors
 * Fixed PS::Config->set(); would not set sub vars (var.subvar = value)
 * Fixed event plrtrigger 'address'; would not track player IP addresses
@@ -11,6 +11,10 @@ shortcuts for a couple of common tasks for stats.pl.
 with users.
 + Added 'dod_teamscore' event so that win/loses for non-source DOD servers
 will properly track for players and maps.
++ Added 'round_win' event trigger for 'dod' servers.
++ Directory structure has changed a bit to try and make it less confusing
+for users. 'upload' directory contains all files meant to be uploaded to
+a website. Everything else stays local.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors
