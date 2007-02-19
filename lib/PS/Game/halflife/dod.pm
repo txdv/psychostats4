@@ -3,6 +3,7 @@ package PS::Game::halflife::dod;
 use strict;
 use warnings;
 use base qw( PS::Game::halflife );
+use util qw( :net );
 
 our $VERSION = '1.02';
 
@@ -61,6 +62,7 @@ sub event_dod_teamtrigger {
 		my $losers  = $self->get_team($team2, 1);
 		my $var = $team . 'won';
 		my $var2 = $team2 . 'lost';
+		$self->plrbonus($trigger, 'enactor_team', $winners, 'victim_team', $losers);
 		foreach my $p1 (@$winners) {
 			$p1->{basic}{rounds}++;
 			$p1->{maps}{ $m->{mapid} }{basic}{rounds}++;
