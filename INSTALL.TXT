@@ -8,18 +8,14 @@ For those that are too impatient follow the quick step guide below.
 
 == Quick Note ==
 
-All files in this archive except the 'stats' directory all
-belong TOGETHER. You can put these files ANYWHERE you want. If 
-you want to make a new directory for them somewhere, fine. Just make
-sure the directory structure remains the same as outlined above. IE:
-if you move stats.pl somewhere then the 'lib' directory should move
-with it.
+PsychoStats has 2 parts. The 'local' perl scripts that do all the database 
+updates and stats processing. And the 'upload' files that make up all of the 
+PHP files that allow you to view the stats web pages on your website.
 
-The only suggestion I can make is that the stats.pl and lib directory
-SHOULD NEVER BE located inside your website directory tree. If you put 
-it somewhere where the webserver can access it then any user on the 
-Internet would be able to read your stats.cfg file and see your database
-settings. You've been warned.
+The only suggestion I can make is that the stats.pl and lib directory SHOULD 
+NEVER BE located inside your website directory tree. If you put it somewhere 
+where the webserver can access it then any user on the Internet would be able 
+to read your stats.cfg file and see your database settings. You've been warned.
 
 == QUICK WINDOWS INSTALLATION ==
 
