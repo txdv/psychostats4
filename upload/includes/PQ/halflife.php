@@ -472,8 +472,8 @@ function query_master($ip=NULL, $filter=array(), $callback=NULL) {
 
 // returns the connect string url that allows you to connect to a server from a web page.
 // Note: a query_info() must have already of been performed for this to work
-function connect_url() {
-	return "steam://connect/" . $this->ipaddr();
+function connect_url($connectip = NULL) {
+	return "steam://connect/" . ($connectip ? $connectip : $this->ipaddr());
 /* old method of connecting (before updates roughly around November '05).
 // Thanks to JTP10181 (www.thekingpin.net) for the code
 	$launchdir = "";

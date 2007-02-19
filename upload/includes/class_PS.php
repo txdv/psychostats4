@@ -26,6 +26,7 @@ function PS(&$_db) {
 	$this->t_config_layout 		= $this->tblprefix . 'config_layout';
 	$this->t_config_plrbans 	= $this->tblprefix . 'config_plrbans';
 	$this->t_config_plrbonuses 	= $this->tblprefix . 'config_plrbonuses';
+	$this->t_config_servers 	= $this->tblprefix . 'config_servers';
 	$this->t_errlog 		= $this->tblprefix . 'errlog';
 	$this->t_geoip_cc		= $this->tblprefix . 'geoip_cc';
 	$this->t_geoip_ip		= $this->tblprefix . 'geoip_ip';

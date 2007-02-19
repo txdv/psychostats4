@@ -9,18 +9,18 @@ function toggleQuery() {
 {/literal}
 </script>
 <div style="text-align: center">
-{foreach from=$servers item='s' key='ip'}
-<a name="server{$ip}"></a>
-<iframe src="{url _base='query.php' ip=$ip}" 
-	name="server{$ip}"
-	id="server{$ip}"
+{foreach from=$servers item='s'}
+<a name="server{$s.serverip}"></a>
+<iframe src="{url _base='query.php' ip=$s.ipport}" 
+	name="server{$s.ipport}"
+	id="server{$s.ipport}"
 	width="450" 
 	height="335" 
 	scrolling="no"
 	frameborder="0"
 	style="margin: 0px 10px 10px 10px; border: none;">
 <#Your browser does not support IFRAMES#><br>
-<a href="{url _base='query.php' ip=$ip}"><#Click here for live server view#></a>
+<a href="{url _base='query.php' ip=$s.ipport}"><#Click here for live server view#></a>
 </iframe>
 {foreachelse}
 	<b><#No servers configured#></b>

@@ -49,6 +49,8 @@
 
 div.maprow {
 /*	border: 1px solid black; */
+	height: 120px;
+	vertical-align: middle;
 }
 
 div.connectrow {
@@ -159,8 +161,10 @@ function openRcon() {
 {if $pq.connect_url}
 		<div class="connectrow"><a href="{$pq.connect_url}"><#Connect Now#></a></div>
 {/if}
-		<div class="row1">{$server.ip}</div>
-		<div class="row1">{$pq.map}</div>
+		<div class="row1">{$server.ipport}</div>
+		<div class="row1">{$pq.map}
+{if $pq.rules.mani_nextmap != ''}<br><#Next#>: {$pq.rules.mani_nextmap}{/if}
+		</div>
 		<div class="row">{$pq.gamename}</div>
 {if $pq.rules.amx_timeleft != ''}
 		<div class="row"><b>{$pq.rules.amx_timeleft}</b> <#time left#></div>

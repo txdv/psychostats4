@@ -1,7 +1,6 @@
 <?php
 define("VALID_PAGE", 1);
 include(dirname(__FILE__) . "/includes/common.php");
-include(PS_ROOTDIR . "/includes/class_PQ.php");
 
 $validfields = array('themefile','s');
 globalize($validfields);
@@ -9,14 +8,12 @@ globalize($validfields);
 if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'server';
 
 $servers = array();
-$ps->load_config('servers');
-$servers = $ps->conf['servers'];
-
-reset($servers);
-while (list($id,$ary) = each($servers)) {
-	if (!$ary['enabled']) unset($servers[$id]);
-}
-
+$servers = $ps_db->fetch_rows(1, 
+	"SELECT *,INET_NTOA(serverip) serverip, CONCAT_WS(':', INET_NTOA(serverip),serverport) ipport " . 
+	"FROM $ps->t_config_servers " . 
+	"WHERE enabled=1 " . 
+	"ORDER BY idx,serverip,serverport"
+);
 $data['servers'] = $servers;
 
 $data['PAGE'] = 'server';

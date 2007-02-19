@@ -17,7 +17,7 @@
 if (defined("CLASS_PQ_PHP")) return 1;
 define("CLASS_PQ_PHP", 1);
 
-include_once("PQ/PQ_PARENT.php");
+include_once(PS_ROOTDIR . "/includes/PQ/PQ_PARENT.php");
 
 class PQ {
 
@@ -47,7 +47,7 @@ function &create($conf) {
 			$conf['port'] = '';
 		}
 	} else {
-		$conf['port'] = '';		// default to no port (will be determined later in the query process)
+//		$conf['port'] = '';
 	}
 
 	// If no 'querytype' is specified default to 'halflife'
@@ -67,5 +67,17 @@ function &create($conf) {
 }
 
 }  // end of class PQ
+
+// returns an array of query types that are allowed when creating a new PQ object. 
+// this is not an object method. It's a plain function.
+function pq_query_types() {
+	// this should be made more robust to read the files in the PQ directory to create a list.
+	$q = array();
+	$q['halflife'] 		= 'Halflife 1 or 2';
+	$q['oldhalflife'] 	= 'Halflife 1 only (no steam)';
+	$q['gamespy'] 		= 'Gamespy (partial support)';
+	$q['quake3'] 		= 'Quake 3';
+	return $q;
+}
 
 ?>

@@ -1,7 +1,6 @@
 <?php
 define("VALID_PAGE", 1);
 include(dirname(__FILE__) . "/includes/common.php");
-include(PS_ROOTDIR . "/includes/class_PQ.php");
 
 $validfields = array('themefile','ip','cmd');
 globalize($validfields);
@@ -10,14 +9,18 @@ if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 
 
 $rulefilters = array('_tutor_','coop','deathmatch','pausable');
 
-
+list($ip,$port) = explode(':', $ip);
 
 $server = array();
-$server = $ps_db->fetch_row(1, "SELECT id, section ip, value querytype FROM $ps->t_config WHERE conftype='servers' AND var='querytype' AND section='" . $ps_db->escape($ip) . "' LIMIT 1");
+$server = $ps_db->fetch_row(1, 
+	"SELECT s.*,INET_NTOA(serverip) ip, serverport port, CONCAT_WS(':', INET_NTOA(serverip),serverport) ipport " . 
+	"FROM $ps->t_config_servers s " . 
+	"WHERE enabled=1 " . 
+	"AND s.serverip=INET_ATON('" . $ps_db->escape($ip) . "') AND serverport='" . $ps_db->escape($port) . "' "
+);
 
 if ($server['id']) {
 	// resolve server hostname to an IP (and separate the port)
-	list($ip,$port) = explode(':', $server['ip']);
 	if (!preg_match('|^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$|', $ip)) {
 		$ip = gethostbyname($ip);
 	}
@@ -35,7 +38,7 @@ if ($server['ip']) {
 	$pqinfo = $pq->query(array('info','players','rules'));
 	if ($pqinfo === FALSE) $pqinfo = array();
 	if ($pqinfo) {
-		$pqinfo['connect_url'] = $pq->connect_url();
+		$pqinfo['connect_url'] = $pq->connect_url($server['connectip']);
 		if ($pqinfo['players']) usort($pqinfo['players'], 'killsort');
 		if ($pqinfo['rules']) $pqinfo['rules'] = filter_rules($pqinfo['rules'], $rulefilters);
 	} else {
@@ -48,9 +51,8 @@ if ($server['ip']) {
 	// If we have an RCON command to send (and the user is an admin)
 	$rcon_result = '';
 	if (user_is_admin() and !empty($cmd)) {
-		list($pass) = $ps_db->fetch_row(0, "SELECT value FROM $ps->t_config WHERE conftype='servers' AND section='" . $ps_db->escape($server['ip']) . "' and var='rcon' LIMIT 1");
-		if (!empty($pass)) {
-			$rcon_result = $pq->rcon($cmd, $pass);
+		if (!empty($server['rcon'])) {
+			$rcon_result = $pq->rcon($cmd, $server['rcon']);
 		}
 	}
 
@@ -92,3 +94,4 @@ ps_showpage($smarty->showpage());
 
 include(PS_ROOTDIR . "/includes/footer.php");
 ?>
+.
