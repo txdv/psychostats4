@@ -4,9 +4,9 @@ rem -- on the icon to update their stats. This causes the dos window to pause
 rem -- and not close instantly incase there are errors.
 rem -----------------------------------------------------------------------
 
-stats.pl --version
+..\stats.pl --version
 echo.
-stats.pl -verbose
+..\stats.pl -verbose
 echo.
 
 pause

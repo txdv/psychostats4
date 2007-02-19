@@ -10,7 +10,8 @@ echo ** FORCING DAILY UPDATES! NO LOGS WILL BE PROCESSED
 echo ** Double click on 'stats.pl' if you want to update your stats.
 echo.
 
-stats.pl -nologs -daily -verbose
+
+..\stats.pl -nologs -daily -verbose
 
 echo.
 echo ** DONE WITH DAILY CALCULATIONS!
