@@ -193,6 +193,23 @@ CREATE TABLE `ps_config_plrbonuses` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
+-- Table structure for table `ps_config_servers`
+--
+
+DROP TABLE IF EXISTS `ps_config_servers`;
+CREATE TABLE `ps_config_servers` (
+  `id` smallint(5) unsigned NOT NULL,
+  `serverip` int(10) unsigned NOT NULL,
+  `serverport` smallint(5) unsigned NOT NULL default '27015',
+  `displayip` varchar(32) default NULL,
+  `query` varchar(16) NOT NULL,
+  `rcon` varchar(32) default NULL,
+  `enabled` tinyint(1) unsigned NOT NULL default '0',
+  PRIMARY KEY  (`id`),
+  UNIQUE KEY `serverip` (`serverip`,`serverport`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+--
 -- Table structure for table `ps_errlog`
 --
 
@@ -605,4 +622,4 @@ CREATE TABLE `ps_weapon_data` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2007-02-15  3:38:35
+-- Dump completed on 2007-02-19  7:00:49

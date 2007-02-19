@@ -15,6 +15,8 @@ will properly track for players and maps.
 + Directory structure has changed a bit to try and make it less confusing
 for users. 'upload' directory contains all files meant to be uploaded to
 a website. Everything else stays local.
++ The 'live servers' configuration has been moved into it's own table to 
+make it easier to manage.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors

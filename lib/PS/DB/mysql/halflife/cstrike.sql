@@ -119,4 +119,4 @@ CREATE TABLE `ps_plr_maps_halflife_cstrike` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2007-02-15  3:38:35
+-- Dump completed on 2007-02-19  7:00:49
