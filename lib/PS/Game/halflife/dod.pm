@@ -243,7 +243,7 @@ sub event_dod_teamscore {
 		$_->{mod}{$teamlost.'lost'}++;
 		$_->{mod_maps}{ $m->{mapid} }{$teamlost.'lost'}++;
 	}
-	$self->plrbonus($trigger, 'enactor_team', $won, 'victim_team', $lost);
+	$self->plrbonus('round_win', 'enactor_team', $won, 'victim_team', $lost);
 }
 
 sub has_mod_tables { 1 }
