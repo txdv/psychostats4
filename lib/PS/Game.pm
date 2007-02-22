@@ -130,6 +130,8 @@ sub _init {
 			if ($@) {
 				$::ERR->fatal("Error in clantag regex function: $@");
 			}
+		} else {
+			$self->{clantags_regex_func} = sub { undef };
 		}
 	}
 	return $self;

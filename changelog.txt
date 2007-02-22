@@ -19,6 +19,7 @@ a website. Everything else stays local.
 make it easier to manage.
 * Fixed bug with installer on step 1. Incorrectly saying mysql 4.1.11 was
 too low when in fact it's the minimum.
++ Fixed stats update from crashing when no regex clantags are defined.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors
