@@ -139,25 +139,30 @@ sub event_plrtrigger {
 sub event_ns_mapinfo {
 	my ($self, $timestamp, $args) = @_;
 	my ($mapname, $propstr) = @$args;
-#	return unless $self->minconnected;
 	my $props = $self->parseprops($propstr);
 	my $m = $self->get_map;
 	my $marine = $self->get_team('marine', 1);
-	my $alien = $self->get_team('alien', 1);
-	my ($p1, $p2, $marinevar, $alienvar, $enactor_team, $victim_team);
+	my $alien  = $self->get_team('alien', 1);
+	my ($p1, $p2, $marinevar, $alienvar, $won, $lost);
 
 	if ($props->{victory_team} eq 'marine') {
+		$won  = $marine;
+		$lost = $alien;
 		$marinevar = 'marinewon';
 		$alienvar = 'alienlost';
-		if ($self->{ns_commander}) {	# give a point to the current commander
-#			print "COMMANDER WON!\n";
+		# give a point to the current commander
+		if ($self->{ns_commander} and $self->minconnected) {
 			$p2 = $self->{ns_commander};
 			$p2->{mod}{commanderwon}++;
+			$self->plrbonus('commander_win', 'enactor', $p2);
 		}
 	} else {
+		$won  = $alien;
+		$lost = $marine;
 		$marinevar = 'marinelost';
 		$alienvar = 'alienwon';
 	}
+	$self->plrbonus('round_win', 'enactor_team', $won, 'victim_team', $lost);
 
 	# assign won/lost points ...
 	$m->{mod}{$marinevar}++;
