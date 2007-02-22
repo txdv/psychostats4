@@ -55,7 +55,8 @@ if ($submit) {
 			$testresult = $db->connected;
 			if ($testresult) {
 				$info = $db->server_info();
-				$version = $info['version'];
+				$parts = explode('-', $info['version']);
+				$version = $parts[0];
 				if (version_compare($version,'4.1.11') == -1) {
 					$testresult = FALSE;
 					$testmsg = "Your version of MYSQL <b>v$version</b> is too low.<br>MYSQL <b>v4.1.11</b> or higher is required.";
