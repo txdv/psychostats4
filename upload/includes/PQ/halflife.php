@@ -68,7 +68,9 @@ function gametype() {
 }
 
 function modtype() {
-	return $this->data['gamedir'];
+	$m = $this->data['gamedir'];
+	if ($m == 'czero') $m = 'cstrike';
+	return $m;
 }
 
 // sets and returns the halflife version to properly decode packets
