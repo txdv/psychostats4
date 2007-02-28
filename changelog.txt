@@ -7,19 +7,18 @@ Version 3.0.5 beta (not released)
 * Bug #9 fixed.
 + Added a couple of batch files for Windows users. These are just
 shortcuts for a couple of common tasks for stats.pl.
-+ the 'web' directory has been renamed to 'stats' to avoid confusion
-with users.
 + Added 'dod_teamscore' event so that win/loses for non-source DOD servers
 will properly track for players and maps.
 + Added 'round_win' event trigger for 'dod' servers.
 + Directory structure has changed a bit to try and make it less confusing
-for users. 'upload' directory contains all files meant to be uploaded to
-a website. Everything else stays local.
+for users. The 'upload' directory contains all files meant to be uploaded to
+a website (this used to be called 'web'). Everything else stays local.
 + The 'live servers' configuration has been moved into it's own table to 
 make it easier to manage.
 * Fixed bug with installer on step 1. Incorrectly saying mysql 4.1.11 was
 too low when in fact it's the minimum.
 + Fixed stats update from crashing when no regex clantags are defined.
+* Fixed 'czero' servers in the live server view to show maps correctly.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors

@@ -779,13 +779,13 @@ sub event_weaponstats {
 	my $w = $self->get_weapon($weapon) || return;
 	my $r1 = $self->get_role($p1->{role}, $p1->{team});
 
-	# deference once
+	# dereference once
 	my $plrweapon = $p1->{weapons}{ $w->{weaponid} };
 	my $plrrole = $r1 ? $p1->{roles}{ $r1->{roleid} } : undef;
 
 	if ($trigger eq 'weaponstats') {
 		no warnings;
-		# deference vars so we dont do it over and over below
+		# dereference vars so we dont do it over and over below
 		my ($hits, $shots, $dmg, $hs) = map { int($_ || 0) } @$props{ qw( hits shots damage headshots ) };
 
 		$w->{basic}{hits} 			+= $hits; 
@@ -817,7 +817,7 @@ sub event_weaponstats {
 
 	} elsif ($trigger eq 'weaponstats2') {
 		no warnings;
-		# deference vars so we dont do it over and over below
+		# dereference vars so we dont do it over and over below
 		my ($head,$chest,$stomach,$leftarm,$rightarm,$leftleg,$rightleg) = map { int($_ || 0) } 
 			@$props{ qw( head chest stomach leftarm rightarm leftleg rightleg ) };
 
