@@ -38,6 +38,8 @@ sub calc {
 		dayskill => "AVG(data.dayskill)",
 		dayrank => "AVG(data.dayrank)",
 		lasttime => "MAX(data.lasttime)",
+		kills_streak => "MAX(data.kills_streak)",
+		deaths_streak => "MAX(data.deaths_streak)",
 	};
 	delete @$fields{ qw( dataid plrid statdate ) };
 #	print Dumper $fields;

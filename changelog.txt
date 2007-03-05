@@ -19,6 +19,8 @@ make it easier to manage.
 too low when in fact it's the minimum.
 + Fixed stats update from crashing when no regex clantags are defined.
 * Fixed 'czero' servers in the live server view to show maps correctly.
+* Fixed 'white screen' problems on certain pages when run on PHP5.
+* Corrected 'kill_streak' and 'death_streak' calculation in awards.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors
