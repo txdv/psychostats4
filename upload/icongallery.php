@@ -1,7 +1,6 @@
 <?php
 define("VALID_PAGE", 1);
 include(dirname(__FILE__) . "/includes/common.php");
-include(PS_ROOTDIR . "/includes/class_PQ.php");
 
 $validfields = array('themefile');
 globalize($validfields);
