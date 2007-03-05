@@ -6,7 +6,7 @@
 */
 
 #die("TO USE THIS SCRIPT DELETE LINE #" . __LINE__ . " FROM THIS FILE\nThis script is only usable from a prompt (not the web)\n");
-
+define('PS_ROOTDIR', './');
 include('includes/class_PQ.php');
 
 $opts = array(
