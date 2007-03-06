@@ -237,10 +237,8 @@ sub get_plr {
 		$ipaddr = ip2int($self->get_plr_alias(int2ip($ipaddr)));
 	}
 
-	# include the team in case we want to use it in the calling function. The variable is 'teamstr' 
-	# so that we don't confuse it with the actual known team for a player.
-	$plrids = { name => $name, worldid => $worldid, ipaddr => $ipaddr, teamstr => $team };
-	return { %$plrids, uid => $uid } if $plrids_only;	
+	$plrids = { name => $name, worldid => $worldid, ipaddr => $ipaddr };
+	return { %$plrids, uid => $uid, team => $self->team_normal($team) } if $plrids_only;
 
 	$p = undef;
 
@@ -249,6 +247,7 @@ sub get_plr {
 		$p = $self->{plrs}{$uid};
 #		print "UID EXISTS: $plrstr\n" if $plrstr =~ /:8868013/;
 		$p->plrids($plrids);							# update new player ids
+		$p->{team} = $self->team_normal($team);
 		$self->delcache($p->signature($plrstr));				# delete previous and set new sig
 		$self->addcache($p, $plrstr);
 	} elsif ($p = $self->cached($plrids->{$self->{uniqueid}}, 'uniqueid')) {
@@ -261,6 +260,7 @@ sub get_plr {
 			delete $self->{plrs}{ $p->{uid} };
 			$self->{plrs}{$uid} = $p;
 			$p->uid($uid);
+			$p->{team} = $self->team_normal($team);
 		}
 	} else {
 #		print "* NEW: $plrstr\n" if $plrstr =~ /:8868013/;
@@ -271,12 +271,12 @@ sub get_plr {
 		$p->timerstart($self->{timestamp});
 		$p->uid($uid);
 		$p->plrids;		# update plr_ids info
+		$p->{team} = $self->team_normal($team);
 		$self->{plrs}{$uid} = $p;
 		$self->addcache($p, $plrstr, $p->uniqueid);
 		$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
 	}
 
-	$p->{teamstr} = $team;
 	return $p;
 }
 
@@ -509,6 +509,23 @@ sub event_entered_game {
 	$p1->active(1);
 }
 
+# override parent method
+# normalize a team name
+sub team_normal {
+	my ($self, $teamstr) = @_;
+	my $team = $teamstr;
+
+	$team = lc $team;
+	$team =~ tr/ /_/;
+	$team =~ tr/a-z0-9_//cs;				# remove all non-alphanumeric characters
+	$team = 'spectator' if $team eq 'spectators';		# some MODS have a trailing 's'.
+	$team = '' if $team eq 'unassigned';			# don't use "0"
+
+	return $team;
+}
+
+# player teams are now detected from their player signature for all events.
+# the only reason we need this event now is to add 1 to the proper 'joined' stat.
 sub event_joined_team {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $team, $props) = @$args;
@@ -516,23 +533,15 @@ sub event_joined_team {
 	my $m = $self->get_map;
 	$self->_do_connected($timestamp, $p1) unless $p1->{_connected};
 
-	$team = lc $team;
-	$team =~ tr/ /_/;
-	$team =~ tr/a-z0-9_//cs;				# remove all non-alphanumeric characters
-	$team = 'spectator' if $team eq 'spectators';		# some MODS have a trailing 's'.
-	$team = '' if $team eq 'unassigned';
-
 	$self->{plrs}{ $p1->uid } = $p1;
 	$self->delcache($p1->signature($plrstr));		# delete old sig from cache and set new sig
 	$self->addcache($p1, $p1->signature, $p1->uniqueid);	# add current sig and uniqueid to cache
 
-	$p1->{team} = $team;
-
-	# do not record team events for spectators
-#	return if $team eq 'spectator';
-
+	$p1->{team} = $self->team_normal($team);
 	$p1->{basic}{lasttime} = $timestamp;
-	if ($team) {
+
+	# now for the all-important stat... how many times we joined this team.
+	if ($p1->{team}) {
 		$p1->{mod_maps}{ $m->{mapid} }{"joined$team"}++;
 		$p1->{mod}{"joined$team"}++;
 		$m->{mod}{"joined$team"}++;

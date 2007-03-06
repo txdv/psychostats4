@@ -198,36 +198,20 @@ sub event_ns_changed_role {
 	}
 }
 
-# override halflife event. NS uses stupid team names so we need to clean it up
-sub event_joined_team {
-	my ($self, $timestamp, $args) = @_;
-	my ($plrstr, $team, $props) = @$args;
-	my $p1 = $self->get_plr($plrstr) || return;
-	my $m = $self->get_map;
-	$self->_do_connected($timestamp, $p1) unless $p1->{_connected};
+sub team_normal {
+	my ($self, $teamstr) = @_;
+	my $team = lc $teamstr;
 
-	$team = lc $team;
-	$team =~ tr/ /_/;
+	# At some point this needs to be updated to allow for AvA and MvM maps.
+	# Current support will cause all kills to be FFkill's on those maps.
+
+	$team =~ tr/ /_/;					# convert spaces to underscore
 	$team =~ tr/a-z0-9_//cs;				# remove all non-alphanumeric characters
 	$team =~ s/\dteam$//;					# remove trailing '1team' from team names
 	$team = 'spectator' if $team eq 'spectators';		# some MODS have a trailing 's'.
 	$team = '' if $team eq 'unassigned';
 
-	$self->{plrs}{ $p1->uid } = $p1;
-	$self->delcache($p1->signature($plrstr));		# delete old sig from cache and set new sig
-	$self->addcache($p1, $p1->signature, $p1->uniqueid);	# add current sig and uniqueid to cache
-
-	$p1->{team} = $team;
-
-	# do not record team events for spectators
-#	return if $team eq 'spectator';
-
-	$p1->{basic}{lasttime} = $timestamp;
-	if ($team) {
-		$p1->{mod_maps}{ $m->{mapid} }{"joined$team"}++;
-		$p1->{mod}{"joined$team"}++;
-		$m->{mod}{"joined$team"}++;
-	}
+	return $team;
 }
 
 # Remove the eject prefix and inject the event back into the queue.

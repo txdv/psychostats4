@@ -1630,6 +1630,11 @@ sub reset {
 	return ($errors == 0);
 }
 
+# sub classes want to override this to return a normalized team name based on the team string given.
+# this is required by some mods (like natural selection) where the team string in the log events
+# have extra characters that are useless.
+sub team_normal { $_[1] }
+
 sub has_mod_tables { 0 }
 
 1;
