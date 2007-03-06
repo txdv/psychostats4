@@ -194,7 +194,7 @@ sub get_plr {
 	# return the cached player via their signature if they exist (small performance gain)
 	if (!$plrids_only) {
 		$p = $self->cached($str);
-#		print "SIMPLE: $str - " . $p->{basic}{kills} . "\n" if $str =~ /:563969/ and $p;
+#		print "SIMPLE: $str\n" if $p and $str =~ /:8868013/;
 		return $p if defined $p;
 	}
 
@@ -226,7 +226,7 @@ sub get_plr {
 	# For BOTS: replace STEAMID's with the player name otherwise all bots will be combined into the same STEAMID
 	if ($worldid eq 'BOT' or $worldid eq '0') {
 		return undef if $self->{ignore_bots};
-		$worldid = "BOT:" . lc $name;
+		$worldid = "BOT:" . lc substr($name, 0, 128);	# limit the total characters
 	}
 
 	if ($self->{uniqueid} eq 'worldid') {
@@ -237,7 +237,9 @@ sub get_plr {
 		$ipaddr = ip2int($self->get_plr_alias(int2ip($ipaddr)));
 	}
 
-	$plrids = { name => $name, worldid => $worldid, ipaddr => $ipaddr };
+	# include the team in case we want to use it in the calling function. The variable is 'teamstr' 
+	# so that we don't confuse it with the actual known team for a player.
+	$plrids = { name => $name, worldid => $worldid, ipaddr => $ipaddr, teamstr => $team };
 	return { %$plrids, uid => $uid } if $plrids_only;	
 
 	$p = undef;
@@ -245,7 +247,7 @@ sub get_plr {
 	# based on their UID the player already existed (changed teams or name since the last event)
 	if (exists $self->{plrs}{$uid}) {
 		$p = $self->{plrs}{$uid};
-#		print "UID EXISTS: $plrstr - " . $p->{basic}{kills} . "\n" if $plrstr =~ /:563969/;
+#		print "UID EXISTS: $plrstr\n" if $plrstr =~ /:8868013/;
 		$p->plrids($plrids);							# update new player ids
 		$self->delcache($p->signature($plrstr));				# delete previous and set new sig
 		$self->addcache($p, $plrstr);
@@ -254,14 +256,14 @@ sub get_plr {
 		# this happens with a couple of minor events like dropping the bomb in CS. The bomb drop event is triggered
 		# after the player disconnect event and thus causes confusion with internal routines. So I cache the uniqueid
 		# of the player and then fix the 'uid' if needed here...
-#		print "CACHED: $plrstr - " . $p->{basic}{kills} . "\n" if $plrstr =~ /:563969/;
+#		print "CACHED: $plrstr\n" if $plrstr =~ /:8868013/;
 		if ($p->{uid} ne $uid) {
 			delete $self->{plrs}{ $p->{uid} };
 			$self->{plrs}{$uid} = $p;
 			$p->uid($uid);
 		}
 	} else {
-#		print "* NEW: $plrstr\n" if $plrstr =~ /:563969/;
+#		print "* NEW: $plrstr\n" if $plrstr =~ /:8868013/;
 		$p = PS::Player->new($plrids, $self);
 		return undef unless $p;
 		$p->active(1);		# always mark active for now......
@@ -273,6 +275,8 @@ sub get_plr {
 		$self->addcache($p, $plrstr, $p->uniqueid);
 		$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
 	}
+
+	$p->{teamstr} = $team;
 	return $p;
 }
 

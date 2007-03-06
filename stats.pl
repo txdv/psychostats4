@@ -165,9 +165,12 @@ $db->init_database;
 
 if (defined $opt->get('reset')) {
 	my $game = PS::Game->new($conf, $db);
+	my $res = $opt->get('reset');
+	my $all = (index($opt->get('reset'),'all') >= 0);
 	my %del = (
-		players => (index($opt->get('reset'),'pl') >= 0 || index($opt->get('reset'),'all') >= 0),
-		clans   => (index($opt->get('reset'),'cl') >= 0 || index($opt->get('reset'),'all') >= 0)
+		players => ($all || (index($res,'pl') >= 0)),
+		clans   => ($all || (index($res,'cl') >= 0)),
+		weapons => ($all || (index($res,'we') >= 0)),
 	);
 	$game->reset(%del);
 	exit;

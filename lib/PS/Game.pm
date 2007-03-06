@@ -1571,10 +1571,10 @@ sub delete_clans {
 # resets all stats in the database. USE WITH CAUTION!
 # reset(1) resets stats and all profiles
 # reset(0) resets stats and NO profiles
-# reset(player => 1, clans => 0) resets stats and only the profiles specified
+# reset(player => 1, clans => 0, weapons => 0) resets stats and only the profiles specified
 sub reset {
 	my $self = shift;
-	my $del = @_ == 1 ? { players => $_[0], clans => $_[0] } : { @_ };
+	my $del = @_ == 1 ? { players => $_[0], clans => $_[0], weapons => $_[0] } : { @_ };
 	my $db = $self->{db};
 	my $gametype = $self->{conf}->get_main('gametype');
 	my $modtype  = $self->{conf}->get_main('modtype');
@@ -1590,13 +1590,17 @@ sub reset {
 		t_plr t_plr_data t_plr_ids t_plr_maps t_plr_roles t_plr_sessions t_plr_victims t_plr_weapons
 		t_role t_role_data
 		t_search t_state t_state_plrs
-		t_weapon t_weapon_data
+		t_weapon_data
 	);
 
-	# delete compiled data
+	# only reset these tables if explicyly told to
+	push(@empty, 't_plr_profile') if $del->{players};
+	push(@empty, 't_clan_profile') if $del->{clans};
+	push(@empty, 't_weapon') if $del->{weapons};
+
+	# DROP compiled data (will be recreated the next time stats.pl is run)
 	foreach my $t (@empty_c) {
 		my $tbl = $db->{$t} || next;
-#		print "DROP $tbl\n";
 		if (!$db->droptable($tbl) and $db->errstr !~ /unknown table/i) {
 			$self->warn("Reset error on $tbl: " . $db->errstr);
 			$errors++;
@@ -1606,7 +1610,6 @@ sub reset {
 	# delete most of everything else
 	foreach my $t (@empty) {
 		my $tbl = $db->{$t} || next;
-#		print "TRUNCATE $t: $tbl\n";
 		if (!$db->truncate($tbl) and $db->errstr !~ /exist/) {
 			$self->warn("Reset error on $tbl: " . $db->errstr);
 			$errors++;
@@ -1616,26 +1619,7 @@ sub reset {
 	# delete mod specific tables
 	foreach my $t (@empty_m) {
 		my $tbl = $db->{$t} || next;
-#		print "TRUNCATE $t: $tbl\n";
 		if (!$db->truncate($tbl) and $db->errstr !~ /exist/) {
-			$self->warn("Reset error on $tbl: " . $db->errstr);
-			$errors++;
-		}
-	}
-
-	if ($del->{players}) {
-		my $tbl = $db->{t_plr_profile} || next;
-#		print "TRUNCATE plr: $tbl\n";
-		if (!$db->truncate($tbl)) {
-			$self->warn("Reset error on $tbl: " . $db->errstr);
-			$errors++;
-		}
-	}
-
-	if ($del->{clans}) {
-		my $tbl = $db->{t_clan_profile} || next;
-#		print "TRUNCATE clan: $tbl\n";
-		if (!$db->truncate($tbl)) {
 			$self->warn("Reset error on $tbl: " . $db->errstr);
 			$errors++;
 		}

@@ -290,10 +290,11 @@ will fail if an unknown modtype is specified.
 
 If you do not know what this does by now, go seek help, YOU NEED IT!
 
-=item B<-reset> [all,players,clans]
+=item B<-reset> [all,players,clans,weapons]
 
-Resets all stats in your database. If 'players' or 'clans' is specified then
-the profiles for each will also be reset. By default profiles are saved.
+Resets all stats in your database. If 'players', 'clans' or 'weapons; is 
+specified then the profiles for each will also be reset. 
+By default profiles and weapons are saved.
 
 B<*** IMPORTANT ***> This can NOT be undone! Use at your own risk.
 
