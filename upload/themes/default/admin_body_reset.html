@@ -51,6 +51,15 @@ defaultTextStr = '<#Hover over labels for a description#>';
 		</span>
 	</div>
 
+	<div class="row">
+		<span onmouseover="textHelp('{$form.delweapons.statustext|escape:'quotes'}')" class="label">
+			{$form.delweapons.label|escape}
+		</span>
+		<span class="input">
+			<input name="delweapons" value="1" type="checkbox" />
+		</span>
+	</div>
+
 	<center><div class="row row-err-help"><span id="helptext"><#Hover over labels for a description#></span></div></center>
 
 	<div class="row-spacer"></div>

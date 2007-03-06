@@ -14,7 +14,7 @@ $data['PS_ADMIN_PAGE'] = "reset";
 
 if ($cancel) previouspage('admin.php');
 
-$validfields = array('confirm', 'delplrprofiles', 'delclanprofiles');
+$validfields = array('confirm', 'delplrprofiles', 'delclanprofiles', 'delweapons');
 globalize($validfields);
 foreach ($validfields as $var) { $data[$var] = $$var; }
 
@@ -23,7 +23,7 @@ $formfields = array(
 	'confirm'		=> array('label' => $ps_lang->trans("Confirm Reset").':',		'val' => '',   'statustext' => $ps_lang->trans("You must check this box to confirm that you want to reset your stats!")),
 	'delplrprofiles'	=> array('label' => $ps_lang->trans("Delete Player Profiles").':',	'val' => '',   'statustext' => $ps_lang->trans("If checked <b>player</b> profiles will be deleted. I recommend leaving this unchecked.")),
 	'delclanprofiles'	=> array('label' => $ps_lang->trans("Delete Clan Profiles").':',	'val' => '',   'statustext' => $ps_lang->trans("If checked <b>clan</b> profiles will be deleted. I recommend leaving this unchecked.")),
-
+	'delweapons'		=> array('label' => $ps_lang->trans("Delete Weapons").':',		'val' => '',   'statustext' => $ps_lang->trans("If checked <b>Weapon</b> definitions will be deleted. This is usually unchecked if you want your weapons to retain their real names and weights.")),
 );
 
 $empty_c = array( 'c_map_data', 'c_plr_data', 'c_plr_maps', 'c_plr_victims', 'c_plr_weapons', 'c_weapon_data', 'c_role_data', 'c_plr_roles' );
@@ -36,7 +36,7 @@ $empty = array(
 	't_plr', 't_plr_data', 't_plr_ids', 't_plr_maps', 't_plr_roles', 't_plr_sessions', 't_plr_victims', 't_plr_weapons', 
 	't_role', 't_role_data', 
 	't_search', 't_state', 't_state_plrs', 
-	't_weapon', 't_weapon_data'
+	't_weapon_data'
 );
 
 $msg = '';
@@ -77,6 +77,11 @@ if ($submit and !$confirm) {
 
 	if ($delclanprofiles) {
 		$tbl = $ps->t_clan_profile;
+		if (!$ps->db->truncate($tbl)) $errors['fatal'] .= "$tbl: " . $ps->db->errstr . "<br>";
+	}
+
+	if ($delweapons) {
+		$tbl = $ps->t_weapon;
 		if (!$ps->db->truncate($tbl)) $errors['fatal'] .= "$tbl: " . $ps->db->errstr . "<br>";
 	}
 
