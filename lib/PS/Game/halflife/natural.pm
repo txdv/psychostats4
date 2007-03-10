@@ -78,7 +78,7 @@ sub event_plrtrigger {
 	$trigger = lc $trigger;
 	$self->plrbonus($trigger, 'enactor', $p1);
 	if ($trigger eq 'weaponstats' or $trigger eq 'weaponstats2') {
-		$self->event_weaponstats($timestamp, $args);
+		$self->event_weaponstats($timestamp, [$plrstr, $trigger, $propstr]);
 
 	} elsif ($trigger eq 'address') {	# PIP 'address' events
 		my $props = $self->parseprops($propstr);

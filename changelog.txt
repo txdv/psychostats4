@@ -25,6 +25,8 @@ too low when in fact it's the minimum.
 * Fixed player bonuses. Bonus points were not actually being added to skill.
 * Fixed load_clan_members(); SQL query was not optimized properly and causes 
 the 'edit clan' page to be very slow with large member lists.
+* Fixed 'weaponstats' accuracy triggers for Natural Selection. Event wasn't
+being delegated properly.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors

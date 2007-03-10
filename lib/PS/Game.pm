@@ -470,7 +470,8 @@ sub calcskill_kill_default {
 		$vbonus *= $weight;
 	}
 
-#	print "Bonus: $kbonus / $vbonus (prob: $prob)\n" if ($k->plrid eq '98' or $v->plrid eq '98');
+#	print $k->plrid . ": $kskill + $kbonus\t " . $v->plrid . ": $vskill - $vbonus (prob: $prob)\n";
+#	die if $kskill > 15000 or $vskill > 15000;
 
 	$kskill += $kbonus;
 	$vskill -= $vbonus;
@@ -478,7 +479,7 @@ sub calcskill_kill_default {
 	$k->skill($kskill);
 	$v->skill($vskill);
 
-#	if ($k->plrid eq '98' or $v->plrid eq '98') {
+#	if ($k->plrid eq '31' or $v->plrid eq '31') {
 #		print "2) " . $k->name . "(" . $k->skill . ") killed " . $v->name . "(" . $v->skill . ")\n\n";
 #	}
 
@@ -578,11 +579,12 @@ sub plrbonus {
 #		print "plrbonus: $type\n";
 
 		# assign bonus to players in our list
+		my $newskill;
 		foreach my $p (@$list) {
 			next unless defined $p;
 			$p->{basic}{totalbonus} += $val;
-			$val += $p->skill;
-			$p->skill($val);
+			$newskill = $p->skill + $val;
+			$p->skill($newskill);
 #			printf("\t%-32s received %3d points for %s ($type)\n", $p->name, $val, $trigger);
 		}
 	}

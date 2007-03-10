@@ -226,7 +226,7 @@ sub get_plr {
 	# For BOTS: replace STEAMID's with the player name otherwise all bots will be combined into the same STEAMID
 	if ($worldid eq 'BOT' or $worldid eq '0') {
 		return undef if $self->{ignore_bots};
-		$worldid = "BOT:" . lc substr($name, 0, 128);	# limit the total characters
+		$worldid = "BOT:" . lc substr($name, 0, 124);	# limit the total characters (128-4)
 	}
 
 	if ($self->{uniqueid} eq 'worldid') {
