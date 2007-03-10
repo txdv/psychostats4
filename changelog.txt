@@ -28,7 +28,8 @@ the 'edit clan' page to be very slow with large member lists.
 * Fixed 'weaponstats' accuracy triggers for Natural Selection. Event wasn't
 being delegated properly.
 * Fixed player BANS. Bans didn't work at all. They do now. :)
-* Fixed infinite loop in Feeder::FTP when an error occurs downloading a file.
+* Fixed infinite loop in Feeder::FTP (and Feeder::SFTP) when an error occurs 
+downloading a file.
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors

@@ -229,6 +229,11 @@ sub _opennextlog {
 #		$self->info("SFTP: Downloading log $self->{_curlog}");
 		if (!$self->{sftp}->get( $self->{_dir} . "/" . $self->{_curlog}, undef, \&_get_callback)) {
 			$self->warn("Error downloading file: " . ($self->{sftp}->status)[1]);
+			if (@{$self->{_logs}}) {
+				$self->{_curlog} = shift @{$self->{_logs}};
+			} else {
+				last;
+			}
 		} else {
 			seek($FH,0,0);		# back up to the beginning of the file, so we can read it
 
