@@ -3,8 +3,8 @@ Version 3.0.5 beta (not released)
 * Fixed PS::Config->set(); would not set sub vars (var.subvar = value)
 * Fixed event plrtrigger 'address'; would not track player IP addresses
 + Implemented game support for halflife:natural (Natural Selection)
-* Bug #8 fixed (I hope).
-* Bug #9 fixed.
+* Bug #8 fixed (I hope). "Duplicate entry in 'plr_ids' table"
+* Bug #9 fixed. "Only variables can be passed by reference in imgcommon.php"
 + Added a couple of batch files for Windows users. These are just
 shortcuts for a couple of common tasks for stats.pl.
 + Added 'dod_teamscore' event so that win/loses for non-source DOD servers
@@ -27,6 +27,7 @@ too low when in fact it's the minimum.
 the 'edit clan' page to be very slow with large member lists.
 * Fixed 'weaponstats' accuracy triggers for Natural Selection. Event wasn't
 being delegated properly.
+* Fixed player BANS. Bans didn't work at all. They do now. :)
 
 Version 3.0.4 beta (2007-02-10)
 + Added clean module detection to stats.pl to show 'pretty' errors

@@ -181,8 +181,8 @@ sub isbanned {
 	my $banned = 0;
 #	either pass a hash of values, or a PS::Player record, or key => value pairs
 
-	# clear the banned cache every 60 seconds (real-time)
-	if (time - $self->{banned_age} > 60) {
+	# clear the banned cache every X minutes (real-time)
+	if (time - $self->{banned_age} > 60*5) {
 		$::ERR->debug("CLEARING BANNED CACHE");
 		$self->{banned}{worldid} = {};
 		$self->{banned}{ipaddr} = {};
@@ -190,14 +190,17 @@ sub isbanned {
 		$self->{banned_age} = time;
 	}
 
-
-	foreach my $match (grep { $_ eq 'worldid' || $_ eq 'ipaddr' || $_ eq 'name' } keys %$m) {
+	my ($matchstr);
+	foreach my $match (qw( worldid name ipaddr )) {
+		next unless exists $m->{$match} and defined $m->{$match};
 		return $self->{banned}{$match}{ $m->{$match} } if exists $self->{banned}{$match}{ $m->{$match} };
 
-		my $matchstr = int2ip($m->{$match}) if $match eq 'ipaddr';
-		my ($banned) = $self->{db}->get_row_array("SELECT id FROM $self->{db}{t_config_plrbans} WHERE enabled=1 AND matchtype='$match' AND " . $self->{db}->quote($matchstr) . " LIKE matchstr");
+		$matchstr = ($match eq 'ipaddr') ? int2ip($m->{$match}) : $m->{$match}; 
+		($banned) = $self->{db}->get_row_array("SELECT id FROM $self->{db}{t_config_plrbans} " . 
+			"WHERE enabled=1 AND matchtype='$match' AND " . $self->{db}->quote($matchstr) . " LIKE matchstr");
 
 		$self->{banned}{$match}{ $m->{$match} } = $banned;
+		return $banned if $banned;
 	}
 
 	return 0;
