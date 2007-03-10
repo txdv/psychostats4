@@ -581,7 +581,8 @@ sub plrbonus {
 		foreach my $p (@$list) {
 			next unless defined $p;
 			$p->{basic}{totalbonus} += $val;
-			$p->{skill} += $val;
+			$val += $p->skill;
+			$p->skill($val);
 #			printf("\t%-32s received %3d points for %s ($type)\n", $p->name, $val, $trigger);
 		}
 	}
