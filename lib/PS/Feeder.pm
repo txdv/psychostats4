@@ -117,7 +117,7 @@ sub save_state {
 #	$::ERR->verbose("Saving state");
 
 	$db->begin;
-	my $id = $state->{id} || $db->select($db->{t_state}, 'id', [ logsource => $self->{logsource} ]);
+	my $id = $state->{id} ? $state->{id} : $db->select($db->{t_state}, 'id', [ logsource => $self->{logsource} ]);
 	$self->{db}->delete($db->{t_state}, [ logsource => $self->{logsource} ]);
 
 	$state->{id} = $self->{db}->next_id($db->{t_state});
