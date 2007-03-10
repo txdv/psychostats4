@@ -111,7 +111,8 @@ function load_icons($dir=NULL, $url=NULL) {
 function load_clan($id) {
 	global $ps;
 	$id = $ps->db->escape($id);
-	$cmd = "SELECT clan.*,cp.* FROM $ps->t_clan clan, $ps->t_clan_profile cp WHERE clan.clanid='$id' AND clan.clantag=cp.clantag";
+	$cmd = "SELECT clan.*,cp.* FROM $ps->t_clan clan, $ps->t_clan_profile cp " . 
+		"WHERE clan.clanid='$id' AND clan.clantag=cp.clantag";
 	$clan = array();
 	$clan = $ps->db->fetch_row(1, $cmd);
 	return $clan;
@@ -119,7 +120,9 @@ function load_clan($id) {
 function load_clan_members($id) {
 	global $ps;
 	$id = $ps->db->escape($id);
-	$cmd = "SELECT p.plrid,p.uniqueid,pp.name FROM $ps->t_plr p, $ps->t_plr_profile pp WHERE p.clanid='$id' AND p.uniqueid=pp.uniqueid ORDER BY pp.name";
+	# the 'allowrank IN (0,1)' is added so that the query will use the matching index (allorank,clanid)
+	$cmd = "SELECT p.plrid,p.uniqueid,pp.name FROM $ps->t_plr p LEFT JOIN $ps->t_plr_profile pp USING(uniqueid) " .
+		"WHERE p.allowrank IN (0,1) AND p.clanid='$id' ORDER BY pp.name";
 	$list = $ps->db->fetch_rows(1, $cmd);
 	return $list;
 }
