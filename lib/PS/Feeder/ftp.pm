@@ -214,6 +214,11 @@ sub _opennextlog {
 			undef $self->{_loghandle};
 			chomp(my $msg = $self->{ftp}->message);
 			$::ERR->warn("Error downloading file: $msg");
+			if (scalar @{$self->{_logs}}) {
+				$self->{_curlog} = shift @{$self->{_logs}};	# try next log
+			} else {
+				last;						# no more logs, we're done
+			}
 		} else {
 			seek($self->{_loghandle},0,0);		# back up to the beginning of the file, so we can read it
 
