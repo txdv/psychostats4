@@ -188,6 +188,11 @@ sub _opennextlog {
 			$::ERR->warn("Error opening log '$self->{_curlog}': $!");
 			undef $self->{_loghandle};
 			undef $self->{_curlog};
+			if (@{$self->{_logs}}) {
+				$self->{_curlog} = catfile($self->{_curdir}, shift @{$self->{_logs}});
+			} else {
+				last;
+			}
 		}
 	}
 	return $self->{_loghandle};
