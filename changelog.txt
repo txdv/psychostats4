@@ -1,4 +1,4 @@
-Version 3.0.5 beta (not released)
+Version 3.0.5 beta (2007-03-10)
 * Fixed "constant CACHE_FILE_GROUP already defined" errors
 * Fixed PS::Config->set(); would not set sub vars (var.subvar = value)
 * Fixed event plrtrigger 'address'; would not track player IP addresses

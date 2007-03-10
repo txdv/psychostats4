@@ -170,7 +170,7 @@ CREATE TABLE `ps_config_plrbans` (
   `matchstr` varchar(128) NOT NULL default '',
   `reason` varchar(255) NOT NULL default '',
   PRIMARY KEY  (`id`),
-  UNIQUE KEY `matchtype` (`matchtype`,`matchstr`)
+  UNIQUE KEY `match` (`matchtype`,`matchstr`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 --
@@ -623,4 +623,4 @@ CREATE TABLE `ps_weapon_data` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2007-03-10  2:45:56
+-- Dump completed on 2007-03-10  6:14:26

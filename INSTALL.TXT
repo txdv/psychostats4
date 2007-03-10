@@ -1,4 +1,4 @@
-= PsychoStats Version 3.0 Installation = 
+= PsychoStats Version 3.0.x QUICK Installation = 
 
 For more detailed installation instructions please view the online
 documentation at the following URL:
