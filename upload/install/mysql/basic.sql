@@ -545,7 +545,7 @@ DROP TABLE IF EXISTS `ps_state_plrs`;
 CREATE TABLE `ps_state_plrs` (
   `id` smallint(5) unsigned NOT NULL default '0',
   `plrid` int(10) unsigned NOT NULL default '0',
-  `uid` smallint(5) unsigned NOT NULL default '0',
+  `uid` int(10) unsigned NOT NULL default '0',
   `isdead` tinyint(1) unsigned NOT NULL default '0',
   `team` varchar(32) NOT NULL default '',
   `role` varchar(32) NOT NULL default '',
@@ -623,4 +623,4 @@ CREATE TABLE `ps_weapon_data` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2007-03-01 14:56:15
+-- Dump completed on 2007-03-10  2:45:56
