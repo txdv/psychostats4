@@ -219,7 +219,7 @@ function openRcon() {
 		</table>
 		</div>
 		<div id="pqrcon">
-			<form name="rcon" action="{url _base=$PHP_SELF ip=$server.ip}" method="POST">
+			<form name="rcon" action="{url _base=$PHP_SELF ip=$server.ipport}" method="POST">
 			<input name="cmd" type="text" value="{$cmd|escape}" size="65" class="field">
 			<input type="submit" value="<#Send#>" class="btn">
 			</form>
