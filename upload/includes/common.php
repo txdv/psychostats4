@@ -8,6 +8,8 @@ define("PSFILE_COMMON_PHP", 1);
 //define("DB_DEBUG", true);
 
 
+define("PS_VERSION", '3.0b');
+
 define("PS_ROOTDIR", dirname(dirname(__FILE__)));
 
 error_reporting(E_ERROR | E_WARNING | E_PARSE);		// ignore uninit var errors
