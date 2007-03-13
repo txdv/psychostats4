@@ -27,7 +27,8 @@ function smarty_function_sortheader($args, &$smarty)
   static $order = "";
   static $ordervar = "order";
   static $sortvar = "sort";
-  $image = "themes/" . $ps->conf['main']['theme'] . "/images/sort_arrow_%s.gif";
+//  $image = "themes/" . $ps->conf['main']['theme'] . "/images/sort_arrow_%s.gif";
+  $image = catfile($ps->conf['theme']['themeurl'], $ps->conf['main']['theme'], "/images/sort_arrow_%s.gif");
   $args += array(
 	'var'		=> '',
 	'baseurl' 	=> '',
