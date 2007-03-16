@@ -1,6 +1,9 @@
 Version 3.0.x beta (...)
-* Fixed query.html. rcon commands would not work.
-* Fixed function.sortheader.php and removed hardcoded themes path.
+* Fixed query.html: rcon commands would not work.
+* Fixed function.sortheader.php: removed hardcoded themes path.
+* Fixed class_theme.php: "Cannot break/continue 1 level" error.
+* Fixed admin/servers.php: Incorrect integer value: '' for column 'idx'
+* Fixed PQ modtype for 'hl2dm'. returns 'hldm' instead.
 
 Version 3.0.5 beta (2007-03-10)
 * Fixed "constant CACHE_FILE_GROUP already defined" errors

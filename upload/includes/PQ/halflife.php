@@ -69,7 +69,11 @@ function gametype() {
 
 function modtype() {
 	$m = $this->data['gamedir'];
-	if ($m == 'czero') $m = 'cstrike';
+	switch ($m) {
+		case 'czero': return 'cstrike';
+		case 'hl2dm': return 'hldm';
+		default: return $m;
+	}
 	return $m;
 }
 

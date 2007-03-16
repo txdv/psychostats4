@@ -316,7 +316,7 @@ function _compile_lang($key) {
  */
 function ps_output_filter($output, &$smarty) {
 	// cookie was used for SID, so we don't need to do anything
-	if (session_method() == 'cookie' or session_is_bot()) continue;
+	if (session_method() == 'cookie' or session_is_bot()) return $output;
 	$sidname = session_sidname(); 
 	$sid = session_sid();
 	$search = array();

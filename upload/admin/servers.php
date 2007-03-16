@@ -141,6 +141,7 @@ if ($submit and $del and $srv['id']) {
 		$set['serverip'] = sprintf("%u", ip2long($form['_serverip']));
 		if (!$id) {
 			$set['id'] = $ps_db->next_id($ps->t_config_servers);
+			$set['idx'] = 0;
 		}
 
 		$ok = 0;
