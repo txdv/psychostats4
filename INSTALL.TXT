@@ -8,11 +8,12 @@ For those that are too impatient follow the quick step guide below.
 
 == Quick Note ==
 
-PsychoStats has two parts. The 'local' perl scripts that do all the database 
+PsychoStats has two parts. The local perl scripts that do all the database 
 updates and stats processing. And the 'upload' files that make up all of the 
-PHP files that allow you to view the stats web pages on your website.
+PHP files that allow you to view the stats web pages on your website. Anything
+not in the 'upload' directory is considered a local file.
 
-The only suggestion I can make is that the 'local' files SHOULD NEVER BE 
+The only suggestion I can make is that the local files SHOULD NEVER BE 
 located inside your website directory tree. If you put it somewhere where the 
 webserver can access it then any user on the Internet would be able to read 
 your stats.cfg file and see your database settings. You've been warned.
@@ -50,13 +51,14 @@ files into a directory named 'stats'.
 Be sure to replace 'localhost' with the actual domain name of your website. And 
 then just follow the instructions.
 
-4) Edit the stats.cfg in this directory with the proper database settings so 
-PsychoStats can connect to your database.
+4) Edit the stats.cfg with the proper database settings so PsychoStats can 
+connect to your database.
 
 5) In the 'scripts' directory there is a 'psychostats.bat' file. If you double 
 click on that file it will run the stats update for you. You could also just 
 double click on the 'stats.pl' file. But if you encounter errors the 
-'psychostats.bat' file will allow you to see the errors easier.
+'psychostats.bat' file will allow you to see the errors without the window 
+closing immediately.
 
 == QUICK LINUX INSTALLATION ==
 
@@ -78,8 +80,8 @@ stats.cfg and gain access to your database.
 Be sure to replace 'localhost' with the actual domain name of your website. And 
 then just follow the instructions.
 
-4) Edit the stats.cfg in this directory with the proper database settings so 
-PsychoStats can connect to your database. 
+4) Edit the stats.cfg with the proper database settings so PsychoStats can 
+connect to your database. 
 
 5) All Done! Now you just need to run the stats.pl to update your stats. If you 
 have shell access on your server then just run:
