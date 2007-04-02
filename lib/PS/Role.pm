@@ -21,7 +21,7 @@ our $TYPES = {
 	ffkills		=> '+',
 	ffkillspct	=> [ percent => qw( ffkills kills ) ],
 	headshotkills	=> '+',
-	headshotpct	=> [ percent => qw( headshotkills kills ) ],
+	headshotkillspct=> [ percent => qw( headshotkills kills ) ],
 	damage		=> '+',
 	hits		=> '+',
 	shots		=> '+',

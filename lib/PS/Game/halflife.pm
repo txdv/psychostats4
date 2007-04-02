@@ -128,6 +128,8 @@ sub event {
 	my $self = shift;
 	my ($src, $event, $line) = @_;
 	my ($prefix, $timestamp);
+	my ($a, $b, $c);
+	$event = decode_utf8($event);
 	chomp($event);
 	return if length($event) < PREFIX_LENGTH;	#			"123456789*123456789*12345"
 	$prefix = substr($event, 0, PREFIX_LENGTH);	# PREFIX (25 chars): 	"L MM/DD/YYYY - hh:mm:ss: "
@@ -197,7 +199,6 @@ sub get_plr {
 #		print "SIMPLE: $str\n" if $p and $str =~ /:8868013/;
 		return $p if defined $p;
 	}
-
 	$plrstr = $str;					# save the full player string
 	# using multiple substr calls inplace of a single regex is a lot faster 
 	$team = substr($str, rindex($str,'<'), 128, '');
@@ -213,11 +214,7 @@ sub get_plr {
 		$::ERR->debug1("Ignoring invalid player identifier in src '$self->{_src}' line '$self->{_line}': '$plrstr'",3);
 		return undef;
 	}
-#	print "get_plr: ",decode('utf8',$plrstr),"\n" if $worldid eq 'STEAM_0:0:7702999';
-	$name = decode('utf8',$str); # $str;
-#	print "get_plr: ",$name,"\n" if $worldid eq 'STEAM_0:0:7702999';
-#	$name = decode('utf8', $name);
-#	$name = encode($self->{charset} || 'iso-8859-1', decode('utf8', $name));
+	$name = $str;
 	$name =~ s/^\s+//;
 	$name =~ s/\s+$//;
 	$name = '- no name -' if $name eq "";		# do not allow blank names
@@ -555,7 +552,8 @@ sub event_changed_name {
 ##	$self->_do_connected($timestamp, $p1) unless $p1->{_connected};
 
 	# The get_plr method will automatically take care of the plr caches for name changes
-	$p1->plrids({ name => decode('utf8',$name), worldid => $p1->worldid, ipaddr => $p1->ipaddr });
+	$p1->plrids({ name => $name, worldid => $p1->worldid, ipaddr => $p1->ipaddr });
+#	$p1->plrids({ name => encode('utf8',$name), worldid => $p1->worldid, ipaddr => $p1->ipaddr });
 	$p1->{basic}{lasttime} = $timestamp;
 
 }
@@ -614,7 +612,7 @@ sub event_chat {
 	my $p1 = $self->get_plr($plrstr) || return;
 	return if $self->isbanned($p1);
 
-	$msg = decode('utf8',$msg);
+	$msg = $msg; #encode('utf8',$msg);
 	return unless $msg =~ /^$self->{usercmds}{prefix}(.+)\s+(.+)/o;
 	my ($cmd, $param) = ($1, $2);
 
@@ -1001,7 +999,7 @@ __DATA__
 
 [attacked]
   regex = /^"([^"]+)" attacked "([^"]+)" with "([^"]+)"(.*)/
-  options = ignore
+#  options = ignore
 
 [plrtrigger]
   regex = /^"([^"]+)" triggered "([^"]+)"(.*)/
