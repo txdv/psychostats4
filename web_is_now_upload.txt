@@ -1,3 +1,0 @@
-The 'web' directory has been renamed 'upload'.
-
-You can delete this file. It serves no actual purpose.

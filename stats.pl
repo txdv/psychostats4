@@ -33,6 +33,7 @@ BEGIN { # do checks for required modules
 	our %PM_LOADED = ();
 	my @modules = qw( DBI DBD::mysql );
 	my @failed_at_life = ();
+	my %bad_kitty = ();
 	foreach my $module (@modules) {
 		my $V = '';
 		eval "use $module; \$V = \$${module}::VERSION;";
@@ -43,12 +44,24 @@ BEGIN { # do checks for required modules
 		}
 	}
 
+	# check the version of modules
+	# DBD::mysql needs to be 3.x at a minimum
+	if ($PM_LOADED{'DBD::mysql'} and substr($PM_LOADED{'DBD::mysql'},0,1) lt '3') {
+		$bad_kitty{'DBD::mysql'} = '3.0008';
+	}
+
 	# if anything failed, kill ourselves, life isn't worth living.
-	if (@failed_at_life) {
+	if (@failed_at_life or scalar keys %bad_kitty) {
 		print "PsychoStats failed initialization!\n";
-		print "The following modules are required and could not be loaded.\n";
-		print "\t" . join("\n\t", @failed_at_life) . "\n";
-		print "\n";
+		if (@failed_at_life) {
+			print "The following modules are required and could not be loaded.\n";
+			print "\t" . join("\n\t", @failed_at_life) . "\n";
+			print "\n";
+		} else {
+			print "The following modules need to be upgraded to the version shown before\nPsychoStats will work.\n";
+			print "\t$_ v$bad_kitty{$_} or newer\n" for keys %bad_kitty;
+			print "\n";
+		}
 
 		if (lc substr($^O,0,-2) eq "mswin") {	# WINDOWS
 			print "You can install the modules listed by using the Perl Package Manager.\n";
@@ -93,7 +106,7 @@ my ($opt, $dbconf, $db, $conf, $game, $logsource, $feeder, @dodaily);
 my $starttime = time;
 my $totallogs = 0;
 
-#binmode(STDOUT, ":utf8");
+eval { binmode(STDOUT, ":encoding(utf8)"); };
 
 $opt = new PS::CmdLine;				# Initialize command line paramaters
 $DEBUG = $opt->get('debug') || 0;		# sets global debugging for ALL CLASSES
