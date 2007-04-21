@@ -16,6 +16,7 @@ if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 
 
 if (!$psort) $psort = 'skill';
 if (!$vsort) $vsort = 'skill';
+if (!$wlimit) $wlimit = 100;
 
 // SET DEFAULTS. Since they're basically the same for each list, we do this in a loop
 foreach ($validfields as $var) {

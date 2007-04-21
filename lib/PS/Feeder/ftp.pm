@@ -28,6 +28,8 @@ sub init {
 	$self->{_curline} = 0;
 	$self->{_log_regexp} = qr/\.log$/io;
 	$self->{_protocol} = 'ftp';
+	$self->{_idle} = time;
+	$self->{max_idle} = 25;				# should be made a configurable option ...
 	$self->{orig_logsource} = $self->{logsource};
 
 	return undef unless $self->_parsesource;
@@ -239,12 +241,15 @@ sub _opennextlog {
 			}
 		}
 	}
+	$self->{_idle} = time;
 	return $self->{_loghandle};
 }
 
 sub next_event {
 	my $self = shift;
 	my $line;
+
+	$self->idle;
 
 	# User is trying to ^C out, try to exit cleanly (save our state)
 	if ($::GRACEFUL_EXIT > 0) {
@@ -293,6 +298,20 @@ sub done {
 	$self->SUPER::done(@_);
 	$self->{ftp}->quit if defined $self->{ftp};
 	$self->{ftp} = undef;
+}
+
+# called in the next_event method for each event. Used an an anti-idle timeout for FTP
+sub idle {
+	my ($self) = @_;
+	if (time - $self->{_idle} > $self->{max_idle}) {
+		$self->{_idle} = time;
+		$self->{ftp}->site("NOP");
+		# sending a site NOP command will usually just send back a 500 error
+		# but the server will see the connection as being active.
+		# This has not been widely tested on various servers. Some servers
+		# might be smart enough to see repeated commands... I'm not sure.
+		# in which case the idle timeout may still disconnect us.
+	}
 }
 
 1;

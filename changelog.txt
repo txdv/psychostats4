@@ -3,15 +3,15 @@ Version 3.1 beta (...)
 * Recoded theme routines to be more robust and tolerant.
 * Redesigned default theme template. XHTML compliant and easier to maintain.
 (pre-3.1 themes are NOT backwards compatible!)
-* Added module version check for DBD:mysql. v3.0008 or higher is required.
 
-
-Version 3.0.x beta (Not released)
+Version 3.0.6 beta (Not released)
 * Fixed query.html: rcon commands would not work.
 * Fixed function.sortheader.php: removed hardcoded themes path.
 * Fixed class_theme.php: "Cannot break/continue 1 level" error.
 * Fixed admin/servers.php: Incorrect integer value: '' for column 'idx'
 * Fixed PQ modtype for 'hl2dm'. returns 'hldm' instead.
+* Added module version check for DBD:mysql. v3.0002 or higher is required.
+* Fixed 'Connection Closed' errors while downloading from FTP log sources.
 
 Version 3.0.5 beta (2007-03-10)
 * Fixed "constant CACHE_FILE_GROUP already defined" errors

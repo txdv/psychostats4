@@ -58,7 +58,7 @@ BEGIN { # do checks for required modules
 			print "\t" . join("\n\t", @failed_at_life) . "\n";
 			print "\n";
 		} else {
-			print "The following modules need to be upgraded to the version shown before\nPsychoStats will work.\n";
+			print "The following modules need to be upgraded to the version shown below\n";
 			print "\t$_ v$bad_kitty{$_} or newer\n" for keys %bad_kitty;
 			print "\n";
 		}

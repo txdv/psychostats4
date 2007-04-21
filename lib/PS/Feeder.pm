@@ -168,9 +168,11 @@ sub load_state {
 	return $state;
 }
 
+
 sub _init { }
 sub init { 1 }	# 1=wait; 0=error; -1=nowait
 sub done { $_[0]->save_state }
-sub next_event { undef };
+sub next_event { undef }
+sub idle { }
 
 1;
