@@ -96,9 +96,12 @@ if (!defined("NOTHEME")) {
 	// default to configured theme
 	$theme = isset($ps_user_opts['theme']) ? $ps_user_opts['theme'] : $ps->conf['main']['theme'];
 	$themeconf =& $ps->conf['theme'];
-	if ($themeconf['allow_user_change'] and isset($_REQUEST['newtheme'])) {	// user selected a new theme (and is allowed to)
-		$theme = $_REQUEST['newtheme'];
-		$newtheme = $theme;
+	if ($themeconf['allow_user_change'] and !isset($_REQUEST['newtheme'])) {// user selected a new theme (and is allowed to)
+		$new = trim($_REQUEST['newtheme']);
+		if (!empty($new)) {
+			$theme = $new;
+			$newtheme = $new;
+		}
 	}
 	if (!$themeconf['themedir']) {						// default to local themes directory
 		$themeconf['themedir'] = catfile(PS_ROOTDIR, 'themes');
