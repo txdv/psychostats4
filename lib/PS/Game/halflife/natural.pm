@@ -12,10 +12,6 @@ our $VERSION = '1.00';
 sub _init { 
 	my $self = shift;
 	$self->SUPER::_init;
-	$self->load_events(*DATA);
-	$self->{conf}->load('game_halflife_natural');
-
-	$self->{plr_save_on_round} = ($self->{plr_save_on} eq 'round');
 
 	return $self;
 }
@@ -179,17 +175,11 @@ sub event_ns_mapinfo {
 
 # can't use the built in halflife::change_role since NS likes 
 # to do things a little differently
-sub event_ns_changed_role {
+sub event_changed_role {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $rolestr) = @$args;
 	my $p1 = $self->get_plr($plrstr) || return;
-	$rolestr =~ s/^(?:#?class_)//;
-	my $r1 = $self->get_role($rolestr, $p1->{team});
-
-	$p1->{role} = $rolestr;
-
-	$p1->{roles}{ $r1->{roleid} }{joined}++;
-	$r1->{basic}{joined}++ if $r1;
+	$self->SUPER::event_changed_role($timestamp, $args);
 
 	# keep track of who is the commander
 	if ($rolestr eq 'commander') {
@@ -228,33 +218,3 @@ sub event_ns_eject_fix {
 sub has_mod_tables { 1 }
 
 1;
-
-__DATA__
-
-[plrtrigger]
-  regex = /^"([^"]+)" triggered "([^"]+)"(?: against "([^"]+)")?(.*)/
-
-[ns_changed_role]
-  regex = /^"([^"]+)" changed role to "([^"]+)"/
-
-[ns_mapinfo]
-  regex = /^\(map_name "([^"]+)"\)(.*)/
-
-[ns_teamtrigger]
-  regex = /^Team "([^"]+)" triggered "([^"]+)"(.*)/
-
-[ns_teamlost]
-  regex = /^Team \d+ has lost/
-  options = ignore
-
-[ns_ignore1]
-  regex = /^(?:Map validity|Game reset|AvHGamerules|Contact|BUG:|AvHVisibleBlipList)/
-  options = ignore
-
-[ns_ignore2]
-  regex = /^Team "\d+" scored/
-  options = ignore
-
-# fix for "Eject commander: \d+ of d+ votes needed."
-[ns_eject_fix]
-  regex = /^Eject commander: \d+ of \d+ votes needed\.(.*)/

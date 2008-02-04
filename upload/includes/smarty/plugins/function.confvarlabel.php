@@ -18,24 +18,34 @@
  */
 function smarty_function_confvarlabel($args, &$smarty)
 {
-	global $conf_idxs, $ps_user_opts;
+	global $cms, $conf_layout, $form;
 	$args += array(
 		'var'	=> '',
 		'edit'	=> 1,
 	);
 
-	$parts = explode(VAR_SEPARATOR, $args['var']);
-	$label = $parts[1];
-	if (confvarmulti($args['var'])) $label .= " " . $conf_idxs[$args['var']];
+	$var = $args['var'];
+	$name = $var['id'];
+	$value = $form->value($name);
+	$label = !empty($var['label']) ? $var['label'] : $var['var'];
 
-	if ($ps_user_opts['advconfig'] and $args['edit']) {
-		$id = array_pop($parts);
-		$label = sprintf("<a href='admin.php?c=config_new&id=%d'>%s</a>",
-			$id,
-			$label
-		);
+/*
+	if ($cms->session->opt('advconfig') and $args['edit']) {
+		$url = ps_url_wrapper(array( 
+			'_base' => 'var.php',
+			'id'	=> $var['id'],
+//			'ct' 	=> $form->value('ct'), 
+//			's' 	=> $form->value('s')
+		));
+		$label = "<a href='$url'>$label</a>";
 	}
+*/
 
+	$help = $cms->theme->url() . '/img/icons/information';
+	$help .= !empty($var['help']) ? '.png' : '-off.png';
+	$id = $var['id'];
+	$labelid = $var['help'] ? " id='label-$id' class='help'" : "";
+	$label = "<label$labelid><img class='helpimg' id='helpimg-$id' src='$help' /> $label</label>";
 	return $label;
 }
 

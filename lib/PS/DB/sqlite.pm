@@ -10,6 +10,8 @@ use DBI;
 use Data::Dumper;
 use Carp;
 
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+
 sub init {
 	my $self = shift;
 	return unless $self->SUPER::init;
@@ -25,6 +27,12 @@ sub init {
 #		DBI->trace(1, 'trace.dbi');
 		croak("Error connecting to database using dsn \"$dsn\":\n" . $DBI::errstr) unless ref $self->{dbh};
 	}
+
+	# add REGEXP expression to sqlite
+	$self->{dbh}->func('regexp', 2, sub {
+		my ($regex, $string) = @_;
+		return $string =~ /$regex/;
+	}, 'create_function');
 
 	return 1; # unless $self->{conf}->get('dbinit');
 

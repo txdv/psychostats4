@@ -6,16 +6,13 @@ use base qw( PS::Game::halflife );
 
 use util qw( :net );
 
-our $VERSION = '1.01';
+our $VERSION = '1.10';
 
 
 sub _init { 
 	my $self = shift;
 	$self->SUPER::_init;
-	$self->load_events(*DATA);
-	$self->{conf}->load('game_halflife_cstrike');
 
-	$self->{plr_save_on_round} = ($self->{plr_save_on} eq 'round');
 #	$self->{cs_hostages} = {};
 
 	return $self;
@@ -23,11 +20,6 @@ sub _init {
 
 # cstrike doesn't have character roles (classes) so just return a false value
 sub get_role { undef }
-
-sub mod_event_kill {
-	my ($self, $p1, $p2, $w, $m) = @_;
-
-}
 
 # override default event so we can reset per-log variables
 sub event_logstartend {
@@ -84,7 +76,8 @@ sub event_plrtrigger {
 			$p1->{mod_maps}{ $m->{mapid} }{bombdefused}++;
 			$p1->{mod}{bombdefused}++;
 			$m->{mod}{bombdefused}++;
-			$self->plrbonus($trigger, 'victim', $self->{cs_bombplanter});		# bomb planter should lose points
+			 # bomb planter should lose points
+			$self->plrbonus($trigger, 'victim', $self->{cs_bombplanter}) if $self->{cs_bombplanter};
 
 		} elsif ($1 eq 'spawned_with') {
 			$p1->{mod_maps}{ $m->{mapid} }{bombspawned}++;
@@ -130,7 +123,7 @@ sub event_plrtrigger {
 }
 
 
-sub event_cs_teamtrigger {
+sub event_teamtrigger {
 	my ($self, $timestamp, $args) = @_;
 	my ($team, $trigger, $props) = @$args;
 	return unless $self->minconnected;
@@ -157,17 +150,19 @@ TARGET_BOMBED:
 			$m->{mod}{bombexploded}++;
 			$p1->{mod}{bombexploded}++;
 			$p1->{mod_maps}{ $m->{mapid} }{bombexploded}++;
+			$self->plrbonus($trigger, 'enactor', $p1);
+			undef $self->{cs_bombplanter};
 		}
 
 		$p2 = $self->{cs_spawned_with_bomb};
-		$self->{cs_spawned_with_bomb} = undef;
+		undef $self->{cs_spawned_with_bomb};
 #		print "DEBUG: P1=$p1->{plrid} P2=" . ($p2->{plrid}||'') . "\n";
 		if (defined($p1 && $p2) and ($p1->{plrid} eq $p2->{plrid})) {	# if planter matches the spawner then bombrunner++ 
 #			print "DEBUG: BOMBRUNNER++\n";
 			$m->{mod}{bombrunner}++;
 			$p2->{mod}{bombrunner}++;
 			$p2->{mod_maps}{ $m->{mapid} }{bombrunner}++;
-			$self->plrbonus('bomb_runner', 'enactor', $p2);
+			$self->plrbonus('bomb_runner', 'enactor', $p1);
 		}
 
 	} elsif ($trigger eq "hostages_not_rescued") {
@@ -276,19 +271,3 @@ sub event_cs_teamscore {
 sub has_mod_tables { 1 }
 
 1;
-
-__DATA__
-
-[cs_teamscore]
-  regex = /^Team "([^"]+)" scored "([^"]+)" with "([^"]+)" players/
-
-[cs_teamtrigger]
-  regex = /^Team "([^"]+)" triggered "([^"]+)"(.*)/
-
-[cs_ignore1]
-  regex = /^Counter-Strike Plugin/
-  options = ignore
-
-[cs_ignore2]
-  regex = /^Votemap/
-  options = ignore

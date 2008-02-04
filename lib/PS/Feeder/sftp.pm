@@ -1,4 +1,4 @@
-# SFTP Feeder support. Requires Net::SSH::Perl
+# SFTP Feeder support. Requires Net::SFTP
 package PS::Feeder::sftp;
 
 use strict;
@@ -8,7 +8,8 @@ use Digest::MD5 qw( md5_hex );
 use File::Spec::Functions qw( splitpath catfile );
 use File::Path;
 
-our $VERSION = '1.00';
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+
 my $FH = undef;
 
 sub init {
@@ -20,41 +21,30 @@ sub init {
 		return undef;
 	}
 
-	$self->{conf}->load('logsource_sftp');		# load logsource_sftp specific configs
-
-	$self->{_opts} = {};				# settings used in the SFTP connection
-	$self->{_dir} = '';
 	$self->{_logs} = [ ];
 	$self->{_curline} = 0;
 	$self->{_log_regexp} = qr/\.log$/io;
 	$self->{_protocol} = 'sftp';
-	$self->{orig_logsource} = $self->{logsource};
+	$self->{_last_saved} = time;
+	$self->{type} = $PS::Feeder::WAIT;
 
-	return undef unless $self->_parsesource;
 	return undef unless $self->_connect;
 
-	foreach (qw( skiplast delete savedir )) {
-		$self->{$_} = 
-			$self->{conf}->get_logsource_sftp($self->{_host} . '.' . $_) || 
-			$self->{conf}->get_logsource_sftp($_) || 
-			0;
-	}
-
 	# if a savedir was configured and it's not a directory try to create it
-	if ($self->{savedir} and !-d $self->{savedir}) {
-		if (-e $self->{savedir}) {
-			$::ERR->warn("Invalid directory configured for saving logs ('$self->{savedir}'): Is a file");
-			$self->{savedir} = '';
+	if ($self->{logsource}{savedir} and !-d $self->{logsource}{savedir}) {
+		if (-e $self->{logsource}{savedir}) {
+			$::ERR->warn("Invalid directory configured for saving logs ('$self->{logsource}{savedir}'): Is a file");
+			$self->{logsource}{savedir} = '';
 		} else {
-			eval { mkpath($self->{savedir}) };
+			eval { mkpath($self->{logsource}{savedir}) };
 			if ($@) {
-				$::ERR->warn("Error creating directory for saving logs ('$self->{savedir}'): $@");
-				$self->{savedir} = '';
+				$::ERR->warn("Error creating directory for saving logs ('$self->{logsource}{savedir}'): $@");
+				$self->{logsource}{savedir} = '';
 			}
 		}
 	}
-	if ($self->{savedir}) {
-		$::ERR->info("Downloaded logs will be saved to: $self->{savedir}");
+	if ($self->{logsource}{savedir}) {
+		$::ERR->info("Downloaded logs will be saved to: $self->{logsource}{savedir}");
 	}
 
 	return undef unless $self->_readdir;
@@ -66,21 +56,31 @@ sub init {
 		my $statelog = $self->{state}{file};
 		# first: find the log that matches our previous state in the current log directory
 		while (scalar @{$self->{_logs}}) {
-#			print "'$self->{_logs}->[0]' == '$statelog'\n";
-#			if ($self->{_logs}->[0] eq $statelog) {			# we found the matching log!
-			if ($self->{game}->logcompare($self->{_logs}->[0], $statelog) != -1) {
+			my $cmp = $self->{game}->logcompare($self->{_logs}[0], $statelog);
+			if ($cmp == 0) { # ==
 				$self->_opennextlog;
 				# finally: fast-forward to the proper line
-				while (defined(my $line = <$FH>)) {
-					if (++$self->{_curline} >= $self->{state}->{line}) {
-#						die $line;
-						$::ERR->verbose("Resuming from source $self->{_curlog} (line: $self->{_curline})");
-						return @{$self->{_logs}} ? @{$self->{_logs}}+1 : 1;
+				if (int($self->{state}{pos} || 0) > 0) {	# FAST forward quickly
+					seek($FH, $self->{state}{pos}, 0);
+					$self->{_curline} = $self->{state}{line};
+					$::ERR->verbose("Resuming from source $self->{state}{file} (line: $self->{_curline}, pos: $self->{state}{pos})");
+					return $self->{type};
+				} else {					# move forward slowly
+					while (defined(my $line = <$FH>)) {				
+						if (++$self->{_curline} >= $self->{state}{line}) {
+							$::ERR->verbose("Resuming from source $self->{_curlog} (line: $self->{_curline})");
+							return $self->{type};
+						}
 					}
 				}
-			} else {
+			} elsif ($cmp == -1) { # <
 				shift @{$self->{_logs}};
-			} 
+			} else { # >
+				# if we get to a log that is 'newer' then the last log in our state then 
+				# we'll just continue from that log since the old log was apparently lost.
+				$::ERR->warn("Previous log from state '$statelog' not found. Continuing from " . $self->{_logs}[0] . " instead ...");
+				return $self->{type};
+			}
 		}
 
 		if (!$self->{_curlog}) {
@@ -108,82 +108,108 @@ sub _readdir {
 	if (scalar @{$self->{_logs}}) {
 		$self->{_logs} = $self->{game}->logsort($self->{_logs});
 	}
-	pop(@{$self->{_logs}}) if $self->{skiplast};
+	pop(@{$self->{_logs}}) if $self->{logsource}{skiplast};
 	$::ERR->verbose(scalar(@{$self->{_logs}}) . " logs found in $self->{_dir}");
 	return scalar @{$self->{_logs}};
 }
 
-# establish a connection with the FTP host
+# establish a connection with the SSH server
 sub _connect {
 	my $self = shift;
 
+	$self->info("Connecting to sftp://$self->{_host} ...");
 	eval {
 		$self->{sftp} = new Net::SFTP($self->{_host}, %{$self->{_opts}});
 	};
 	if (!$self->{sftp}) {
-		$self->warn("$self->{class} error connecting to SFTP server: $@");
+		$self->warn("Error connecting to SFTP server: $@");
 		return undef;
 	}
 
-	$::ERR->verbose("Connected via SFTP to $self->{_opts}{user}\@$self->{_host}.");
+	# get the current directory
+	$self->{_logindir} = $self->{sftp}->do_realpath('.');
+
+	$self->info(sprintf("Connected to %s://%s%s%s. HOME=%s",
+		$self->{_protocol},
+		$self->{_opts}{user} ? $self->{_opts}{user} . '@' : '',
+		$self->{_host},
+		$self->{_opts}{ssh_args}{port} ne '22' ? ':' . $self->{_opts}{ssh_args}{port} : '',
+		$self->{_logindir}
+	));
 
 	return 1;
 }
 
 # parse the logsource and strip off it's parts for connection options
-sub _parsesource {
+sub parsesource {
 	my $self = shift;
+	my $db = $self->{db};
+	my $log = $self->{logsource};
 
-	# All {_opts} are passed directly to the Net::SFTP object when it's created.
-	# This allows subclasses to add their own options to the list
 	$self->{_host} = 'localhost';
 	$self->{_opts}{user} = '';
 	$self->{_opts}{password} = '';
+	$self->{_opts}{ssh_args} = { port => 22, protocol => '1,2', identity_files => [ "/home/$ENV{USER}/.ssh/id_dsa", "/home/$ENV{USER}/.ssh/id_rsa" ] };
 	$self->{_dir} = '';
 
-	if ($self->{logsource} =~ /^([^:]+):\/\/(?:([^:]+)(?::([^@]+))?@)?([^\/]+)\/?(.*)/) {
+	if (ref $log) {
+		$self->{_host} = $log->{host} if defined $log->{host};
+		$self->{_opts}{ssh_args}{port} = $log->{port} if defined $log->{port};
+		$self->{_opts}{user} = $log->{username};
+		$self->{_opts}{password} = $log->{password};
+		$self->{_opts}{debug} = $self->{conf}->get_opt('debug') ? 1 : 0;	# VERY LOUD!!!
+		$self->{_dir} = $log->{path};
+		$db->update($db->{t_config_logsources}, { lastupdate => time }, [ 'id' => $log->{id} ]);
+
+	} elsif ($self->{logsource} =~ /^([^:]+):\/\/(?:([^:]+)(?::([^@]+))?@)?([^\/]+)\/?(.*)/) {
 		my ($protocol,$user,$pass,$host,$dir) = ($1,$2,$3,$4,$5);
 		if ($host =~ /^([^:]+):(.+)/) {
 			$self->{_host} = $1;
-			$self->{_opts}{port} = $2;
+			$self->{_opts}{ssh_args}{port} = $2;
 		} else {
 			$self->{_host} = $host;
 		}
 
 		# user & pass are optional
-		$self->{_opts}{user} = $user || $self->{conf}->get_logsource_sftp($self->{_host} . '.username') || 
-			$self->{conf}->get_logsource_sftp('username');
-		$self->{_opts}{password} = $pass || $self->{conf}->get_logsource_sftp($self->{_host} . '.password') || 
-			$self->{conf}->get_logsource_sftp('password');
+		$self->{_opts}{user} = $user if $user;
+		$self->{_opts}{password} = $pass if $pass;
+		$self->{_dir} = $dir if defined $dir;
 
-		# load other optional SSH settings
-		foreach my $o (qw( port protocol privileged debug identity_files compression compression_level ciphers )) {
-			$self->{_opts}{$o} = 
-				$self->{conf}->get_logsource_sftp($self->{_host} . ".$o") || 
-				$self->{conf}->get_logsource_sftp($o);
+		# see if a matching logsource already exists
+		my $exists = $db->get_row_hash(sprintf("SELECT * FROM $db->{t_config_logsources} " . 
+			"WHERE type='sftp' AND host=%s AND port=%s AND path=%s AND username=%s", 
+			$db->quote($self->{_host}),
+			$db->quote($self->{_opts}{ssh_args}{port}),
+			$db->quote($self->{_dir}),
+			$db->quote($self->{_opts}{user})
+		));
+
+		if (!$exists) {
+			# fudge a new logsource record and save it
+			$self->{logsource} = {
+				'id'		=> $db->next_id($db->{t_config_logsources}),
+				'type'		=> 'sftp',
+				'path'		=> $self->{_dir},
+				'host'		=> $self->{_host},
+				'port'		=> $self->{_opts}{ssh_args}{port},
+				'passive'	=> undef,
+				'username'	=> $self->{_opts}{user},
+				'password'	=> $self->{_opts}{password},
+				'recursive'	=> 0,
+				'depth'		=> 0,
+				'skiplast'	=> 1,
+				'delete'	=> 0,
+				'options'	=> undef,
+				'defaultmap'	=> 'unknown',
+				'enabled'	=> 0,		# leave disabled since this was given from -log on command line
+				'idx'		=> 0x7FFFFFFF,
+				'lastupdate'	=> time
+			};
+			$db->insert($db->{t_config_logsources}, $self->{logsource});
+		} else {
+			$self->{logsource} = $exists;
+			$db->update($db->{t_config_logsources}, { lastupdate => time }, [ 'id' => $exists->{id} ]);
 		}
-
-		$self->{_opts}{port} ||= 22;
-		$self->{_opts}{protocol} ||= '1,2';
-		$self->{_opts}{privileged} ||= 0;
-#		$self->{_opts}{debug} ||= 0;
-		$self->{_opts}{debug} = 0;			# don't want SSH debugging output, it's too much!
-		$self->{_opts}{identity_files} ||= [];
-		$self->{_opts}{compression} ||= 0;
-		$self->{_opts}{compression_level} ||= 6;
-		$self->{_opts}{ciphers} ||= '';
-
-		$self->{_dir} = defined $dir ? $dir : '';
-
-		$self->{logsource} = "$protocol://";
-		if ($self->{_opts}{user}) {
-			$self->{logsource} .= $self->{_opts}{user};
-#			$self->{logsource} .= ":" . md5_hex($self->{_opts}{password}) if $self->{_opts}{password};
-			$self->{logsource} .= "@";
-		}
-		$self->{logsource} .= $self->{_host};
-		$self->{logsource} .= ":" . $self->{_opts}{port};
-		$self->{logsource} .= "/" . $self->{_dir};
 
 	} else {
 		$self->warn("Invalid logsource syntax. Valid example: sftp://user:pass\@host.com/path/to/logs");
@@ -201,8 +227,8 @@ sub _get_callback {
 sub _opennextlog {
 	my $self = shift;
 
-	# delete previous log if we had one, and we have 'delete' enabled in the logsource_sftp config
-	if ($self->{delete} and $self->{_curlog}) {
+	# delete previous log if we had one, and we have 'delete' enabled in the config
+	if ($self->{logsource}{delete} and $self->{_curlog}) {
 		$self->debug2("Deleting log $self->{_curlog}");
 		eval { $self->{sftp}->do_remove($self->{_dir} . "/" . $self->{_curlog}) };
 		if ($@) {
@@ -225,10 +251,16 @@ sub _opennextlog {
 			undef $self->{_curlog};
 			last;					# that's it, we give up
 		}
+#		binmode($FH, ":encoding(UTF-8)");
 		$self->debug2("Downloading log $self->{_curlog}");
-#		$self->info("SFTP: Downloading log $self->{_curlog}");
 		if (!$self->{sftp}->get( $self->{_dir} . "/" . $self->{_curlog}, undef, \&_get_callback)) {
-			$self->warn("Error downloading file: " . ($self->{sftp}->status)[1]);
+			my @status = $self->{sftp}->status;
+			# if a file is empty (or not found) get() will fail but the status will not actually be errored
+			if ($status[0]) {
+				$self->fatal("Error downloading file $self->{_dir}/$self->{_curlog}: " . $status[1]);
+				last; # don't download any more logs if we fail
+			}
+			undef $FH;
 			if (@{$self->{_logs}}) {
 				$self->{_curlog} = shift @{$self->{_logs}};
 			} else {
@@ -237,8 +269,8 @@ sub _opennextlog {
 		} else {
 			seek($FH,0,0);		# back up to the beginning of the file, so we can read it
 
-			if ($self->{savedir}) {			# save entire file to our local directory ...
-				my $file = catfile($self->{savedir}, $self->{_curlog});
+			if ($self->{logsource}{savedir}) {			# save entire file to our local directory ...
+				my $file = catfile($self->{logsource}{savedir}, $self->{_curlog});
 				my $path = (splitpath($file))[1] || '';
 				eval { mkpath($path) } if $path and !-d $path;
 				if (open(F, ">$file")) {
@@ -246,7 +278,7 @@ sub _opennextlog {
 						print F $line;
 					}
 					close(F);
-					seek($FH,0,0);
+					seek($FH,0,0);	# back up again; since we still need to process it
 				} else {
 					$::ERR->warn("Error creating local file for writting ($file): $!");
 				}
@@ -273,10 +305,9 @@ sub next_event {
 	}
 
 	# read the next line, if it's undef (EOF), get the next log in the queue
-	my $fh = $FH;
-	while (!defined($line = <$fh>)) {
-		$fh = $self->_opennextlog;
-		return undef unless $fh;
+	while (!defined($line = <$FH>)) {
+		$self->_opennextlog;
+		return undef unless $FH;
 	}
 
 	if ($self->{_verbose}) {
@@ -287,6 +318,8 @@ sub next_event {
 #		$self->{_lasttime} = time;
 	}
 
+	$self->save_state if time - $self->{_last_saved} > 60;
+
 	my @ary = ( $self->{_curlog}, $line, ++$self->{_curline} );
 	return wantarray ? @ary : [ @ary ];
 }
@@ -296,6 +329,9 @@ sub save_state {
 
 	$self->{state}{file} = $self->{_curlog};
 	$self->{state}{line} = $self->{_curline};
+	$self->{state}{pos}  = defined $FH ? tell($FH) : undef;
+
+	$self->{_last_saved} = time;
 
 	$self->SUPER::save_state;
 }
@@ -303,8 +339,8 @@ sub save_state {
 sub done {
 	my $self = shift;
 	$self->SUPER::done(@_);
-	$self->{ftp}->quit if defined $self->{ftp};
-	$self->{ftp} = undef;
+#	$self->{sftp}->quit if defined $self->{sftp};
+	$self->{sftp} = undef;
 }
 
 1;

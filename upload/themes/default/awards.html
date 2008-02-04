@@ -1,11 +1,76 @@
-{include
-	file			= "main_body.html"
-	title 			= "<#Player Awards#>"
-	leftblock 		= 1
-	rightblock 		= 0
-	headertitle		= "<#Player Awards#>"
-	headercontentfile 	= "awards_header.html"
-	topleftcontent		= "awards_left.html"
-	contentfile		= "awards_body.html" 
-	viewbuttons		= 1
-}
+<!--outermost page container for all content-->
+<div id="ps-page-container">
+
+<!--inner container for the content-->
+<div id="ps-main">
+
+	<div id="ps-page-title">
+		<div>
+		<h1><#Player Awards#></h1>
+		</div>
+	</div>
+
+<!--left column block -->
+<div id="ps-main-column">
+
+<div class="ps-column-frame no-ani">
+<div class="ps-column-header">{$view_str} <#View#></div>
+<div class="ps-column-content">
+{$calendar}
+</div>
+</div>
+
+</div>
+<!--end of left column -->
+
+<!--content block-->
+<div id="ps-main-content" class="ps-page-{$page}">
+
+
+<div id="ps-award-frame">
+
+<div class="ps-award-ctrl">
+{$prev_str} {$next_str} &nbsp;
+</div>
+
+{if $awards}
+<div id="ps-award-hdr">
+	<h1>{$awards_for_str}</h1>
+</div>
+{/if}
+
+{foreach from=$awards.player item='a'}
+	<div class="award{if $a.negative}-neg{/if}{if $plrid and $a.topplrid == $plrid} selected-plr{/if}">
+		<h2>{award_phrase award=$a}</h2>
+		<p>{$a.description|escape}</p>
+	</div>
+{foreachelse}
+	<#No player awards on this date#>
+{/foreach}
+
+{*
+{foreach from=$awards.weaponclass item='weaponclasses' key='class'}
+	{foreach from=$weaponclasses item='a'}
+	<div class="award{if $a.negative}-neg{/if}{if $plrid and $a.topplrid == $plrid} selected-plr{/if}">
+		<h2>{award_phrase award=$a class=$class}</h2>
+		<p>{$a.description|escape}</p>
+	</div>
+	{/foreach}
+{foreachelse}
+	<#No weapon class awards on this date#>
+{/foreach}
+*}
+
+{if $awards}
+<div class="ps-award-ctrl-bottom">
+{$prev_str} {$next_str} &nbsp;
+</div>
+{/if}
+
+</div> {* end ps-award-frame *}
+
+</div> {* end ps-main-content *}
+
+</div> {* end ps-main *}
+
+</div> {* end ps-page-container *}

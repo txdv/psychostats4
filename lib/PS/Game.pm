@@ -1,10 +1,14 @@
 # Factory class for all games
 # A $conf and $db object must always be passed to new. If no gametype is found a fatal error is given.
 # All game types should inherit this parent class for functionality.
+#
+# $Id$
+#
 package PS::Game;
 
 use strict;
 use warnings;
+use FindBin;
 use base qw( PS::Debug );
 use util qw( :date :time :numbers :net );
 use PS::Config;			# for loadfile() function
@@ -18,9 +22,9 @@ use POSIX qw(floor strftime mktime);
 use Time::Local;
 use Safe;
 
-our $VERSION = '1.00';
+our $VERSION = '1.12.' . ('$Rev$' =~ /(\d+)/)[0];
 
-our @DAILY = qw( all maxdays decay players clans ranks awards );
+our @DAILY = qw( all maxdays decay activity players clans ranks awards );
 
 sub new {
 	my $proto = shift;
@@ -53,8 +57,36 @@ sub _init {
 
 	$self->{evconf} = {};
 	$self->{evorder} = [];
+	$self->{evorder_idx} = 0;
 	$self->{evregex} = sub {};
-#	$self->load_events(*DATA);
+	$self->{evloaded} = {};			# keep track of which dynamic event methods were loaded already
+	$self->load_events('','');		# load global events
+	$self->load_events(undef,'');		# load events for the gametype
+	$self->load_events(undef,undef);	# load events for the game:mod
+
+	$self->{bonuses} = {};
+	$self->load_bonuses('','');		# load global bonuses
+	$self->load_bonuses(undef,'');		# load bonuses for the gametype
+	$self->load_bonuses(undef,undef);	# load bonuses for the game:mod
+
+	# DEBUG option to dump the events list to help verify the proper bonuses are being loaded
+	if ($self->{conf}->get_opt('dumpbonuses')) {
+		my $width = 0;
+		foreach my $ev (keys %{$self->{bonuses}}) {
+			$width = length($ev) if length($ev) > $width;
+		}
+		printf("%-${width}s %5s %5s %5s %5s\n", "Player Bonuses", "E","ET", "V", "VT");
+		foreach my $ev (sort keys %{$self->{bonuses}}) {
+			printf("%-${width}s %5d,%5d,%5d,%5d\n", 
+				$ev,
+				$self->{bonuses}{$ev}{enactor},
+				$self->{bonuses}{$ev}{enactor_team},
+				$self->{bonuses}{$ev}{victim},
+				$self->{bonuses}{$ev}{victim_team}
+			);
+		}
+		main::exit();
+	}
 
 	$self->{_plraliases} = {};		# stores a cache of player aliases fetched from the database
 	$self->{_plraliases_age} = time();
@@ -70,6 +102,7 @@ sub _init {
 	# get() the option ONCE from the config instead of calling it over and over in the event code
 	$self->{clantag_detection} = $conf->get_main('clantag_detection');
 	$self->{report_unknown} = $conf->get_main('errlog.report_unknown');
+	$self->{report_timestmaps} = $conf->get_main('errlog.report_timestamps');
 	$self->{ignore_bots_conn} = $conf->get_main('ignore_bots_conn');
 	$self->{ignore_bots} = $conf->get_main('ignore_bots');
 	$self->{baseskill} = $conf->get_main('baseskill');
@@ -78,18 +111,9 @@ sub _init {
 #	$self->{charset} = $conf->get_main('charset');
 	$self->{usercmds} = $conf->get_main('usercmds');
 	$self->{skillcalc} = $conf->get_main('skillcalc');
-	$self->{plr_save_on} = $conf->get_main('plr_save_on');
 	$self->{minconnected} = $conf->get_main('minconnected');
 	$self->{maxdays_exclusive} = $conf->get_main('maxdays_exclusive');
-
-	# initialize player bonuses (bonuses are not part of the normal config and must be loaded separately)
-	my $g = $db->quote($conf->get_main('gametype'));
-	my $m = $db->quote($conf->get_main('modtype'));
-	my @list = $db->get_rows_hash("SELECT * FROM $db->{t_config_plrbonuses} WHERE (gametype=$g or gametype='') AND (modtype=$m or modtype='')");
-	$self->{bonuses} = {};
-	foreach my $b (@list) {
-		$self->{bonuses}{ $b->{event} } = $b;
-	}
+	$self->{plr_save_on_round} = $conf->get_main('plr_save_on_round');
 
 	# initialize the adjustment levels for the ELO calculations
 	$self->{_adj_onlinetime} = [];
@@ -137,15 +161,24 @@ sub _init {
 	return $self;
 }
 
-sub minconnected { return ( ($_[0]->{minconnected} == 0) or (scalar keys %{$_[0]->{plrs}} > $_[0]->{minconnected}) ) }
+# we only want active players to count towards the minconnected value, 
+# since players are not always removed from memory as soon as they disconnect.
+# This function is kept is small as possible for speed. However, it's very slow
+# to have to call ->active for all players every time this function is called. 
+sub minconnected { 
+	return 1 if $_[0]->{minconnected} == 0;
+	# TODO: come up with a better way to track total players online so we don't have to do this loop.
+	return grep($_[0]->{c_plrid}{$_}->active, keys %{$_[0]->{c_plrid}}) >= $_[0]->{minconnected};
+}
 
 # Add's a player BAN to the database. 
 # Does nothing If the ban already exists unless $overwrite is true
-# ->addban('matchtype', 'str', {extra})
+# ->addban(plr, {extra})
 sub addban {
 	my $self = shift;
-	my $matchtype = shift;
-	my $matchstr = shift;
+	my $plr = shift;
+	my $matchtype = 'worldid';
+	my $matchstr = $plr->worldid;
 	my $opts = ref $_[0] ? shift : { @_ };
 	my $overwrite = 0;
 	if (exists $opts->{overwrite}) {
@@ -153,23 +186,69 @@ sub addban {
 		delete $opts->{overwrite};
 	}
 
-	$matchtype = 'worldid' unless $matchtype =~ /^(worldid|ipaddr|name)$/;
+#	$matchtype = 'worldid' unless $matchtype =~ /^(worldid|ipaddr|name)$/;
 
 	my $db = $self->{db};
 	my $str = $db->quote($matchstr);
 	my ($exists,$enabled) = $db->get_row_array("SELECT id,enabled FROM $db->{t_config_plrbans} WHERE matchtype='$matchtype' AND matchstr=$str LIMIT 1");
 
-	if (!$exists) {
-		$db->insert($db->{t_config_plrbans}, {
-			'id'		=> $db->next_id($db->{t_config_plrbans}), 
+	if (!$exists or $overwrite) {
+		my $set = {
 			'matchtype'	=> $matchtype,
 			'matchstr'	=> $matchstr,
 			'enabled'	=> defined $opts->{enabled} ? $opts->{enabled} : 1,
-			'bandate'	=> $opts->{bandate} || time,
-			'reason'	=> $opts->{reason} || '',
-		});
+			'ban_date'	=> $opts->{ban_date} || time,
+			'ban_reason'	=> $opts->{reason} || ''
+		};
+
+		if ($exists) {
+			$db->update($db->{t_config_plrbans}, $set, 'id', $exists);
+		} else {
+			# add the ban to the config
+			$set->{id} = $db->next_id($db->{t_config_plrbans});
+			$db->insert($db->{t_config_plrbans}, $set);
+		}
+
+		# add a plrban record for historical purposes (only if there isn't already an active ban)
+		my ($active) = $db->get_row_array("SELECT 1 FROM $db->{t_plr_bans} WHERE plrid=" . $plr->plrid . " AND unban_date IS NULL");
+		if (!$active) {
+			$set = {
+				'plrid'		=> $plr->plrid,
+				'ban_date'	=> $opts->{ban_date} || time,
+				'ban_reason'	=> $opts->{reason}
+			};
+			$db->insert($db->{t_plr_bans}, $set);
+		}
+
 	} elsif (defined $opts->{enabled} and $opts->{enabled} ne $enabled) {
 		$db->update($db->{t_config_plrbans}, { enabled => $opts->{enabled} }, [ id => $exists ]);
+	}
+}
+
+# Removes a player BAN from the database. 
+# ->unban(plr)
+sub unban {
+	my $self = shift;
+	my $plr = shift;
+	my $opts = ref $_[0] ? shift : { @_ };
+	my $matchtype = 'worldid';
+	my $matchstr = $plr->worldid;
+
+#	$matchtype = 'worldid' unless $matchtype =~ /^(worldid|ipaddr|name)$/;
+
+	my $db = $self->{db};
+	my $str = $db->quote($matchstr);
+
+	# delete the config record
+	$db->query("DELETE FROM $db->{t_config_plrbans} WHERE matchtype='$matchtype' AND matchstr=$str");
+
+	# update the active ban record for the player
+	my ($active) = $db->get_row_array("SELECT ban_date FROM $db->{t_plr_bans} WHERE plrid=" . $plr->plrid . " AND unban_date IS NULL");
+	if ($active) {
+		$db->update($db->{t_plr_bans}, 
+			{ unban_date => $opts->{unban_date} || time, 'unban_reason' => $opts->{reason} }, 
+			[ plrid => $plr->plrid, 'ban_date' => $active ]
+		);
 	}
 }
 
@@ -196,9 +275,10 @@ sub isbanned {
 		return $self->{banned}{$match}{ $m->{$match} } if exists $self->{banned}{$match}{ $m->{$match} };
 
 		$matchstr = ($match eq 'ipaddr') ? int2ip($m->{$match}) : $m->{$match}; 
-		($banned) = $self->{db}->get_row_array("SELECT id FROM $self->{db}{t_config_plrbans} " . 
-			"WHERE enabled=1 AND matchtype='$match' AND " . $self->{db}->quote($matchstr) . " LIKE matchstr");
-
+		($banned) = $self->{db}->get_row_array(
+			"SELECT id FROM $self->{db}{t_config_plrbans} " . 
+			"WHERE enabled=1 AND matchtype='$match' AND " . $self->{db}->quote($matchstr) . " LIKE matchstr"
+		);
 		$self->{banned}{$match}{ $m->{$match} } = $banned;
 		return $banned if $banned;
 	}
@@ -291,10 +371,6 @@ sub clantags_str_func {
 				$tag = $ct->{clantag};
 				last;
 			}
-#			if (substr($name, -length($ct->{clantag})) eq $ct->{clantag}) {
-#				$tag = $ct->{clantag};
-#				last;
-#			}
 		}
 	}
 	return undef unless $tag;
@@ -304,16 +380,9 @@ sub clantags_str_func {
 # prepares the EVENT patterns
 sub init_events {
 	my $self = shift;
-
 	# sort all event patterns in the order they were loaded
-	$self->{evorder} = [ sort {$self->{evconf}{$a}{IDX} <=> $self->{evconf}{$b}{IDX}} keys %{$self->{evconf}} ];
+	$self->{evorder} = [ sort {$self->{evconf}{$a}{idx} <=> $self->{evconf}{$b}{idx}} keys %{$self->{evconf}} ];
 	$self->{evregex} = $self->_build_regex_func;
-
-	# transform the 'options' string into a hash for all events
-	foreach my $ev (keys %{$self->{evconf}}) {
-		my $str = $self->{evconf}{$ev}{options} || '';
-		$self->{evconf}{$ev}{options} = { map { /([^=]+)=([^,\s]+)/ ? ($1 => $2) : ($_ => 1) } split(/\s*[, ]\s*/,$str) };
-	}
 }
 
 sub _build_regex_func {
@@ -323,23 +392,34 @@ sub _build_regex_func {
 
 #	$code .= "  study \$_[0];\n";			# not sure if I want this yet... Haven't done any benchmarks yet
 
-	foreach my $re (@{$self->{evorder}}) {
-		my $regex = $self->{evconf}{$re}{regex};
+	foreach my $ev (@{$self->{evorder}}) {
+		my $regex = $self->{evconf}{$ev}{regex};
+		my $event = 'event_' . ($self->{evconf}{$ev}{alias} || $ev);
+		# make sure a regex was configured
 		unless ($regex) {
-			$self->warn("Ignoring event '$re' (No regex defined)");
+			$self->warn("Ignoring event '$ev' (No regex defined)");
 			next;
 		}
-		unless ($regex =~ m|^/.+/$|) {		# make sure it begins and ends with a /
-			$self->warn("Ingoring event '$re' (Invalid terminators)");
+		# make sure regex is /surrounded/
+		unless ($regex =~ m|^/.+/$|) {
+			$self->warn("Ignoring event '$ev' (Invalid terminators)");
 			next;
 		}
+		# verify a method exists (unless its configured to be ignored)
+		if (!$self->{evconf}{$ev}{ignore} and !$self->can($event)) {
+			$self->warn("Ignoring event '$ev' (No method available)");
+			$self->{evconf}{$ev}{ignore} = 1;
+		}
+
+		# test the regex syntax (safely; avoid code injections)
 		$env->reval($regex);
 		if ($@) {
-			$self->warn("Invalid regex for event '$re' regex $regex:\n$@");
+			$self->warn("Invalid regex for event '$ev' regex $regex:\n$@");
 			next;
 		}
-		$code .= "  return ('$re',\\\@parms) if \@parms = (\$_[0] =~ $regex);\n";
+		$code .= "  return ('$ev',\\\@parms) if \@parms = (\$_[0] =~ $regex);\n";
 	}
+	# debug: -dumpevents on command line to see the sub that is created
 	if ($self->{conf}->get_opt('dumpevents')) {
 		print "sub {\n  my \@parms = ();\n$code  return (undef,undef);\n}\n";
 		main::exit();
@@ -348,27 +428,54 @@ sub _build_regex_func {
 }
 
 # Takes a Feeder object and processes all events from it.
+# in scalar context the total logs processed is returned, 
+# in array context a two element array is returned including total (logs, lines)
 sub process_feed {
 	my $self = shift;
 	my $feeder = shift;
-	my $total = 0;
+	my $logs = 0;
+	my $lines = 0;
+	my $count = 0;
+	my $start = time;
+	my $abs_lines = $self->{conf}->get_opt('maxlines');	# if these are reached, stats processing stops
+	my $abs_logs  = $self->{conf}->get_opt('maxlogs');	# ...
+	my $max_seconds = $self->{conf}->get_main('daily.maxminutes') * 60;	# if these are reached, updates are performed
+	my $max_lines = $self->{conf}->get_main('daily.maxlines');		# ...
+	
 
+	$self->{curmap} = $feeder->defaultmap;
 	$self->init_events;
 
 	# loop through all events that the feeder has in it's queue
 	my $lastsrc = '';
 	while (defined(my $ev = $feeder->next_event)) {
+		$lines++;
+		$count++;
 		my ($src, $event, $line) = @$ev;
 		if ($src ne $lastsrc) {
-			$::ERR->verbose("Processing $src (" . $feeder->lines_per_second . " lines ps / " . $feeder->bytes_per_second(1) . ")");
+			last if defined $abs_logs and $logs >= $abs_logs;
+			$::ERR->verbose("Processing $src (" . $feeder->lines_per_second . " lps / " . $feeder->bytes_per_second(1) . ")");
 			$lastsrc = $src;
 			$self->new_source($src);
-			$total++;
+			$logs++;
 		}
 
 		$self->event($src, $event, $line);
+
+		# every X lines we should recalc everything to help with really long processing passes
+		if (($max_lines and ($count % $max_lines == 0)) or (time - $start >= $max_seconds)) {
+			$count = 0;
+			$start = time;
+			# perform all daily updates (except awards)
+			foreach my $d (@PS::Game::DAILY) {
+				next if $d eq 'awards';		# we don't do awards (they take too long)
+				my $f = 'daily_' . $d;
+				$self->$f if $self->can($f);
+			}
+		}
+		last if defined $abs_lines and $lines >= $abs_lines;
 	}
-	return $total;
+	return wantarray ? ($logs, $lines) : $logs;
 }
 
 # abstact event method. All sub classes must override.
@@ -377,13 +484,107 @@ sub event { $_[0]->fatal($_[0]->{class} . " has no 'event' method implemented. H
 # Called everytime the log source changes
 sub new_source { }
 
+# Loads the player bonuses config for the current game
+# may be called several times to overload previous values
+# game/mod type 'undef' means to use the current config settings. a blank string will load global values
+sub load_bonuses {
+	my $self = shift;
+	my ($gametype, $modtype) = @_;
+	my $db = $self->{db};
+	my $conf = $self->{conf};
+	my $g = defined $gametype ? $gametype : $self->{conf}->get_main('gametype');
+	my $m = defined $modtype  ? $modtype  : $self->{conf}->get_main('modtype');
+	my $match = '';
+	my @bonuses = ();
+
+	$match .= $g ? $db->quote($g) . " REGEXP CONCAT('^', gametype, '\$')" : "gametype=''";
+	$match .= " AND ";
+	$match .= $m ? $db->quote($m) . " REGEXP CONCAT('^', modtype, '\$')" : "modtype=''";
+	@bonuses = $db->get_rows_hash("SELECT * FROM $db->{t_config_plrbonuses} WHERE $match");
+
+	foreach my $b (@bonuses) {
+		$self->{bonuses}{ $b->{eventname} } = $b;
+	}
+}
+
 # Loads the event config for the current game
 # may be called several times to overload previous values
-# $fh is a filehandle that has already been opened (generally *DATA from the calling module)
+# game/mod type 'undef' means to use the current config settings. a blank string will load global values
 sub load_events {
 	my $self = shift;
-	my $fh = shift;
-	$self->{evconf} = PS::Config->loadfile( filename => $fh, oldconf => $self->{evconf}, noarrays => 1 );
+	my ($gametype, $modtype) = @_;
+	my $db = $self->{db};
+	my $conf = $self->{conf};
+	my $g = defined $gametype ? $gametype : $self->{conf}->get_main('gametype');
+	my $m = defined $modtype  ? $modtype  : $self->{conf}->get_main('modtype');
+	my $path = catfile($FindBin::Bin, 'lib', 'PS', 'Events', '');
+	my $match = '';
+	my @events = ();
+
+	$match .= $g ? $db->quote($g) . " REGEXP CONCAT('^', gametype, '\$')" : "gametype=''";
+	$match .= " AND ";
+	$match .= $m ? $db->quote($m) . " REGEXP CONCAT('^', modtype, '\$')" : "modtype=''";
+	@events = $db->get_rows_hash("SELECT * FROM $db->{t_config_events} WHERE $match ORDER BY idx");
+
+	foreach my $e (@events) {
+		# load the event code if there is a file matching the event (and it hasn't been loaded already)
+		my $event = 'event_' . ($e->{codefile} || $e->{eventname});
+#		if (!exists $self->{evloaded}{$event}) {
+			my $file = $event . '.pl';
+			if (-f "$path$file") {
+				# sanity check; do not allow files larger then 512k
+				if (-s "$path$file" > 1024*512) {
+					$self->warn("Error in event code '$event': File size too large (>512k)");
+					next;
+				}
+	
+				my $code = "";
+				if (open(F, "<$path$file")) {
+					$code = join('', <F>);
+					close(F);
+				} else {
+					$self->warn("Error reading event code 'event': $!");
+					next;
+				}
+
+				# sanity check; if the eval fails then ignore this code
+				my $eval = new Safe;
+				$eval->reval($code);
+				if ($@) {
+					$self->warn("Error in event code '$event': $@");
+					next;
+				} else {
+					# eval it in the current scope
+					# this has to be done since reval() makes it private in its own scope
+					eval $code;
+				}
+
+				$self->{evloaded}{$event} = "$path$file";
+			} else {
+				my $func = $e->{alias} ? 'event_' . $e->{alias} : $event;
+				# only error if a codefile was specified in the config
+				if (!$self->can($func) and $e->{codefile}) {
+					$self->warn("Error loading event code for '$event': $path$file: File does not exist");
+					next;
+				}
+			}
+#		}
+
+		my $i = 0;
+		if (exists $self->{evconf}{$e->{eventname}}) {
+			$i = $self->{evconf}{$e->{eventname}}{idx};
+			$self->{evorder_idx} = $i if $i > $self->{evorder_idx};
+		} else {
+			$i = ++$self->{evorder_idx};
+		}
+		$self->{evconf}{$e->{eventname}} = {
+			alias		=> $e->{alias},
+			regex		=> $e->{regex},
+			idx		=> $i, 
+			ignore		=> $e->{ignore},
+			codefile	=> $e->{codefile}
+		};
+	}
 }
 
 # returns the 'alias' for the uniqueid given.
@@ -410,23 +611,75 @@ sub get_plr_alias {
 sub get_team {
 	my ($self, $team, $all) = @_;
 	my (@list, @ids);
-	@ids = grep { $self->{plrs}{$_}->{team} eq $team } keys %{$self->{plrs}};
-	@ids = grep { !$self->{plrs}{$_}->{isdead} } @ids unless $all;
-	@list = map { $self->{plrs}{$_} } @ids;
+	@ids = grep { $self->{c_plrid}{$_}->{team} eq $team and $self->{c_plrid}{$_}->active } keys %{$self->{c_plrid}};
+	@ids = grep { !$self->{c_plrid}{$_}->{isdead} } @ids unless $all;
+	@list = map { $self->{c_plrid}{$_} } @ids;
 	return wantarray ? @list : \@list;
 }
 
-# returns a list of all connected players. 
-sub get_plr_list { wantarray ? %{$_[0]->{plrs}} : $_[0]->{plrs} }
+# returns an array of all connected players (only active by default)
+sub get_plr_list { 
+	my ($self, $active_only) = @_;
+	$active_only = 1 unless defined $active_only;
+	my @list;
+	if ($active_only) {
+		@list = map { $self->{c_plrid}{$_} } grep { $self->{c_plrid}{$_}->active } keys %{$self->{c_plrid}};
+	} else {
+		@list = map { $self->{c_plrid}{$_} } keys %{$self->{c_plrid}};
+	}
+	return wantarray ? @list : \@list;
+}
 
-# The feeder object will call this method after it has loaded its state information.
+# returns a count of online players
+sub get_online_count {
+	my ($self) = @_;
+	return ( grep { $self->{c_plrid}{$_}->active } keys %{$self->{c_plrid}} );
+}
+
+# The feeder object will call this method after it has loaded previous state information
+# to load all players and other information that were in memory before the previous shutdown.
 # ->restore_state($state)
-sub restore_state { }
+sub restore_state {
+	my $self = shift;
+	my $state = shift || return;
+	my $map;
+
+	# restore the map and timestamp
+	$self->{timestamp} = $state->{timestamp};
+	if ($state->{map}) {
+		$self->{curmap} = $state->{map};
+		$map = $self->get_map;
+	}
+
+	# restore the IP cache 
+	$self->{ipcache} = (defined $state->{ipaddrs} and scalar keys %{$state->{ipaddrs}}) ? { %{$state->{ipaddrs}} } : {};
+
+	# restore the players that were online previously
+	if ($state->{players}) {
+		foreach my $plr (@{$state->{players}}) {
+			my $plrids = { name => $plr->{name}, worldid => $plr->{worldid}, ipaddr => $plr->{ipaddr} };
+			my $p = new PS::Player($plrids, $self) || next;
+			$p->signature($plr->{plrsig});
+			$p->timerstart($self->{timestamp});
+			$p->uid($plr->{uid});
+			$p->team($plr->{team});
+			$p->role($plr->{role}) if $plr->{role};
+			$p->is_dead($plr->{isdead});
+			$p->active(1);
+			$self->addcache_all($p);
+		}
+	}
+
+#	print "state timestamp: 	" . localtime($state->{timestamp}) . "\n";
+#	print "map restored: 		" . $map->name . "\n" if $map;
+#	print "player IDs restored: 	", join(', ', map { $self->{c_plrid}{$_}->{plrid} } keys %{$self->{c_plrid}}), "\n";
+#	print "total IP's restored: 	", scalar keys %{$self->{ipcache}}, "\n";
+}
 
 # resets the isdead status of all players
 sub reset_isdead {
 	my ($self, $isdead) = @_;
-	map { $self->{plrs}{$_}->isDead($isdead || 0) } keys %{$self->{plrs}};
+	map { $self->{c_plrid}{$_}->is_dead($isdead || 0) } keys %{$self->{c_plrid}};
 }
 
 sub calcskill_kill_default {
@@ -605,74 +858,45 @@ sub daily_awards {
 	my $oneweek = $oneday * 7;
 	my $startofweek = $conf->get_main('awards.startofweek');
 	my $weekcode = '%V'; #$startofweek eq 'monday' ? '%W' : '%U';
+	my $dodaily = $conf->get_main('awards.daily');
 	my $doweekly = $conf->get_main('awards.weekly');
 	my $domonthly = $conf->get_main('awards.monthly');
-	my $dodaily = 0;
 	my $fullmonthonly = !$conf->get_main('awards.allow_partial_month');
 	my $fullweekonly = !$conf->get_main('awards.allow_partial_week');
+	my $fulldayonly = !$conf->get_main('awards.allow_partial_day');
 
 	$::ERR->info(sprintf("Daily 'awards' process running (Last updated: %s)", 
 		$lastupdate ? scalar localtime $lastupdate : 'never'
 	));
 
-	if (!$doweekly and !$domonthly) {
-		$::ERR->info("Weekly and Monthly awards are disabled. Aborting award calculations.");
+	if (!$dodaily and !$doweekly and !$domonthly) {
+		$::ERR->info("Awards are disabled. Aborting award calculations.");
 		return;
 	}
 
 	# gather awards that match our gametype/modtype and are valid ...
 	my $g = $db->quote($conf->get_main('gametype'));
 	my $m = $db->quote($conf->get_main('modtype'));
-	my @awards = $db->get_rows_hash("SELECT * FROM $db->{t_config_awards} WHERE enabled AND (gametype=$g or gametype='') AND (modtype=$m or modtype='')");
+	my @awards = $db->get_rows_hash("SELECT * FROM $db->{t_config_awards} WHERE enabled=1 AND (gametype=$g or gametype='' or gametype IS NULL) AND (modtype=$m or modtype='' or modtype IS NULL)");
 
-	my ($oldest, $newest) = $db->get_row_array("SELECT MIN(statdate), MAX(statdate) FROM $db->{t_map_data}");
+	my ($oldest, $newest) = $db->get_row_array("SELECT MIN(statdate), MAX(statdate) FROM $db->{t_plr_data}");
 	if (!$oldest and !$newest) {
 		$::ERR->info("No historical stats available. Aborting award calculations.");
 		return;
 	}
 
-	# generate a daily or weekly/monthly awards
+	$oldest = ymd2time($oldest);
+	$newest = ymd2time($newest);
+
 	my $days = [];
-	if (defined $conf->get_opt('award') and $conf->get_opt('start')) {
-		$doweekly = $domonthly = $oldest = $newest = 0;
-		$dodaily = 1;
-		$oldest = ymd2time($conf->get_opt('start')) if $conf->get_opt('start') =~ /^\d\d\d\d-\d\d?-\d\d?$/;
-		if ($oldest) {
-			if ($conf->get_opt('end')) {
-				if ($conf->get_opt('end') =~ /^\d\d\d\d-\d\d?-\d\d?$/) {
-					$newest = ymd2time($conf->get_opt('end'));
-				} elsif ($conf->get_opt('end') =~ /^\d+$/) {
-					$newest = $oldest + 60*60*24*($conf->get_opt('end')-1);
-				}
-			} else {
-				$newest = $oldest;
-			}
+	if ($dodaily) {
+		my $curdate = $oldest;
+		while ($curdate <= $newest) {
+			last if $fulldayonly and $curdate + $oneday > $newest;
+			push(@$days, $curdate);
+#			$::ERR->verbose(strftime("daily: %Y-%m-%d\n", localtime($curdate)));
+			$curdate += $oneday;						# go forward 1 day
 		}
-		if (!$oldest or !$newest) {
-			$::ERR->warn("Invalid daily award date given. Aborting award calculations.");
-			return;
-		}
-		# override @awards to the single award that was specified (by name or ID)
-		if (my $a = $conf->get_opt('award')) {
-			my $id = 0;
-			if ($a =~ /^\d+$/) {
-				$id = $a;
-			} else {
-				$id = $db->select($db->{t_config_awards}, 'id', [ name => $a ]);
-			}
-			@awards = $db->get_rows_hash("SELECT * FROM $db->{t_config_awards} WHERE enabled AND (gametype=$g or gametype='') AND (modtype=$m or modtype='') AND id=$id") if $id;
-			if (!@awards or !$id) {
-				$::ERR->warn("Invalid award name or ID given. Aborting award calculations.");
-				return;
-			}
-		}
-
-		# temp: right now I am only allowing it to generate a 'day' award on the date that was specified (not a range)
-		push(@$days, $oldest);
-
-	} else {
-		$oldest = ymd2time($oldest);
-		$newest = ymd2time($newest);
 	}
 
 	my $weeks = [];
@@ -769,9 +993,9 @@ sub daily_decay {
 	my $db = $self->{db};
 	my $lastupdate = $self->{conf}->getinfo('daily_decay.lastupdate') || 0;
 	my $start = time;
-	my $decay_hours = $conf->get_main('players.decay_hours');
-	my $decay_type = $conf->get_main('players.decay_type');
-	my $decay_value = $conf->get_main('players.decay_value');
+	my $decay_hours = $conf->get_main('decay.hours');
+	my $decay_type = $conf->get_main('decay.type');
+	my $decay_value = $conf->get_main('decay.value');
 	my ($sth, $cmd);
 
 	if (!$decay_type) {
@@ -833,10 +1057,10 @@ sub daily_clans {
 	return 0 unless $db->table_exists($db->{c_plr_data});
 
 	# gather our min/max rules ...
-	$rules = { %{$self->{conf}->get_main('clans') || {}} };
-	delete @$rules{ qw(IDX SECTION) };
-	@min = ( map { s/^min_//; $_ } grep { /^min_/ && $rules->{$_} ne '' } keys %$rules );
-	@max = ( map { s/^max_//; $_ } grep { /^max_/ && $rules->{$_} ne '' } keys %$rules );
+	$rules = { %{$self->{conf}->get_main('ranking') || {}} };
+#	delete @$rules{ qw(IDX SECTION) };
+	@min = ( map { s/^clan_min_//; $_ } grep { /^clan_min_/ && $rules->{$_} ne '' } keys %$rules );
+	@max = ( map { s/^clan_max_//; $_ } grep { /^clan_max_/ && $rules->{$_} ne '' } keys %$rules );
 
 	# add extra fields to our query that match values in our min/max arrays
 	# if the matching type in $types is a reference then we know it's a calculated field and should 
@@ -860,15 +1084,15 @@ sub daily_clans {
 	while (my $row = $sth->fetchrow_hashref) {
 		# does the clan meet all the requirements for ranking?
 		$allowed = (
-			((grep { ($row->{$_}||0) < $rules->{'min_'.$_} } @min) == 0) 
+			((grep { ($row->{$_}||0) < $rules->{'clan_min_'.$_} } @min) == 0) 
 			&& 
-			((grep { ($row->{$_}||0) > $rules->{'max_'.$_} } @max) == 0)
+			((grep { ($row->{$_}||0) > $rules->{'clan_max_'.$_} } @max) == 0)
 		) ? 1 : 0;
 		if (!$allowed and $::DEBUG) {
 			$self->info("Clan failed to rank \"$row->{clantag}\" => " . 
 				join(', ', 
-					map { "$_: " . $row->{$_} . " < " . $rules->{"min_$_"} } grep { $row->{$_} < $rules->{"min_$_"} } @min,
-					map { "$_: " . $row->{$_} . " > " . $rules->{"max_$_"} } grep { $row->{$_} > $rules->{"max_$_"}} @max
+					map { "$_: " . $row->{$_} . " < " . $rules->{"clan_min_$_"} } grep { $row->{$_} < $rules->{"clan_min_$_"} } @min,
+					map { "$_: " . $row->{$_} . " > " . $rules->{"clan_max_$_"} } grep { $row->{$_} > $rules->{"clan_max_$_"}} @max
 				)
 			);
 		}
@@ -897,6 +1121,42 @@ sub daily_clans {
 	$::ERR->info("Daily process completed: 'clans' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
 }
 
+# daily process for updating player activity. this should be run before daily_players.
+sub daily_activity {
+	my $self = shift;
+	my $db = $self->{db};
+	my $lastupdate = $self->{conf}->getinfo('daily_activity.lastupdate');
+	my $start = time;
+	my $last = time;
+	my ($cmd, $sth);
+
+	return 0 unless $db->table_exists($db->{c_map_data});
+
+	$::ERR->info(sprintf("Daily 'activity' process running (Last updated: %s)", 
+		$lastupdate ? scalar localtime $lastupdate : 'never'
+	));
+
+	# the maps table is a small table and is a good target to determine the most recent timestamp in the database.
+	my $lasttime = $db->max($db->{c_map_data}, 'lasttime');
+	my $min_act = $self->{conf}->get_main('plr_min_activity') || 5;
+	$min_act *= 60*60*24;
+	# this query is smart enough to only update the players that have new activity since the last time it was calculated.
+	if ($db->type eq 'mysql') {
+		$cmd = "UPDATE $db->{t_plr} p, $db->{c_plr_data} d SET " . 
+			"p.lastactivity = $lasttime, " . 
+			"p.activity = IF($min_act > $lasttime - d.lasttime, " . 
+			"LEAST(100, 100 / $min_act * ($min_act - ($lasttime - d.lasttime)) ), 0) " . 
+			"WHERE p.plrid=d.plrid AND $lasttime > p.lastactivity";
+	} else {
+		# need to figure something out for SQLite
+	}
+	my $ok = $db->query($cmd);
+
+	$self->{conf}->setinfo('daily_activity.lastupdate', time);
+
+	$::ERR->info("Daily process completed: 'activity' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
+}
+
 # daily process for updating players. This should be run before daily_clans
 # Toggles players from being displayed based on the players config settings.
 sub daily_players {
@@ -908,17 +1168,17 @@ sub daily_players {
 	my $types = PS::Player->get_types;
 	my ($cmd, $sth, $sth2, $rules, @min, @max, $allowed, $fields);
 
+	return 0 unless $db->table_exists($db->{c_plr_data});
+
 	$::ERR->info(sprintf("Daily 'players' process running (Last updated: %s)", 
 		$lastupdate ? scalar localtime $lastupdate : 'never'
 	));
 
-	return 0 unless $db->table_exists($db->{c_plr_data});
-
 	# gather our min/max rules ...
-	$rules = { %{$self->{conf}->get_main('players') || {}} };
+	$rules = { %{$self->{conf}->get_main('ranking') || {}} };
 	delete @$rules{ qw(IDX SECTION) };
-	@min = ( map { s/^min_//; $_ } grep { /^min_/ && $rules->{$_} ne '' } keys %$rules );
-	@max = ( map { s/^max_//; $_ } grep { /^max_/ && $rules->{$_} ne '' } keys %$rules );
+	@min = ( map { s/^player_min_//; $_ } grep { /^player_min_/ && $rules->{$_} ne '' } keys %$rules );
+	@max = ( map { s/^player_max_//; $_ } grep { /^player_max_/ && $rules->{$_} ne '' } keys %$rules );
 
         # add extra fields to our query that match values in our min/max arrays
 	my %uniq = ( plrid => 1, uniqueid => 1, skill => 1 );
@@ -943,15 +1203,15 @@ sub daily_players {
 	while (my $row = $sth->fetchrow_hashref) {
 		# does the plr meet all the requirements for ranking?
 		$allowed = (
-			((grep { ($row->{$_}||0) < $rules->{'min_'.$_} } @min) == 0) 
+			((grep { ($row->{$_}||0) < $rules->{'player_min_'.$_} } @min) == 0) 
 			&& 
-			((grep { ($row->{$_}||0) > $rules->{'max_'.$_} } @max) == 0)
+			((grep { ($row->{$_}||0) > $rules->{'player_max_'.$_} } @max) == 0)
 		) ? 1 : 0;
 		if (!$allowed and $::DEBUG) {
 			$self->info("Player failed to rank \"$row->{name}\" " . ($self->{uniqueid} ne 'name' ?  "($row->{uniqueid})" : "") . "=> " . 
 				join(', ', 
-					map { "$_: " . $row->{$_} . " < " . $rules->{"min_$_"} } grep { $row->{$_} < $rules->{"min_$_"} } @min,
-					map { "$_: " . $row->{$_} . " > " . $rules->{"max_$_"} } grep { $row->{$_} > $rules->{"max_$_"}} @max
+					map { "$_: " . $row->{$_} . " < " . $rules->{"player_min_$_"} } grep { $row->{$_} < $rules->{"player_min_$_"} } @min,
+					map { "$_: " . $row->{$_} . " > " . $rules->{"player_max_$_"} } grep { $row->{$_} > $rules->{"player_max_$_"}} @max
 				)
 			);
 		}
@@ -1460,7 +1720,7 @@ sub daily_maxdays {
 
 	$::ERR->verbose("Deleting stale stats older than $oldest ...");
 
-	# first create a temporary tables to store ids (dont want to use potentially huge arrays in memory)
+	# first create temporary tables to store ids (dont want to use potentially huge arrays in memory)
 	$db->do("CREATE TEMPORARY TABLE deleteids (id INT UNSIGNED PRIMARY KEY)");
 	$db->do("CREATE TEMPORARY TABLE plrids (id INT UNSIGNED PRIMARY KEY)");
 	$db->do("CREATE TEMPORARY TABLE mapids (id INT UNSIGNED PRIMARY KEY)");
@@ -1576,7 +1836,7 @@ sub delete_clans {
 
 # resets all stats in the database. USE WITH CAUTION!
 # reset(1) resets stats and all profiles
-# reset(0) resets stats and NO profiles
+# reset(0 or undef) resets stats and NO profiles
 # reset(player => 1, clans => 0, weapons => 0) resets stats and only the profiles specified
 sub reset {
 	my $self = shift;
@@ -1587,19 +1847,20 @@ sub reset {
 	my $errors = 0;
 
 	my @empty_c = qw( c_map_data c_plr_data c_plr_maps c_plr_victims c_plr_weapons c_weapon_data c_role_data c_plr_roles );
-	my @empty_m = qw( t_map_data_mod t_plr_data_mod t_plr_maps_mod );
+	my @empty_m = qw( t_map_data_mod t_role_data_mod t_plr_data_mod t_plr_maps_mod t_plr_roles_mod );
 	my @empty = qw(
 		t_awards t_awards_plrs
 		t_clan
 		t_errlog
-		t_map t_map_data
-		t_plr t_plr_data t_plr_ids t_plr_maps t_plr_roles t_plr_sessions t_plr_victims t_plr_weapons
+		t_map t_map_data t_map_hourly
+		t_plr t_plr_data t_plr_ids_ipaddr t_plr_ids_name t_plr_ids_worldid 
+		t_plr_maps t_plr_roles t_plr_sessions t_plr_victims t_plr_weapons
 		t_role t_role_data
-		t_search t_state t_state_plrs
+		t_state 
 		t_weapon_data
 	);
 
-	# only reset these tables if explicyly told to
+	# only reset these tables if explicitly told to
 	push(@empty, 't_plr_profile') if $del->{players};
 	push(@empty, 't_clan_profile') if $del->{clans};
 	push(@empty, 't_weapon') if $del->{weapons};
@@ -1639,9 +1900,17 @@ sub reset {
 # sub classes want to override this to return a normalized team name based on the team string given.
 # this is required by some mods (like natural selection) where the team string in the log events
 # have extra characters that are useless.
-sub team_normal { $_[1] }
+sub team_normal { defined $_[1] ? $_[1] : '' }
+
+# takes an array of log filenames and returns a sorted result
+sub logsort {}
+
+# return -1,0,1 (<=>), depending on outcome of comparison of 2 log files
+sub logcompare { }
 
 sub has_mod_tables { 0 }
+
+sub event_ignore { }
 
 1;
 

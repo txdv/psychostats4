@@ -5,15 +5,12 @@
 
 */
 
-#die("TO USE THIS SCRIPT DELETE LINE #" . __LINE__ . " FROM THIS FILE\nThis script is only usable from a prompt (not the web)\n");
+die("TO USE THIS SCRIPT DELETE LINE #" . __LINE__ . " FROM THIS FILE\nThis script is only usable from a prompt (not the web)\n");
 define('PS_ROOTDIR', './');
 include('includes/class_PQ.php');
 
 $opts = array(
-//	'ip'		=> '69.12.37.162:27961',	// quake3
-//	'ip'		=> '64.237.35.108:23000',	// BFV (gamespy)
-	'ip'		=> '70.86.246.26:27015',	
-	'querytype'	=> 'halflife',			// 'halflife' is default so this is not actually needed
+	'querytype'	=> 'halflife',			// use 'oldhalflife' if it doesn't work for your server
 );
 
 if ($GLOBALS['argv'][1]) $opts['ip'] = $GLOBALS['argv'][1];	// get ip from command line if something is specified
@@ -26,7 +23,8 @@ $pq->DEBUG = 1;					// disable this if you do not want to see the debug output
 /**/
 print "server info:\n";
 //$data = $pq->query(array('info'));
-$data = $pq->query(array('info','players','rules'));
+#$data = $pq->query(array('info','players','rules'));
+$data = $pq->query('rules');
 //$data = $pq->query('info');
 //$data = $pq->query_info();
 //$data = $pq->query_players();

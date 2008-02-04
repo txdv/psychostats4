@@ -7,9 +7,10 @@ use warnings;
 use FindBin;
 use File::Spec::Functions;
 use POSIX qw( strftime );
-use util qw( :date :time :strings );
+use util qw( :all );
+use Safe;
 
-our $VERSION = '1.00';
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
 
 sub new {
 	my ($proto, $award, $game) = @_;
@@ -18,6 +19,7 @@ sub new {
 		award => $award,
 		game => $game, conf => $game->{conf}, db => $game->{db},
 		debug => 0, 
+		safe => undef
 	};
 	my $class;
 	my $path = catfile($FindBin::Bin,'lib','PS','Award');
@@ -90,6 +92,35 @@ sub valid_dates {
 	}
 
 	return wantarray ? @valid : [ @valid ];
+}
+
+# returns the award value given with the proper formatting configured
+sub format {
+	my ($self, $value) = @_;
+	my $format = $self->{award}{format};
+	if ($format =~ /^[a-zA-Z]+$/) {		# code
+		if ($format eq 'date') {
+			$value = date($self->{conf}->get_theme('format.date'), $value);
+		} elsif ($format eq 'datetime') {
+			$value = date($self->{conf}->get_theme('format.datetime'), $value);
+		} else { # commify, compacttime, ...
+			if (!$self->{safe}) {
+				$self->{safe} = new Safe;
+				$self->{safe}->share_from('util', [qw( &commify &compacttime &int2ip &abbrnum )]);
+			}
+			my $ret = $self->{safe}->reval("$format('\Q$value\E')");
+			if ($@) {
+				$::ERR->warn("Error in award #$self->{award}{id} format '$format': $@");
+			} else {
+				$value = $ret;
+			}
+		}
+		return $value;
+	} elsif (index($format, '%') > -1) {	# sprintf
+		return sprintf($format, $value);
+	} else {				# unknown/invalid format
+		return $value;
+	}
 }
 
 1;

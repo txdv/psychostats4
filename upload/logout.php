@@ -1,27 +1,30 @@
 <?php
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$validfields = array('themefile');
-globalize($validfields);
+$validfields = array('ref');
+$cms->theme->assign_request_vars($validfields, true);
 
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
-}
+if (!$cms->user->logged_in()) previouspage('index.php');
 
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'logout';
+$cms->session->online_status(0);
+
+// just redirect back to previous page
+//previouspage('index.php');
+
+// assign variables to the theme
+$cms->theme->assign(array(
+	// ...
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/forms.css');
+$cms->theme->add_refresh($ref ? $ref : 'index.php');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 
 
-if (user_logged_on()) {
-//	header("Cache-Control: no-cache, must-revalidate");
-	session_online_status(0);
-}
 
-
-$data['PAGE'] = 'logout';
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
-
-include(PS_ROOTDIR . '/includes/footer.php');
 ?>

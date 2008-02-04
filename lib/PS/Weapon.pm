@@ -6,7 +6,7 @@ use base qw( PS::Debug );
 use POSIX;
 use util qw( :date );
 
-our $VERSION = '1.00';
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
 our $BASECLASS = undef;
 
 our $GAMETYPE = '';
@@ -160,7 +160,7 @@ sub statdate {
 	$self->{statdate} = sprintf("%04d-%02d-%02d",$y,$m,$d);
 }
 
-sub get_types { return wantarray ? %$TYPES : $TYPES; }
+sub get_types { $TYPES }
 
 sub save {
 	my $self = shift;

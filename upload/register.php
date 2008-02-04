@@ -1,172 +1,141 @@
-<?php
-define("VALID_PAGE", 1);
+<?php 
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
-include(PS_ROOTDIR . '/includes/forms.php');
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$minpwlen = 6;
+$validfields = array('submit','cancel','ref');
+$cms->theme->assign_request_vars($validfields, true);
 
-//$ps->conf['main']['uniqueid'] = 'name';
-//$ps->conf['main']['registration'] = 'autoconfirm';
-
-$validfields = array('themefile','submit','cancel','ref');
-globalize($validfields);
-
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
-}
-
+//if ($cancel or $cms->user->logged_in()) previouspage('index.php');
 if ($cancel) previouspage('index.php');
 
-// form fields ...
-$formfields = array(
-	'uniqueid'	=> array('label' => 'WORLDID:', 				'val' => 'B', 'statustext' => "", 'errortext' => "You must provide your STEAMID"),
-	'username'	=> array('label' => $ps_lang->trans("Username"). ':', 		'val' => 'B', 'statustext' => $ps_lang->trans("Create a username for your account")),
-	'password'	=> array('label' => $ps_lang->trans("Password") .':', 		'val' => 'B', 'statustext' => $ps_lang->trans("Create a password")),
-	'password2'	=> array('label' => $ps_lang->trans("Repeat Password") .':', 	'val' => 'B', 'statustext' => $ps_lang->trans("Retype the same password")),
-	'email'		=> array('label' => $ps_lang->trans("Email Address") .':', 	'val' => 'E', 'statustext' => $ps_lang->trans("Enter your email address")),
-);
-
-// change the label of the uniqueid to whatever is configured
 switch ($ps->conf['main']['uniqueid']) {
-	case "ipaddr":	
-		$formfields['uniqueid']['label'] = $ps_lang->trans("IP Address") .':'; 
-		$formfields['uniqueid']['statustext'] = $ps_lang->trans("Enter the current IP of your player"); 
-		break;
-	case "name":
-		$formfields['uniqueid']['label'] = $ps_lang->trans("Player Name") .':'; 
-		$formfields['uniqueid']['statustext'] = $ps_lang->trans("Enter the current name of your player"); 
-		break;
-	case "worldid":	
-	case "steamid":	
-	default:
-		$formfields['uniqueid']['label'] = "STEAM ID:";
-		$formfields['uniqueid']['statustext'] = $ps_lang->trans("Enter the Steam ID of your player"); 
-}
+	case 'worldid': $uniqueid_label = $cms->trans("Steam ID"); break;
+	case 'name': 	$uniqueid_label = $cms->trans("Name"); break;
+	case 'ipaddr': 	$uniqueid_label = $cms->trans("IP Address"); break;
+};
 
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'register';
+$form = $cms->new_form();
+$form->default_modifier('trim');
+$form->field('uniqueid', 'blank');
+$form->field('username', 'blank');
+$form->field('password', 'blank,password_match');
+$form->field('password2', 'blank');
+$form->field('email');
 
-$form = array();
-$errors = array();
+if ($submit) {
+	$form->validate();
+	$input = $form->values();
+	$valid = !$form->has_errors();
+	// protect against CSRF attacks
+	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
 
-$data['registration'] = 'pending';
-
-// process submitted form
-if ($submit and $_SERVER['REQUEST_METHOD'] == 'POST' and strtolower($ps->conf['main']['registration']) != 'closed') {
-	$form = packform($formfields);
-	trim_all($form);
-//	if (get_magic_quotes_gpc()) stripslashes_all($form);
-
-	$_uniqueid = $form['uniqueid'];
-	if ($ps->conf['main']['uniqueid'] == 'ipaddr') {
-		$_uniqueid = sprintf("%u", ip2long($_uniqueid));
+	if ($ps->conf['main']['registration'] == 'closed') {
+		$form->error('fatal', $cms->trans("Player registration is currently disabled!"));
 	}
 
-	// manually verify fields that need it
-	if (!$form['uniqueid']) {
-		$formfields['uniqueid']['error'] = $ps_lang->trans("You must provide a uniqueid");
-	}
+	$u =& $cms->new_user();
 
-	if (!$form['username']) {
-		$formfields['username']['error'] = $ps_lang->trans("You must provide a username");
-	}
-
-	if (!$form['password']) {
-		$formfields['password']['error'] = $ps_lang->trans("You must create a password");
-	}
-
-	if (!$formfields['password']['error'] and ($form['password'] != $form['password2'])) {
-		$formfields['password']['error'] = $ps_lang->trans("Passwords do not match");
-		$formfields['password2']['error'] = $ps_lang->trans("Please try again");
-	}
-	if (!$formfields['password']['error'] and strlen($form['password']) < $minpwlen) {
-		$formfields['password']['error'] = sprintf($ps_lang->trans("Password must be at least %d characters long"), $minpwlen);
-	}
-
-	// verify the uniqueid given DOES exist
-	$already_registered = 0;
-	if (!$formfields['uniqueid']['error']) {
-		if (!$ps_db->exists($ps->t_plr_profile, 'uniqueid', $_uniqueid)) {
-			$formfields['uniqueid']['error'] = $ps_lang->trans("Unique ID does not exist");
+	$plr = array();
+	// lookup the worldid/uniqueid ... 
+	if ($input['uniqueid'] != '') {
+		$plr = $ps->get_player_profile($input['uniqueid'], 'uniqueid');
+		if (!$plr) {
+			$form->error('uniqueid', sprintf($cms->trans("The %s does not exist!"), $uniqueid_label));
+		} elseif ($plr['userid']) {
+			$form->error('uniqueid', $cms->trans("This player is already registered!"));
 		} else {
-			// verify this uniqueid doesn't already have a userid registered
-			list($_id) = $ps_db->select_row($ps->t_plr_profile, 'userid', 'uniqueid', $_uniqueid);
-			if ($_id) {
-				$already_registered = 1;
-				$formfields['uniqueid']['error'] = $ps_lang->trans("A user is already registered with this unique ID");
+			if ($u->username_exists($input['username'])) {
+				$form->error('username', $cms->trans("Username already exists!"));
 			}
 		}
 	}
 
-	// if we're already registered there is no reason to continue checking for errors 
-	if (!$already_registered) {
-		// verify the username given does not already exist
-		if (!$formfields['username']['error']) {
-			if (username_exists($form['username'])) {
-				$formfields['username']['error'] = $ps_lang->trans("Username already exists. Choose another name");
-			}
-		}
+	$valid = ($valid and !$form->has_errors());
+	if ($valid) {
+		$userinfo = $input;
+		// email is saved to profile, not user
+		unset($userinfo['uniqueid'], $userinfo['password2'], $userinfo['email']);
 
-		// automatically verify all fields
-		foreach ($formfields as $key => $ignore) {
-			form_checks($form[$key], $formfields[$key]);
-		}
-	}
+		$userinfo['userid'] = $u->next_userid();
+		$userinfo['password'] = $u->hash($userinfo['password']);
+		$userinfo['accesslevel'] = $u->acl_user();
+		$userinfo['confirmed'] = $ps->conf['main']['registration'] == 'open' ? 1 : 0;
 
-	// clear the errors and values for the fields listed (no sense in reporting them since this user was registered already)
-	if ($already_registered) {
-		foreach (array('username','password','password2') as $key) {
-			unset($formfields[$key]['error']);
-			$form[$key] = '';
-		}
-	}
-
-	$errors = all_form_errors($formfields);
-
-	// If there are no errors act on the data given
-	if (!count($errors)) {
-		$email = $form['email'];	// email is saved to profile table, not user table
-		$set = $form;
-		unset($set['email'], $set['password2'], $set['uniqueid']);
-		$set['password'] = md5($form['password']);
-		$set['accesslevel'] = ($ps->conf['main']['registration'] == 'open') ? ACL_USER : -1;
-		$set['userid'] = $userid = next_user_id();
-
-		$ps_db->begin();
-		$ok = 1;
-		if ($ok = insert_user($set)) {
-			$profile = array('userid' => $userid);
-			if ($email) $profile['email'] = $email;
-			$ok = $ps_db->update($ps->t_plr_profile, $profile, 'uniqueid', $_uniqueid);
-		}
-		if (!$ok) {
-			$ps_db->rollback();
-			$data['registration'] = 'error';
+		$ps->db->begin();
+		$ok = $u->insert_user($userinfo);
+		if ($ok) {
+			$ok = $ps->db->update($ps->t_plr_profile, 
+				array( 'userid' => $userinfo['userid'], 'email' => $input['email'] ? $input['email'] : null), 
+				'uniqueid', $input['uniqueid']
+			);
+			if (!$ok) $form->error('fatal', $cms->trans("Error updating player profile: " . $ps->db->errstr));
 		} else {
-			$ps_db->commit();
-			session_online_status(1, $userid);
-			$data['user'] = $ps_user = load_user($userid);		// reload user information
-			$data['registration'] = 'ok';
+			$form->error('fatal', $cms->trans("Error creating user: " . $u->db->errstr));
+		}
+
+		if ($ok and !$form->has_errors()) {
+			$ps->db->commit();
+
+			// load this player
+			$plr = $ps->get_player($plr['plrid'], true);
+			$cms->theme->assign(array(
+				'plr'	=> $plr,
+				'reg'	=> $userinfo, 
+			));
+
+			// if registration is open log the user in
+			if ($ps->conf['main']['registration'] == 'open') {
+				$cms->session->online_status(1, $userinfo['userid']);
+			}
+	
+			// display the registration confirmation
+			$basename = basename(__FILE__, '.php') . '_confirmation';
+			$cms->theme->add_css('css/forms.css');
+			$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
+			exit;
+		} else {
+			$ps->db->rollback();
 		}
 	}
 
-	$data += $form;	
-
-} else {		// init defaults, if any
+} else {
 	if ($ps->conf['main']['uniqueid'] == 'ipaddr') {
-		$uniqueid = remote_addr();
+		$form->set('uniqueid', remote_addr());
 	}
 
-	// pack all the variables together and merge them with the data
-	$data += packform($formfields);
 }
 
-$data['form'] = $formfields;
-$data['errors'] = $errors;
+if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
 
-$data['PAGE'] = 'register';
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
+// assign variables to the theme
+$cms->theme->assign(array(
+//	'plr'		=> $ps->get_player(6375, true),
+	'errors'	=> $form->errors(),
+	'form'		=> $form->values(),
+	'uniqueid_label' => $uniqueid_label,
+	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+));
 
-include(PS_ROOTDIR . '/includes/footer.php');
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/forms.css');
+$cms->theme->add_js('js/forms.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
+
+// validator functions --------------------------------------------------------------------------
+
+function password_match($var, $value, &$form) {
+	global $valid, $cms, $ps;
+	if (!empty($value)) {
+		if ($value != $form->input['password2']) {
+			$valid = false;
+			$form->error($var, $cms->trans("Passwords do not match"));
+			$form->error('password2', $cms->trans("Passwords do not match"));
+		}
+	}
+	return $valid;
+}
+
 ?>

@@ -2,19 +2,21 @@
 /*
 	Displays a graph that shows the skill history of the player ID given
 */
-define("VALID_PAGE", 1);
-include(dirname(__FILE__) . '/includes/imgcommon.php');
+define("PSYCHOSTATS_PAGE", true);
+include(dirname(__FILE__) . "/includes/imgcommon.php");
 include(JPGRAPH_DIR . '/jpgraph_line.php');
+include(JPGRAPH_DIR . '/jpgraph_regstat.php');
 
-$plrid = is_numeric($_GET['plrid']) ? $_GET['plrid'] : 0;
+$plrid = is_numeric($_GET['id']) ? $_GET['id'] : 0;
 $var = in_array(strtolower($_GET['v']), array('skill','kills','onlinetime')) ? strtolower($_GET['v']) : 'skill';
 //if ($var == 'skill') $var = 'dayskill';
-$_GET = array( 'plrid' => $plrid, 'v' => $var );
+$_GET = array( 'id' => $plrid, 'v' => $var );
 
 //list($base,$ext) = explode('.', GenImgName());
 //$imgfilename = $base . "_" . $plrid . '.' . $ext;
 $imgfilename = 'auto';
-$data = array();
+$datay = array();
+$datax = array();
 $labels = array();
 $sum = 0;
 $avg = 0;
@@ -22,16 +24,24 @@ $interval = 0;
 $minlimit = 0;
 $maxlimit = 0;
 
+$smooth = 3;
 $max = 30;	// more than 30 starts to look ugly
 
+$imgconf = array();
+$q = array();
 
 if (!isImgCached($imgfilename)) {
+	$imgconf = load_img_conf();
+	$q =& $imgconf['quickimg'];
+
 	$field = $var == 'skill' ? 'dayskill' : $var;
-	$ps_db->query("SELECT statdate,$field FROM $ps->t_plr_data WHERE plrid='" . $ps_db->escape($plrid) . "' ORDER BY statdate LIMIT $max");
-	while (list($statdate,$skill) = $ps_db->fetch_row(0)) {
+	$ps->db->query("SELECT statdate,$field FROM $ps->t_plr_data WHERE plrid='" . $ps->db->escape($plrid) . "' ORDER BY statdate LIMIT $max");
+	$i = 1;
+	while (list($statdate,$skill) = $ps->db->fetch_row(0)) {
 		$skill = round($skill);
 		$sum += $skill;
-		$data[] = $skill;
+		$datay[] = $skill;
+		$datax[] = $i++;
 		$labels[] = $statdate;
 	}
 
@@ -48,36 +58,37 @@ if (!isImgCached($imgfilename)) {
 
 // Not enough data to produce a proper graph
 // jpgraph will crash if we give it an empty array
-if (!count($data)) {
+if (!count($datay)) {
 	$sum = 0;
-	$data[] = 0;
-} elseif (count($data) == 1) {
-	$data[1] = $data[0];
+	$datay[] = 0;
+} elseif (count($datay) == 1) {
+	$datay[1] = $datay[0];
+	$datax[1] = $datax[0] + 1;
 }
 
 // calculate the average of our dataset
-if (count($data)) {
-	$avg = $sum / count($data);
+if (count($datay)) {
+	$avg = $sum / count($datay);
 
 	if ($var == 'skill') {
-		$interval = imgconf('quickimg attr.interval', 0);
+		$interval = imgdef($q['interval'], 3000);
 	}
 
 	if ($interval) {
-		$minlimit = floor(min($data) / $interval) * $interval;
-		$maxlimit = ceil(max($data) / $interval) * $interval;
+		$minlimit = floor(min($datay) / $interval) * $interval;
+		$maxlimit = ceil(max($datay) / $interval) * $interval;
 	}
 }
 
 // Setup the graph.
-$graph = new Graph(240,160,$imgfilename, CACHE_TIMEOUT);
+$graph = new Graph(imgdef($q['width'], 287), imgdef($q['height'], 180) , $imgfilename, CACHE_TIMEOUT);
 if ($interval) {
 	$graph->SetScale("textlin", $minlimit, $maxlimit);
 } else {
 	$graph->SetScale("textlin");
 }
 $graph->SetMargin(45,10,10,20);
-$graph->title->Set(imgconf('quickimg.frame.title', 'Quick History'));
+$graph->title->Set(imgdef($q['frame']['title']['_content'], 'Quick History'));
 
 //$graph->yaxis->HideZeroLabel(); 
 if ($var != 'onlinetime') {
@@ -86,65 +97,68 @@ if ($var != 'onlinetime') {
 	$graph->yaxis->SetLabelFormatCallback('conv_onlinetime');
 }
 
-if (count($data)<2 or !imgconf('quickimg.frame.xgrid attr.show', true)) {
+if (count($datay)<2 or !imgdef($q['frame']['xgrid']['show'], true)) {
 	$graph->xaxis->Hide();
 }
 $graph->xaxis->HideLabels();
+$graph->xaxis->HideTicks();
 
-$graph->ygrid->SetFill((bool)imgconf('quickimg.frame.ygrid attr.show', true),
-	imgconf('quickimg.frame.ygrid attr.color1', 'whitesmoke'),
-	imgconf('quickimg.frame.ygrid attr.color2', 'azure2')
+$graph->ygrid->SetFill((bool)imgdef($q['frame']['ygrid']['show'], true),
+	imgdef($q['frame']['ygrid']['color1'], 'whitesmoke'),
+	imgdef($q['frame']['ygrid']['color2'], 'azure2')
 );
-$graph->ygrid->Show((bool)imgconf('quickimg.frame.ygrid attr.show', true));
+$graph->ygrid->Show((bool)imgdef($q['frame']['ygrid']['show'], true));
 
-$font1 = constant(imgconf('quickimg.frame.title attr.font', 'FF_FONT1'));
-$legendfont = constant(imgconf('quickimg.legend attr.font', 'FF_FONT0'));
+$font1 = constant(imgdef($q['frame']['title']['font'], 'FF_FONT1'));
+$legendfont = constant(imgdef($q['legend']['font'], 'FF_FONT0'));
 $graph->title->SetFont($font1, FS_BOLD);
 $graph->yaxis->title->SetFont($font1,FS_BOLD);
 $graph->legend->SetFont($legendfont,FS_NORMAL);
 #$graph->xaxis->title->SetFont($font1,FS_BOLD);
 #$graph->xaxis->SetFont(FF_FONT0,FS_NORMAL);
 
-$graph->SetMarginColor(imgconf('quickimg attr.margin', '#d7d7d7')); 
-$graph->SetFrame(true,imgconf('quickimg.frame attr.color', 'gray'), imgconf('quickimg.frame attr.width', 1)); 
-if (imgconf('quickimg attr.antialias', 0)) $graph->img->SetAntiAliasing();
+$graph->SetMarginColor(imgdef($q['frame']['margin'], '#d7d7d7')); 
+$graph->SetFrame(true,imgdef($q['frame']['color'], 'gray'), imgdef($q['frame']['width'], 1)); 
+//if (imgdef($q['antialias'], false)) $graph->img->SetAntiAliasing();
 
-$p1 = new LinePlot($data);
+$s = new Spline($datax, $datay);
+list($x,$y) = $s->Get(count($datay) * $smooth);
+
+$p1 = new LinePlot($y);
 $p1->SetLegend(ucfirst($var));
-$p1->SetWeight(imgconf('quickimg.frame.plot.0 attr.weight', 1));
-//$p1->mark->SetType(constant(imgconf('quickimg.frame.plot.0 attr.mark', 'MARK_CROSS')));
-$p1->SetFillColor(imgconf('quickimg.frame.plot.0 attr.color', 'blue@0.90'));
+$p1->SetWeight(imgdef($q['frame']['plot'][0]['weight'], 1));
+$p1->SetFillColor(imgdef($q['frame']['plot'][0]['color'], 'blue@0.90'));
 
 $avg = intval($avg);
 if ($avg) {
-	for ($i=0; $i < count($data); $i++) {
+	for ($i=0; $i < count($datay) * $smooth; $i++) {
 		$avgdata[] = $avg;
 	}
 
 	$p2 = new LinePlot($avgdata);
 //	$p2->SetStyle('dashed');
-	$p2->SetLegend(imgconf('quickimg.frame.plot.1', 'Average'));
-	$p2->SetWeight(imgconf('quickimg.frame.plot.1 attr.weight', 2));
-	$p2->SetColor(imgconf('quickimg.frame.plot.1 attr.color', 'khaki4'));
+	$p2->SetLegend(imgdef($q['frame']['plot'][1]['title'], 'Average'));
+	$p2->SetWeight(imgdef($q['frame']['plot'][1]['weight'], 2));
+	$p2->SetColor(imgdef($q['frame']['plot'][1]['color'], 'khaki4'));
 //	$p2->SetBarCenter();
 	$graph->Add($p2);
 }
 
 $graph->legend->SetAbsPos(
-	imgconf('quickimg.legend attr.x', '5'),
-	imgconf('quickimg.legend attr.y', '5'),
-	imgconf('quickimg.legend attr.halign', 'right'),
-	imgconf('quickimg.legend attr.valign', 'top')
+	imgdef($q['legend']['x'], 5),
+	imgdef($q['legend']['y'], 5),
+	imgdef($q['legend']['halign'], 'right'),
+	imgdef($q['legend']['valign'], 'top')
 );
-$graph->legend->SetFillColor(imgconf('quickimg.legend attr.color', 'lightblue@0.5'));
+$graph->legend->SetFillColor(imgdef($q['legend']['color'], 'lightblue@0.5'));
 $graph->legend->SetShadow(
-	imgconf('quickimg.legend.shadow attr.color', 'gray@0.5'),
-	imgconf('quickimg.legend.shadow attr.width', '2')
+	imgdef($q['legend']['shadow']['color'], 'gray@0.5'),
+	imgdef($q['legend']['shadow']['width'], 2)
 );
 
 $graph->Add($p1);
 
-if (count($data) < 2) {
+if (count($datay) < 2) {
 	$t = new Text("Not enough history\navailable\nto chart graph");
 	$t->SetPos(0.5,0.5,'center','center');
 	$t->SetFont(FF_FONT2, FS_BOLD);

@@ -1,238 +1,109 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-<html>
-<head>
-<title>{$pq.name|default:"Unknown server name"|escape}</title>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<link href="{$themeurl}styles.css" rel="stylesheet" type="text/css">
-<script src="{$themeurl}webcore.js" type="text/javascript"></script>
-{literal}
-<style type="text/css">
+<div class="ps-server-container">
 
-/* Override the LVHA styles or they'll look strange */
-.frame2 div table tr td, 
-.frame2 div table tr td a, 
-.frame2 div table tr td a:link, 
-.frame2 div table tr td a:visited, 
-.frame2 div table tr td a:hover, 
-.frame2 div table tr td a:active, 
-.frame2 div {
-	font-size: 8pt;
-}
+<div class="ps-server-main">
+	<div id="q-hdr-{$server.id}" style="display: none"><#Querying Server#> {$server.ip}:{$server.port}. . .</div>
+	<div id="hdr-{$server.id}" class="hdr">
+		<img src="{theme->url}/img/ajax-small-circle-bbb.gif" class="ajax" style="display: none" />
+		{if $server.timedout}
+			{$server.ip}:{$server.port} - <#Server timed out#>
+		{else}
+			{$flagimg}
+			{$server.name|escape}
+		{/if}
+	</div>
+	<div class="map">{if $mapimg}<a href="{url _base='map.php' id=$server.map}">{$mapimg}</a>{/if}</div>
+	<div id="q-menu-{$server.id}" style="display: none"><ul><li><#Please wait#> ...</li></ul></div>
+	<div class="menu" id="menu-{$server.id}">
+		<ul>
+			<li{if $active_tab == 'details'} class="selected"{/if}><a id="details-menu-{$server.id}" href="">Details</a></li>
+			<li{if $active_tab == 'players'} class="selected"{/if}><a id="players-menu-{$server.id}" href="">Players</a></li>
+			<li{if $active_tab == 'rules'} class="selected"{/if}><a id="rules-menu-{$server.id}" href="">Rules</a></li>
+{*
+			<li{if $active_tab == 'rcon'} class="selected"{/if}><a id="rcon-menu-{$server.id}" href="">RCON</a></li>
+*}
+		</ul>
+	</div>
 
-.frame2 div table {
-	filter: alpha(opacity=65);
-	-moz-opacity: .65;
-	opacity: .65;
-}
+<div class="details" id="details-{$server.id}"{if $active_tab != 'details'} style="display: none"{/if}>
+{if $server.timedout}
+		<span id="timeout-{$server.id}" class="timeout"><center><#Server timed out#> <a href="javascript:query({$server.id}, true)"><#Click here to refresh#></a></center></span>
+{else}
+		<p><label><#Server#>:</label> <a href="{$server.connect_url}"><acronym title="Click to connect">{$server.host|escape}:{$server.port}</acronym></a> <span class="ping">(ping: {$server.ping}ms)</span></p>
+		<p><label><#Type#>:</label> {$server.serveros} {$server.servertype}</p>
+		<p><label><#Game#>:</label> {$server.gamename|escape}</p>
+		<p><label><#Secure#>:</label> {if $server.serversecure}<#VAC secured#>{else}<#Not VAC secured#>{/if}</p>
+		<p><label><#Current Map#>:</label> <a href="{url _base='map.php' id=$server.map}">{$server.map|escape}</a>
+			{if $server.rules.amx_nextmap and $server.rules.amx_nextmap != $server.map}
+				(next <a href="{url _base='map.php' id=$server.rules.amx_nextmap}">{$server.rules.amx_nextmap|escape}</a>)
+			{elseif $server.rules.mani_nextmap and $server.rules.mani_nextmap != $server.map}
+				(next <a href="{url _base='map.php' id=$server.rules.mani_nextmap}">{$server.rules.mani_nextmap|escape}</a>)
+			{/if}			
+		</p>
+		<p><label><#Time Left#>:</label> {$server.timeleft|default:'unknown'}</p>
+		<p><label><#Players#>:</label> {$server.activeplayers} / {$server.maxplayers} {if $server.maxbots} ({$server.maxbots} <#bots#>){/if} ({$server.totalkills} <#kills#>)</p>
+{/if}
+</div>
 
-.frame2 {
-{/literal}
-	background: url({$imagesurl}pqleft-bg.png) repeat-x;
-{literal}
-}
-#pqleft {
-	border-right: 1px solid #777777;
-	height: 270px;
-	float: left;
-	width: 160px;
-	text-align: center;
-	overflow: hidden;
-}
-#pqright {
-	height: 270px;
-	overflow: auto;
-{/literal}
-/*	background: url({$imagesurl}pqright-bg.png) no-repeat 25px 125px;*/
-	background: url({$imagesurl}pqright-bg.png) no-repeat right 80% fixed;
-{literal}
-}
+<div class="players" id="players-{$server.id}"{if $active_tab != 'players'} style="display: none"{/if}>
+<table>
+	<tr>
+		<th>#</th>
+		<th class="name"><#Player#></th>
+		<th class="kills"><#Kills#></th>
+		<th class="time"><#Time#></th>
+	</tr>
+{foreach name='plrs' from=$server.players item='p'}
+	<tr{cycle values=", class='even'"}>
+		<td>{$smarty.foreach.plrs.iteration}</td>
+		<td class="name"><a href="{url _base='index.php' q=$p.name}">{$p.name|escape}</a></td>
+		<td class="kills">{$p.kills}</td>
+		<td class="time">{$p.onlinetime|compacttime}</td>
+	</tr>
 
-div.maprow {
-/*	border: 1px solid black; */
-	height: 120px;
-	vertical-align: middle;
-}
+{/foreach}
+	<tr class="footer">
+		<th colspan="4"><img src="{theme->url}/img/spacer.gif" height="1" /></th>
+	</tr>
+</table>
+</div>
 
-div.connectrow {
-	clear: both;
-	font-weight: bold;
-	background-color: #CBCBAE;
-	border: 1px solid black;
-}
+<div class="rules" id="rules-{$server.id}"{if $active_tab != 'rules'} style="display: none"{/if}>
+<table>
+	<tr>
+		<th class="name"><#Rule#></th>
+		<th class="name"><#Value#></th>
+	</tr>
+{foreach name='rules' from=$server.rules item='value' key='rule'}
+	<tr{cycle values=", class='even'"}>
+		<td class="name">{$rule|escape}</td>
+		<td class="name">{$value|escape}</td>
+	</tr>
 
-#pqleft div.row1 {
-	clear: both;
-	font-weight: bold;
-}
+{/foreach}
+	<tr class="footer">
+		<th colspan="2"><img src="{theme->url}/img/spacer.gif" height="1" /></th>
+	</tr>
+</table>
+</div>
 
-#pqleft div.row {
-	clear: both;
-	padding: 3px 0 0 0;
-	margin: 0;
-}
+{*
+<div class="rcon" id="rcon-{$server.id}"{if $active_tab != 'rcon'} style="display: none"{/if}>
+</div>
+*}
 
-#pqplrlist {
-	position: relative;
-	display: block;
-}
-#pqrulelist {
-	position: relative;
-	display: none;
-}
-#pqrcon {
-	position: relative;
-	display: none;
-	text-align: left;
-}
-#pqrcon pre {
-	padding: 0; 
-	margin: 0;
-	font-size: 8pt;
-}
-</style>
-{/literal}
-</head>
-<body>
+</div>
+</div>
 
-{literal}
-<script language="javascript" type="text/javascript">
-var web = new webcore();
-var maxcount = 30;
-var count = maxcount;
-var re = window.setTimeout('refresh()', 1000);
-var isPaused = 0;
-function refresh() {
-	re = window.setTimeout('refresh()', 1000);
-	if (parent.pauseQuery) {
-		if (!isPaused) {
-			web.write("<#Auto refresh paused#> (<a href='#' onclick='window.location.reload(); return false;'><#Refresh Now#></a>)", 'timertext');
-			isPaused = 1;
-		}
-		return;
-	} else if (!parent.pauseQuery && isPaused) {
-		web.write("<#Will refresh in#> " + count + " <#seconds#> (<a href='#' onclick='window.location.reload(); return false;'><#Refresh Now#></a>)", 'timertext');
-		isPaused = 0;
-		return;
-	}
-
-	if (count <= 0) {
-		window.clearTimeout(re);
-		window.location = window.location;
-	} else {
-		if ((count == maxcount) || (count % 5 == 0) || (count <= 5)) {
-			web.write("<#Will refresh in#> " + count + " <#seconds#> (<a href='#' onclick='window.location.reload(); return false;'><#Refresh Now#></a>)", 'timertext');
-		}
-	}
-	count--;
-}
-
-function openPlrs() {
-	web.getObj('pqrcon').style.display='none';
-	web.getObj('pqrulelist').style.display='none'; 
-	web.getObj('pqleft').style.display='block';
-	web.getObj('pqplrlist').style.display='block';
-}
-
-function openRules() {
-	web.getObj('pqplrlist').style.display='none';
-	web.getObj('pqrcon').style.display='none';
-	web.getObj('pqleft').style.display='block';
-	web.getObj('pqrulelist').style.display='block'; 
-}
-
-function openRcon() {
-	web.getObj('pqleft').style.display='none';
-	web.getObj('pqplrlist').style.display='none';
-	web.getObj('pqrulelist').style.display='none';
-	web.getObj('pqrcon').style.display='block';
-	if (document.forms.rcon.cmd.value == '') document.forms.rcon.cmd.value = 'status';
-	document.forms.rcon.cmd.focus();
-	document.forms.rcon.cmd.select();
-}
+{*
+// This will allow the quick stats on the server page to update
+*}
+<script type="text/javascript">
+//<![CDATA[
+// this will be true if the query output is embedded within the PS server page.
+// this check is put in place so that query.php output can be used elsewhere.
+if (ps_server_page) {ldelim}
+	info.online.push({$server.activeplayers});
+	info.kills.push({$server.totalkills});
+{rdelim}
+//]]>
 </script>
-{/literal}
-
-<div class="frame1">
-	<div class="label">{if $pq.timedout}<#Server#> {$server.ip} <#did not respond#>{else}{flagimg cc=$server.cc cn=$server.cn} {$pq.name|escape}{/if}</div>
-<div class="frame2">
-	<div id="pqleft">
-{if !$pq.timedout}
-		<div class="maprow">{mapimg map=$pq.map noimg=" - <#No Image Available#> - " pq=$pqobj}</div>
-{if $pq.connect_url}
-		<div class="connectrow"><a href="{$pq.connect_url}"><#Connect Now#></a></div>
-{/if}
-		<div class="row1">{$server.ipport}</div>
-		<div class="row1">{$pq.map}
-{if $pq.rules.mani_nextmap != ''}<br><#Next#>: {$pq.rules.mani_nextmap}{/if}
-		</div>
-		<div class="row">{$pq.gamename}</div>
-{if $pq.rules.amx_timeleft != ''}
-		<div class="row"><b>{$pq.rules.amx_timeleft}</b> <#time left#></div>
-{/if}
-		<div class="row"><b>{$pq.activeplayers} / {$pq.maxplayers}</b>{if $pq.maxbots} ({$pq.maxbots} <#bots#>){/if} <#players online#></div>
-		<div class="row">{if $pq.serveros == 'l'}<#Linux#>{else}<#Windows#>{/if} ({if $pq.servertype == 'd'}<#dedicated#>{else}<#listen#>{/if})</div>
-{if $pq.serversecure != ''}
-		<div class="row">{if !$pq.serversecure}<#Not VAC secured#>{else}<#VAC secured#>{/if}</div>
-{/if}
-		<div class="row"><#Ping#> <b>{$pq.ping}</b> ms</div>
-{/if}
-	</div>
-	<div id="pqright">
-{if !$pq.timedout}
-		<div align="left">
-{if user_is_admin()}
-		[ <a href="javascript:openRcon()">RCON</a> ]
-{/if}
-		[ <a href="javascript:openPlrs()">Players</a> ]
-		[ <a href="javascript:openRules()">Rules</a> ]
-		</div>
-		<div id="pqplrlist">
-		<table width="99%" border="0" cellspacing="0" cellpadding="2">
-			<tr>
-				<td class="header-cell" align="center"><#Player#></td>
-				<td class="header-cell" align="right"><#Kills#></td>
-				<td class="header-cell" align="right"><#Online#></td>
-			</tr>
-{foreach name='plrs' from=$pq.players item='p'}
-			<tr class="{cycle values="odd,even"}">
-				<td align="left"><a href="{url _base='index.php' search=$p.name submit='go'}" target="_parent">{$p.name|escape}</a></td>
-				<td align="right">{$p.kills}</td>
-				<td align="right">{$p.onlinetime|compacttime}</td>
-			</tr>
-{foreachelse}
-			<tr><td colspan="3" class="label shade1" align="center"><br><#No players online#><br><br></td></tr>
-{/foreach}
-			<tr><td colspan="3" align="center" style="border-top: 2px solid black;">&nbsp;</td></tr>
-		</table>
-		</div>
-		<div id="pqrulelist">
-		<table width="99%" border="0" cellspacing="0" cellpadding="2">
-			<tr>
-				<td class="header-cell" align="center"><#Rules#></td>
-			</tr>
-{foreach name='rules' from=$pq.rules item='value' key='rule'}
-			<tr class="{cycle values="odd,even"}">
-				<td align="left">{$rule|escape} = <b>{$value|escape}</b></td>
-			</tr>
-{/foreach}
-			<tr><td colspan="3" align="center" style="border-top: 2px solid black;">&nbsp;</td></tr>
-		</table>
-		</div>
-		<div id="pqrcon">
-			<form name="rcon" action="{url _base=$PHP_SELF ip=$server.ipport}" method="POST">
-			<input name="cmd" type="text" value="{$cmd|escape}" size="65" class="field">
-			<input type="submit" value="<#Send#>" class="btn">
-			</form>
-			<pre>{$rcon_result|escape}</pre>
-		</div>
-{/if} {* If !$pq.timedout *}
-	</div>
-</div>
-	<div id="timertext" class="under-box">&nbsp;<noscript>(<a href="{url _base=$PHP_SELF ip=$server.ip}"><#Refresh Now#></a>)</noscript></div>
-</div>
-</body>
-</html>
-
-{if $cmd != ''}
-<script language="javascript" type="text/javascript">openRcon();</script>
-{/if}

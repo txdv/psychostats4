@@ -10,7 +10,7 @@ use util qw( iswindows );
 
 use Carp;
 
-our $VERSION = '1.01';
+our $VERSION = '1.01.' . ('$Rev$' =~ /(\d+)/)[0];
 
 our $ANSI = 0;
 #eval "use Term::ANSIColor";

@@ -11,31 +11,25 @@ use base qw( PS::Feeder );
 use IO::File;
 use File::Spec::Functions qw( catfile splitpath );
 
-our $VERSION = '1.00';
+our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
 
-sub init {
+sub init { # called from calling program after new()
 	my $self = shift;
-
-	$self->{conf}->load('logsource_file');		# load logsource_file specific configs
-
-	$self->{recursive} = $self->{conf}->get_logsource_file('recursive') || 0;
-	$self->{maxdepth} = $self->{conf}->get_logsource_file('depth') || 0;
-	$self->{follow_symlinks} = $self->{conf}->get_logsource_file('follow_symlinks') || 0;
-	$self->{skiplast} = $self->{conf}->get_logsource_file('skiplast') || 0;
 
 	$self->{_logs} = [ ];
 	$self->{_dirs} = [ ];
 	$self->{_curdir} = '';
 	$self->{_curlog} = '';
 	$self->{_curline} = 0;
+	$self->{_curevent} = '';
 	$self->{_log_regexp} = qr/\.log$/io;
+	$self->{_last_saved} = time;
 
-	$self->{logsource} =~ s|^([^:]+)://||;		# remove the file:// prefix, if it's present
-
+	$self->{type}  = $PS::Feeder::WAIT;
 	$self->{state} = $self->load_state;
 
 	# build a directory tree. This does not actually load any log files
-	$self->_dirtree($self->{logsource});
+	$self->_dirtree($self->{logsource}{path});
 
 	# loop through each directory until we have a set of logs to start with.
 	# We stop at the first directory with logs in it (no need to load all sub-dirs at the same time)
@@ -60,22 +54,32 @@ sub init {
 
 		# second: find the log that matches our previous state in the current log directory
 		while (scalar @{$self->{_logs}}) {
-#			print "'$self->{_logs}->[0]' == '$statelog'\n";
-#			if ($self->{_logs}->[0] eq $statelog) {			# we found the matching log!
-			if ($self->{game}->logcompare($self->{_logs}->[0], $statelog) != -1) {
+			my $cmp = $self->{game}->logcompare($self->{_logs}[0], $statelog);
+			if ($cmp == 0) { # ==
 				$self->_opennextlog;
 				# finally: fast-forward to the proper line
-				my $fh = $self->{_loghandle};
-				while (defined(my $line = <$fh>)) {
-					if (++$self->{_curline} >= $self->{state}->{line}) {
-#						die $line;
-						$::ERR->verbose("Resuming from source $self->{state}{file} (line: $self->{_curline})");
-						return @{$self->{_logs}} ? @{$self->{_logs}}+1 : 1;
+				if (int($self->{state}{pos} || 0) > 0) {	# FAST forward quickly
+					seek($self->{_loghandle}, $self->{state}{pos}, 0);
+					$self->{_curline} = $self->{state}{line};
+					$::ERR->verbose("Resuming from source $self->{state}{file} (line: $self->{_curline}, pos: $self->{state}{pos})");
+					return $self->{type};
+				} else {					# move forward slowly
+					my $fh = $self->{_loghandle};
+					while (defined(my $line = <$fh>)) {
+						if (++$self->{_curline} >= $self->{state}{line}) {
+							$::ERR->verbose("Resuming from source $self->{state}{file} (line: $self->{_curline})");
+							return $self->{type};
+						}
 					}
 				}
-			} else {
+			} elsif ($cmp == -1) { # <
 				shift @{$self->{_logs}};
-			} 
+			} else { # >
+				# if we get to a log that is 'newer' then the last log in our state then 
+				# we'll just continue from that log since the old log was apparently lost.
+				$::ERR->warn("Previous log from state '$statelog' not found. Continuing from " . $self->{_logs}[0] . " instead ...");
+				return $self->{type};
+			}
 		}
 
 		if (!$self->{_curlog}) {
@@ -86,7 +90,7 @@ sub init {
 
 	# if we have no logs in our list at this point we can safely assume we never will, so the init fails
 	# (which allows the caller to simply skip us)
-	return scalar @{$self->{_logs}} ? 1 : 0;
+	return scalar @{$self->{_logs}} ? $self->{type} : $PS::Feeder::ERROR;
 }
 
 sub _dirtree {
@@ -96,7 +100,7 @@ sub _dirtree {
 
 #	print "_dirtree($dir, $depth)\n";
 
-	return if ($self->{maxdepth} and ($depth > $self->{maxdepth}));
+	return if ($self->{logsource}{maxdepth} and ($depth > $self->{logsource}{maxdepth}));
 
 	local *D = new IO::File;
 	if (!opendir(D, $dir)) {
@@ -107,12 +111,12 @@ sub _dirtree {
 	push(@{$self->{_dirs}}, $dir);			# add directory to our order list
 
 	# I check this here because I want the line above to do it's thing for the primary 'logsource'
-	if ($self->{recursive}) {
+	if ($self->{logsource}{recursive}) {
 		while (defined(my $f = readdir(D))) {
 			next if substr($f,0,1) eq '.';		# ignore any file/dir that starts with a period
 			my $file = catfile($dir, $f);		# absolute filename
 			next unless -d $file;			# ignore non-directories
-			$self->debug2("follow_symlinks==0, Ignoring $file") && next if -l $file and !$self->{follow_symlinks};
+			$self->debug2("follow_symlinks=0, Ignoring $file") && next if -l $file and !$self->{logsource}{follow_symlinks};
 			$self->_dirtree($file, $depth+1);	# go into sub-directory
 		}
 	}
@@ -143,7 +147,7 @@ sub readnextdir {
 	}
 	closedir(D);
 
-	pop(@{$self->{_logs}}) if $self->{skiplast};			# skip the last log in the directory
+	pop(@{$self->{_logs}}) if $self->{logsource}{skiplast};		# skip the last log in the directory
 
 	$::ERR->verbose(scalar(@{$self->{_logs}}) . " logs found in $self->{_curdir}");
 	$::ERR->debug2(scalar(@{$self->{_logs}}) . " logs found in $self->{_curdir}");
@@ -166,7 +170,7 @@ sub _opennextlog {
 	my $self = shift;
 
 	# save state after each log (but only if we've actually read at least 1 line already)
-	$self->save_state if $self->{_totallines} and $self->{game}->{timestamp};
+#	$self->save_state if $self->{_totallines} and $self->{game}->{timestamp};
 
 	# close the previous log, if there was one
 	undef $self->{_loghandle};
@@ -187,13 +191,15 @@ sub _opennextlog {
 		if (!$self->{_loghandle}->open("< " . $self->{_curlog})) {
 			$::ERR->warn("Error opening log '$self->{_curlog}': $!");
 			undef $self->{_loghandle};
-			undef $self->{_curlog};
-			if (@{$self->{_logs}}) {
-				$self->{_curlog} = catfile($self->{_curdir}, shift @{$self->{_logs}});
-			} else {
-				last;
-			}
+			last;
+#			undef $self->{_curlog};
+#			if (@{$self->{_logs}}) {
+#				$self->{_curlog} = catfile($self->{_curdir}, shift @{$self->{_logs}});
+#			} else {
+#				last;
+#			}
 		}
+#		binmode($self->{_loghandle}, ":encoding(UTF-8)");
 	}
 	return $self->{_loghandle};
 }
@@ -231,6 +237,9 @@ sub next_event {
 #		$self->{_lasttime} = time;
 	}
 
+	$self->save_state if time - $self->{_last_saved} > 60;
+
+#	$self->{_curevent} = $line;
 	my @ary = ( $self->{_curlog}, $line, ++$self->{_curline});
 	return wantarray ? @ary : [ @ary ];
 }
@@ -241,9 +250,52 @@ sub save_state {
 	$self->{state}{lastupdate} = time;
 	$self->{state}{file} = $self->{_curlog};
 	$self->{state}{line} = $self->{_curline};
+	$self->{state}{pos}  = defined $self->{_loghandle} ? tell($self->{_loghandle}) : undef;
+
+	$self->{_last_saved} = time;
 
 	$self->SUPER::save_state;
 }
 
+sub parsesource {
+	my $self = shift;
+	my $db = $self->{db};
+	# if the logsource is already a reference (not a string) then we're all set
+	return if ref $self->{logsource};
+	# since the logsource is not a hash (assumed to be a string from -log on command line)
+	# we attempt to load a matching record from the database and if it doesn't exist we
+	# create a new one (but mark it disabled; however its still used in this instance).
+	my $log = $self->{logsource};
+
+	# remove the file:// prefix if present
+	$log =~ s|^([^:]+)://||;
+
+	# see if a matching logsource already exists
+	my $exists = $db->get_row_hash("SELECT * FROM $db->{t_config_logsources} WHERE type='file' AND path=" . $db->quote($log));
+
+	if (!$exists) {
+		# fudge a new logsource record and save it
+		$self->{logsource} = {
+			'id'		=> $db->next_id($db->{t_config_logsources}),
+			'type'		=> 'file',
+			'path'		=> $log,
+			'host'		=> undef,
+			'port'		=> undef,
+			'username'	=> undef,
+			'password'	=> undef,
+			'recursive'	=> 0,
+			'depth'		=> 0,
+			'options'	=> undef,
+			'defaultmap'	=> 'unknown',
+			'enabled'	=> 0,		# leave disabled since this was given from -log on command line
+			'idx'		=> 0x7FFFFFFF,
+			'lastupdate'	=> time
+		};
+		$db->insert($db->{t_config_logsources}, $self->{logsource});
+	} else {
+		$self->{logsource} = $exists;
+		$db->update($db->{t_config_logsources}, { lastupdate => time }, [ 'id' => $exists->{id} ]);
+	}
+}
 
 1;

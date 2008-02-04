@@ -1,12 +1,13 @@
 <?php
-/**********
+/**
+	$Id$
 
-	This HALFLIFE class will automatically determine if the server being queried is HL1 or HL2.
+	This PsychoQuery::HALFLIFE class will automatically determine if the server being queried is HL1 or HL2.
 	The query codes below are for your reference, incase you're interested. It should be noted that 
 	the recent versions of HL1 use the same query codes as HL2 (response codes are slightly different).
-	That means that the older HL1 versions may not work correctly.
+	That means that the older HL1 versions (ie: before Steam) may not work correctly.
 
-	There is an 'oldhalflife' querytype that can be used to force older halflife queries.
+	There is an 'oldhalflife' query_type that can be used to force older halflife queries.
 
 	Query:		HL1 send:	HL1 recv: 	HL2 send: 	HL2 recv:
 	'info'		'T'		'm'		'T'		'I'	(different packet stream)
@@ -16,7 +17,9 @@
 
 	RCON commands are also supported for both versions, HL1 and HL2 (transparently)
 
-**********/
+	Source servers that use compression on responses are supported as well.
+
+**/
 
 if (!defined("CLASS_PQ_PHP")) die("Access Denied!");
 if (defined("CLASS_PQ_HALFLIFE_PHP")) return 1;
@@ -61,6 +64,8 @@ function init() {
 	$this->pingstr = 'i';
 
 	$this->challenge_id = '';
+	$this->compressed = false;
+	$this->reqid = 0;
 }
 
 function gametype() {
@@ -125,8 +130,8 @@ function query_info($ip=NULL) {
 	$res = $this->_sendquery($ip, $this->infostr);
 	$end = $this->_getmicrotime();
 	if (!$res) return FALSE;
-	$ver = $this->_hlver();				// get proper version 
-	$this->data = array();					// query_info always resets the data array (so call this before other queries)
+	$ver = $this->_hlver();			// get proper version 
+	$this->data = array();			// query_info always resets the data array (so call this before other queries)
 	if ($this->raw != '') {
 		$this->data['ping'] = ceil(($end - $start) * 1000);	// return the time (ms) it took for the packet to return (ping)
 		$this->data['ipport'] = $ip;
@@ -187,6 +192,13 @@ function _parse_info_halflife2() {
 	$this->data['serveros']			= $this->_getchar();
 	$this->data['serverlocked']		= $this->_getbyte();
 	$this->data['serversecure']		= $this->_getbyte();
+	// 'the ship' game servers will have 3 extra bytes of info here
+	if ($this->data['gamedir'] == 'ship') {
+		$this->data['gamemode']		= $this->_getbyte();
+		$this->data['witnesscount']	= $this->_getbyte();
+		$this->data['witnesstime']	= $this->_getbyte();
+	}
+	$this->data['gameversion']		= $this->_getnullstr();
 	return $this->data;
 }
 
@@ -216,9 +228,21 @@ function query_players($ip=NULL) {
 }
 
 // The sub-class must always contain this method to query the server rules list
+// 'info' query is forced before sending this command if the hl version is unknown.
 function query_rules($ip=NULL) {
 	if (!$ip) $ip = $this->ipaddr();
 	if (!$ip) return FALSE;
+
+	// If we don't know the version of the server, try to figure it out automatically
+	if (!$this->_hlver()) {
+		$olddata = $this->data;				// save any current data
+		$oldraw = $this->raw;
+		$this->query_info($ip);				// 'info' query will tell us what version we're using
+		$this->_hlver();				// detect and cache the version 
+		$this->data = $olddata;				// restore our data
+		$this->raw = $oldraw;
+	}
+
 	$res = $this->_sendquery($ip, $this->rulestr . pack("V", $this->_getchallenge($ip)));
 	if (!$res) return FALSE;
 	if (!empty($this->raw)) {
@@ -226,6 +250,7 @@ function query_rules($ip=NULL) {
 		$this->data['totalrules'] = ($this->_getbyte() | ($this->_getbyte() << 8)) - 1;
 		$this->data['rules'] = array();
 		for ($i=1; $i <= $this->data['totalrules']; $i++) {
+			if ($this->raw == '') break;
 			$this->data['rules'][ trim($this->_getnullstr()) ] = trim($this->_getnullstr());
 		}
 		return $this->data;
@@ -478,35 +503,12 @@ function query_master($ip=NULL, $filter=array(), $callback=NULL) {
 
 // returns the connect string url that allows you to connect to a server from a web page.
 // Note: a query_info() must have already of been performed for this to work
+// STEAM ONLY
 function connect_url($connectip = NULL) {
-	return "steam://connect/" . ($connectip ? $connectip : $this->ipaddr());
-/* old method of connecting (before updates roughly around November '05).
-// Thanks to JTP10181 (www.thekingpin.net) for the code
-	$launchdir = "";
-	if (!$this->data['appid']) { 
-		switch ($this->data['gamedir']) { 
-			case "cstrike":		$this->data['appid'] = 10; break; 
-			case "tfc":		$this->data['appid'] = 20; break; 
-			case "dod":		$this->data['appid'] = 30; break; 
-			case "dmc":		$this->data['appid'] = 40; break; 
-			case "gearbox":		$this->data['appid'] = 50; break; 
-			case "ricochet":	$this->data['appid'] = 60; break; 
-			case "valve":		$this->data['appid'] = 70; break; 
-			case "czero":		$this->data['appid'] = 80; break; 
-			//Third party mods 
-			default: 
-				$this->data['appid'] = 70; 
-				$launchdir = " -game " . $this->data['gamedir']; 
-				break; 
-		}
-	}
-//	return "steam:" . urlencode(sprintf("\"-applaunch %s%s +connect %s\"", 
-	return sprintf("steam:%%22-applaunch %s%s +connect %s%%22", 
-		$this->data['appid'],
-		$launchdir,
-		$this->ipaddr()
-	);
-*/
+	$ip = $connectip ? $connectip : $this->ipaddr();
+	if (strpos($ip,':') === false) $ip .= ":" . ($this->data['port'] ? $this->data['port'] : '27015');
+	$url = "steam://connect/$ip";
+	return $url;
 }
 
 // internal function to send a non-authoritative query to a halflife server (NOT RCON COMMANDS)
@@ -522,10 +524,7 @@ function _sendquery($ipport, $cmd) {
 	}
 
 	$packets = array();					// stores each packet seperately, so we can combine them afterwards
-# on some systems using 0xFFFFFFFF causes PHP to actually pack 0x7FFFFFFF and it breaks the query
 	$command = pack("V", -1) . $cmd;
-#	$command = pack("V", 0xFFFFFFFF) . $cmd;
-#	$command = pack("v", 0xFFFF) . pack("v", 0xFFFF) . $cmd;
 	$this->raw = "";
 
 	if ($oldmqr) set_magic_quotes_runtime(0);
@@ -549,20 +548,52 @@ function _sendquery($ipport, $cmd) {
 		if ($this->DEBUG) print "DEBUG: ($time latency) Received " . strlen($packet) . " bytes from $ip:$port:\n" . $this->hexdump($packet) . "\n";
 
 		$header = substr($packet, 0, 4);				// get the 4 byte header
-		$ack = @unpack("N1split", $header);
-		$split = sprintf("%u", $ack['split']);
-		if ($this->DEBUG) print "DEBUG: ACK = " . sprintf("0x%X", $ack['split']) . "\n";
-		if ($split == 0xFeFFFFFF) {				// we need to deal with multiple packets
+		$ack = @unpack("V1split", $header);
+		$split = $ack['split']; //sprintf("%d", $ack['split']);
+		if ($this->DEBUG) printf("DEBUG: ACK = 0x%X (%d)\n", $split, $split);
+		if ($split == -2) {						// we need to deal with multiple packets
+			if ($this->DEBUG) printf("DEBUG: Response is split!\n");
+
 			$packet = substr($packet, 4);				// strip off the leading 4 bytes
-			$header = substr($packet, 0, 5);			// get the 'sub-header ack'
-			$packet = substr($packet, 5);				// strip off 32bit int ID, seq# and total packet#
-			$info = @unpack("N1id/C1byte", $header);		// we don't really care about the ID
-			if ($this->DEBUG) printf("DEBUG: Sub ACK: %X (%08b)\n", $info['byte'], $info['byte']);
-			if (!$expected) $expected = $info['byte'] & 0x0F;	// now we know how many packets to receive
-			$seq = (int)($info['byte'] >> 4);			// get the sequence number of this packet
-			$packets[$seq] = $packet;				// store the packet
+			$header = substr($packet, 0, 4);			// get the 'sub-header ack'
+			$packet = substr($packet, 4);				// strip off 32bit ID
+
+			$size = $this->_hlver() <= 1 ? 1 : 2;			// HL1 = 1 byte, HL2(source) = 2 bytes
+			$pnum = substr($packet, 0, $size);			// get packet number
+			$packet = substr($packet, $size);
+			$this->reqid = $this->_unpack('V', $header);		// save the request ID
+			$this->compressed = false;
+			if ($size == 1) {
+				$byte = $this->_unpack("C", $pnum);
+				if (!$expected) $expected = $byte & 0x0F;
+				$this->seq = $byte >> 4;
+			} else {
+				$short = $this->_unpack("v", $pnum);
+				if (!$expected) $expected = $short & 0x00FF;
+				$this->seq = $short >> 8;
+			} 
+			if ($this->seq == 0 and $size == 2) {			// first packet of a HL2 response
+				$this->compressed = ($this->reqid >> 31 & 0x01 == 1);
+				if ($this->compressed) {			// read extra info about compression
+					$header = substr($packet, 0, 8);
+					$packet = substr($packet, 8);
+					$info = @unpack("V1total/V1crc", $header);
+					$this->uncompressed_total = $info['total'];
+					$this->uncompressed_crc = $info['crc'];
+					if ($this->DEBUG) printf("DEBUG: data compressed %d/%d %0.02f%% (CRC %d)\n", 
+						strlen($packet), 
+						$this->uncompressed_total, 
+						strlen($packet) / $this->uncompressed_total * 100, 
+						$this->uncompressed_crc
+					);
+				}
+			}
+			if ($this->DEBUG) printf("DEBUG: Sub ACK: id=0x%X (%032b) seq=%d/%d (bz2=%s)\n", 
+				$this->reqid, $this->reqid, $this->seq+1, $expected, $this->compressed ? 'true' : 'false'
+			);
+			$packets[$this->seq] = $packet;				// store the packet
 			$expected--;
-		} elseif ($split == 0xFFFFFFFF) {				// we're dealing with a single packet
+		} elseif ($split == -1) {					// we're dealing with a single packet
 			$packets[0] = $packet;
 			$expected = 0;
 		}
@@ -571,7 +602,18 @@ function _sendquery($ipport, $cmd) {
 	fclose($this->sock);
 	if ($oldmqr) set_magic_quotes_runtime(1);
 	ksort($packets, SORT_NUMERIC);
-	$this->raw = implode('', $packets);				// glue the packets together to make our final data string
+
+	if ($this->compressed) {
+		$this->raw = bzdecompress(implode('', $packets));
+		$crc = crc32($this->raw);
+		if ($this->DEBUG) printf("DEBUG: Uncompressed data size %d CRC %d\n", strlen($this->raw), $crc);
+		if ($crc != $this->uncompressed_crc) {	// data integrity is invalid, so discard the data
+			if ($this->DEBUG) printf("DEBUG: CRC of uncompressed data is invalid! Discarding data\n");
+			$this->raw = '';
+		}
+	} else {
+		$this->raw = implode('', $packets);				// glue the packets together to make our final data string
+	}
 	return TRUE;
 }
 

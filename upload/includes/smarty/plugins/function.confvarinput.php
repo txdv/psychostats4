@@ -18,43 +18,43 @@
  */
 function smarty_function_confvarinput($args, &$smarty)
 {
-	global $conf_layout, $conf_values;
+	global $conf_layout, $form;
 	$args += array(
 		'var'	=> '',
 		'xhtml'	=> 1,
 	);
 
-	$fullvar = $args['var'];
-	$parts = explode(VAR_SEPARATOR, $args['var']);
-	array_pop($parts);
-	$var = implode(VAR_SEPARATOR, $parts);
+//	$var = $conf_layout[$args['var']];
+	$var = $args['var'];
+	$name = $var['id'];
+	$value = $form->value($name);
 
 	$output = "";
-	$options = explode(',', $conf_layout[$var]['options']);
-	$type = strtolower($conf_layout[$var]['type']);
+	$options = explode(',', $var['options']);
+	$type = strtolower($var['type']);
 	switch ($type) {
 		case 'none': 
-//			$output = htmlentities($conf_values[$fullvar]);
+			$output = ps_escape_html($var['value']);
 			break;
 
 		case 'checkbox':
-			$output .= sprintf("<input name='opts[%s]' value='1' type='checkbox'%s onclick='web.conf_change(this)'%s>",
-				htmlentities($args['var']), 
-				$conf_values[$fullvar] ? ' checked ' : '',
+			$output .= sprintf("<input name='opts[%s]' value='1' type='checkbox' class='field'%s%s>",
+				ps_escape_html($name),
+				$value ? ' checked ' : '',
 				$args['xhtml'] ? ' /' : ''
 			);
 			break;
 
 		case 'select':
-			$output = sprintf("<select name='opts[%s]' class='field' onchange='web.conf_change(this)'>", 
-				htmlentities($args['var'])
+			$output = sprintf("<select name='opts[%s]' class='field'>", 
+				ps_escape_html($name)
 			);
-			$labels = varinput_build_select($conf_layout[$var]['options']);
-			foreach ($labels as $label => $value) {
+			$labels = varinput_build_select($var['options']);
+			foreach ($labels as $v => $label) {
 				$output .= sprintf("<option value=\"%s\"%s>%s</option>\n",
-					htmlentities($value),
-					$value == $conf_values[$fullvar] ? ' selected ' : '',
-					htmlentities($label, ENT_COMPAT, "UTF-8")
+					ps_escape_html($v),
+					$v == $value ? ' selected ' : '',
+					ps_escape_html($label)
 				);
 			}
 			$output .= "</select>";
@@ -63,44 +63,46 @@ function smarty_function_confvarinput($args, &$smarty)
 		case 'boolean':
 			$idx = 0;
 			$labels = varinput_build_boolean($conf_layout[$var]['options']);
-			foreach ($labels as $label => $value) {
-				$for = str_replace(VAR_SEPARATOR, '-', $args['var']) . "-" . ++$idx;
-				$output .= sprintf("<input id='$for' name='opts[%s]' value=\"%s\" type='radio'%s onchange='web.conf_change(this)'%s>&nbsp;<label for='$for'>%s</label>\n",
-					htmlentities($args['var']),
-					htmlentities($value),
-					$value == $conf_values[$fullvar] ? ' checked ' : '',
+			foreach ($labels as $label => $v) {
+				$for = 'for-' . $name . '-' . ++$idx;
+				$output .= sprintf("<input id='%s' name='opts[%s]' value=\"%s\" type='radio'%s%s>&nbsp;" .
+					"<label class='for' for='$for'>%s</label>\n",
+					$for,
+					ps_escape_html($name),
+					ps_escape_html($v),
+					$v == $value ? ' checked ' : '',
 					$args['xhtml'] ? ' /' : '',
-					htmlentities($label, ENT_COMPAT, "UTF-8")
+					ps_escape_html($label)
 				);
 			}
 			break;
 
 		case 'textarea': 
-			$attr = varinput_build_attr($conf_layout[$var]['options']);
+			$attr = varinput_build_attr($var['options']);
 			$rows = $attr['rows'] ? $attr['rows'] : 3;
 			$cols = $attr['cols'] ? $attr['cols'] : 40;
 			$wrap = $attr['wrap'] ? $attr['wrap'] : 'virtual';
 			$class = $attr['class'] ? $attr['class'] : 'field';
 //			unset($attr['size'], $attr['class']);
-			$output = sprintf("<textarea name=\"opts[%s]\" cols=\"%s\" rows=\"%s\" wrap=\"%s\" class=\"%s\" onblur='web.conf_change(this)'>%s</textarea>", 
-				htmlentities($args['var']), 
+			$output = sprintf("<textarea name=\"opts[%s]\" cols=\"%s\" rows=\"%s\" wrap=\"%s\" class=\"%s\">%s</textarea>", 
+				ps_escape_html($name), 
 				$cols,
 				$rows,
 				$wrap,
 				$class,
-				htmlentities($conf_values[$fullvar], ENT_COMPAT, "UTF-8")
+				ps_escape_html($value)
 			);
 			break;
 
 		case 'text':
 		default:
-			$attr = varinput_build_attr($conf_layout[$var]['options']);
+			$attr = varinput_build_attr($var['options']);
 			$size = $attr['size'] ? $attr['size'] : 40;
 			$class = $attr['class'] ? $attr['class'] : 'field';
 //			unset($attr['size'], $attr['class']);
-			$output = sprintf("<input name=\"opts[%s]\" value=\"%s\" type=\"text\" size=\"%s\" class=\"%s\" onchange=\"web.conf_change(this)\"%s>", 
-				htmlentities($args['var']), 
-				htmlentities($conf_values[$fullvar], ENT_COMPAT, "UTF-8"),
+			$output = sprintf("<input name=\"opts[%s]\" value=\"%s\" type=\"text\" size=\"%s\" class=\"%s\"%s>", 
+				ps_escape_html($name), 
+				ps_escape_html($value),
 				$size,
 				$class,
 				$args['xhtml'] ? ' /' : ''
@@ -112,7 +114,7 @@ function smarty_function_confvarinput($args, &$smarty)
 }
 
 function varinput_build_boolean($opts) {
-	global $ps_lang;	// PS3: from class_theme ($ps_lang defined in common.php)
+	global $cms;
 	$ary = array();
 	if (trim($opts)) {
 		$ary = explode(',', $opts);
@@ -126,31 +128,30 @@ function varinput_build_boolean($opts) {
 			$x = strtolower($label);
 			$val = ($x == 'yes' or $x == 'true' or $x == '1') ? 1 : 0;
 		}
-		$l[$ps_lang->trans($label)] = $val;		// this has to be manually added to languages/.../global.lng
+		$l[$cms->trans($label)] = $val;		// this has to be manually added to languages/.../global.lng
 	}
 	return $l;
 }
 
 function varinput_build_select($opts) {
-	global $ps_lang;	// PS3: from class_theme ($ps_lang defined in common.php)
+	global $cms;
 	$ary = array();
 	$opts = trim($opts);
 	if ($opts) {
-//		$ary = explode(',', $opts);
 		$ary = preg_split('/[,\r?\n]+/', $opts, -1, PREG_SPLIT_NO_EMPTY);
 	} else {
 		$ary = array();
 	}
 	$l = array();
 	foreach ($ary as $item) {
-		list($label, $val) = explode(':', $item);
-		$label = trim($label);
+//		list($label, $val) = explode(':', $item);
+		list($val, $label) = explode(':', $item);
 		$val = trim($val);
-		if ($val == '') {
-			$val = $label;
+		$label = trim($label);
+		if ($label == '') {
+			$label = $val;
 		}
-//		$l[$ps_lang->trans($label)] = $val;		// this has to be manually added to languages/.../global.lng
-		$l[$val] = $ps_lang->trans($label);
+		$l[$val] = $cms->trans($label);
 	}
 	return $l;
 }

@@ -1,93 +1,77 @@
 <?php
-if (!defined("VALID_PAGE")) die("<b>Access Denied!</b>");
+define("PSYCHOSTATS_PAGE", true);
+define("PSYCHOSTATS_ADMIN_PAGE", true);
+include("../includes/common.php");
+include("./common.php");
 
-if ($register_admin_controls) {
-	$menu =& $PSAdminMenu->getSection( $ps_lang->trans("Manage Players") );
+$validfields = array('ref','start','limit','order','sort','filter','all','del');
+$cms->theme->assign_request_vars($validfields, true);
 
-	$opt =& $menu->newOption( $ps_lang->trans("View"), 'players' );
-	$opt->link(ps_url_wrapper(array('c' => 'players')));
+$message = '';
+$cms->theme->assign_by_ref('message', $message);
 
-	return 1;
-}
+if (!is_numeric($start) or $start < 0) $start = 0;
+if (!is_numeric($limit) or $limit < 0) $limit = 100;
+if (!in_array($order, array('asc','desc'))) $order = 'asc';
+if ($all == '') $all = false;
+if (!in_array($sort, array('name','skill','username','allowrank'))) $sort = 'name';
 
-$data['PS_ADMIN_PAGE'] = "players";
+$_order = array(
+	'start'	=> $start,
+	'limit'	=> $limit,
+	'order' => $order, 
+	'sort'	=> $sort,
+	'filter'=> $filter,
+	'allowall' => (bool)$all,
+);
 
-if ($cancel) previouspage('admin.php?c=' . urlencode($c));
-
-$validfields = array('filter','act','actionlist','start','limit','delete','allowrank');
-globalize($validfields);
-foreach ($validfields as $var) { $data[$var] = $$var; }
-
-if (!is_numeric($allowrank) and $allowrank != '') $allowrank = '';
-if (!is_numeric($start) || $start < 0) $start = 0;
-if (!is_numeric($limit) || $limit < 0) $limit = 100;
-$sort = "name";
-$order = "asc";
-$filter = trim($filter);
-
-// perform the action requested on the selected users ...
-if (is_array($actionlist) and count($actionlist)) {
-	for ($i=0; $i < count($actionlist); $i++) {
-		// remove invalid elements
-		if (!is_numeric($actionlist[$i])) unset($actionlist[$i]);
-	}
-
-	if ($delete) {
-		$count = 0;
-		foreach ($actionlist as $plrid) {
-			$ok = $ps->delete_player($plrid);
-			if ($ok) $count++;
+// delete selected players
+if (is_array($del) and count($del)) {
+	$total_deleted = 0;
+	foreach ($del as $id) {
+		if (is_numeric($id)) {
+			if ($ps->delete_player($id)) {
+				$total_deleted++;
+			}
 		}
-		$data['msg'] = "$count " . $ps_lang->trans("users deleted");
-	}
+	}	
+	$message = $cms->message('success', array(
+		'message_title'	=> $cms->trans("Players Deleted!"),
+		'message'	=> sprintf($cms->trans("%d players were deleted successfully"), $total_deleted),
+	));
 }
 
-$where = '';
-if ($filter != '') {
-	if ($where) $where .= "AND ";
-	$where .= "(";
-	$where .= "u.username LIKE '%" . $ps_db->escape($filter) . "%' ";
-	$where .= "OR pp.name LIKE '%" . $ps_db->escape($filter) . "%' ";
-	$where .= ") ";
-}
-if ($allowrank != '') {
-	if ($where) $where .= "AND ";
-	$where .= "(p.allowrank='" . $ps->db->escape($allowrank) . "')";
-}
-
-$list = array();
-$cmd  = "SELECT p.*,pp.*,u.* FROM $ps->t_plr p ";
-$cmd .= "LEFT JOIN $ps->t_plr_profile pp ON pp.uniqueid=p.uniqueid ";
-$cmd .= "LEFT JOIN $ps->t_user u ON u.userid=pp.userid ";
-if ($where) $cmd .= "WHERE $where ";
-$cmd .= $ps->_getsortorder(array('start' => $start, 'limit' => $limit, 'order' => $order, 'sort' => $sort));
-$list = $ps_db->fetch_rows(1,$cmd);
-
-$cmd  = "SELECT count(*) FROM $ps->t_plr p ";
-$cmd .= "LEFT JOIN $ps->t_plr_profile pp ON pp.uniqueid=p.uniqueid ";
-$cmd .= "LEFT JOIN $ps->t_user u ON u.userid=pp.userid ";
-if ($where) $cmd .= "WHERE $where ";
-list($filtertotal) = $ps_db->fetch_list($cmd);
-
-$data['totalplayers'] 	= $ps_db->count($ps->t_plr, '*');
-$data['totalranked'] 	= $ps_db->count($ps->t_plr, '*', 'allowrank=1');
-$data['totalunranked'] 	= $ps_db->count($ps->t_plr, '*', 'allowrank=0');
-$data['playerlist'] 	= $list;
-
-$data['pagerstr'] = pagination(array(
-	'baseurl'	=> ps_url_wrapper(array('c' => $c, 'limit' => $limit, 'filter' => $filter, 'allowrank' => $allowrank)),
-	'total'		=> $filtertotal,
+$players = $ps->get_basic_player_list($_order);
+$total = $ps->get_total_players($_order);
+$pager = pagination(array(
+	'baseurl'	=> ps_url_wrapper(array('sort' => $sort, 'order' => $order, 'limit' => $limit, 'filter' => $filter, 'all' => $all ? 1 : 0)),
+	'total'		=> $total,
 	'start'		=> $start,
 	'perpage'	=> $limit, 
-	'pergroup'	=> 3,
-	'prefix'	=> '', //$ps_lang->___trans("Goto") . ': ',
-	'next'		=> $ps_lang->trans("Next"),
-	'prev'		=> $ps_lang->trans("Prev"),
-//	'class'		=> 'menu',
+	'pergroup'	=> 5,
+	'separator'	=> ' ', 
+	'force_prev_next' => true,
+	'next'		=> $cms->trans("Next"),
+	'prev'		=> $cms->trans("Previous"),
 ));
 
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
-}
+$cms->crumb('Manage', ps_url_wrapper(array('_base' => 'manage.php' )));
+$cms->crumb('Players', ps_url_wrapper(array('_base' => $PHP_SELF )));
+
+
+// assign variables to the theme
+$cms->theme->assign(array(
+	'page'		=> basename(__FILE__, '.php'), 
+	'players'	=> $players,
+	'pager'		=> $pager,
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/2column.css');
+$cms->theme->add_css('css/forms.css');
+$cms->theme->add_js('js/players.js');
+$cms->theme->add_js('js/message.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer', '');
 
 ?>

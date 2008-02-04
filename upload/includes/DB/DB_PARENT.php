@@ -3,34 +3,56 @@ if (defined("CLASS_DB_PARENT_PHP")) return 1;
 define("CLASS_DB_PARENT_PHP", 1);
 
 class DB_PARENT {
-var $DEBUG 	= 0;
-var $errno	= 0;
-var $errstr	= '';
-var $conf 	= array();
-var $ps_dbh	= null;
+var $DEBUG 		= false;
+var $errno		= 0;
+var $errstr		= '';
+var $conf 		= array();
+var $dbh		= null;
+var $connected 		= false;
+var $selected		= false;
 var $escape_func	= 'addslashes';
-
-function __construct($conf=array()) {
-	$this->DB_PARENT($conf);
-}
 
 // class constructor
 function DB_PARENT($conf=array()) {
 	$this->conf = $conf;
-	$this->dbtype = $conf['dbtype'];
-	$this->dbhost = $conf['dbhost'];
-	$this->dbname = $conf['dbname'];
-	$this->dbport = $conf['dbport'];
-	$this->dbname = $conf['dbname'];
-	$this->dbuser = $conf['dbuser'];
-	$this->dbpass = $conf['dbpass'];
-	$this->dbtblprefix = $conf['dbtblprefix'];
+	$this->config($conf);
+	$this->dbtype = $conf['dbtype'] ? $conf['dbtype'] : 'mysql';
 
 	$this->errors = array();
-	$this->totalqueries = 0;
 	$this->queries = array();
+	$this->totalqueries = 0;
 
-	$this->classname = "DB::" . $conf['dbtype'];
+	$this->classname = "DB::" . $this->dbtype;
+}
+
+// makes a copy of the current object, making a new DB connection, etc.
+// so the new copy will have it's own DB handle for queries. Also, errors and query
+// arrays are reset.
+function & copy() {
+	$class = str_replace('::', '_', $this->classname);
+	$copy = new $class($this->conf);
+	if ($this->connected and !$copy->connected) {
+		$copy->connect();
+		if ($this->selected and !$copy->selected) {
+			$copy->selectdb();
+		}
+	}
+	return $copy;
+}
+
+function config($conf) {
+	if (!is_array($conf)) $conf = array();
+	$list = array('dbhost','dbport','dbname','dbuser','dbpass','dbtblprefix');
+	foreach ($list as $var) {
+		if (array_key_exists($var, $conf)) {
+			$this->$var = $conf[$var];
+			$this->conf[$var] = $conf[$var];
+		}
+	}
+}
+
+function type() {
+	return $this->dbtype;
 }
 
 function connect() {
@@ -60,12 +82,12 @@ function next_id($tbl, $key='id') {
 }
 
 function server_info() {
-	return array('version' => 'Unknown');
+	return array('version' => 0);
 }
 
-function table_status($ps_dbname='') {
-	if (!empty($ps_dbname)) $ps_dbname = "FROM $ps_dbname";
-	$cmd = "SHOW TABLE STATUS $ps_dbname";
+function table_status($dbname='') {
+	if (!empty($dbname)) $dbname = "FROM $dbname";
+	$cmd = "SHOW TABLE STATUS $dbname";
 	$this->query($cmd);
 	return $this->fetch_rows();
 }
@@ -135,7 +157,7 @@ function delete($tbl, $key, $id=NULL) {
 	if ($id===NULL) {	// assume $key is a full where clause
 		return $this->query("DELETE FROM $tbl WHERE $key");
 	} else {
-		return $this->query("DELETE FROM $tbl WHERE " . $this->qi($key) . "='" . $this->escape($id) . "'");
+		return $this->query("DELETE FROM $tbl WHERE " . $this->qi($key) . "=" . $this->escape($id, true));
 	}
 }
 
@@ -147,11 +169,11 @@ function truncate($tbl) {
 // fetch a single row from the DB, matching on a single field name (select * From TBL WHERE key=value)
 function select_row($tbl, $values, $key, $id=NULL, $assoc=0) {
 	if (!is_array($key)) {
-		$res = $this->query(sprintf("SELECT %s FROM %s WHERE %s = '%s' LIMIT 1", $values, $tbl, $this->qi($key), $this->escape($id)));
+		$res = $this->query(sprintf("SELECT %s FROM %s WHERE %s = %s LIMIT 1", $values, $tbl, $this->qi($key), $this->escape($id, true)));
 	} else {
 		$where = "";
 		foreach ($key as $k => $v) {
-			$where .= $this->qi($k) . " = '" . $this->escape($v) . "' and ";
+			$where .= $this->qi($k) . " = " . $this->escape($v, true) . " and ";
 		}
 		$where = !empty($where) ? substr($where,0,-5) : "1";		// strip off ' and ', or return '1' if there's no where clause
 		$res = $this->query(sprintf("SELECT %s FROM %s WHERE %s LIMIT 1", $values, $tbl, $where));
@@ -169,17 +191,28 @@ function count($tbl, $key='*', $where='') {
 }
 
 // updates a row in a table with the values in the set array. if set is not an array it's assumed to be a valid query string
+// if $id is an array the update is done with an "where $key IN ($id,...)"
 function update($tbl, $set, $key, $id) {
 	$values = "";
 	if (is_array($set)) {
 		foreach ($set as $k => $v) {
-			$values .= $this->qi($k) . "='" . $this->escape($v) . "', ";
+			$values .= $this->qi($k) . "=" . $this->escape($v, true) . ", ";
 		}
 		if (strlen($values) > 2) $values = substr($values, 0, -2);
 	} else {
 		$values = $set;
 	}
-	return $this->query("UPDATE $tbl SET $values WHERE " . $this->qi($key) . "='" . $this->escape($id) . "'");
+	$cmd  = "UPDATE $tbl SET $values WHERE " . $this->qi($key);
+	if (is_array($id)) {
+		$list = array();
+		foreach ($id as $_id) {
+			$list[] = $this->escape($_id, true);
+		}
+		$cmd .= " IN (" . join(',',$list) . ")";
+	} else {
+		$cmd .= "=" . $this->escape($id,true);
+	}
+	return $this->query($cmd);
 }
 
 // inserts a row into the table using the values in set
@@ -187,7 +220,7 @@ function insert($tbl, $set) {
 	$values = "";
 	if (is_array($set)) {
 		foreach ($set as $k => $v) {
-			$values .= $this->qi($k) . "='" . $this->escape($v) . "', ";
+			$values .= $this->qi($k) . "=" . $this->escape($v, true) . ", ";
 		}
 		if (count($set)) {
 			$values = substr($values, 0, -2);
@@ -198,12 +231,33 @@ function insert($tbl, $set) {
 	return $this->query("INSERT INTO $tbl SET $values");
 }
 
+function sortorder($args, $prefix='') {
+	$str = "";
+	if ($args[$prefix . 'sort'] != '') {
+		$fieldprefix = $args['fieldprefix'] ? $args['fieldprefix'] . '.' : '';
+		$str .= " ORDER BY $fieldprefix" . $args[$prefix . 'sort'];
+		if ($args[$prefix . 'order']) $str .= " " . $args[$prefix . 'order'];
+	}
+	$str .= $this->limit($args, $prefix);
+	return $str;    
+}
+
+function limit($args, $prefix='') {
+	$str = "";
+	if ($args[$prefix . 'limit'] && !$args[$prefix . 'start']) {
+		$str .= " LIMIT " . $args[$prefix . 'limit'];
+	} elseif ($args[$prefix . 'limit'] && $args[$prefix . 'start']) {
+		$str .= " LIMIT " . $args[$prefix . 'start'] . "," . $args[$prefix . 'limit'];
+	}
+	return $str;
+}
+
 // returns true if a row exists based on the key=id given
 function exists($tbl, $key, $id=NULL) {
 	if ($id === NULL) {		// assume $key is in the form: 'mykey=value'
 		$cmd = "SELECT count(*) FROM $tbl WHERE $key";
 	} else {
-		$cmd = "SELECT count(*) FROM $tbl WHERE " . $this->qi($key) . "='" . $this->escape($id) . "'";
+		$cmd = "SELECT count(*) FROM $tbl WHERE " . $this->qi($key) . "=" . $this->escape($id, true);
 	}
 	$res = $this->query($cmd);
 	$total = 0;
@@ -213,8 +267,8 @@ function exists($tbl, $key, $id=NULL) {
 	return $total;
 }
 
-function dropdb($ps_dbname) {
-	return $this->query("DROP DATABASE " . $this->qi($ps_dbname));
+function dropdb($dbname) {
+	return $this->query("DROP DATABASE " . $this->qi($dbname));
 }
 
 function droptable($tbl) {
@@ -222,7 +276,7 @@ function droptable($tbl) {
 }
 
 // returns true if the database name given exists
-function dbexists($ps_dbname) {
+function dbexists($dbname) {
 	die("Abstract method called: " . $this->classname . "::dbexists");
 }
 
@@ -251,9 +305,19 @@ function rollback() {
 }
 
 // escapes a value for insertion into the DB, will try to use the best method available on the current PHP version
-function escape($str) {
+function escape($str, $q = false) {
 	$func = $this->escape_func;
-	return @$func($str);
+	$was_null = is_null($str);
+	if ($str === false) {
+		$str = 0;
+	} elseif ($str === true) {
+		$str = 1;
+	} elseif ($str === null) {
+		$str = 'NULL';
+	}
+	$str = @$func($str);
+	if ($q and !$was_null and !is_numeric($str)) $str = "'$str'";
+	return $str;
 }
 
 function fatal($new=NULL) {
@@ -275,28 +339,49 @@ function lasterr() {
 	return $this->errstr;
 }
 
-// assigns a new error to the current 'errstr' and stores the old 'errstr' in the $errors array
-function error($e) {
-	if ($this->errstr != '') $this->errors[] = $this->errstr;	// store the last error if there is one
-	$this->errstr = $e;						// assign the current error
+// stores the current error and holds it for future reporting
+function error($e, $force = false) {
+	$e = trim($e);
+	if (!empty($e) and ($e != $this->lasterr() or $force)) {
+		$this->errstr = $e;				// assign the current error
+		$this->errors[] = $e;
+	}
+}
+
+function clear_errors() {
+	$old = $this->errors;
+	$this->errors = array();
+	$this->errstr = '';
+	return $old;
 }
 
 // returns all errors generated
 function allerrors() {
-	$this->error('');						// store the last possible error, and clear out the current errstr
 	return $this->errors;
 }
 
+// return a table name with the proper prefix
+function table($table) {
+	return $this->dbtblprefix . $table;
+}
+
+function version($force = false) {
+	static $info = array();
+	if (!$this->connected) return 0;
+	if (!$info or $force) $info = $this->server_info();
+	return $info['version'];
+}
+
 // these expressions are used in queries that combine players together (ie: clan pages)
-function _expr_percent($ary) 		{ return "IFNULL(SUM($ary[0]) / SUM($ary[1]) * 100, 0.00)"; }
-function _expr_percent2($ary) 		{ return "IFNULL(SUM($ary[0]) / (SUM($ary[0])+SUM($ary[1])) * 100, 0.00)"; }
-function _expr_ratio($ary) 		{ return "IFNULL(SUM($ary[0]) / SUM($ary[1]), SUM($ary[0]))"; }
-function _expr_ratio_minutes($ary) 	{ return "IFNULL(SUM($ary[0]) / (SUM($ary[1]) / 60), SUM($ary[0]))"; }
+function _expr_percent($ary) 		{ return "ROUND(IFNULL(SUM($ary[0]) / SUM($ary[1]) * 100, 0.00), 2)"; }
+function _expr_percent2($ary) 		{ return "ROUND(IFNULL(SUM($ary[0]) / (SUM($ary[0])+SUM($ary[1])) * 100, 0.00), 2)"; }
+function _expr_ratio($ary) 		{ return "ROUND(IFNULL(SUM($ary[0]) / SUM($ary[1]), SUM($ary[0])), 2)"; }
+function _expr_ratio_minutes($ary) 	{ return "ROUND(IFNULL(SUM($ary[0]) / (SUM($ary[1]) / 60), SUM($ary[0])), 2)"; }
 
 // same as above but these are used for non-clan pages that aren't compiled (plr_sessions)
-function _soloexpr_percent($ary) 	{ return "IFNULL($ary[0] / $ary[1] * 100, 0.00)"; }
-function _soloexpr_ratio($ary) 		{ return "IFNULL($ary[0] / $ary[1], $ary[0])"; }
-function _soloexpr_ratio_minutes($ary) 	{ return "IFNULL($ary[0] / ($ary[1] / 60), $ary[0])"; }
+function _soloexpr_percent($ary) 	{ return "ROUND(IFNULL($ary[0] / $ary[1] * 100, 0.00), 2)"; }
+function _soloexpr_ratio($ary) 		{ return "ROUND(IFNULL($ary[0] / $ary[1], $ary[0]), 2)"; }
+function _soloexpr_ratio_minutes($ary) 	{ return "ROUND(IFNULL($ary[0] / ($ary[1] / 60), $ary[0]), 2)"; }
 
 function _expr_min($ary)		{ return "IF($ary[0] < $ary[1], $ary[0], $ary[1])"; }
 function _expr_max($ary)		{ return "IF($ary[0] > $ary[1], $ary[0], $ary[1])"; }

@@ -1,17 +1,21 @@
 <?php
-if (defined("CLASS_DB_PHP")) return 1;
-define("CLASS_DB_PHP", 1);
+/***
+	PsychoDB class. Database abstraction class.
+	$Id$
+
+	Basic DB abstraction class for PsychoStats.
+
+***/
 
 include_once(dirname(__FILE__) . "/DB/DB_PARENT.php");
 
-class DB {
+class PsychoDB {
 
 // Our factory method to create a valid object for our specified database
 function &create($conf=array()) {
 	if (!is_array($conf)) {				// force $conf into an array.
-		$ps_dbhost = $conf;			// If $conf is not an array it's assumed to be a host[:port]
-		$conf = array( 'dbhost' => $ps_dbhost );
-		unset($ps_dbhost);
+		$dbhost = $conf;			// If $conf is not an array it's assumed to be a host[:port]
+		$conf = array( 'dbhost' => $dbhost );
 	}
 
 	// Add defaults to the config. Defaults do not override values passed in the $conf array
@@ -41,7 +45,6 @@ function &create($conf=array()) {
 	if (!include_once($filepath)) {
 		die("<b>Fatal Error:</b> Unsupported 'dbtype' specified (${conf['dbtype']}) for new DB object.");
 	} else {
-#		$this->classname = "DB::" . $conf['dbtype'];
 		$_db = new $classname($conf);
 		return $_db;
 	}

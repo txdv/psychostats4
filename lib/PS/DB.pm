@@ -11,7 +11,7 @@ use base qw( PS::Debug );
 use Carp;
 use Data::Dumper;
 
-our $VERSION = '1.00';
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
 our $AUTOLOAD;
 
 sub new {
@@ -47,7 +47,9 @@ sub new {
 	$self->{t_config} 		= $self->{dbtblprefix} . 'config';
 	$self->{t_config_awards}	= $self->{dbtblprefix} . 'config_awards';
 	$self->{t_config_clantags}	= $self->{dbtblprefix} . 'config_clantags';
+	$self->{t_config_events}	= $self->{dbtblprefix} . 'config_events';
 	$self->{t_config_layout}	= $self->{dbtblprefix} . 'config_layout';
+	$self->{t_config_logsources}	= $self->{dbtblprefix} . 'config_logsources';
 	$self->{t_config_plrbans} 	= $self->{dbtblprefix} . 'config_plrbans';
 	$self->{t_config_plrbonuses} 	= $self->{dbtblprefix} . 'config_plrbonuses';
 	$self->{t_errlog} 		= $self->{dbtblprefix} . 'errlog';
@@ -55,22 +57,27 @@ sub new {
 	$self->{t_geoip_ip}		= $self->{dbtblprefix} . 'geoip_ip';
 	$self->{t_map} 			= $self->{dbtblprefix} . 'map';
 	$self->{t_map_data} 		= $self->{dbtblprefix} . 'map_data';
+	$self->{t_map_hourly} 		= $self->{dbtblprefix} . 'map_hourly';
 	$self->{t_plr} 			= $self->{dbtblprefix} . 'plr';
 	$self->{t_plr_aliases} 		= $self->{dbtblprefix} . 'plr_aliases';
+	$self->{t_plr_bans} 		= $self->{dbtblprefix} . 'plr_bans';
 	$self->{t_plr_data} 		= $self->{dbtblprefix} . 'plr_data';
 	$self->{t_plr_ids} 		= $self->{dbtblprefix} . 'plr_ids';
+	$self->{t_plr_ids_ipaddr}	= $self->{dbtblprefix} . 'plr_ids_ipaddr';
+	$self->{t_plr_ids_name}		= $self->{dbtblprefix} . 'plr_ids_name';
+	$self->{t_plr_ids_worldid}	= $self->{dbtblprefix} . 'plr_ids_worldid';
 	$self->{t_plr_maps} 		= $self->{dbtblprefix} . 'plr_maps';
 	$self->{t_plr_profile} 		= $self->{dbtblprefix} . 'plr_profile';
 	$self->{t_plr_roles} 		= $self->{dbtblprefix} . 'plr_roles';
 	$self->{t_plr_sessions} 	= $self->{dbtblprefix} . 'plr_sessions';
 	$self->{t_plr_victims} 		= $self->{dbtblprefix} . 'plr_victims';
 	$self->{t_plr_weapons} 		= $self->{dbtblprefix} . 'plr_weapons';
+	$self->{t_plugins} 		= $self->{dbtblprefix} . 'plugins';
 	$self->{t_role}			= $self->{dbtblprefix} . 'role';
 	$self->{t_role_data}		= $self->{dbtblprefix} . 'role_data';
-	$self->{t_search} 		= $self->{dbtblprefix} . 'search';
 	$self->{t_sessions} 		= $self->{dbtblprefix} . 'sessions';
 	$self->{t_state} 		= $self->{dbtblprefix} . 'state';
-	$self->{t_state_plrs} 		= $self->{dbtblprefix} . 'state_plrs';
+	$self->{t_themes} 		= $self->{dbtblprefix} . 'themes';
 	$self->{t_user} 		= $self->{dbtblprefix} . 'user';
 	$self->{t_weapon} 		= $self->{dbtblprefix} . 'weapon';
 	$self->{t_weapon_data} 		= $self->{dbtblprefix} . 'weapon_data';
@@ -108,14 +115,15 @@ sub init_tablenames {
 	}
 
 	# mod extension tables
+	my @mod_ext = qw( role_data map_data plr_data plr_maps plr_roles );
 	if ($self->{dbtblsuffix}) {
-		$self->{t_map_data_mod}	= $self->{dbtblprefix} . 'map_data' . $self->{dbtblsuffix};
-		$self->{t_plr_data_mod} = $self->{dbtblprefix} . 'plr_data' . $self->{dbtblsuffix};
-		$self->{t_plr_maps_mod}	= $self->{dbtblprefix} . 'plr_maps' . $self->{dbtblsuffix};
+		for (@mod_ext) {
+			$self->{'t_' . $_ . '_mod'} = $self->{dbtblprefix} . $_ . $self->{dbtblsuffix};
+		}
 	} else {
-		$self->{t_map_data_mod} = '';
-		$self->{t_plr_data_mod} = '';
-		$self->{t_plr_maps_mod} = '';
+		for (@mod_ext) {
+			$self->{'t_' . $_ . '_mod'} = '';
+		}
 	}
 }
 
@@ -203,7 +211,7 @@ sub where {
 	my $andor = shift || 'AND';
 	my $where = '';
 	for (my $i=0; $i < @$matches; $i+=2) {
-		$where .= $self->{dbh}->quote_identifier($matches->[$i]) . "=" . $self->{dbh}->quote($matches->[$i+1]);
+		$where .= $self->{dbh}->quote_identifier($matches->[$i]) . (defined $matches->[$i+1] ? "=" . $self->{dbh}->quote($matches->[$i+1]) : " IS NULL");
 		$where .= " $andor " if $i+2 < @$matches;
 	}
 	$where = '1' if $where eq '';			# match anything 
@@ -497,16 +505,50 @@ sub rollback { }
 sub query {
 	my $self = shift;
 	my $cmd = shift;
+	my ($rv, $attempts, $done);
 	$self->{lastcmd} = $cmd;
-	$self->{sth} = $self->{dbh}->prepare($cmd);
 
-	if (!$self->{sth}) {
-		$self->fatal_safe("Error preparing DB query:\n$cmd\n" . $self->errstr . "\n--end--");
-	} 
+	$attempts = 0;
+	do {
+		$self->{sth} = $self->{dbh}->prepare($cmd);
+		if (!$self->{sth}) {
+			$self->fatal_safe("Error preparing DB query:\n$cmd\n" . $self->errstr . "\n--end--");
+		} 
 
-	if ($self->{sth}->execute) {
+		$attempts++;
+		$rv = $self->{sth}->execute;
+
+		if (!$rv) {
+			# 1040 = Too many connections
+			# 1053 = Server shutdown in progress (can happen with a 'kill <pid>' is issued via the mysql client)
+			# 2006 = Lost connection to MySQL server during query
+			# 2013 = MySQL server has gone away
+			if (grep { $self->errno eq $_ } qw( 2013 2006 1053 1040 )) {
+				$self->warn_safe("DB connection was lost (errno " . $self->errno . "); Attempting to reconnect #$attempts");
+				sleep(1);	# small delay
+
+				my $connect_attempts = 0;
+				do {
+					$connect_attempts++;
+					if ($connect_attempts > 1) {
+						$self->warn_safe("Re-attempting to establish a DB connection (#$connect_attempts)");
+						sleep(3);
+					}
+					$self->connect;
+				} while (!ref $self->{dbh} and $connect_attempts <= 10);
+				if (!ref $self->{dbh}) {
+					$self->fatal_safe("Error re-connecting to database using dsn \"$self->{dsn}\":\n" . $DBI::errstr) unless ref $self->{dbh};
+				}
+			} else {
+				# don't try to reconnect on most errors
+				$done = 1;
+			}
+		}
+	} while (!$rv and !$done and $attempts <= 10);
+
+	if ($rv) {
 		# do nothing, allow caller to work with the statement handle directly ....
-		$self->debug5(join(" ", split(/\s*\015?\012\s*/, $cmd)),20);
+		$self->debug5(join(" ", split(/\s*\015?\012\s*/, $cmd)),20) if $self->{DEBUG};
 	} else {
 		# for now: FATAL ANY BAD QUERY. I'll change this to 'warning' when things are stablized
 		$self->fatal_safe("Error executing DB query:\n$cmd\n" . $self->errstr . "\n--end of error--");
@@ -514,6 +556,13 @@ sub query {
 	}
 	return $self->{sth};
 }
+
+# DB only calls this when a database error occurs. By intercepting this, we can try to determine
+# if the last fatal error was caused by a DB connection issue and then try to re-connect
+#sub fatal_safe {
+#	my ($self, $msg) = @_;
+#	$self->SUPER($msg);
+#}
 
 # do performs a simple non-select query and we don't care about the result if it fails
 sub do {
@@ -727,6 +776,7 @@ sub quote { shift->{dbh}->quote(@_) }
 ###sub q { shift->{dbh}->quote(@_) }
 
 sub errstr { $_[0]->{dbh}->errstr }
+sub errno { 0 }
 
 sub _disabled_AUTOLOAD {
 	my $self = ref($_[0]) =~ /::/ ? shift : undef;

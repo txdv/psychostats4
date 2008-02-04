@@ -5,16 +5,12 @@ use warnings;
 use base qw( PS::Game::halflife );
 use util qw( :net );
 
-our $VERSION = '1.02';
+our $VERSION = '1.04';
 
 
 sub _init { 
 	my $self = shift;
 	$self->SUPER::_init;
-	$self->load_events(*DATA);
-	$self->{conf}->load('game_halflife_dod');
-
-	$self->{plr_save_on_round} = ($self->{plr_save_on} eq 'round');
 
 	return $self;
 }
@@ -31,7 +27,7 @@ sub event_logstartend {
 	$self->{dod_teamscore} = undef;
 }
 
-sub event_dod_teamtrigger {
+sub event_teamtrigger {
 	my ($self, $timestamp, $args) = @_;
 	my ($team, $trigger, $props) = @$args;
 	my ($team2);
@@ -79,6 +75,7 @@ sub event_dod_teamtrigger {
 		$m->{mod}{$var2}++;
 		$m->{basic}{rounds}++;
 
+	} elsif ($trigger eq 'dod_capture_area') {
 	} elsif ($trigger eq 'captured_loc') {
 	} elsif ($trigger eq 'team_scores') {
 	} else {
@@ -106,7 +103,6 @@ sub event_plrtrigger {
 
 	my @vars = ();
 	$trigger = lc $trigger;
-#	print "PLRBONUS($trigger, 'enactor', $p1);\n";
 	$self->plrbonus($trigger, 'enactor', $p1);
 	if ($trigger eq 'weaponstats' or $trigger eq 'weaponstats2') {
 		$self->event_weaponstats($timestamp, $args);
@@ -165,19 +161,6 @@ sub event_plrtrigger {
 		$p1->{mod}{$var}++;
 		$m->{mod}{$var}++;
 	}
-}
-
-sub event_dod_changed_role {
-	my ($self, $timestamp, $args) = @_;
-	my ($plrstr, $rolestr) = @$args;
-	my $p1 = $self->get_plr($plrstr) || return;
-	$rolestr =~ s/^(?:#?class_)?//;
-	my $r1 = $self->get_role($rolestr, $p1->{team});
-
-	$p1->{role} = $rolestr;
-
-	$p1->{roles}{ $r1->{roleid} }{joined}++;
-	$r1->{basic}{joined}++ if $r1;
 }
 
 # Original DOD 'team scored' event. The only way to tell which team won with old DOD
@@ -246,40 +229,13 @@ sub event_dod_teamscore {
 	$self->plrbonus('round_win', 'enactor_team', $won, 'victim_team', $lost);
 }
 
+sub role_normal {
+	my ($self, $rolestr) = @_;
+	my $role = lc $rolestr;
+        $role =~ s/^(?:#?class_)?//;
+	return $role;
+}
+
 sub has_mod_tables { 1 }
 
 1;
-
-__DATA__
-
-[plrtrigger]
-  regex = /^"([^"]+)" triggered(?: a)? "([^"]+)"(.*)/
-
-## new dod:s events
-
-[dods_scores]
-  regex = /^Team "([^"]+)" (scored|captured)/
-  options = ignore
-
-[dods_ignore1]
-  regex = /^"([^"]+)" blocked/
-  options = ignore
-
-## original dod events
-
-[dod_changed_role]
-  regex = /^"([^"]+)" changed role to "([^"]+)"/
-
-[dod_objitem]
-  regex = /^"([^"]+)" triggered an objective item/
-
-[dod_teamscore]
-  regex = /^"([^"]+)" scored "([^"]+)" with "([^"]+)" players/
-
-[dod_teamtrigger]
-  regex = /^Team "([^"]+)" triggered(?: a)? "([^"]+)"(.*)/
-
-[dod_ignorelines1]
-  regex = /^(?:Final)/
-  options = ignore
-

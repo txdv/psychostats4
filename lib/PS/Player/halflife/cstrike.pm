@@ -2,7 +2,7 @@ package PS::Player::halflife::cstrike;
 
 use strict;
 use warnings;
-use base qw( PS::Player::halflife );
+use base qw( PS::Player );
 
 our $TYPES = {
 	ctkills			=> '+',
@@ -40,27 +40,13 @@ our $TYPES = {
 # Player map stats are the same as the basic stats
 our $TYPES_MAPS = { %$TYPES };
 
+# override parent methods to combine types
 sub get_types { return { %{$_[0]->SUPER::get_types}, %$TYPES } }
 sub get_types_maps { return { %{$_[0]->SUPER::get_types_maps}, %$TYPES_MAPS } }
 
-sub save {
-	my $self = shift;
-	my $db = $self->{db};
-	my $dataid = $self->SUPER::save(@_) || return;
-
-	$db->save_stats($db->{t_plr_data_mod}, $self->{mod}, $TYPES, [ dataid => $dataid ]);
-	$self->{mod} = {};
-	return $dataid;
-}
-
-sub save_map {
-	my ($self, $id, $data) = @_;
-	my $db = $self->{db};
-	my $dataid = $self->SUPER::save_map($id, $data) || return;
-
-	$db->save_stats($db->{t_plr_maps_mod}, $self->{mod_maps}{$id}, $TYPES_MAPS, [ dataid => $dataid ]);
-	return $dataid;
-}
+# allows the parent to determine our local types
+sub mod_types { $TYPES };
+sub mod_types_maps { $TYPES_MAPS };
 
 sub has_mod_tables { 1 }
 

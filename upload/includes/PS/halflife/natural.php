@@ -1,9 +1,22 @@
 <?php
-if (!defined("VALID_PAGE")) die("<b>Access Denied!</b>");
+/**
+	PS::halflife::natural
+	$Id$
 
-$this->use_roles = TRUE;
+	Halflife::natural mod support for PsychoStats front-end
+*/
+if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FILE__));
+if (defined("CLASS_PS_HALFLIFE_NATURAL_PHP")) return 1;
+define("CLASS_PS_HALFLIFE_NATURAL_PHP", 1);
 
-$this->CLAN_MODTYPES = array(
+include_once(dirname(dirname(__FILE__)) . '/halflife.php');
+
+class PS_halflife_natural extends PS_halflife {
+
+var $class = 'PS::halflife::natural';
+var $use_roles = true;
+
+var $CLAN_MODTYPES = array(
 	'marinekills'		=> '+',
 	'alienkills'		=> '+',
 	'marinedeaths'		=> '+',
@@ -25,6 +38,101 @@ $this->CLAN_MODTYPES = array(
 	'structuresrecycled'	=> '+',
 );
 
-$this->CLAN_MAP_MODTYPES = $this->CLAN_MODTYPES;
+function PS_halflife_natural(&$db) {
+	parent::PS_halflife($db);
+	$this->CLAN_MAP_MODTYPES = $this->CLAN_MODTYPES;
+}
+
+function add_map_player_list_mod($map, $setup = array()) {
+	global $cms;
+	$this->add_map_player_list('structuresbuilt',		$setup + array('label' => $cms->trans("Structures Built")) );
+	$this->add_map_player_list('structuresdestroyed',	$setup + array('label' => $cms->trans("Structures Destroyed")) );
+	$this->add_map_player_list('structuresrecycled',	$setup + array('label' => $cms->trans("Structures Recycled")) );
+}
+
+// Add or remove columns from maps.php listing
+function maps_table_mod(&$table) {
+	global $cms;
+	$table->insert_columns(
+		array( 
+			'marinewonpct' => array( 'label' => 'Wins', 'tooltip' => $cms->trans("Alien / Marine Wins"), 'callback' => array(&$this, 'team_wins') ), 
+		),
+		'rounds',
+		true
+	);
+}
+
+function map_left_column_mod(&$map, &$theme) {
+	// maps and players have the same stats ...
+	$this->player_left_column_mod($map, $theme);
+	$theme->assign('map_left_column_mod', $theme->get_template_vars('player_left_column_mod'));
+}
+
+function clan_left_column_mod(&$clan, &$theme) {
+	// clans and players have the same stats ...
+	$this->player_left_column_mod($clan, $theme);
+	$theme->assign('clan_left_column_mod', $theme->get_template_vars('player_left_column_mod'));
+}
+
+function player_left_column_mod(&$plr, &$theme) {
+	global $cms;
+	$tpl = 'player_left_column_mod';
+	if ($theme->template_found($tpl, false)) {
+		$actions = array();
+		$joined = $plr['joinedalien'] + $plr['joinedmarine'];
+		if ($joined) {
+			$pct1 = sprintf('%0.02f', $plr['joinedalien'] / $joined * 100);
+			$pct2 = sprintf('%0.02f', $plr['joinedmarine'] / $joined * 100);
+		} else {
+			$pct1 = $pct2 = 0;
+		}
+		$actions[] = array(
+			'label'	=> $cms->trans("Alien / Marine Joins"),
+			'value'	=> dual_bar(array(
+				'pct1'	 	=> $pct1,
+				'pct2'	 	=> $pct2,
+				'title1'	=> $plr['joinedalien'] . ' Alien (' . $pct1 . '%)',
+				'title2'	=> $plr['joinedmarine'] . ' Marine (' . $pct2 . '%)',
+				'color1'	=> 'cc0000',
+				'color2'	=> '00cc00',
+				'width'		=> 130
+			))
+		);
+
+		$actions[] = array(
+			'label'	=> $cms->trans("Alien / Marine Wins"),
+			'value'	=> dual_bar(array(
+				'pct1'	 	=> $plr['alienwonpct'],
+				'pct2'	 	=> $plr['marinewonpct'],
+				'title1'	=> $plr['alienwon'] . ' Alien (' . $plr['alienwonpct'] . '%)',
+				'title2'	=> $plr['marinewon'] . ' Marine (' . $plr['marinewonpct'] . '%)',
+				'color1'	=> 'cc0000',
+				'color2'	=> '00cc00',
+				'width'		=> 130
+			))
+		);
+
+		$theme->assign(array(
+			'mod_actions'	=> $actions,
+			'mod_actions_title' => $cms->trans("Team / Action Profile"),
+		));
+		$output = $theme->parse($tpl);
+		$theme->assign('player_left_column_mod', $output);
+	}
+}
+
+// used in maps.php as a callback for the wins of each team
+function team_wins($value, $data) {
+	global $cms;
+	$bar = dual_bar(array(
+		'pct1'	=> $data['alienwonpct'], 
+		'pct2'	=> $data['marinewonpct'],
+		'title1'=> $cms->trans("Alien Wins") . " (" . $data['alienwonpct'] . "%)",
+		'title2'=> $cms->trans("Marine Wins") . " (" . $data['marinewonpct'] . "%)",
+	));
+	return $bar;
+}
+
+}
 
 ?>

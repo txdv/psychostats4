@@ -1,4 +1,4 @@
-# FTP Feeder support. Attempts a standard FTP connection. If you require PASSIVE support use ftp_pasv:// instead of ftp://
+# FTP Feeder support
 package PS::Feeder::ftp;
 
 use strict;
@@ -8,8 +8,7 @@ use Digest::MD5 qw( md5_hex );
 use File::Spec::Functions qw( splitpath catfile );
 use File::Path;
 
-our $VERSION = '1.00';
-
+our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
 
 sub init {
 	my $self = shift;
@@ -20,30 +19,21 @@ sub init {
 		return undef;
 	}
 
-	$self->{conf}->load('logsource_ftp');		# load logsource_ftp specific configs
-
-	$self->{_opts} = {};				# settings used in the FTP connection
-	$self->{_dir} = '';
 	$self->{_logs} = [ ];
 	$self->{_curline} = 0;
 	$self->{_log_regexp} = qr/\.log$/io;
 	$self->{_protocol} = 'ftp';
 	$self->{_idle} = time;
-	$self->{max_idle} = 25;				# should be made a configurable option ...
-	$self->{orig_logsource} = $self->{logsource};
+	$self->{_last_saved} = time;
 
-	return undef unless $self->_parsesource;
+	$self->{max_idle} = 25;				# should be made a configurable option ...
+	$self->{type} = $PS::Feeder::WAIT;
+	$self->{reconnect} = 0;
+
 	return undef unless $self->_connect;
 
-	# load logsource_ftp config settings
-	foreach (qw( skiplast delete savedir )) {
-		$self->{$_} = 
-			$self->{conf}->get_logsource_ftp($self->{_opts}{Host} . '.' . $_) || 
-			$self->{conf}->get_logsource_ftp($_) ||
-			0;
-	}
-
 	# if a savedir was configured and it's not a directory try to create it
+=pod
 	if ($self->{savedir} and !-d $self->{savedir}) {
 		if (-e $self->{savedir}) {
 			$::ERR->warn("Invalid directory configured for saving logs ('$self->{savedir}'): Is a file");
@@ -59,6 +49,7 @@ sub init {
 	if ($self->{savedir}) {
 		$::ERR->info("Downloaded logs will be saved to: $self->{savedir}");
 	}
+=cut
 
 	return undef unless $self->_readdir;
 
@@ -69,21 +60,24 @@ sub init {
 		my $statelog = $self->{state}{file};
 		# first: find the log that matches our previous state in the current log directory
 		while (scalar @{$self->{_logs}}) {
-#			print "'$self->{_logs}->[0]' == '$statelog'\n";
-#			if ($self->{_logs}->[0] eq $statelog) {			# we found the matching log!
-			if ($self->{game}->logcompare($self->{_logs}->[0], $statelog) != -1) {
+			my $cmp = $self->{game}->logcompare($self->{_logs}[0], $statelog);
+			if ($cmp == 0) { # ==
 				$self->_opennextlog;
 				# finally: fast-forward to the proper line
 				my $fh = $self->{_loghandle};
 				while (defined(my $line = <$fh>)) {
-					if (++$self->{_curline} >= $self->{state}->{line}) {
-#						die $line;
+					if (++$self->{_curline} >= $self->{state}{line}) {
 						$::ERR->verbose("Resuming from source $self->{_curlog} (line: $self->{_curline})");
-						return @{$self->{_logs}} ? @{$self->{_logs}}+1 : 1;
+						return $self->{type};
 					}
 				}
-			} else {
+			} elsif ($cmp == -1) { # <
 				shift @{$self->{_logs}};
+			} else { # >
+				# if we get to a log that is 'newer' then the last log in our state then 
+				# we'll just continue from that log since the old log was apparently lost.
+				$::ERR->warn("Previous log from state '$statelog' not found. Continuing from " . $self->{_logs}[0] . " instead ...");
+				return $self->{type};
 			} 
 		}
 
@@ -110,7 +104,12 @@ sub _readdir {
 # establish a connection with the FTP host
 sub _connect {
 	my $self = shift;
+	my $reconnect = shift;
 	my $host = $self->{_opts}{Host};
+
+	$self->{reconnect}++ if $reconnect;
+	$self->info(($reconnect ? "Rec" : "C") . "onnecting to $self->{_protocol}://$self->{_user}\@$self->{_opts}{Host}:$self->{_opts}{Port} ...");
+
 	$self->{ftp} = new Net::FTP($host, %{$self->{_opts}});
 	if (!$self->{ftp}) {
 		$::ERR->warn("$self->{class} error connecting to FTP server: $@");
@@ -119,9 +118,12 @@ sub _connect {
 
 	if (!$self->{ftp}->login($self->{_user}, $self->{_pass})) {
 		chomp(my $msg = $self->{ftp}->message);
-		$::ERR->warn("$self->{class} error logging into FTP server: $msg");
+		$::ERR->warn("Error logging into FTP server: $msg");
 		return undef;
 	}
+
+	# get the current directory
+	chomp($self->{_logindir} = $self->{ftp}->pwd);
 
 	if ($self->{_dir} and !$self->{ftp}->cwd($self->{_dir})) {
 		chomp(my $msg = $self->{ftp}->message);
@@ -129,28 +131,47 @@ sub _connect {
 		return undef;
 	}
 
-	$self->info("Connected to $self->{_protocol}://$self->{_opts}{Host}:$self->{_opts}{Port}. CWD=" . $self->{ftp}->pwd);
+	$self->info(sprintf("Connected to %s://%s%s%s%s. HOME=%s, CWD=%s",
+		$self->{_protocol},
+		$self->{_user} ? $self->{_user} . '@' : '',
+		$self->{_opts}{Host},
+		$self->{_opts}{Port} ne '21' ? ':' . $self->{_opts}{Port} : '',
+		$self->{_opts}{Passive} ? " (pasv)" : "",
+		$self->{_logindir},
+		$self->{ftp}->pwd
+	));
 
 	return 1;
 }
 
 # parse the logsource and strip off it's parts for connection options
-sub _parsesource {
+sub parsesource {
 	my $self = shift;
+	my $db = $self->{db};
+	my $log = $self->{logsource};
 
-	# All {_opts} are passed directly to the Net::FTP object when it's created.
-	# This allows subclasses to add their own options to the list
+	$self->{_opts} = {};
 	$self->{_opts}{Host} = 'localhost';
 	$self->{_opts}{Port} = 21;
 	$self->{_opts}{Timeout} = 120;
-	$self->{_opts}{Passive} = 0;
-#	$self->{_opts}{LocalAddr} = ;
-	$self->{_opts}{Debug} = $self->{conf}->get_opt('debug') || 0 > 1 ? 1 : 0;
+	$self->{_opts}{Passive} = $self->{conf}->get_opt('passive') ? 1 : 0;
+	$self->{_opts}{Debug} = $self->{conf}->get_opt('debug') ? 1 : 0;
 	$self->{_dir} = '';
 	$self->{_user} = '';
 	$self->{_pass} = '';
 
-	if ($self->{orig_logsource} =~ /^([^:]+):\/\/(?:([^:]+)(?::([^@]+))?@)?([^\/]+)\/?(.*)/) {
+	if (ref $log) {
+		$self->{_opts}{Host} = $log->{host} if defined $log->{host};
+		$self->{_opts}{Port} = $log->{port} if defined $log->{port};
+		# allow -passive to override the saved logsource setting; {Passive} is set a few lines above
+		$self->{_opts}{Passive} = $log->{passive} if defined $log->{passive} and !$self->{_opts}{Passive};
+		$self->{_user} = $log->{username};
+		$self->{_pass} = $log->{password};
+		$self->{_dir}  = $log->{path};
+		$db->update($db->{t_config_logsources}, { lastupdate => time }, [ 'id' => $log->{id} ]);
+
+	} elsif ($log =~ /^([^:]+):\/\/(?:([^:]+)(?::([^@]+))?@)?([^\/]+)\/?(.*)/) {
+		# ftp://user:pass@hostname.com/some/path/
 		my ($protocol,$user,$pass,$host,$dir) = ($1,$2,$3,$4,$5);
 		if ($host =~ /^([^:]+):(.+)/) {
 			$self->{_opts}{Host} = $1;
@@ -160,23 +181,47 @@ sub _parsesource {
 		}
 
 		# user & pass are optional
-		$self->{_user} = $user || $self->{conf}->get_logsource_ftp('username') || 
-			$self->{conf}->get_logsource_ftp($self->{_opts}{Host} . '.username');
-		$self->{_pass} = $pass || $self->{conf}->get_logsource_ftp('password') || 
-			$self->{conf}->get_logsource_ftp($self->{_opts}{Host} . '.password');
+		$self->{_user} = $user if $user;
+		$self->{_pass} = $pass if $pass;
+		$self->{_dir}  = $dir  if $dir;
 
-		$self->{_dir} = defined $dir ? $dir : '';
+		$self->{_opts}{Passive} = $self->{conf}->get_opt('passive') ? 1 : 0;
 
-		$self->{logsource} = "$protocol://";
-		if ($self->{_user}) {
-			$self->{logsource} .= "$self->{_user}";
-#			$self->{logsource} .= ":" . md5_hex($self->{_pass}) if $self->{_pass};
-			$self->{logsource} .= "@";
+		# see if a matching logsource already exists
+		my $exists = $db->get_row_hash(sprintf("SELECT * FROM $db->{t_config_logsources} " . 
+			"WHERE type='ftp' AND host=%s AND port=%s AND path=%s AND username=%s", 
+			$db->quote($self->{_opts}{Host}),
+			$db->quote($self->{_opts}{Port}),
+			$db->quote($self->{_dir}),
+			$db->quote($self->{_user})
+		));
+
+		if (!$exists) {
+			# fudge a new logsource record and save it
+			$self->{logsource} = {
+				'id'		=> $db->next_id($db->{t_config_logsources}),
+				'type'		=> 'ftp',
+				'path'		=> $self->{_dir},
+				'host'		=> $self->{_opts}{Host},
+				'port'		=> $self->{_opts}{Port},
+				'passive'	=> $self->{_opts}{Passive},
+				'username'	=> $self->{_user},
+				'password'	=> $self->{_pass},
+				'recursive'	=> 0,
+				'depth'		=> 0,
+				'skiplast'	=> 1,
+				'delete'	=> 0,
+				'options'	=> undef,
+				'defaultmap'	=> 'unknown',
+				'enabled'	=> 0,		# leave disabled since this was given from -log on command line
+				'idx'		=> 0x7FFFFFFF,
+				'lastupdate'	=> time
+			};
+			$db->insert($db->{t_config_logsources}, $self->{logsource});
+		} else {
+			$self->{logsource} = $exists;
+			$db->update($db->{t_config_logsources}, { lastupdate => time }, [ 'id' => $exists->{id} ]);
 		}
-		$self->{logsource} .= $self->{_opts}{Host};
-		$self->{logsource} .= ":" . $self->{_opts}{Port} if $self->{_opts}{Port} ne '21';
-		$self->{logsource} .= "/" . $self->{_dir};
-
 	} else {
 		$::ERR->warn("Invalid logsource syntax. Valid example: ftp://user:pass\@host.com/path/to/logs");
 		return undef;
@@ -208,20 +253,30 @@ sub _opennextlog {
 		if (!$self->{_loghandle}) {
 			$::ERR->warn("Error creating temporary file for download: $!");
 			undef $self->{_loghandle};
-			undef $self->{_curlog};
+#			undef $self->{_curlog};
 			last;					# that's it, we give up
 		}
+#		binmode($self->{_loghandle}, ":encoding(UTF-8)");
 		$self->debug2("Downloading log $self->{_curlog}");
 		if (!$self->{ftp}->get( $self->{_curlog}, $self->{_loghandle} )) {
 			undef $self->{_loghandle};
 			chomp(my $msg = $self->{ftp}->message);
-			$::ERR->warn("Error downloading file: $msg");
-			if (scalar @{$self->{_logs}}) {
-				$self->{_curlog} = shift @{$self->{_logs}};	# try next log
-			} else {
-				last;						# no more logs, we're done
-			}
+			$::ERR->warn("Error downloading file: $self->{_curlog}: " . ($msg ? $msg : "Unknown Error"));
+			my $ok = undef;
+#			unshift(@{$self->{_logs}}, $self->{_curlog});		# add current log back on stack
+			$ok = $self->_connect(1) unless $self->{reconnect} > 3; # limit the times we reconnect
+			last unless $ok;
+#			last; # don't try and process any more logs if one fails
+#			if (scalar @{$self->{_logs}}) {
+#				$self->{_curlog} = shift @{$self->{_logs}};	# try next log
+#			} else {
+#				last;						# no more logs, we're done
+#			}
 		} else {
+			if ($self->{reconnect}) {
+				$self->{reconnect} = 0;		# we got a log successfully, so reset our reconnect flag
+#				$::ERR->verbose("Reattmpting to process log $self->{_curlog}");
+			}
 			seek($self->{_loghandle},0,0);		# back up to the beginning of the file, so we can read it
 
 			if ($self->{savedir}) {			# save entire file to our local directory ...
@@ -241,6 +296,9 @@ sub _opennextlog {
 			}
 		}
 	}
+
+	$self->save_state if time - $self->{_last_saved} > 60;
+
 	$self->{_idle} = time;
 	return $self->{_loghandle};
 }
@@ -260,14 +318,20 @@ sub next_event {
 	# No current loghandle? Get the next log in the queue
 	if (!$self->{_loghandle}) {
 		$self->_opennextlog;
-		return undef unless $self->{_loghandle};
+		unless ($self->{_loghandle}) {
+			$self->save_state;
+			return undef;
+		}
 	}
 
 	# read the next line, if it's undef (EOF), get the next log in the queue
 	my $fh = $self->{_loghandle};
 	while (!defined($line = <$fh>)) {
 		$fh = $self->_opennextlog;
-		return undef unless $fh;
+		unless ($fh) {
+			$self->save_state;
+			return undef;
+		}
 	}
 
 	if ($self->{_verbose}) {
@@ -289,6 +353,9 @@ sub save_state {
 
 	$self->{state}{file} = $self->{_curlog};
 	$self->{state}{line} = $self->{_curline};
+	$self->{state}{pos}  = defined $self->{_loghandle} ? tell($self->{_loghandle}) : undef;
+
+	$self->{_last_saved} = time;
 
 	$self->SUPER::save_state;
 }
@@ -300,12 +367,13 @@ sub done {
 	$self->{ftp} = undef;
 }
 
-# called in the next_event method for each event. Used an an anti-idle timeout for FTP
+# called in the next_event method for each event. Used as an anti-idle timeout for FTP
 sub idle {
 	my ($self) = @_;
 	if (time - $self->{_idle} > $self->{max_idle}) {
 		$self->{_idle} = time;
-		$self->{ftp}->site("NOP");
+		$self->{ftp}->pwd;
+#		$self->{ftp}->site("NOP");
 		# sending a site NOP command will usually just send back a 500 error
 		# but the server will see the connection as being active.
 		# This has not been widely tested on various servers. Some servers

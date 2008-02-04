@@ -7,6 +7,8 @@ use DBI;
 use Data::Dumper;
 use Carp;
 
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+
 sub init {
 	my $self = shift;
 	return unless $self->SUPER::init;

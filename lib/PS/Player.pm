@@ -14,13 +14,20 @@ use warnings;
 use base qw( PS::Debug );
 use Data::Dumper;
 use POSIX;
-use util qw( :date );
+use util qw( :date print_r );
 
-our $VERSION = '1.00';
+our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
 our $BASECLASS = undef;
 
 our $GAMETYPE = '';
 our $MODTYPE = '';
+
+# static object variables for all objects created for configuration values
+our (
+	$INITIALIZED,
+	$PLR_PRIMARY_NAME, $UNIQUEID, $MAXDAYS, $PLR_SESSIONS_MAX, $PLR_SAVE_VICTIMS,
+	$BASESKILL, $DECAY_TYPE, $DECAY_HOURS, $DECAY_VALUE, $DECAY
+);
 
 # variable types that can be stored in the table. Any variable not defined here is ignored when saving to the DB
 our $TYPES = {
@@ -36,7 +43,7 @@ our $TYPES = {
 	killsperminute	=> [ ratio_minutes => qw( kills onlinetime ) ],
 	headshotkills	=> '+',
 	headshotkillspct=> [ percent => qw( headshotkills kills ) ],
-	headshotdeaths	=> '+',
+#	headshotdeaths	=> '+',
 	ffkills		=> '+',
 	ffkillspct	=> [ percent => qw( ffkills kills ) ],
 	ffdeaths	=> '+',
@@ -61,25 +68,19 @@ our $TYPES = {
 
 our $TYPES_PLRSESSIONS = {
 	plrid		=> '=',
+	mapid		=> '=',
 	sessionstart	=> '=',
 	sessionend	=> '=',
 	skill		=> '=',
 	kills		=> '+',
 	deaths		=> '+', 
-#	killsperdeath	=> [ ratio => qw( kills deaths ) ],
-#	killsperminute	=> [ ratio_minutes => qw( kills onlinetime ) ],
 	headshotkills	=> '+',
-#	headshotkillspct=> [ percent => qw( headshotkills kills ) ],
-	headshotdeaths	=> '+',
+#	headshotdeaths	=> '+',
 	ffkills		=> '+',
-#	ffkillspct	=> [ percent => qw( ffkills kills ) ],
 	ffdeaths	=> '+',
-#	ffdeathspct	=> [ percent => qw( ffdeaths deaths ) ],
 	damage		=> '+',
 	shots		=> '+',
 	hits		=> '+',
-#	shotsperkill	=> [ ratio => qw( shots kills ) ],
-#	accuracy	=> [ percent => qw( hits shots ) ],
 	suicides	=> '+', 
 	totalbonus	=> '+',
 };
@@ -93,7 +94,7 @@ our $TYPES_WEAPONS = {
 	deaths		=> '+',
 	headshotkills	=> '+',
 	headshotkillspct=> [ percent => qw( headshotkills kills ) ],
-	headshotdeaths	=> '+',
+#	headshotdeaths	=> '+',
 	damage		=> '+',
 	shots		=> '+',
 	hits		=> '+',
@@ -139,10 +140,27 @@ our $TYPES_VICTIMS = {
 	killsperdeath	=> [ ratio => qw( kills deaths ) ],
 	headshotkills	=> '+',
 	headshotkillspct=> [ percent => qw( headshotkills kills ) ],
-	headshotdeaths	=> '+',
+#	headshotdeaths	=> '+',
 };
 
-our $TYPES_ROLES = { };
+our $TYPES_ROLES = { 
+	dataid		=> '=',
+	plrid		=> '=',
+	roleid		=> '=',
+	statdate	=> '=',
+	kills		=> '+',
+	deaths		=> '+',
+	ffkills		=> '+',
+	ffkillspct	=> [ percent => qw( ffkills kills ) ],
+	headshotkills	=> '+',
+	headshotkillspct=> [ percent => qw( headshotkills kills ) ],
+	damage		=> '+',
+	hits		=> '+',
+	shots		=> '+',
+	accuracy	=> [ percent => qw( hits shots ) ],
+	shotsperkill	=> [ ratio => qw( shots kills ) ],
+	joined		=> '+',
+};
 
 our $_config_cache = {};
 
@@ -150,11 +168,20 @@ sub new {
 	my ($proto, $plrids, $game) = @_;
 	my $baseclass = ref($proto) || $proto;
 	my $self = { 
-		plrid => 0, plrids => $plrids, uniqueid => undef, 
-		game => $game, conf => $game->{conf}, db => $game->{db},
-		debug => 0, 
-		saved => 0,			# has the plr been saved since marked active?
-		active => 0			# is the plr active?
+		skip_init	=> 0,
+		plrid 		=> 0, 
+		worldid 	=> $plrids->{worldid}, 
+		uniqueid	=> $plrids->{worldid},
+		name 		=> $plrids->{name}, 
+		origname	=> $plrids->{name},
+		ipaddr 		=> $plrids->{ipaddr}, 
+		uid 		=> $plrids->{uid},
+		game 		=> $game, 
+		conf 		=> $game->{conf}, 
+		db 		=> $game->{db},
+		debug 		=> 0, 
+		saved 		=> 0,			# has the plr been saved since marked active?
+		active 		=> 0			# is the plr active?
 	};
 	my $class = _determine_class($self, $baseclass);
 
@@ -213,37 +240,44 @@ sub _init {
 	my $self = shift;
 	my $db = $self->{db};
 
-	$self->{conf_plr_primary_name} = $self->{conf}->get_main('plr_primary_name');
-	$self->{conf_uniqueid} = $self->{conf}->get_main('uniqueid');
-	$self->{conf_maxdays} = $self->{conf}->get_main('maxdays');
-	$self->{conf_plr_sessions_max} = $self->{conf}->get_main('plr_sessions_max');
-	$self->{conf_plr_save_victims} = $self->{conf}->get_main('plr_save_victims');
-	$self->{conf_baseskill} = $self->{conf}->get_main('baseskill');
-	
-	$self->{decay_type} = $self->{conf}->get_main('players.decay_type');
-	$self->{decay_hours} = $self->{conf}->get_main('players.decay_hours');
-	$self->{decay_value} = $self->{conf}->get_main('players.decay_value');
-	$self->{decay} = ($self->{decay_type});		# if it's non-zero and not empty
+	# load the configuration values once for all player objects created.
+	if (!$INITIALIZED) {
+		$INITIALIZED 		= 1;
+		$PLR_PRIMARY_NAME 	= $self->{conf}->get_main('plr_primary_name');
+		$UNIQUEID 		= $self->{conf}->get_main('uniqueid');
+		$MAXDAYS 		= $self->{conf}->get_main('maxdays');
+		$PLR_SESSIONS_MAX 	= $self->{conf}->get_main('plr_sessions_max');
+		$PLR_SAVE_VICTIMS 	= $self->{conf}->get_main('plr_save_victims');
+		$BASESKILL 		= $self->{conf}->get_main('baseskill');
+		$DECAY_TYPE 		= $self->{conf}->get_main('decay.type');
+		$DECAY_HOURS 		= $self->{conf}->get_main('decay.hours');
+		$DECAY_VALUE 		= $self->{conf}->get_main('decay.value');
+		$DECAY       		= $DECAY_TYPE ? 1 : 0;
+	}
 
-	# set some common defaults for all players (any game)
-#	$self->{plrid} = 0;
 	$self->{team} = '';
 	$self->{isdead} = 0;
 	$self->{streaks} = {};
 	$self->{pq} = 0;		# player IQ (strength) used in skill calculations
 
-	# don't do anything else if we have no plrids.
-	# this will mean that a blank player object was created (mainly used in Game::daily_maxdays)
-	return $self unless defined $self->{plrids};
+	# don't do any queries or work if skip_init is true ( Game::daily_maxdays )
+	return $self if $self->{skip_init};
 
-	$self->uniqueid( $self->{plrids}{ $self->{conf_uniqueid} } );
+	$self->{basic} = {};
+	$self->{weapons} = {};
+	$self->{victims} = {};
+	$self->{roles} = {};
+	$self->{maps} = {};
+	$self->{mod} = {};
+
+	$self->uniqueid($self->{$UNIQUEID});
 
 	$self->{plrid} = $db->select($db->{t_plr}, 'plrid', [ uniqueid => $self->uniqueid ]);
 	# player does not exist so we create a new record for them
 	if (!$self->{plrid}) {
 		$db->begin;
 		$self->{plrid} = $db->next_id($db->{t_plr}, 'plrid');
-		$self->skill( $self->{conf_baseskill} );
+		$self->skill($BASESKILL);
 		my $res = $db->insert($db->{t_plr}, { 
 			plrid 		=> $self->plrid,
 			uniqueid 	=> $self->uniqueid,
@@ -251,83 +285,88 @@ sub _init {
 			lastdecay	=> $self->{game}->{timestamp},
 			skill 		=> $self->skill,
 			prevskill 	=> $self->skill,
+			activity	=> 100
 		});
 		$self->fatal("Error adding player to database: " . $db->errstr) unless $res;
 
 		# make sure the players profile is present
 		if (!$db->select($db->{t_plr_profile}, 'uniqueid', [ uniqueid => $self->uniqueid ])) {
-#			print "_init: ",$self->name,"\n" if $self->worldid eq 'STEAM_0:0:7702999';
 			$db->insert($db->{t_plr_profile}, { 
 				uniqueid => $self->uniqueid,
-				name => $self->name,
-				logo => ''
+				name => $self->name
 			});
 		}
 		$db->commit;
 	}
 
-#	do not do this automatically. It's now up to the calling code to do it instead
-#	$self->plrids;
-
-	# load the players basic information 
-	$self->{_plr} = $db->get_row_hash("SELECT clanid,prevrank,rank,prevskill,skill,allowrank,lastdecay FROM " . 
-		$db->{t_plr} . " WHERE plrid=" . $db->quote($self->{plrid})
-	);
+	# load the players basic information; RE-EVALUATE this, is it really needed
+	$self->load_info;
 
 	# load current stats for player
 	$self->load_stats;
 
-	if ($self->{decay}) {
-		$self->decay();
-	}
+	# decay player stats 
+	$self->decay if $DECAY;
 
 	return $self; 
 }
 
 sub decay {
 	my ($self, $_type, $_hours, $_value) = @_;
-	return if $self->skill < $self->{conf_baseskill};	# don't do anything if we are already too low
-	my $type 	= $_type  || $self->{decay_type}  || return;
-	my $maxhours 	= $_hours || $self->{decay_hours} || return;
-	my $value 	= $_value || $self->{decay_value} || return;
-	my $seconds = $maxhours * 60 * 60;
-	my $diff = ($self->{game}{timestamp} - $self->{_plr}{lastdecay});
-	my $length = $diff / $seconds;
+	return if $self->skill < $BASESKILL;	# don't do anything if we are already too low
+	my $type 	= $_type  || $DECAY_TYPE  || return;
+	my $maxhours 	= $_hours || $DECAY_HOURS || return;
+	my $value 	= $_value || $DECAY_VALUE || return;
+	my $seconds 	= $maxhours * 60 * 60;
+	my $diff 	= $self->{game}{timestamp} - $self->lastdecay;
+	my $length 	= $diff / $seconds;
 	return unless $length >= 1.0;
 	$value *= $length;
 
-#	print "diff: $diff, len: $length, val: $value\n";
-
-	my $set = { lastdecay => $self->{game}{timestamp} };
+	my $newskill;
 	$type = lc $type;
 	if ($type eq 'flat') {
-		$set->{skill} = $self->skill - $value;
+		$newskill = $self->skill - $value;
 	} else { # $type eq 'percent'
-		$set->{skill} = $self->skill - ($self->skill * $value / 100);
+		$newskill = $self->skill - ($self->skill * $value / 100);
 	}
 
-	# don't let the decay go below the base skill
-	$set->{skill} = $self->{conf_baseskill} if $set->{skill} < $self->{conf_baseskill};
+	# update the players skill value (don't let it drop below the base)
+	$self->skill($newskill > $BASESKILL ? $newskill : $BASESKILL);
+	$self->lastdecay($self->{game}{timestamp});
 
-	# update the players skill value
-	$self->{db}->update($self->{db}{t_plr}, $set, [ plrid => $self->{plrid} ]);
+#	$self->{db}->update($self->{db}{t_plr}, $set, [ plrid => $self->{plrid} ]);
 #	print "before: " , $self->skill, " :: ", $self->{db}->lastcmd,"\n";
 }
 
 # loads the current player stats from the _compiled_ player data
 # This data is generally used as a snapshot for other various routines.
+# not sure i like this anymore.... RE-EVALUATE 
 sub load_stats {
 	my $self = shift;
 	my $db = $self->{db};
-	$self->{_stats} = $db->get_row_hash("SELECT * FROM $db->{c_plr_data} WHERE plrid=" . $db->quote($self->plrid)) || {};	
+	$self->{_stats} = $db->get_row_hash("SELECT * FROM $db->{c_plr_data} WHERE plrid=" . $self->plrid);
+	$self->{_stats} = {} unless $self->{_stats}; # make sure it's not undef
+}
+
+# load the players basic information 
+# IS THIS REALLY NEEDED? -- RE-EVALUATE THIS LOGIC
+sub load_info {
+	my $self = shift;
+	my $db = $self->{db};
+	$self->{_plr} = $db->get_row_hash("SELECT clanid,prevrank,rank,prevskill,skill,allowrank,lastdecay " . 
+		"FROM $db->{t_plr} WHERE plrid=" . $self->plrid
+	);
 }
 
 sub load_profile {
-	my ($self) = @_;
+	my ($self, $keys) = @_;
 	my $db = $self->{db};
-	$self->{_profile} = $db->get_row_hash("SELECT * FROM $db->{t_plr_profile} WHERE uniqueid=" . $db->quote($self->uniqueid));
+	$keys ||= '*';
+	$self->{_profile} = $db->get_row_hash("SELECT $keys FROM $db->{t_plr_profile} WHERE uniqueid=" . $db->quote($self->uniqueid));
 }
 
+# loads a single days worth of stats for the player
 sub load_day_stats {
 	my $self = shift;
 	my $statdate = shift || $self->{statdate} || time;
@@ -342,44 +381,19 @@ sub load_day_stats {
 	return $self->{_daystats};
 }
 
-# Updates the plr_ids information in the database for this player.
-# every call to this function results in the matching plr_ids row to have it's `totaluses` value incremented.
-# if $inc is 0 then `totaluses` will not be incremented but a row for the $plrids given will still be created if needed.
+# updates the player signature Ids and increments the usage count (name, worldid, ipaddr)
+# If no plrids are provided then the current ID's will be incremented
 sub plrids {
 	my $self = shift;
-	my $db = $self->{db};
+	my $newids = shift || { name => undef, ipaddr => undef, worldid => undef };
 
-	my $plrids = {
-		%{$self->{plrids}},			# default to current plrids
-		(@_ ? %{(shift)} : ())			# allow the caller to send a full/partial ids hash to override values
-	};
 	my $inc = @_ ? shift : 1;
 
-	$self->{plrids} = $plrids;
-
-	my ($id,$totaluses) = $db->select($db->{t_plr_ids}, [qw( id totaluses )], [
-		name => $plrids->{name},
-		worldid => $plrids->{worldid},
-		ipaddr => $plrids->{ipaddr}
-	]);
-
-#	use Data::Dumper; print "plrids($id): ", Dumper($plrids) if $plrids->{worldid} eq 'STEAM_0:0:7702999';
-
-	# If there was no id then we need to add a new row for this player's ids
-	if (!$id) {
-		$db->insert($db->{t_plr_ids}, { 
-			id => $db->next_id($db->{t_plr_ids}),
-			plrid => $self->{plrid},
-			name => $plrids->{name}, 
-			worldid => $plrids->{worldid}, 
-			ipaddr => $plrids->{ipaddr}, 
-			totaluses => $inc > 0 ? $inc : 1
-		});
-	} elsif ($inc > 0) {
-		$totaluses ||= 0;
-		$db->update($db->{t_plr_ids}, { totaluses => $totaluses + $inc }, [ id => $id ]);
+	foreach my $id (keys %$newids) {
+		no warnings;
+		$self->{plrids}{$id} = $newids->{$id} if defined $newids->{$id};
+		$self->{_plrids}{$id} += $inc;
 	}
-#	print "plrids($id): ",$db->lastcmd,"\n" if $plrids->{worldid} eq 'STEAM_0:0:7702999';
 }
 
 
@@ -496,7 +510,44 @@ sub _init_table_victims {
 	$self->info("Compiled table $table was initialized.");
 }
 
-sub _init_table_roles { }
+sub _init_table_roles {
+	my $self = shift;
+	return unless $self->has_roles;		# do nothing if we don't use roles
+	my $conf = $self->{conf};
+	my $db = $self->{db};
+	my $basetable = 'plr_roles';
+	my $table = $db->ctbl($basetable);
+	my $tail = '';
+	my $fields = {};
+	my @order = ();
+	$tail .= "_$GAMETYPE" if $GAMETYPE;
+	$tail .= "_$MODTYPE" if $MODTYPE;
+	return if $db->table_exists($table);
+
+	# get all keys used in the 2 tables so we can combine them all into a single table
+	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
+	if ($self->has_mod_roles and $tail) {
+		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
+	}
+
+	# remove unwanted/special keys
+	delete @$fields{ qw( statdate firstdate lastdate ) };
+
+	# add extra keys
+	my $alltypes = $self->get_types_roles;
+	$fields->{$_} = 'date' foreach qw( firstdate lastdate ); 
+	$fields->{$_} = 'uint' foreach qw( dataid plrid roleid );	# unsigned
+	$fields->{$_} = 'float' foreach grep { ref $alltypes->{$_} } keys %$alltypes;
+
+	# build the full set of keys for the table
+	@order = (qw( dataid plrid roleid firstdate lastdate ), sort grep { !/^((data|plr|role)id|(first|last)date)$/ } keys %$fields );
+
+	$db->create($table, $fields, \@order);
+	$db->create_primary_index($table, 'dataid');
+#	$db->create_index($table, 'plrroles', 'plrid', 'roleid');
+	$db->create_unique_index($table, 'plrroles', qw( plrid roleid ));
+	$self->info("Compiled table $table was initialized.");
+}
 
 sub _init_table_weapons {
 	my $self = shift;
@@ -537,12 +588,66 @@ sub _init_table_weapons {
 }
 
 
-sub plrid { $_[0]->{plrid} }
-sub name { @_==1 ? $_[0]->{plrids}{name} : ($_[0]->{plrids}{name} = $_[1]) }
-sub worldid { @_==1 ? $_[0]->{plrids}{worldid} : ($_[0]->{plrids}{worldid} = $_[1]) }
-sub ipaddr { @_==1 ? $_[0]->{plrids}{ipaddr} : ($_[0]->{plrids}{ipaddr} = $_[1]) }
-sub uniqueid { @_==1 ? $_[0]->{uniqueid} : ($_[0]->{uniqueid} = $_[1]) }
-sub uid { @_==1 ? $_[0]->{uid} : ($_[0]->{uid} = $_[1]) }
+sub origname { 
+	if (@_ == 1) {
+		return $_[0]->{origname};
+	} else {
+		my $old = $_[0]->{origname};
+		$_[0]->{origname} = $_[1];
+		return $old;
+	}
+}
+
+sub ipaddr { 
+	if (@_ == 1) {
+		return $_[0]->{ipaddr};
+	} else {
+		my $old = $_[0]->{ipaddr};
+		$_[0]->{ipaddr} = $_[1];
+		return $old;
+	}
+}
+
+sub name { 
+	if (@_ == 1) {
+		return $_[0]->{name};
+	} else {
+		my $old = $_[0]->{name};
+		$_[0]->{name} = $_[1];
+#		$_[0]->{origname} = $_[1];		# must set original name too
+		return $old;
+	}
+}
+
+sub uid { 
+	if (@_ == 1) {
+		return $_[0]->{uid};
+	} else {
+		my $old = $_[0]->{uid};
+		$_[0]->{uid} = $_[1];
+		return $old;
+	}
+}
+
+sub uniqueid { 
+	if (@_ == 1) {
+		return $_[0]->{uniqueid};
+	} else {
+		my $old = $_[0]->{uniqueid};
+		$_[0]->{uniqueid} = $_[1];
+		return $old;
+	}
+}
+
+sub worldid { 
+	if (@_ == 1) {
+		return $_[0]->{worldid};
+	} else {
+		my $old = $_[0]->{worldid};
+		$_[0]->{worldid} = $_[1];
+		return $old;
+	}
+}
 
 sub statdate {
 	return $_[0]->{statdate} if @_ == 1;
@@ -555,11 +660,11 @@ sub statdate {
 #	}
 }
 
-sub isDead { 
+sub is_dead { 
 	if (@_ == 1) {
-		return $_[0]->{isdead} || 0;
+		return $_[0]->{isdead};
 	} else {
-		my $old = $_[0]->{isdead} || 0;
+		my $old = $_[0]->{isdead};
 		$_[0]->{isdead} = $_[1];
 		return $old;
 	}
@@ -571,7 +676,7 @@ sub timerstart {
 	my $prevtime = 0;
 #	no warnings;						# don't want any "undef" or "uninitialized" errors
 
-	# a previous timer was already started, get it's elapsed value
+	# a previous timer was already started, get its elapsed value
 	if ($self->active) { # && $self->{firsttime} && $self->{firsttime} != $self->{basic}{lasttime}) {
 		$prevtime = $self->timer; #$self->{basic}{lasttime} - $self->{firsttime};
 	}
@@ -597,7 +702,6 @@ sub timer {
 # returns the total online time for the player; current time + compiled time. used in skill calculations
 sub totaltime {
 	my $self = shift;
-#	no warnings;		# we don't care about un-init errors in the line below
 	return $self->timer + ($self->{_stats}{onlinetime} || 0);
 }
 
@@ -625,6 +729,8 @@ sub end_all_streaks {
 	my $self = shift;
 	$self->end_streak(keys %{$self->{streaks}});
 }
+
+sub plrid { $_[0]->{plrid} }
 
 sub clanid {
 	my $self = shift;
@@ -667,6 +773,21 @@ sub pq {
 	$_[0]->{pq} = $_[1];
 	return $old;
 }
+
+sub team {
+	return $_[0]->{team} if @_ == 1;
+	my $old = $_[0]->{team};
+	$_[0]->{team} = $_[1];
+	return $old;
+}
+
+sub role {
+	return $_[0]->{role} if @_ == 1;
+	my $old = $_[0]->{role};
+	$_[0]->{role} = $_[1];
+	return $old;
+}
+
 
 sub allowrank {
 	my $self = shift;
@@ -711,36 +832,28 @@ sub signature {
 # this function does not check the 'namelocked' player profile variable.
 sub most_used_name {
 	my $self = shift;
-#	return unless $self->{conf_plr_primary_name} eq 'most';
 	my $db = $self->{db};
-	my ($name1) = $db->select($db->{t_plr_ids}, 'name', [ plrid => $self->plrid ], "totaluses DESC");
-	my ($name2) = $db->select($db->{t_plr_profile}, 'name', [ uniqueid => $self->uniqueid ] );
-	if (defined($name1) and $name1 ne '' and $name1 ne $name2) {
-		$db->update($db->{t_plr_profile}, { name => $name1 }, [ uniqueid => $self->uniqueid ]);
-		$self->name($name1);
+	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "totaluses DESC");
+	if (defined $name) {
+		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
+		$self->name($name);
 #		$self->clanid(0);
-	} else {
-		$name1 = undef;
 	}
-	return $name1;
+	return $name;
 }
 
 # Sets the players profile name to be the name that was last used.
 # this function does not check the 'namelocked' player profile variable.
 sub last_used_name {
 	my $self = shift;
-#	return unless $self->{conf_plr_primary_name} eq 'last';
 	my $db = $self->{db};
-	my ($name1) = $db->select($db->{t_plr_ids}, 'name', [ plrid => $self->plrid ], "id DESC");
-	my ($name2) = $db->select($db->{t_plr_profile}, 'name', [ uniqueid => $self->uniqueid ] );
-	if (defined($name1) and $name1 ne '' and $name1 ne $name2) {
-		$db->update($db->{t_plr_profile}, { name => $name1 }, [ uniqueid => $self->uniqueid ]);
-		$self->name($name1);
+	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "id DESC");
+	if (defined $name) {
+		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
+		$self->name($name);
 #		$self->clanid(0);
-	} else {
-		$name1 = undef;
 	}
-	return $name1;
+	return $name;
 }
 
 # player is considered disconnected from the server, so do any cleanup that is required
@@ -748,7 +861,7 @@ sub last_used_name {
 sub disconnect {
 	my ($self, $timestamp, $map) = @_;
 
-#	if ($self->worldid eq 'STEAM_0:1:6048454') {
+#	if ($self->uniqueid eq 'STEAM_0:1:6048454') {
 #		print "disconnected: \t" . date("%H:%i:%s", $timestamp) . " (" . $self->timer . ")\n";
 #	}
 
@@ -766,67 +879,76 @@ sub get_types_roles { $TYPES_ROLES }
 sub get_types_weapons { $TYPES_WEAPONS }
 sub get_types_victims { $TYPES_VICTIMS }
 
-# subclasses override this to save their own special vars to the database (but also call this first)
+sub mod_types { {} };
+sub mod_types_maps { {} };
+sub mod_types_roles { {} };
+
 sub save {
 	my $self = shift;
 	my $nocommit = shift;
 	my $db = $self->{db};
 	my $dataid;
+	my $plrid = $self->plrid;
+	my $worldid = $self->worldid;
+	my $ipaddr = $self->ipaddr;
 
-	# grab some profile info
-	my ($namelocked, $cc) = $db->select($db->{t_plr_profile}, [qw( namelocked cc )], [ uniqueid => $self->uniqueid ]);
+	$self->{save_history} = (diffdays_ymd(POSIX::strftime("%Y-%m-%d", localtime), $self->{statdate}) <= $MAXDAYS);
+#	print "$self->{statdate} = " . POSIX::strftime("%Y-%m-%d", localtime) . " == " . diffdays_ymd(POSIX::strftime("%Y-%m-%d", localtime), $self->{statdate}) . "\n";
 
-	$db->begin unless $nocommit;
+	# save basic+mod compiled player stats
+	$db->save_stats( $db->{c_plr_data}, { %{$self->{basic}}, %{$self->{mod}} }, $self->get_types, 
+		[ plrid => $plrid ], $self->{statdate});
 
-	# save basic player information (plr table)
-	$self->{_plr}{lastdecay} = $self->{basic}{lasttime} || $self->{game}->{timestamp};
-	$db->update($db->{t_plr}, $self->{_plr}, [ plrid => $self->plrid ]);
-
-	# update the prevskill for the player (from the previous day)
-	my $id = $db->quote($self->plrid);
-	if ($db->subselects) {
-		$db->query("UPDATE $db->{t_plr} SET prevskill=IFNULL(" . 
-			"(SELECT dayskill FROM $db->{t_plr_data} WHERE plrid=$id ORDER BY statdate DESC " . $db->limit(1,1) . ")" . 
-			",prevskill) WHERE plrid=$id");
-	} else {
-		my ($prevskill) = $db->get_list("SELECT dayskill FROM $db->{t_plr_data} WHERE plrid=$id ORDER BY statdate DESC " . $db->limit(1,1));
-		$db->update($db->{t_plr}, { prevskill => $prevskill }, [ plrid => $self->plrid ]) if defined $prevskill;
+	# the 'dayskill' and 'dayrank' are explictly added to the saved data (but not to the compiled data above)
+	if ($self->{save_history}) {
+		$dataid = $db->save_stats($db->{t_plr_data}, 
+			{ dayskill => $self->skill, dayrank => $self->rank, %{$self->{basic}} }, $TYPES, 
+			[ plrid => $plrid, statdate => $self->{statdate} ]);
+		if ($dataid and $self->{mod}) {
+			$dataid = $self->{db}->save_stats($self->{db}->{t_plr_data_mod}, $self->{mod}, $self->mod_types, [ dataid => $dataid ]);
+		}
 	}
 
-	# update most used name if the name is not locked
-	if (!$namelocked and $self->{conf_uniqueid} ne 'name') {
-		if ($self->{conf_plr_primary_name} eq 'most') {
-			$self->most_used_name;
-		} elsif ($self->{conf_plr_primary_name} eq 'last') {
-			$self->last_used_name;
+	# save player roles
+	if ($self->has_roles) {
+#		print_r($self->{roles}) if $self->worldid eq 'STEAM_0:0:1179775';
+		while (my($id,$data) = each %{$self->{roles}}) {
+			$self->save_role($id, $data);
 		}
-	};
+	}
 
-	# update the player's country code if one is not already set
-        if ((!defined $cc or $cc eq '') and $self->ipaddr) {
-                $cc = $db->select($db->{t_geoip_ip}, 'cc', $self->ipaddr . " BETWEEN " . $db->qi('start') . " AND " . $db->qi('end'));
-		$db->update($db->{t_plr_profile}, [ cc => $cc ], [ uniqueid => $self->uniqueid ]) if defined $cc and $cc ne '';
-        }
+	# save player weapons
+	while (my($id,$data) = each %{$self->{weapons}}) {
+		$self->save_weapon($id, $data);
+	}
 
-#	if ($self->worldid eq 'STEAM_0:1:6335774') {
-#		$self->debug('saving ' . $self->name);
-#	}
+	# save player victims (only if configured to do so)
+	if ($PLR_SAVE_VICTIMS) {
+		while (my($id,$data) = each %{$self->{victims}}) {
+			$self->save_victim($id, $data);
+		}
+	}
+
+	# save player maps
+	while (my($id,$data) = each %{$self->{maps}}) {
+		$self->save_map($id, $data);
+	}
 
 	# save the current session separately
-	if ($self->{conf_plr_sessions_max} and $self->{basic}{lasttime}) {
-		my $session = {};
+	if ($PLR_SESSIONS_MAX and $self->{basic}{lasttime}) {
+		my $session = { 'mapid' => $self->{game}->get_map()->{mapid} };
 		# get most recent player session
-		my ($id, $start, $end) = $db->get_row_array(
+		my ($sid, $start, $end) = $db->get_row_array(
 			"SELECT dataid,sessionstart,sessionend FROM $db->{t_plr_sessions} " .
-			"WHERE plrid=$self->{plrid} " . 
+			"WHERE plrid=$plrid " . 
 			"ORDER BY sessionstart DESC "
 		);
 		# if there was no session or the last session was too old start a new one.
 		# the previous session is "too old" if more than X mins has gone by since the previous session ended.
 		# This grace period allows players to be disconnected between maps and still have a single session.
-		if (!$id or ($self->{firsttime} - $end > 60*15)) {
-			$session->{dataid} = $id = $db->next_id($db->{t_plr_sessions}, 'dataid');	# update $id too
-			$session->{plrid} = $self->{plrid};
+		if (!$sid or ($self->{firsttime} - $end > 60*15)) {
+			$session->{dataid} = $sid = $db->next_id($db->{t_plr_sessions}, 'dataid');	# update $sid too
+			$session->{plrid} = $plrid;
 			$session->{sessionstart} = $start = $self->{firsttime};				# update $start too
 		}
 		$session->{sessionend} = $self->{basic}{lasttime};
@@ -840,15 +962,15 @@ sub save {
 
 		# save the session (only if the session is more than 0 seconds)
 		if ($session->{sessionend} - $start > 0) {
-			$db->save_stats($db->{t_plr_sessions}, { %$session, %{$self->{basic}} }, $TYPES_PLRSESSIONS, [ dataid => $id ] );
+			$db->save_stats($db->{t_plr_sessions}, { %$session, %{$self->{basic}} }, $TYPES_PLRSESSIONS, [ dataid => $sid ] );
 			# remove old sessions
-			my $numsessions = $db->count($db->{t_plr_sessions}, [ plrid => $self->{plrid} ]);
-			if ($numsessions > $self->{conf_plr_sessions_max}) {
+			my $numsessions = $db->count($db->{t_plr_sessions}, [ plrid => $plrid ]);
+			if ($numsessions > $PLR_SESSIONS_MAX) {
 				my @del = $db->get_list(
-					"SELECT dataid FROM $db->{t_plr_sessions}" . 
-					" WHERE plrid=$self->{plrid}" . 
-					" ORDER BY sessionstart" .		# oldest first
-					" LIMIT " . ($numsessions - $self->{conf_plr_sessions_max})
+					"SELECT dataid FROM $db->{t_plr_sessions} " . 
+					"WHERE plrid=$plrid " . 
+					"ORDER BY sessionstart " .		# oldest first
+					"LIMIT " . ($numsessions - $PLR_SESSIONS_MAX)
 				);
 				if (@del) {
 					$db->query("DELETE FROM $db->{t_plr_sessions} WHERE dataid IN (" . join(',', @del) . ")");
@@ -857,43 +979,64 @@ sub save {
 		}
 	}
 
-	$self->{save_history} = (diffdays_ymd(POSIX::strftime("%Y-%m-%d", localtime), $self->{statdate}) <= $self->{conf_maxdays});
-#	print "$self->{statdate} = " . POSIX::strftime("%Y-%m-%d", localtime) . " == " . diffdays_ymd(POSIX::strftime("%Y-%m-%d", localtime), $self->{statdate}) . "\n";
-
-
-	# save basic+mod compiled player stats
-	$db->save_stats( $db->{c_plr_data}, { %{$self->{basic} || {}}, %{$self->{mod} || {}} }, $self->get_types, 
-		[ plrid => $self->{plrid} ], $self->{statdate});
-
-	# the 'dayskill' and 'dayrank' are explictly added to the saved data (but not to the compiled data above)
-	if ($self->{save_history}) {
-		$dataid = $db->save_stats($db->{t_plr_data}, 
-			{ dayskill => $self->skill, dayrank => $self->rank, %{$self->{basic}} }, $TYPES, 
-			[ plrid => $self->{plrid}, statdate => $self->{statdate} ]);
-	}
 	$self->{basic} = {};
-
-	# ROLES ARE SAVED FROM THE MOD OBJECT ...
-
-	# save player weapons
-	while (my($id,$data) = each %{$self->{weapons}}) {
-		$self->save_weapon($id, $data);
-	}
 	$self->{weapons} = {};
-
-	# save player victims
-	if ($self->{conf_plr_save_victims}) {
-		while (my($id,$data) = each %{$self->{victims}}) {
-			$self->save_victim($id, $data);
-		}
-	}
 	$self->{victims} = {};
-
-	# save player maps
-	while (my($id,$data) = each %{$self->{maps}}) {
-		$self->save_map($id, $data);
-	}
 	$self->{maps} = {};
+
+	# ----------------------------------------------------------------
+	# all info below here is player info and not stats. It's possible I could code a method to 
+	# only save the info below only when absolutely necesary, instead of every time.
+	# ----------------------------------------------------------------
+
+	# grab some profile info
+	my ($namelocked, $cc) = $db->select($db->{t_plr_profile}, [qw( namelocked cc )], [ uniqueid => $self->uniqueid ]);
+
+	$db->begin unless $nocommit;
+
+	# save basic player information (plr table); RE-EVALUATE
+	$self->lastdecay($self->{basic}{lasttime} || $self->{game}->{timestamp}) unless $self->lastdecay;
+	$db->update($db->{t_plr}, $self->{_plr}, [ plrid => $plrid ]);
+
+	# update the prevskill for the player (from the previous day)
+	my $id = $db->quote($plrid);
+	if ($db->subselects) {
+		$db->query("UPDATE $db->{t_plr} SET prevskill=IFNULL(" . 
+			"(SELECT dayskill FROM $db->{t_plr_data} WHERE plrid=$id ORDER BY statdate DESC " . $db->limit(1,1) . ")" . 
+			",prevskill) WHERE plrid=$id");
+	} else {
+		my ($prevskill) = $db->get_list("SELECT dayskill FROM $db->{t_plr_data} WHERE plrid=$id ORDER BY statdate DESC " . $db->limit(1,1));
+		$db->update($db->{t_plr}, { prevskill => $prevskill }, [ plrid => $plrid ]) if defined $prevskill;
+	}
+
+	# update plr_ids_name plr_ids_ipaddr plr_ids_worldid
+	if ($db->type eq 'mysql') {
+		foreach my $var (keys %{$self->{_plrids}}) {
+			$db->do("INSERT INTO " . $db->{'t_plr_ids_' . $var} . " (plrid,$var,totaluses) " . 
+				"VALUES ($plrid," . $db->quote($self->{$var}) . ",$self->{_plrids}{$var}) " . 
+				"ON DUPLICATE KEY UPDATE totaluses=totaluses+$self->{_plrids}{$var}"
+			);
+#			print $db->lastcmd,"\n";
+		}
+	} else {
+		# abstract; this needs to be updated when SQLite starts to be used
+		die "Can not update plr_ids; I don't know how for DB::" . $db->type;
+	}
+
+	# update most/least used name if the name is not locked
+	if (!$namelocked and $UNIQUEID ne 'name') {
+		if ($PLR_PRIMARY_NAME eq 'most') {
+			$self->most_used_name;
+		} elsif ($PLR_PRIMARY_NAME eq 'last') {
+			$self->last_used_name;
+		} # else 'first'
+	};
+
+	# update the player's country code if one is not already set
+        if ((!defined $cc or $cc eq '') and $ipaddr) {
+		$cc = $db->select($db->{t_geoip_ip}, 'cc', "$ipaddr BETWEEN " . $db->qi('start') . " AND " . $db->qi('end'));
+		$db->update($db->{t_plr_profile}, [ cc => $cc ], [ uniqueid => $self->uniqueid ]) if defined $cc and $cc ne '';
+        }
 
 	$db->commit unless $nocommit;
 
@@ -903,8 +1046,11 @@ sub save {
 sub save_weapon {
 	my ($self, $id, $data) = @_;
 	my $dataid;
+	# save compiled stats
 	$self->{db}->save_stats( $self->{db}->{c_plr_weapons}, $data, $TYPES_WEAPONS, 
 		[ plrid => $self->{plrid}, weaponid => $id ], $self->{statdate});
+
+	# save basic history
 	if ($self->{save_history}) {
 		$dataid = $self->{db}->save_stats( $self->{db}->{t_plr_weapons}, $data, $TYPES_WEAPONS, [ plrid => $self->{plrid}, weaponid => $id, statdate => $self->{statdate} ]);
 	}
@@ -914,10 +1060,30 @@ sub save_weapon {
 sub save_victim {
 	my ($self, $id, $data) = @_;
 	my $dataid;
+	# save compiled stats
 	$self->{db}->save_stats( $self->{db}->{c_plr_victims}, $data, $TYPES_VICTIMS, 
 		[ plrid => $self->{plrid}, victimid => $id ], $self->{statdate});
+
+	# save basic history
 	if ($self->{save_history}) {
 		$dataid = $self->{db}->save_stats( $self->{db}->{t_plr_victims},  $data, $TYPES_VICTIMS, [ plrid => $self->{plrid}, victimid => $id, statdate => $self->{statdate} ]);
+	}
+	return $dataid;
+}
+
+sub save_role {
+	my ($self, $id, $data) = @_;
+	my $dataid;
+	# save compiled stats
+	$self->{db}->save_stats( $self->{db}->{c_plr_roles}, { %$data, %{$self->{mod_roles}{$id} || {}} }, $self->get_types_roles, 
+		[ plrid => $self->{plrid}, roleid => $id ], $self->{statdate});
+
+	# save basic and mod history
+	if ($self->{save_history}) {
+		$dataid = $self->{db}->save_stats( $self->{db}->{t_plr_roles}, $data, $TYPES_ROLES, [ plrid => $self->{plrid}, roleid => $id, statdate => $self->{statdate} ]);
+		if ($dataid and $self->{mod_roles}{$id}) {
+			$self->{db}->save_stats($self->{db}->{t_plr_roles_mod}, $self->{mod_roles}{$id}, $self->mod_types_roles, [ dataid => $dataid ]);
+		}
 	}
 	return $dataid;
 }
@@ -925,19 +1091,29 @@ sub save_victim {
 sub save_map {
 	my ($self, $id, $data) = @_;
 	my $dataid;
-	$self->{db}->save_stats( $self->{db}->{c_plr_maps}, { %{$data || {}}, %{$self->{mod_maps}{$id} || {}} }, 
+	# save compiled stats
+	$self->{db}->save_stats( $self->{db}->{c_plr_maps}, { %$data, %{$self->{mod_maps}{$id} || {}} }, 
 		$self->get_types_maps, [ plrid => $self->{plrid}, mapid => $id ], $self->{statdate});
+
+	# save basic and mod history
 	if ($self->{save_history}) {
 		$dataid = $self->{db}->save_stats($self->{db}->{t_plr_maps},  $data, $TYPES_MAPS, [ plrid => $self->{plrid}, mapid => $id, statdate => $self->{statdate} ]);
+		if ($dataid and $self->{mod_maps}{$id}) {
+			$self->{db}->save_stats($self->{db}->{t_plr_maps_mod}, $self->{mod_maps}{$id}, $self->mod_types_maps, [ dataid => $dataid ]);
+		}
 	}
 	return $dataid;
 }
 
 # returns true if the player is a bot
-sub is_bot { 0 }
+sub is_bot { substr($_[0]->uniqueid,0,4) eq 'BOT:' }
 
 # returns true if the gametype:modtype has extra mod tables
 sub has_mod_tables { 0 }
+
+# returns if the gametype:modtype has role based player stats
+sub has_roles { 0 }
+sub has_mod_roles { 0 }
 
 # returns the result: 0.0, 0.5, 1.0 if the player is stronger than another
 # 0 = weaker, 0.5 = even, 1 = stronger

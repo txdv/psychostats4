@@ -4,10 +4,13 @@ use 5.006;
 use strict;
 #use warnings;
 use POSIX qw( strftime );
-
+use Time::HiRes qw( gettimeofday tv_interval );
 use Time::Local;
+use Data::Dumper;
 
 require Exporter;
+
+our $VERSION = '1.01.' . ('$Rev: 183 $' =~ /(\d+)/)[0];
 
 our @ISA = qw(Exporter);
 
@@ -19,6 +22,7 @@ our %EXPORT_TAGS = (
 		&compacttime
 		&simple_interpolate
 		&iswindows
+		&bench &print_r
 	) ],
 
 	'win' => [ qw(
@@ -50,15 +54,13 @@ our %EXPORT_TAGS = (
 	'time' => [ qw(
 		&compacttime 
 		&ymd2time &time2ymd
+		&bench
 	) ],
 );
 
 our @EXPORT_OK = ( @{$EXPORT_TAGS{'all'}} );
 
 our @EXPORT = qw( );
-
-our $VERSION = '1.01';
-
 
 # Converts an IP "1.2.3.4" into a 32bit integer. Ignores any :port on the IP
 sub ip2int {
@@ -311,6 +313,25 @@ sub simple_interpolate {
 
 sub iswindows {
 	return (lc substr($^O,0,-2) eq "mswin");
+}
+
+sub print_r { # mimic PHP.. sorta
+	print Dumper(@_);
+}
+
+{
+ my %b = ();
+ sub bench {
+        my $a = $_[0];
+        if (exists $b{$a}) {
+                my $t = tv_interval($b{$a});
+                printf("bench '$a': %0.7f seconds\n", $t);
+                delete $b{$a};
+		return $t;
+        } else {
+                $b{$a} = [ gettimeofday ];
+        }
+ }
 }
 
 1;

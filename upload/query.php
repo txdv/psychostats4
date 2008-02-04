@@ -1,63 +1,107 @@
 <?php
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$validfields = array('themefile','ip','cmd');
-globalize($validfields);
+require_once(PS_ROOTDIR . "/includes/class_PQ.php");
 
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'query';
+// collect url parameters ...
+$validfields = array('r','s','t');
+$cms->theme->assign_request_vars($validfields, true);
 
-$rulefilters = array('_tutor_','coop','deathmatch','pausable');
+$rulefilters = array('_tutor_','coop','deathmatch','pausable','r_');
 
-list($ip,$port) = explode(':', $ip);
+if (!in_array($t,array('details','players','rules','rcon'))) $t = 'details';
 
-$server = array();
-$server = $ps_db->fetch_row(1, 
-	"SELECT s.*,INET_NTOA(serverip) ip, serverport port, CONCAT_WS(':', INET_NTOA(serverip),serverport) ipport " . 
-	"FROM $ps->t_config_servers s " . 
-	"WHERE enabled=1 " . 
-	"AND s.serverip=INET_ATON('" . $ps_db->escape($ip) . "') AND serverport='" . $ps_db->escape($port) . "' "
-);
+list($host,$port) = explode(':', $s);
+if (empty($port) or !is_numeric($port) or $port < 1 or $port > 65535) $port = 27015;
 
-if ($server['id']) {
-	// resolve server hostname to an IP (and separate the port)
-	if (!preg_match('|^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$|', $ip)) {
-		$ip = gethostbyname($ip);
-	}
-	$row = $ps_db->fetch_row(1, "SELECT c.cc, c.cn FROM $ps->t_geoip_ip ip, $ps->t_geoip_cc c WHERE c.cc=ip.cc AND (" . sprintf("%u", ip2long($ip)) . " BETWEEN start AND end)");
-	if ($row) $server += $row;
+if (is_numeric($host)) {	// $host is potentially an ID of a server in the database
+	$cmd = "SELECT id,host,port,alt,querytype,rcon,cc FROM $ps->t_config_servers s WHERE id='%s' AND enabled=1 ";
+	$cmd = sprintf($cmd, $ps->db->escape($host));
+} else {			// try to fetch a server based on host:port
+	$cmd = "SELECT id,host,port,alt,querytype,rcon,cc FROM $ps->t_config_servers s WHERE host='%s' AND port='%s' AND enabled=1 ";
+	$cmd = sprintf($cmd, $ps->db->escape($host), $ps->db->escape($port));
+}
+$server = $ps->db->fetch_row(1, $cmd);
+if ($server['host']) $server['ip'] = gethostbyname($server['host']);
+
+if (!preg_match('/^\d+\.\d+\.\d+\.\d+$/', $server['ip'])) {
+	$server['ip'] = 0;
+}
+
+// return tiny error page; TODO: replace die() with actual error handler
+if (!$server or !$server['id']) {
+	die("Invalid Server Queried (s='$s')");
+//	$cms->tiny_page_err();
+}
+
+// try and resolve the country flag
+if (!$server['cc'] and $server['ip']) {
+	$row = $ps->db->fetch_row(1, sprintf("SELECT c.cc, c.cn " .
+		"FROM $ps->t_geoip_ip ip, $ps->t_geoip_cc c " .
+		"WHERE c.cc=ip.cc AND (%u BETWEEN start AND end) ",
+		ip2long($server['ip'])
+	));
+	if ($row) $server = array_merge($server, $row);
+} elseif ($server['cc']) {
+	$row = $ps->db->fetch_row(0, sprintf("SELECT cn FROM $ps->t_geoip_cc WHERE cc='%s'", $ps->db->escape($server['cc'])));
+	if ($row) $server['cn'] = $row[0];
+}
+
+// query the remote game server
+$pq = PQ::create(array(
+	'ip' 		=> $server['host'],
+	'port'		=> $server['port'],
+	'querytype'	=> $server['querytype'],
+	'timeout' 	=> 1, 
+	'retries' 	=> 1,
+));
+$pqinfo = $pq->query(array('info','players','rules'));
+if ($pqinfo === false) $pqinfo = array();
+if ($pqinfo) {
+	$pqinfo['connect_url'] = $pq->connect_url($server['alt']);
+	if ($pqinfo['players']) usort($pqinfo['players'], 'killsort');
+	if ($pqinfo['rules']) $pqinfo['rules'] = filter_rules($pqinfo['rules'], $rulefilters);
 } else {
-	abort('nomatch', $ps_lang->trans("Invalid Server"), $ps_lang->trans("Unauthorized server specified"));
+	$pqinfo['timedout'] = 1;
 }
 
-$data['cmd'] = $cmd;
-$data['server'] = $server;
-$data['pq'] = array();
-if ($server['ip']) {
-	$pq = PQ::create($server + array('timeout' => 1, 'retries' => 2));
-	$pqinfo = $pq->query(array('info','players','rules'));
-	if ($pqinfo === FALSE) $pqinfo = array();
-	if ($pqinfo) {
-		$pqinfo['connect_url'] = $pq->connect_url($server['connectip']);
-		if ($pqinfo['players']) usort($pqinfo['players'], 'killsort');
-		if ($pqinfo['rules']) $pqinfo['rules'] = filter_rules($pqinfo['rules'], $rulefilters);
-	} else {
-		$pqinfo['timedout'] = 1;
+$pqinfo['totalkills'] = 0;
+if ($pqinfo['players']) {
+	foreach ($pqinfo['players'] as $p) {
+		$pqinfo['totalkills'] += $p['kills'];
 	}
-	$data['pq'] = $pqinfo;
-	$data['pqobj'] = $pq;
-#	$smarty->register_object('pqobj',$pq);
-
-	// If we have an RCON command to send (and the user is an admin)
-	$rcon_result = '';
-	if (user_is_admin() and !empty($cmd)) {
-		if (!empty($server['rcon'])) {
-			$rcon_result = $pq->rcon($cmd, $server['rcon']);
-		}
-	}
-
-	$data['rcon_result'] = $rcon_result;
 }
+
+// If we have an RCON command to send (and the user is an admin)
+$rcon_result = '';
+if ($cms->user->is_admin() and !empty($r) and !empty($server['rcon'])) {
+	$rcon_result = $pq->rcon($r, $server['rcon']);
+}
+
+// adjust some variables so its easier to use them within the theme
+$pqinfo['dedicated'] = (bool)($pqinfo['servertype'] == 'd');
+$pqinfo['servertype'] = $pqinfo['dedicated'] ? $cms->trans('Dedicated') : $cms->trans('Listen');
+$pqinfo['windows'] = (bool)($pqinfo['serveros'] != 'l');
+$pqinfo['serveros'] = $pqinfo['windows'] ? $cms->trans("Windows") : $cms->trans("Linux");
+$pqinfo['timeleft'] = !empty($pqinfo['rules']['amx_timeleft']) ? $pqinfo['rules']['amx_timeleft'] : '';
+$pqinfo['nextmap'] = !empty($pqinfo['rules']['mani_nextmap']) ? $pqinfo['rules']['mani_nextmap'] : '';
+
+$cms->theme->assign(array(
+	'server'	=> array_merge($server, $pqinfo),
+	'mapimg'	=> $ps->mapimg($pqinfo['map'], array('pq' => &$pq, 'noimg' => '')),
+	'flagimg'	=> $ps->flagimg($server['cc'], array( 'class' => 'flag' )),
+	'rcon_result'	=> $rcon_result,
+	'active_tab'	=> $t
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->tiny_page($basename, $basename);
+
+// --- Local functions --------------
 
 function killsort($a, $b) {
   if ($a['kills'] == $b['kills']) return onlinesort($a,$b);	// sort by onlinetime if the kills are equal
@@ -70,7 +114,7 @@ function onlinesort($a, $b) {
   return ($a['onlinetime'] > $b['onlinetime']) ? -1 : 1;
 }
 
-function filter_rules($orig, $rulefilters=array()) {
+function filter_rules($orig, $rulefilters = array()) {
 	$ary = array();
 	if (!$rulefilters) return $orig;
 	foreach ($orig as $rule => $value) {
@@ -84,14 +128,9 @@ function filter_rules($orig, $rulefilters=array()) {
 		}
 		if (!$match) $ary[$rule] = $value;
 	}
+	ksort($ary);
 	return $ary;
 }
 
-$data['PAGE'] = 'query';
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
 
-include(PS_ROOTDIR . "/includes/footer.php");
 ?>
-.

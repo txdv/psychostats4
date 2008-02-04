@@ -1,14 +1,15 @@
 <?php
-/*
+/***
 	Calendar class by Jason Morriss / 2006-03-17
+	$Id$
 
 	For timing, these routines are based on epoch timestamps.
 	For most coloring/formatting/styling CSS classes are used.
 
 	The javascript used is assumed to have been included elsewhere in the HTML.
-	I use some routines from my 'webcore.js' javascript class.
+	See js/calendar.js (uses jQuery library).
 
-*/
+***/
 
 if (defined("CLASS_CALENDAR_PHP")) return 1; 
 define("CLASS_CALENDAR_PHP", 1); 
@@ -23,6 +24,7 @@ class Calendar {
 	var $day;
 	var $data;
 	var $table;
+	var $selected = 'day';
 
 // PHP5 constructor
 function __construct($year = NULL, $month = NULL, $day = NULL) {
@@ -74,6 +76,17 @@ function set_conf($c = array()) {
 #	print_r($this->conf); print "<br>";
 }
 
+// determines what the selected date is pointing to, a 'day', 'week', or 'month'
+function selected($s = null) {
+	if ($s === null) return $this->selected;
+	if (in_array($s, array('day','week','month'))) {
+		$this->selected = $s;
+	} else {
+		trigger_error("Invalid selection type specified ($s); Should be 'day', 'week' or 'month'", E_USER_WARNING);
+	}
+	return $s;
+}
+
 // Sets what day is the start of the week (generally monday or sunday)
 // $day is 0..6: where 0 is sunday and 6 is saturday
 // This must be called before any data is added to the calender or drawn
@@ -87,6 +100,7 @@ function startofweek($day) {
 // builds the arrays of dates that will be used in the calendar output
 function build() {
 	$this->days = array();
+	$this->weeks = array();
 	$this->built = TRUE;
 
 	$this->firstday = date("D", $this->start);
@@ -129,6 +143,22 @@ function build() {
 #	print "<pre>"; print_r($this->days); print "</pre>";
 }
 
+// returns the first date available on the visible calendar
+function first_date($as_int = false) {
+	if (!$this->built) $this->build();
+	$keys = array_keys($this->days);
+	$d = current($keys);
+	return $as_int ? $this->ymd2time($d) : $d;
+}
+
+// returns the last date available on the visible calendar
+function last_date($as_int = false) {
+	if (!$this->built) $this->build();
+	$keys = array_keys($this->days);
+	$d = end($keys);
+	return $as_int ? $this->ymd2time($d) : $d;
+}
+
 function _init_day($time) {
 	return array(
 		'time'	=> $time,
@@ -137,11 +167,22 @@ function _init_day($time) {
 	);
 }
 
+// $date is a string 'YYYY-MM-DD'
 function day($date, $ary) {
 	if (!$this->built) $this->build();
 	// do not add any data to days that are not shown on the calendar
 	if (!array_key_exists($date, $this->days)) return;
 	$this->days[$date]['data'] = $ary;
+}
+
+// $week is a number from 1 - 52
+// if a date string is passed it will be converted to the week
+function week($week, $ary) {
+	if (!$this->built) $this->build();
+	if (!is_numeric($week)) { 
+		$week = date("W", $this->ymd2time($week));
+	}
+	$this->weeks[$week]['data'] = $ary;
 }
 
 // draw the calendar
@@ -163,13 +204,15 @@ function draw($print=FALSE) {
 	$id++;
 
 	$width = $this->conf['cellwidth'];
-	$hover = "onmouseover='addClassName(this, \"calendar-hover\")' onmouseout='removeClassName(this, \"calendar-hover\")'";
+//	$hover = "onmouseover='addClassName(this, \"calendar-hover\")' onmouseout='removeClassName(this, \"calendar-hover\")'";
+// hover js is now handled directly in calendar.js
+	$hover = "";
 
 	// build headers
 	$output .= $this->table_begin($id);
 	$output .= "<tr align='center' class='calendar-hdr'><td>";
 	$output .= ($this->conf['show_timeurl']) ? sprintf("<a href='%s'>&lt;&lt;</a>", $this->timeurl($prevmonth)) : '&nbsp;';
-	$output .= sprintf("</td><td colspan='6'>%s %s</td><td>", $monthname, $year);
+	$output .= sprintf("</td><td colspan='6' class='calendar-month-name'>%s %s</td><td>", $monthname, $year);
 	$output .= ($this->conf['show_timeurl']) ? sprintf("<a href='%s'>&gt;&gt;</a>", $this->timeurl($nextmonth)) : '&nbsp;';
 	$output .= "</td></tr>\n";
 
@@ -184,10 +227,20 @@ function draw($print=FALSE) {
 	$i = 0;
 	foreach ($this->days as $d) {
 		if ($i == 0) {		// start of a new row
-			$output .= sprintf("<tr><td width='%s' class='calendar-week' %s>%02d</td>", 
+			$w = date('W', $d['time']);
+			$w2 = sprintf("%02d", $w);
+			$link = $this->weeks[$w]['data']['link']
+				? sprintf("<a href='%s'>%s</a>", $this->weeks[$w]['data']['link'], $w2) 
+				: '';
+			$classes = $link ? ' calendar-week-hasdata' : '';
+			if ($link and $ymdthen == $d['date'] and $this->selected() == 'week') $classes .= ' calendar-week-selected';
+			$output .= sprintf("<tr><td width='%s' class='calendar-week%s' %s%s>%s</td>", 
 				$width, 
+				$classes,
 				$hover,
-				date('W', $d['time'])
+				// the onclick is so any part of the cell will trigger the link
+				$link ? " onclick=\"window.location.href='" . $this->weeks[$w]['data']['link'] . "'\"" : '',
+				$link ? $link : $w2
 			);
 			$i++;
 		}
@@ -202,12 +255,13 @@ function draw($print=FALSE) {
 			if ($link) $classes .= ' calendar-cell-hasdata';
 			if ($isoverflow) $classes .= " calendar-cell-overflow";
 		}
-		if ($link and $ymdthen == $d['date']) $classes .= ' calendar-cell-selected';
+		if ($link and $ymdthen == $d['date'] and $this->selected() == 'day') $classes .= ' calendar-cell-selected';
 		if ($d['date'] == $ymdtoday) $classes .= ' calendar-cell-today';
 
 		$output .= sprintf("<td width='%s' class='$classes' %s%s>%s</td>", 
 			$width,
 			$hover,
+			// the onclick is so any part of the cell will trigger the link
 			$link ? " onclick=\"window.location.href='" . $d['data']['link'] . "'\"" : '',
 			$link ? $link : date('d', $d['time'])
 		);
@@ -245,10 +299,16 @@ function timeurl($time) {
 
 function table_begin($id) {
 	static $attr = array('border','class','width','cellspacing','cellpadding','style');
+	$conf = $this->conf;
+	if ($this->selected() == 'month') {
+		$class  = $conf['class'];
+		$class .= $class ? ' calendar-month-selected' : '';
+		$conf['class'] = $class;
+	}
 	$output = "<table id='calendar$id'";
 	foreach ($attr as $a) {
-		if (!array_key_exists($a, $this->conf)) continue;
-		if ((string)$this->conf[$a] != '') $output .= sprintf(" %s='%s'", $a, $this->conf[$a]);
+		if (!array_key_exists($a, $conf)) continue;
+		if ((string)$conf[$a] != '') $output .= sprintf(" %s='%s'", $a, $conf[$a]);
 	}
 	$output .= ">\n";
 	return $output;

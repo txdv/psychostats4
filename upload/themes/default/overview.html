@@ -1,11 +1,36 @@
-{include
-	file			= "main_body.html"
-	title 			= "<#Server Overview#>"
-	leftblock 		= 1
-	rightblock 		= 0
-	headertitle		= "<#Server Overview#>"
-	headercontentfile 	= "default_header.html"
-	contentfile		= "overview_body.html" 
-	topleftcontent		= "overview_left.html"
-}
+<!--outermost page container for all content-->
+<div id="ps-page-container">
 
+<!--inner container for the content-->
+<div id="ps-main">
+
+	<div id="ps-page-title">
+		<div>
+		<h1><#PsychoStats Overview#></h1>
+		</div>
+	</div>
+
+{*
+<!--left column block -->
+<div id="ps-main-column">
+
+</div>
+<!--end of left column -->
+*}
+
+<!--content block-->
+<div id="ps-main-content" class="ps-page-{$page}">
+
+{ofc data="h24" width='800' height=200}
+<p>&nbsp;</p>
+
+{if $conf.theme.map.google_key}<div id="map"></div>{/if}
+
+<img src="{url _base='imgconn.php'}" alt="[img]" />
+<img src="{url _base='imgcc.php'}" alt="[img]" />
+
+</div> {* end ps-main-content *}
+
+</div> {* end ps-main *}
+
+</div> {* end ps-page-container *}

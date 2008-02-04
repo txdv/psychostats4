@@ -1,0 +1,246 @@
+<?php
+/*
+	Initialize DB schema with defaults.
+	$Id$
+	
+*/
+if (!defined("PSYCHOSTATS_INSTALL_PAGE")) die("Unauthorized access to " . basename(__FILE__));
+
+// we need to raise the memory limit, since the defaults.sql file will require more than 8MB
+// and some systems will default to 8MB.
+@ini_set('memory_limit', '128M');
+
+$validfields = array('gametype','modtype','overwrite','dropdb');
+$cms->theme->assign_request_vars($validfields, true);
+
+$gametypes = array(
+	'halflife'	=> "Half-Life"
+);
+
+$modtypes = array(
+	'cstrike'	=> "Counter Strike",
+	'dod'		=> "Day of Defeat",
+	'hldm'		=> "Deathmatch",
+//	'gungame'	=> "Gungame",
+	'natural'	=> "Natural Selection",
+	'tf2'		=> "Team Fortress 2",
+);
+
+// make DB connection
+load_db_opts();
+$db->config(array(
+	'dbhost' => $dbhost,
+	'dbport' => $dbport,
+	'dbname' => $dbname,
+	'dbuser' => $dbuser,
+	'dbpass' => $dbpass,
+	'dbtblprefix' => $dbtblprefix
+));
+$db->clear_errors();
+$db->connect();
+
+if (!$db->connected) {
+	if ($ajax_request) {
+		print "<script type='text/javascript'>window.location = 'go.php?s=db&re=1&install=" . urlencode($install) . "';</script>";
+		exit;
+	} else {
+		gotopage("go.php?s=db&re=1&install=" . urlencode($install));
+	}
+}
+
+
+$allow_next = false;
+$db_init = false;
+$errors = array();
+$actions = array();
+
+$cms->theme->assign_by_ref('db_init', $db_init);
+$cms->theme->assign_by_ref('errors', $errors);
+$cms->theme->assign_by_ref('actions', $actions);
+
+// no need to 'overwrite' if we are dropping the database entirely
+if ($dropdb) $overwrite = false;
+
+// validate gametype's selected
+$list = is_array($gametype) ? $gametype : array();
+$gametype = array();
+foreach ($list as $k) {
+	if (array_key_exists($k, $gametypes)) {
+		$gametype[] = $k;
+	}
+}
+if (!$gametype) $gametype[] = 'halflife';
+
+// validate modtype's selected
+$list = is_array($modtype) ? $modtype : array();
+$modtype = array();
+foreach ($list as $k) {
+	if (array_key_exists($k, $modtypes)) {
+		$modtype[] = $k;
+	}
+}
+if (!$modtype) $modtype[] = 'cstrike';
+
+
+$cms->theme->assign(array(
+	'gametypes'	=> $gametypes,
+	'modtypes'	=> $modtypes,
+));
+
+if ($ajax_request) {
+//	sleep(1);
+	$pagename = 'go-dbinit-results';
+	do_init($gametype, $modtype);
+	$cms->tiny_page($pagename, $pagename);
+}
+
+// the DB will already exist (assuming the user did the 'db' step already; which they should have)
+function do_init($games, $mods) {
+	global $cms, $db, $db_init, $errors, $actions, $overwrite, $dropdb, $allow_next;
+	$i = 1;
+	$exists = array();
+	$dropped = array();
+	$ignore = array();
+
+	// get a list of all PS tables in the database (ignore tables without our prefix
+	$db->query("SHOW TABLES LIKE '" . $db->escape($db->dbtblprefix) . "%'");
+	while ($r = $db->fetch_row(0)) {
+		$exists[ $r[0] ] = true;
+	} 
+
+	// load our SQL schema 
+	$schema = load_schema($db->type() . "/basic.sql");
+	if (!$schema) $errors[] = "Unable to read basic database schema for installation!";
+
+	// load our SQL defaults
+	$defaults = load_schema($db->type() . "/defaults.sql");
+	if (!$defaults) $errors[] = "Unable to read database defaults for installation!";
+
+	// load the modtype defaults, if avaialble
+	// bug: the same modtype from different games will be loaded... not an issue right now though.
+	foreach ($games as $g) {
+		foreach ($mods as $m) {
+			$mod_defaults = load_schema($db->type() . "/$g/$m.sql");
+			if ($mod_defaults) {
+				foreach ($mod_defaults as $d) {
+					$q = strtolower(substr($d, 0, 6));
+					if ($q == 'create') {
+						$schema[] = $d;
+					} else {
+						$defaults[] = $d;
+					}
+				}
+			}
+		}
+	}
+
+	if ($errors) return false;
+
+	// recreate DB if needed
+	if ($dropdb || !$db->dbexists($db->dbname)) {
+		$exists = array();
+		if (!$db->dbexists($db->dbname) || $db->dropdb($db->dbname)) {
+			if ($db->createdb($db->dbname, "DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci")) {
+				$actions[$db->dbname] = array( 'status' => 'good', 'msg' => "RECREATED DATABASE '$db->dbname'" );
+				$db->selectdb();
+			} else {
+				$errors[] = "Error creating database: " . $db->errstr;
+			}
+		} else {
+			$errors[] = "Error dropping current database: " . $db->errstr;
+		}
+	}
+
+	if ($errors) return false;
+	$queries = array_merge($schema, $defaults);
+
+	$allow_next = true;
+	foreach ($queries as $sql) {
+		if (empty($sql)) continue;
+		$action = substr($sql, 0, 6);
+		$is_create = (strtolower($action) == 'create');
+		if (!preg_match('/(?:CREATE TABLE|INSERT INTO) ([^\w])([\w\d_]+)\1/i', $sql, $m)) continue;
+		$table = $m[2];
+
+		// fix the table name to use the proper prefix
+		if ($db->dbtblprefix != 'ps_') {
+			$table = preg_replace('/^ps_/', $db->dbtblprefix, $table);
+			$sql = str_replace($m[2], $table, $sql);
+		}
+
+		// if the table exists and overwrite is true, drop it first.
+		if ($exists[$table] and $overwrite and $is_create) {
+			if ($db->droptable($table)) {
+				unset($exists[$table]);
+				$actions[$table] = array('status' => 'good', 'msg' => "Dropped table '$table'");
+				$dropped[$table] = true;
+			} else {
+				$actions[$table] = array('status' => 'bad', 'msg' => "Error dropping table '$table'");
+				$allow_next = false;
+				continue;
+			}
+		}
+
+		if ($is_create) {
+			// don't try to create a table that already exists
+			if ($exists[$table]) {
+				$ignore[$table] = true;
+				$actions[$table] = array(
+					'status' => 'warn',
+					'msg' => "Ignoring table '$table' (already exists)"
+				);
+			} else {
+				if ($db->query($sql)) {
+					$actions[$table] = array( 'status' => 'good', 'msg' => ($dropped[$table] ? "Rec" : "C") . "reated table '$table'" );
+				} else {
+					$actions[$table] = array( 'status' => 'bad', 'msg' => "Error creating table '$table': " . $db->errstr );
+				}
+			}
+		} else {
+			// do 'insert' query
+			if ($ignore[$table]) continue;
+			if ($db->query($sql)) {
+				$actions[$table] = array( 'status' => 'good', 'msg' => "Created and initialized table '$table'" );
+			} else {
+				$actions[$table] = array( 'status' => 'bad', 'msg' => "Error initializing table '$table': " . $db->errstr );
+			}
+		}
+	} // foreach $queries ...
+
+	// initialize some configuration defaults
+	$tbl = $db->table('config');
+	// only update the config table if it was created/initialized above ...
+	if ($actions[$tbl] and $actions[$tbl]['status'] == 'good') {
+		// default game/mod type to the first ones selected in the form
+		$db->query("UPDATE " . $db->qi($tbl) . " SET value='$games[0]' WHERE conftype='main' AND section IS NULL AND var='gametype'");
+#		if ($db->errstr) $errors[] = $db->errstr;
+		$db->query("UPDATE " . $db->qi($tbl) . " SET value='$mods[0]'  WHERE conftype='main' AND section IS NULL AND var='modtype'");
+#		if ($db->errstr) $errors[] = $db->errstr;
+	}
+}
+
+function load_schema($file) {
+	$schema = preg_split('/;\n/', 
+		implode("\n", 
+			array_map('rtrim', 
+				preg_grep("/^(--|(UN)?LOCK|DROP|\\/\\*)/", (array)@file($file), PREG_GREP_INVERT)
+			)
+		)
+	);
+	if (empty($schema[ count($schema)-1 ])) array_pop($schema);
+	return $schema;
+}
+
+function err($msg) {
+	global $cms, $pagename;
+//	print "<h3>Fatal Error!</h3>";
+	print "<p class='row'><span class='bad'>$msg</span></p>";
+	$cms->tiny_page($pagename, $pagename);
+}
+
+function not_empty($i) {
+	print "'$i'<br>";
+	return (!empty($i));
+}
+
+?>

@@ -1,67 +1,78 @@
 <?php
-/**
-	2005 (c) Standard SESSION class written by Jason Morriss <stormtrooper@psychostats.com>
-	Feel free to use this software anyway you wish. If you do all I ask
-	is that you leave this copywrite notice in place and possibly
-	let me know how you're using this software. Please also let me know
-	if you have any suggestions/updates for the software.
+/***
+	PsychoStats Session class
+	$Id$
 
-	This software is provided as-is with NO WARRANTIES. If something breaks
-	for you due to this software Jason Morriss can not be held liable.
+	This session class is for use with the PsychoCMS framework. It provides a basic 
+	framework for dealing with user sessions. This version of the session class only 
+	works with the PsychoCMS object.
 
-	NOTE: This class assumes that all request variables have already had their 
-	quotes stripped (if magic_quotes_gpc is on). Also this class assumes the 
-	$db handle is my class_DB.php.
-*/
+	Plugins may wish to inherit this class in order to allow for other types of sessions, 
+	for example, integrating a session handler from 3rd party forum software.
+
+***/
 
 // MYSQL session table for this session class is at the bottom of this file.
-if (!defined('VALID_PAGE')) die(basename(__FILE__) . " 666 Error");
-if (defined("CLASS_PSSESSION_PHP")) return 1;
-define('CLASS_PSSESSION_PHP', 1);
 
-class PS_Session { 
-	var $config = array();
-	var $_is_bot = NULL;
-	var $_is_new = 0;
-	var $db = 0;
-	var $ended = 0;
-	var $sidmethod = 'get';
-	var $SESSION_BOTS = array();
-	var $sessdata = array(				// stores all the session data (stored in the database, not the cookie)
-		'session_id'		=> '',			// always 32 characters long
-		'session_userid'	=> 0,
-		'session_start'		=> 0,
-		'session_last'		=> 0,
-		'session_ip'		=> 0,
-		'session_logged_in'	=> 0,
-		'session_is_bot'	=> 0,
-	);
+if (defined("CLASS_PSYCHO_SESSION_PHP")) return 1;
+define('CLASS_PSYCHO_SESSION_PHP', 1);
+
+class PsychoSession { 
+var $config = array();
+var $_is_bot = NULL;
+var $_is_new = 0;
+var $db = 0;
+var $ended = 1;
+var $sidmethod = 'get';
+var $SESSION_BOTS = array();
+var $sid = '';
+var $options = array();
+var $sessdata = array(				// stores all the session data (stored in the database, not the cookie)
+	'session_id'		=> '',
+	'session_userid'	=> 0,
+	'session_start'		=> 0,
+	'session_last'		=> 0,
+	'session_ip'		=> 0,
+	'session_logged_in'	=> 0,
+	'session_key'		=> null,
+	'session_key_time'	=> null,
+	'session_is_admin'	=> 0,
+	'session_is_bot'	=> 0,
+);
 
 // session constructor. Sets defaults and will automatically start a new session or load an existing one
-function PS_Session($_config=array()) {
+function PsychoSession($_config = array()) {
 	$this->config = array(
+		'cms'			=> null,			// a CMS object MUST be passed in
+		'dbhandle'		=> 0,
 		'delaystart'		=> 0,
 		'cookielife'		=> 60 * 60,			// 1 hour
 		'cookiedomain'		=> '',
 		'cookiepath'		=> '/',
 		'cookiename'		=> 'sess',
 		'cookiesecure'		=> 0,
-		'secretkey'		=> '',				// mcrypt module must be installed if this is !empty	
+		'cookiesalt'		=> '',				// mcrypt module must be installed if this is !empty	
+		'cookiecompress'	=> TRUE,
+		'cookieencode'		=> TRUE,
 		'login_callback_func'	=> '',
-		'match_agent_ip'	=> FALSE,
+		'match_agent_ip'	=> FALSE,			// i haven't kept up-to-date on bot IPs
+
+		'db_session_table'	=> 'sessions',
+		'db_user_table'		=> '',				// if blank, extra user features are ignored...
+		'db_user_session_last'	=> 'session_last',		// table field name to update the users last session request
+		'db_user_login_key'	=> 'session_login_key',		// table field name to hold auto-login token
+		'db_user_last_visit'	=> 'lastvisit',			// table field name to update the users last (previous) visit
+		'db_user_id'		=> 'userid',			// table field name for the users "user id"
+
+		// these aren't used in this version of the session class; pass a dbhandle above instead
 		'dbuser'		=> '',
 		'dbpass'		=> '',
 		'dbhost'		=> 'localhost',
 		'dbname'		=> 'sessions',
-		'dbsessiontable'	=> 'sessions',
-		'dbusertable'		=> '', //'users',
-		'dbusersessionlast'	=> 'session_last',		// table field name to update the users last session request
-		'dbuserlastvisit'	=> 'lastvisit',			// table field name to update the users last (previous) visit
-		'dbuserid'		=> 'userid',			// table field name for the users "user id"
-		'dbhandle'		=> 0,
 	);
 
-	// agent, name, ip substrs
+	// *** This list is way out of date; It's too tedious to try and maintain it ***
+	// user agent, name, ip substrs
 	$this->SESSION_BOTS = array();
 	$this->SESSION_BOTS[] = NULL;		// we don't want index 0 to be used
 	$this->SESSION_BOTS[] = array('Google', 	'Googlebot', 	'216.239.46.|64.68.8|64.68.9|164.71.1.|192.51.44.|66.249.71.|66.249.64.|66.249.65.|66.249.66.');
@@ -75,24 +86,36 @@ function PS_Session($_config=array()) {
 	$this->SESSION_BOTS[] = array('msnbot/', 	'MSN',  	'131.107.3.|204.95.98.|131.107.1|65.54.164.95|65.54.164.3|65.54.164.4|65.54.164.5|65.54.164.6|207.46.98.');
 	$this->SESSION_BOTS[] = array('MARTINI', 	'Looksmart', 	'64.241.242.|207.138.42.212');
 	$this->SESSION_BOTS[] = array('teoma', 		'Ask Jeeves', 	'216.200.130.|216.34.121.|63.236.92.1|64.55.148.|65.192.195.|65.214.36.');
-	//$this->SESSION_BOTS[] = array('', '', '');
-	// This is used as debugging...
-//	$this->SESSION_BOTS[] = array('.', 	'Test bot', 	'69.140.42.132');
-
 
 	$this->config = array_merge($this->config, $_config);
-	$this->db = $this->config['dbhandle'];
+
+	// A CMS object must be passed to us. We primarily need it for inputs
+	if (empty($this->config['cms'])) {
+		trigger_error("Session class instantiated without a CMS object!", E_ERROR);
+	}
+	$this->cms =& $this->config['cms'];
+
+	// a database object must be passed to us
+	$this->db =& $this->config['dbhandle'];
+
 	$this->is_bot();
 
 	$this->_initkey();
 	if (!$this->config['delaystart']) $this->start();		// start session if its not 'delayed'
 }
 
+// gets/sets the admin flag of the session
+function is_admin($toggle = null) {
+	$old = $this->sessdata['session_is_admin'];
+	if ($toggle !== null) $this->sessdata['session_is_admin'] = $toggle;
+	return $old;
+}
+
 function is_bot() {
 	if (!is_null($this->_is_bot)) return $this->_is_bot;
 	$ip = $_SERVER['REMOTE_ADDR'];
 	$agent = $_SERVER['HTTP_USER_AGENT'];
-	$ip_match = $this->conf['match_agent_ip'] ? 0 : 1;
+	$ip_match = $this->config['match_agent_ip'] ? 0 : 1;
 	$agent_match = 0;
 
 	foreach ($this->SESSION_BOTS as $idx => $row) {
@@ -134,45 +157,38 @@ function bot_name($idx) {
 	}
 }
 
-// returns the name of the SID cookie
-function sidname($suffix='_id') {
-	return $this->config['cookiename'] . $suffix;
-}
-
 // generates a new random SID. If you provide the $random string it will be used to help generate the md5 hash.
 function generate_sid($random="") {
-	if ($this->_is_bot) {
-		return sprintf("%032d", $this->_is_bot);
+	if ($this->is_bot()) {
+		return sprintf("%032d", $this->is_bot());
 	} else {
-		return md5(time() . mt_rand()  . $random);
+//		return md5(time() . mt_rand()  . $random);
+		// the UNIQUE_ID may or may not actually be present. If it is, all the better.
+		return md5($_SERVER["UNIQUE_ID"] . uniqid(mt_rand(), true) . $random);
 	}
 }
 
 // delete expired sessions
 function garbage_collect() {
 	$now = time();
-	$cmd = "DELETE FROM {$this->config['dbsessiontable']} WHERE ($now - session_last > {$this->config['cookielife']})";
+	$cmd = "DELETE FROM {$this->config['db_session_table']} WHERE ($now - session_last > {$this->config['cookielife']})";
 	$res = $this->db->query($cmd);
 }
 
 // returns the current session SID from a COOKIE or GET data. Returns FALSE if there is none
 function _find_user_sid() {
 	$this->garbage_collect();
-	$name = $this->sidname();
+	$name = $this->sid_name();
 	$sid = FALSE;
-	if ($_COOKIE[$name] != '') {
+	if ($this->cms->cookie[$name] != '') {
 		$this->sidmethod = 'cookie';
-		$sid = $_COOKIE[$name];
-	} elseif ($_GET[$name] != '') {
+		$sid = $this->cms->cookie[$name];
+	} elseif ($this->cms->input[$name] != '') {
 		$this->sidmethod = 'get';
-		$sid = $_GET[$name];
-		$_COOKIE[$name] = $sid;
-	} elseif ($_POST[$name]) {
-		$this->sidmethod = 'get';		// we do not distinguish between get/post
-		$sid = $_POST[$name];    
-		$_COOKIE[$name] = $sid;
+		$sid = $this->cms->input[$name];
+		$this->cms->cookie[$name] = $sid;
 	} else {
-		$this->sidmethod = '';
+		$this->sidmethod = 'none';
 	}
 //	if ($sid != FALSE and get_magic_quotes_gpc()) stripslashes($sid);
 	return $sid;
@@ -188,10 +204,9 @@ function is_sid($sid) {
 
 // sets a cookie for the user based on the cookie settings we have. $suffix is the trailing part of the SID name. 
 // '_id' or '_login'
-function sendcookie($data, $time=0, $suffix='_id') {
-//	print "SENDCOOKIE: '$suffix': $data<br>";
+function send_cookie($data, $time=0, $suffix='_id') {
 	return setcookie(
-		$this->sidname($suffix), 
+		$this->sid_name($suffix), 
 		$data, 
 		$time, 
 		$this->config['cookiepath'], 
@@ -200,52 +215,70 @@ function sendcookie($data, $time=0, $suffix='_id') {
 	);
 }
 
+// returns the contents of a session cookie or false if not found
+function get_cookie($suffix = '_id') {
+	$name = $this->sid_name($suffix);
+	if (array_key_exists($name, $this->cms->cookie)) {
+		return $this->cms->cookie[$name];
+	} 
+	return false;
+}
+
 // short-cut method for deleting a users cookie.
-function delcookie($suffix='_id') {
-//	print "DELCOOKIE: '$suffix' (the next sendcookie line will be the deletion)<br>";
-	return ($_COOKIE[ $this->sidname($suffix)]) ? $this->sendcookie("", time()-100000, $suffix) : 0;
+function delete_cookie($suffix='_id') {
+	if ($this->cms->cookie[ $this->sid_name($suffix) ]) {
+		unset($this->cms->cookie[ $this->sid_name($suffix) ]);
+		return $this->send_cookie("", time()-100000, $suffix);
+	} 
+	return 0;
 }
 
 function _read_session($sid) {
-	$res = $this->db->query("SELECT * FROM " . $this->config['dbsessiontable'] . " WHERE session_id='" . addslashes($sid) . "'");
+	$res = $this->db->query("SELECT * FROM " . $this->db->qi($this->config['db_session_table']) . " WHERE session_id=" . $this->db->escape($sid, true));
 	if (!$res) die("Fatal Session Error at line " . __LINE__ . ": " . $this->db->lasterr());
 	$this->sessdata = $this->db->num_rows() > 0 ? $this->db->fetch_row() : $this->_init_new_session();
-//	print "READ SESSION ... <br>";
-//	print_r($this->sessdata); print "<bR>";
 }
 
 function _save_session() {
 	if ($this->ended) return 1;		// do not save anything if the session was end()'ed
-	$res = $this->db->query("SELECT session_id FROM `" . $this->config['dbsessiontable'] . "` WHERE session_id='" . addslashes($this->sessdata['session_id']) . "'");
+	$res = $this->db->query("SELECT session_id FROM " . $this->db->qi($this->config['db_session_table']) . " WHERE session_id=" . $this->db->escape($this->sessdata['session_id'], true));
 	list($exists) = $this->db->fetch_row(0);
 	if (!$res) die("Fatal Session Error at line " . __LINE__ . ": " . $this->db->lasterr());
-	$prefix = ($exists) ? "UPDATE" : "INSERT INTO";
 
-	$cmd = "$prefix `" . $this->config['dbsessiontable'] . "` SET ";
-	foreach ($this->sessdata as $k => $v) $cmd .= "$k='$v', ";
-	$cmd = substr($cmd, 0, -2);						// strip off trailing ', '
-	if ($exists) $cmd .= " WHERE session_id='" . addslashes($this->sessdata['session_id']) . "'";
+	// don't allow a blank key, set it to null instead
+	if (empty($this->sessdata['session_key'])) $this->sessdata['session_key'] = null;
+
+	if ($exists) {
+		$this->db->update($this->config['db_session_table'], $this->sessdata, 'session_id', $this->sessdata['session_id']);
+	} else {
+		$this->db->insert($this->config['db_session_table'], $this->sessdata);
+	}
+/*
+	$prefix = ($exists) ? "UPDATE" : "INSERT INTO";
+	$cmd = "$prefix " . $this->db->qi($this->config['db_session_table']) . " SET ";
+	foreach ($this->sessdata as $k => $v) {
+		$cmd .= sprintf("%s=%s, ", $this->db->qi($k), $this->db->escape($v, true));
+	}
+	$cmd = substr($cmd, 0, -2); // strip off trailing ', '
+	if ($exists) $cmd .= " WHERE session_id=" . $this->db->escape($this->sessdata['session_id'], true);
 //	print "SAVE SESSION: $cmd<br>";
 	$res = $this->db->query($cmd);
+*/
 	if (!$res) die("Fatal Session Error at line " . __LINE__ . ": " . $this->db->lasterr());
-}
-
-function _delete_session($sid) {
-	return $this->db->delete($this->config['dbsessiontable'], 'session_id', $sid);
 }
 
 function _init_new_session() {
 //	print "INIT SESSION ... <br>";
 	$this->_is_new = 1;
-	$this->sid = $this->generate_sid();
+	$this->sid($this->generate_sid());
 	$this->sessdata = array(
-		'session_id'		=> $this->sid,
+		'session_id'		=> $this->sid(),
 		'session_userid'	=> 0,
 		'session_start'		=> time(),
 		'session_last'		=> time(),
 		'session_ip'		=> sprintf("%u", ip2long($_SERVER['REMOTE_ADDR'])),
 		'session_logged_in'	=> 0,
-		'session_is_bot'	=> $this->_is_bot,
+		'session_is_bot'	=> $this->is_bot(),
 	);
 }
 
@@ -253,20 +286,20 @@ function _init_new_session() {
 function _session_start() {
 	$sid = $this->_find_user_sid();
 	if (!$sid or !$this->is_sid($sid)) {
-		print "NEW SESSION STARTING ... <BR>";
+#		print "NEW SESSION STARTING ... <BR>";
 		$this->_init_new_session();
-		$this->_save_session();				// always SAVE when we create a new session
-		$this->sendcookie($this->sid);			// cookie will expire at the end of the browser session
+#		$this->_save_session();				// always SAVE when we create a new session
+		$this->send_cookie($this->sid());
 	} else {
-		print "PREVIOUS SESSION STARTING ... <BR>";
+#		print "PREVIOUS SESSION STARTING ... <BR>";
 		$this->_read_session($sid);
-		$this->sid = $sid; //$this->sessdata['session_id'];
+		$this->sid($sid);
 		if ($this->_expired()) {
-			$this->_delete_session($this->sid);		// deletes old session from database
+			$this->delete_session($this->sid());		// deletes old session from database
 			$this->_init_new_session();			// generate a new dataset
-			$this->_save_session();
-			$this->delcookie();				// delete old sess_id cookie (since we're only using PHP4 its ok to delete first, before sending another cookie below)
-			$this->sendcookie($this->sid);			// send a new cookie
+#			$this->_save_session();
+			$this->delete_cookie();				// delete old sess_id cookie
+			$this->send_cookie($this->sid());		// send a new cookie
 		}
 	}
 }
@@ -280,20 +313,19 @@ function start() {
 	$this->sessdata['session_last'] = $now;
 
 	// If the user is NOT logged in and there is a 'login' cookie set, try to verify and log the user in automatically
-	if ($this->onlinestatus()==0 and !empty($_COOKIE[ $this->sidname('_login') ])) {
-		$enc = $_COOKIE[ $this->sidname('_login') ];
-//		if (get_magic_quotes_gpc()) $enc = stripslashes($enc);
-		$data = unserialize(base64_decode($this->decrypt($enc)));		// should be an array with a userid and password
-		if (is_array($data) and $data['userid'] and $data['password']) {
-			$login_callback = $this->config['login_callback_func'];
-			$userid = (function_exists($login_callback)) ? $login_callback($data['userid'], $data['password']) : 0;
+//	print "START SESSION<br/>\n";
+	if ($this->online_status()==0 and !empty($this->cms->cookie[ $this->sid_name('_login') ])) {
+		$auto = $this->load_login();
+		if ($auto['userid'] and $auto['password']) {
+			$func = $this->config['login_callback_func'];
+			$userid = is_callable($func) ? call_user_func($func, $auto['userid'], $auto['password']) : false;
 			if ($userid) {
-				$this->onlinestatus(1, $userid);			// user is now magically online!
+				$this->online_status(1, $userid); 		// user is now magically online!
 			} else {
-				$this->delcookie('_login');				// login cookie was invalid, so delete it
+				$this->delete_cookie('_login');			// login cookie was invalid, so delete it
 			}
 		} else {
-			$this->delcookie('_login');				// login cookie was invalid, so delete it
+			$this->delete_cookie('_login');				// login cookie was invalid, so delete it
 		}
 	}
 
@@ -302,93 +334,91 @@ function start() {
 	// Used for keeping track of NEW messages, etc.
 	// This must be done AFTER the autlogin block above! otherwise users that are auto logged in will never have the correct
 	// 'last visit' timestamp.
-	if (!empty($this->config['dbusertable'])) {
+	if (!empty($this->config['db_user_table'])) {
 		if ($this->sessdata['session_userid'] > 0 and $this->sessdata['session_logged_in']) {
 			$cmd = sprintf("UPDATE %s SET %s=$now WHERE %s='%s'", 
-				$this->db->qi($this->config['dbusertable']), 
-				$this->db->qi($this->config['dbusersessionlast']), 
-				$this->db->qi($this->config['dbuserid']), 
+				$this->db->qi($this->config['db_user_table']), 
+				$this->db->qi($this->config['db_user_session_last']), 
+				$this->db->qi($this->config['db_user_id']), 
 				$this->db->escape($this->sessdata['session_userid'])
 			);
 //			print "UPDATE USER: $cmd<br>";
 			$res = $this->db->query($cmd);
 		}
 	}
+
+	// session data will be saved before the script exits
+	register_shutdown_function(array(&$this, '_save_session'));
 } // end function start()
 
-// Saves the autologin cookie to the users browser so the next time they view the page they will be logged on automatically
-function saveAutoLogin($userid, $password) {
-	$ary = array('userid' => $userid, 'password' => $password);
-	$data = $this->encrypt( base64_encode(serialize($ary)) );
-	return $this->sendcookie($data, time()+60*60*24*30, '_login'); 		// autologin cookie is saved for 30 days
-}
 
-function removeAutoLogin() {
-	$this->delcookie('_login');
-	return 1;
-}
-
+// Initializes the encryption engine for encrypting user cookies
 function _initkey() {
-	if (!$this->config['secretkey']) return 0;
-	$this->td = mcrypt_module_open(MCRYPT_DES, '', MCRYPT_MODE_ECB, '');			// Open the cipher
-	$this->iv = mcrypt_create_iv(mcrypt_enc_get_iv_size($this->td), MCRYPT_DEV_RANDOM);	// Create the IV and determine the keysize length
-	$this->ks = mcrypt_enc_get_key_size($this->td);
-	$this->key = substr(md5($this->config['secretkey']), 0, $this->ks);			// Create key
-	mcrypt_generic_init($this->td, $this->key, $this->iv);					// Intialize encryption
-	return 1;
+	$this->session_encrypted = false;
+	if ($this->config['cookiesalt'] and function_exists('mcrypt_module_open')) {
+		$this->td = mcrypt_module_open('tripledes', '', 'ecb', '');
+		$this->iv = mcrypt_create_iv(mcrypt_enc_get_iv_size($this->td), MCRYPT_RAND);
+		$this->key = substr($this->config['cookiesalt'], 0, mcrypt_enc_get_key_size($this->td));
+		$this->session_encrypted = true;
+	}
+	return $this->session_encrypted;
 }
 
 function encrypt($str) {
-	if (!$this->config['secretkey']) return $str;
+	if (!$this->session_encrypted) return $str;
+	mcrypt_generic_init($this->td, $this->key, $this->iv);
 	$encrypted = mcrypt_generic($this->td, $str);						// Encrypt data 
+	mcrypt_generic_deinit($this->td);
 	return $encrypted;
 }
  
 function decrypt($str) {
-	if (!$this->config['secretkey']) return $str;
+	if (!$this->session_encrypted) return $str;
+	mcrypt_generic_init($this->td, $this->key, $this->iv);
 	$decrypted = trim(mdecrypt_generic($this->td, $str));
+	mcrypt_generic_deinit($this->td);
 	return $decrypted;
 }
 
 // sets or gets the current online status for the session. If the online status is changed, the previous value is returned.
-function onlinestatus($online=-1, $userid=0) {
+function online_status($online=-1, $userid=0) {
 	$status = $this->sessdata['session_logged_in'];			// get original status by default
-	if ($online >= 1) {							// LOGIN THE USER
+	if ($online >= 1) {						// LOGIN THE USER
 		$this->sessdata['session_logged_in'] = 1;
 		$this->sessdata['session_userid'] = $userid;
-		$this->_save_session();
-		if (!empty($this->config['dbusertable'])) {
+#		$this->_save_session();
+		if (!empty($this->config['db_user_table'])) {
 			$res = $this->db->query(sprintf("SELECT %s FROM %s WHERE %s='%s' LIMIT 1",
-				$this->db->qi($this->config['dbusersessionlast']),
-				$this->db->qi($this->config['dbusertable']),
-				$this->db->qi($this->config['dbuserid']),
+				$this->db->qi($this->config['db_user_session_last']),
+				$this->db->qi($this->config['db_user_table']),
+				$this->db->qi($this->config['db_user_id']),
 				$this->db->escape($userid)
 			));
-			list($last) = ($res) ? $this->db->fetch_row(0) : time();
+			list($last) = $res ? $this->db->fetch_row(0) : time();
 			$res = $this->db->query(sprintf("UPDATE %s SET %s=$last WHERE %s='%s'",	// update the USER table
-				$this->db->qi($this->config['dbusertable']),
-				$this->db->qi($this->config['dbuserlastvisit']),
-				$this->db->qi($this->config['dbuserid']),
+				$this->db->qi($this->config['db_user_table']),
+				$this->db->qi($this->config['db_user_last_visit']),
+				$this->db->qi($this->config['db_user_id']),
 				$this->db->escape($this->sessdata['session_userid'])
 			));
 		}
  	} elseif ($online == 0) {
 		$this->sessdata['session_logged_in'] = 0;
+		$this->sessdata['session_is_admin'] = 0;
 		$this->sessdata['session_userid'] = 0;
-		$this->_save_session();
-		$this->removeAutoLogin();
+		$this->delete_login();
 	}
 	return $status;
 }
 
 // returns the total seconds 'online' for the session ------------------------------------------------------------
-function secondsonline() {
+function seconds_online() {
 	$diff = $this->sessdata['session_last'] - $this->sessdata['session_start'];
 	return ($diff > 0) ? $diff : 0;
 }
 
 function onlinetime() {
-	return $this->secondsonline();
+	return $this->seconds_online();
 }
 
 function userid() {
@@ -398,17 +428,17 @@ function userid() {
 // returns the total number of active sessions -------------------------------------------------------------------
 // 5 minutes is generally a reasonable amount of time to wait before a session is 'inactive'
 // if $wantarray is true, a 2 element array is is returned with the total 'members' and 'guests' online, respectively
-function totalonline($timeframe=300, $wantarray=0) {
+function total_online($timeframe=300, $wantarray=0) {
 	$memebers = 0;
 	$guests = 0;
 	$now = time();
 
 	$res = $this->db->query(sprintf("SELECT count(DISTINCT session_userid) FROM %s WHERE session_userid != 0 AND session_last + $timeframe > $now", 
-		$this->db->qi($this->config['dbsessiontable'])
+		$this->db->qi($this->config['db_session_table'])
 	));
 	list($members) = $this->db->fetch_row(0);
 	$res = $this->db->query(sprintf("SELECT count(*) FROM %s WHERE session_userid=0 AND session_last + $timeframe > $now", 
-		$this->db->qi($this->config['dbsessiontable'])
+		$this->db->qi($this->config['db_session_table'])
 	));
 	list($guests) = $this->db->fetch_row(0);
 
@@ -422,24 +452,237 @@ function totalonline($timeframe=300, $wantarray=0) {
 
 // End/remove the session (including the user's SID cookie)
 function end() {
-	$this->delcookie('_id');
-	$this->delcookie('_login');
-	$this->_delete_session($this->sid);
-	$this->sid = '';
+	$this->delete_cookie('_id');
+	$this->delete_cookie('_login');
+	$this->delete_session($this->sid());
+	$this->sid('');
 	$this->sessdata = array();
 	$this->_init_new_session();			// generate a new dataset, but it's not saved yet ...
-	$this->ended = 1;
+	$this->ended = 1;				// don't save the new session at exit
 }
 
 // closes the session. There's no need to call this unless you want to make sure the session is updated before 
-// redirecting to another page.
+// redirecting to another page. Other session sub-classes might want to use this.
 function close() {
-	$this->_save_session();
+#	$this->_save_session();
 }
 
 // internal function, returns true if the session has expired
 function _expired() {
 	return (time() - $this->sessdata['session_last'] > $this->config['cookielife']);
+}
+
+// returns the time the session started
+function session_start() {
+	return $this->sessdata['session_start'];
+}
+
+// returns the user ID if the session is logged in. Returns 0 otherwise.
+function logged_in() {
+	return $this->online_status() ? $this->userid() : 0;
+}
+
+// returns the cookie name (w/o any suffix; '_id', etc)
+function sid_prefix() {
+	return $this->config['cookiename'];
+}
+
+// returns the name of the SID cookie
+function sid_name($suffix='_id') {
+	return $this->config['cookiename'] . $suffix;
+}
+
+// returns the current session ID
+function sid($new = null) {
+	if ($new === null) {
+		return $this->sid;
+	} else {
+		$old = $this->sid;
+		$this->sid = $new;
+		$this->sessdata['session_id'] = $new;
+		return $old;
+	}
+}	
+
+// deletes the session specified, or the current session if no $sid is given.
+function delete_session($sid = null) {
+	if ($sid === null) $sid = $this->sid();
+	return $this->db->delete($this->config['db_session_table'], 'session_id', $sid);
+}
+
+// loads extra options for the session (separate cookie)
+// the options cookie stores session related settings for the session.
+// the settings are not tied to the user so even if the user is not logged in
+// the session options are still present.
+function load_session_options() {
+	$sidname = $this->sid_name('_opts');
+	$o = array();
+	if (array_key_exists($sidname, $this->cms->cookie)) {
+		$str = $this->cms->cookie[$sidname];
+		// decode -> inflate -> unserialize
+		$decoded = $this->config['cookieencode'] ? base64_decode($str) : $str;
+		if ($this->config['cookiecompress'] and function_exists('gzinflate')) $decoded = @gzinflate($decoded);
+		if ($decoded === FALSE) $this->delete_cookie('_opts');
+		$o = unserialize($decoded);
+#		print "COOKIE: "; print_r($o); print "<br/>\n";	// DEBUG
+	}
+	if (!is_array($o)) $o = array();
+	$this->options = $o;
+	return $o;
+}
+
+// saves the session options.
+// deflate reduces the cookie size by about 1/2 (plus it obfuscates it)
+function save_session_options($opts = null) {
+	if ($opts === null) {
+		if ($this->options === null) {
+			$this->load_session_options();
+		}
+		$opts = $this->options;
+	}
+	if (!is_array($opts)) $opts = array();
+	// serialize -> deflate -> encode
+	$str = serialize($opts);
+	if ($this->config['cookiecompress'] and function_exists('gzdeflate')) $str = gzdeflate($str);
+	$encoded = $this->config['cookieencode'] ? base64_encode($str) : $str;
+	$this->send_cookie($encoded, time()+60*60*24*30, '_opts');
+//	$this->send_cookie(strlen($encoded), 0, '_opts_size');	// debug
+
+	// add the modified cookie to memory incase we re-read the options before we exit
+	$this->cms->cookie[ $this->sid_name('_opts') ] = $encoded;
+}
+
+// deletes the options cookie
+function delete_session_options() {
+	$this->delete_cookie('_opts');
+}
+
+// sets/gets an option; but does not save the cookie, use save_session_options().
+// returns false if getting an option doesn't exist.
+function opt($key, $value = null) {
+	if ($this->options === null) {
+		$this->options = $this->load_session_options();
+	}
+	if (is_array($this->options)) {
+		if ($value === null) {
+			if (array_key_exists($key, $this->options)) {
+				return $this->options[$key];
+			}
+		} else {
+			$old = $this->options[$key];
+			$this->options[$key] = $value;
+			return $old;
+		}
+	}
+	return false;
+}
+
+// sets several session options. 
+function set_opts($values = array(), $exclusive = false) {
+	if ($exclusive) {
+		$this->options = array();
+	}
+	if ($this->options === null) {
+		$this->options = $this->load_session_options();
+	}
+	if (is_array($values)) {
+		foreach ($values as $key => $val) {
+			$this->options[$key] = $val;
+		}
+	}
+}
+
+// deletes a session option, but not the entire cookie
+function del_opt($key) {
+	if ($this->options === null) {
+		$this->options = $this->load_session_options();
+	}
+	$list = is_array($key) ? $key : array( $key );
+	foreach ($list as $k) {
+		unset($this->options[$k]);
+	}
+}
+
+// sets/gets the session key (this is not the session_id).
+// this is for CSRF security.
+function key($value = null) {
+	$old = $this->sessdata['session_key'];
+	if ($value !== null) {
+		$this->sessdata['session_key'] = empty($value) ? null : $value;
+		$this->sessdata['session_key_time'] = time();
+	}
+	return $old;
+}
+
+// returns the time the session key was generated
+function key_time() {
+	return $this->sessdata['session_key_time'];
+}
+
+// returns true if the key given matches the current session and is valid.
+// max_age is the maximum seconds a key is allowed to be alive before being invalid.
+function verify_key($form_key, $max_age = 900) {
+	$time = $this->key_time();
+	if (empty($time)) $time = time();
+	$valid = (
+		!is_null($form_key) and 
+		$this->key() == $form_key and 
+		time() - $time <= $max_age
+	);
+	return $valid;
+}
+
+// returns either 'cookie' or 'get' depending how the session was restored/created.
+function sid_method() {
+	return $this->sidmethod;
+}
+
+// saves an auto_login cookie.
+// $password is already a hash (from $user->hash())
+// Saves the autologin cookie to the users browser so the next time they view the page they will be logged on automatically.
+// The user's cookie must have the proper login_key or the auto-login will fail. This prevents another user from attempting
+// to forge an auto-login since the login_key is private to the original user.
+function save_login($userid, $password) {
+	$token = substr(md5(md5($_SERVER["UNIQUE_ID"] . uniqid(mt_rand(), true)) . $userid . $password), mt_rand(0,24), 8);
+	$ary = array('userid' => $userid, 'password' => $password, 'token' => $token);
+	$data = $this->encrypt(base64_encode(serialize($ary)));
+	// save the auto-login key to the user table so we can verify it later when the user tries to auto-login again
+	if (!empty($this->config['db_user_table'])) {
+		$cmd = $this->db->update($this->config['db_user_table'], array( $this->config['db_user_login_key'] => $token ), 
+			$this->config['db_user_id'], $this->sessdata['session_userid']
+		);
+	}
+	return $this->send_cookie($data, time()+60*60*24*30, '_login'); 		// autologin cookie is saved for 30 days
+}
+
+// returns the auto login cookie or an empty array if not found or not valid.
+function load_login() {
+	$data = null;
+	$enc = $this->cms->cookie[ $this->sid_name('_login') ];
+	if (!empty($enc)) {
+		$data = unserialize(base64_decode($this->decrypt($enc)));
+	}
+
+	// verify the key in the cookie matches the key in the user table
+	if (is_array($data) and !empty($this->config['db_user_table'])) {
+		$usertoken = $this->db->fetch_item(sprintf("SELECT %s FROM %s WHERE %s='%s' LIMIT 1",
+			$this->db->qi($this->config['db_user_login_key']),
+			$this->db->qi($this->config['db_user_table']),
+			$this->db->qi($this->config['db_user_id']),
+			$this->db->escape($data['userid'])
+		));
+		if (empty($data['token']) or $usertoken != $data['token']) {
+			$data = array();
+		}
+	} 
+	return $data;
+//	return is_array($data) ? $data : array();
+}
+
+// delete the auto_login cookie
+function delete_login() {
+	$this->delete_cookie('_login');
+	return 1;
 }
 
 } // end of session class
@@ -453,7 +696,10 @@ CREATE TABLE `ps_sessions` (
   `session_last` int(10) unsigned NOT NULL default '0',
   `session_ip` int(10) unsigned NOT NULL default '0',
   `session_logged_in` tinyint(1) NOT NULL default '0',
-  `session_is_bot` tinyint(3) NOT NULL default '0',
+  `session_is_admin` tinyint(1) NOT NULL default '0',
+  `session_is_bot` tinyint(1) NOT NULL default '0',
+  `session_key` char(32) default NULL,
+  `session_key_time` int(10) unsigned default NULL,
   PRIMARY KEY  (`session_id`),
   KEY `session_userid` (`session_userid`)
 );

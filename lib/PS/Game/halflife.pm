@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use base qw( PS::Game );
 
-use util qw( :net :date );
+use util qw( :net :date bench print_r );
 use Encode;
 use Time::Local qw( timelocal_nocheck );
 use PS::Player;
@@ -12,114 +12,112 @@ use PS::Map;
 use PS::Role;
 use PS::Weapon;
 
-our $VERSION = '1.00';
+our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
 
 sub new {
 	my $proto = shift;
-	my $conf = shift;
-	my $db = shift;
 	my $class = ref($proto) || $proto;
-	my $self = { debug => 0, class => $class, conf => $conf, db => $db };
+	my $self = { debug => 0, class => $class, conf => shift, db => shift };
 	bless($self, $class);
-
-#	$self->debug($self->{class} . " initializing");
-
 	return $self->_init;
 }
 
 sub _init {
 	my $self = shift;
 	$self->SUPER::_init;
-	$self->{conf}->load('game_halflife');
-	$self->load_events(*DATA);
 
-	$self->{_noeventmethod} = {};	# keep track of what events had no method available so a warning is only issued once
-
-	$self->{lastsave} = time();	# last time we did a global save of all data
-	$self->{lastprefixstr} = "";
-	$self->{lastprefix} = 0;
+	# keep track of the last timestamp prefix string and time.
+	# this allows the event loop to reuse the previous time value 
+	# w/o having to do a regex or call timelocal().
+	$self->{last_prefix} = "";
+	$self->{last_timestamp} = 0;
+	$self->{last_min} = undef;
+	$self->{last_hour} = undef;
+	$self->{last_day} = undef;
+	$self->{min} = undef;
+	$self->{hour} = undef;
+	$self->{day} = undef;
 
 #	$self->{bans}{ipaddr} = {};	# Current 'permanent' bans from the current log by IP ADDR
 #	$self->{bans}{worldid} = {};	# ... by worldid / steamid
 
-	$self->{maps} = {};		# map objects (there should really only be 1 map object loaded at a time)
-	$self->{weapons} = {};		# weapon objects
-	$self->{plrs} = {};		# player objects, keyed on uid
+	# keep track of objects in memory
+	$self->{maps} = {};		# loaded map objects, keyed on id
+	$self->{weapons} = {};		# loaded weapon objects, keyed on id
+
 	$self->initcache;
 
-	$self->{ipcache} = {};		# player IPADDR cache, keyed on uid (not uniqueid)
+	$self->{ipcache} = {};		# player IPADDR cache, keyed on UID
 
 	$self->{auto_plr_bans} = $self->{conf}->get_main('auto_plr_bans');
 
-	$self->{curmap} = $self->{conf}->get_game_halflife('defaultmap') 
-		|| $self->{conf}->get_main('defaultmap')
-		|| 'unknown';
+	$self->{curmap} = $self->{conf}->get_main('defaultmap') || 'unknown';
 
 	return $self;
 }
 
+# there are anomalys that cause players to not always be detected by a single 
+# criteria. So we cache each way we know we can reference a player. 
 sub initcache {
 	my $self = shift;
 
-	$self->{c}{signature} = {};	# players keyed on their signature string
-	$self->{c}{uniqueid} = {};	# players keyed on their uniqueid (not UID)
+	$self->{c_signature} = {};	# players keyed on their signature string
+	$self->{c_uniqueid} = {};	# players keyed on their uniqueid (not UID)
+	$self->{c_uid} = {};		# players keyed on UID
+	$self->{c_plrid} = {};		# players keyed on plrid
 }
 
-# add a plr to the cache by uniqueid and/or signature
-# uniqueid's are lowercased
+# add a player to all appropriate caches
+sub addcache_all {
+	my ($self, $p) = @_;
+	$self->addcache($p, $p->signature, 'signature');
+	$self->addcache($p, $p->uniqueid, 'uniqueid');
+	$self->addcache($p, $p->uid, 'uid');
+	$self->addcache($p, $p->plrid, 'plrid');
+}
+
+# remove player from all appropriate caches
+sub delcache_all {
+	my ($self, $p) = @_;
+	$self->delcache($p->signature, 'signature');
+	$self->delcache($p->uniqueid, 'uniqueid');
+	$self->delcache($p->uid, 'uid');
+	$self->delcache($p->plrid, 'plrid');
+}
+
+# add a plr to the cache
 sub addcache {
-	my ($self, $p, $sig, $uniqueid) = @_;
-	$self->{c}{signature}{$sig} = $p if defined $sig;
-	$self->{c}{uniqueid}{lc $uniqueid} = $p if defined $uniqueid;
-}
-
-# remove a plr from the caches
-sub delcache {
-	my ($self, $sig, $uniqueid) = @_;
-	delete $self->{c}{signature}{$sig} if defined $sig;
-	delete $self->{c}{uniqueid}{lc $uniqueid} if defined $uniqueid;
-}
-
-# return the cached plr from the cache (uniqueid or signature) or undef if not found
-sub cached {
-	my ($self, $key, $cache) = @_;
-	return undef unless defined $key;
+	my ($self, $p, $sig, $cache) = @_;
 	$cache ||= 'signature';
-	$key = lc $key if $cache ne 'signature';
-	return exists $self->{c}{$cache}{$key} ? $self->{c}{$cache}{$key} : undef;
+	$self->{'c_'.$cache}{$sig} = $p;
 }
 
-sub restore_state {
-	my $self = shift;
-	my $state = shift || return;
-	my $map;
+# remove a plr from the cache
+sub delcache {
+	my ($self, $sig, $cache) = @_;
+	$cache ||= 'signature';
+	delete $self->{'c_'.$cache}{$sig};
+}
 
-	$self->{timestamp} = $state->{timestamp};
-	if ($state->{map}) {
-		$self->{curmap} = $state->{map};
-		$map = $self->get_map;
-	}
+# return the cached plr or undef if not found
+sub cached {
+	my ($self, $sig, $cache) = @_;
+	return undef unless defined $sig;
+	$cache ||= 'signature';
+	return exists $self->{'c_'.$cache}{$sig} ? $self->{'c_'.$cache}{$sig} : undef;
+}
 
-	return unless $state->{plrs};
-	# reinstate the players that were online previously ...
-	foreach my $plr (@{$state->{plrs}}) {
-		my $plrids = { name => $plr->{name}, worldid => $plr->{worldid}, ipaddr => $plr->{ipaddr} };
-		my $p = PS::Player->new($plrids, $self);
-		next unless $p;
-		$p->plrids;
-		$p->signature($plr->{plrsig});
-		$p->timerstart($self->{timestamp});
-		$p->uid($plr->{uid});
-		$p->{team} = $plr->{team};
-		$p->{role} = $plr->{role};
-
-		$self->{plrs}{ $plr->{uid} } = $p;
-		$self->addcache($p, $p->signature, $p->uniqueid);
-	}
-#	print "state restored at timestamp: " . localtime($state->{timestamp}) . "\n";
-#	print "map restored: " . $map->name . "\n" if $map;
-#	print "player IDs restored: ", join(', ', map { $self->{plrs}{$_}->{plrid} } keys %{$self->{plrs}}), "\n";
-#	die;
+# debug method; prints out some information about the player caches
+sub show_cache {
+	my ($self) = @_;
+#	printf("CACHE INFO: sig:% 3d  uniqueid: % 3d  uid:% 3d  plrid: % 3d\n",
+#	printf("CACHE INFO: s:% 3d w: % 3d u:% 3d p: % 3d\n",
+	printf("CACHE INFO: % 3d % 3d % 3d % 3d (s,w,u,p)\n",
+		scalar keys %{$self->{'c_signature'}},
+		scalar keys %{$self->{'c_uniqueid'}},
+		scalar keys %{$self->{'c_uid'}},
+		scalar keys %{$self->{'c_plrid'}}
+	);
 }
 
 # handle the event that comes in from the Feeder (log line)
@@ -138,94 +136,124 @@ sub event {
 	$self->{_event} = $event;
 	$self->{_line} = $line;
 
-	# avoid performing the prefix regex as much as possible (possible performance gain)
-	if ($prefix eq $self->{lastprefixstr}) {
-		$timestamp = $self->{lasttimestamp};
+	# avoid performing the prefix regex as much as possible (possible performance gain).
+	# In busy logs the timestamp won't change for several times at a time (several events per second).
+	if ($prefix eq $self->{last_prefix}) {
+		$timestamp = $self->{last_timestamp};
 	} else {
 		if ($prefix !~ /^L (\d\d)\/(\d\d)\/(\d\d\d\d) - (\d\d):(\d\d):(\d\d)/) {
-			if ($self->{report_unknown}) {
+			if ($self->{report_timestamps}) {
 				# do not warn on lines with "unable to contact the authentication server, 31)."
 				$self->warn("Invalid timestamp for source '$src' line $line event '$event'") unless substr($prefix,0,6) eq 'unable';
 			}
 			return;
 		}
 		$timestamp = timelocal_nocheck($6, $5, $4, $2, $1-1, $3-1900);
-		$self->{lasttimestamp} = $timestamp;
-		$self->{lastprefixstr} = $prefix;
+		$self->{last_timestamp} = $timestamp;
+		$self->{last_prefix} = $prefix;
+		$self->{last_min} = $self->{min};
+		$self->{last_hour} = $self->{hour};
+		$self->{last_day} = $self->{day};
+		$self->{min} = $5;
+		$self->{hour} = $4;
+		$self->{day}  = $1;
 	}
 	$self->{timestamp} = $timestamp;
 	substr($event, 0, PREFIX_LENGTH, '');					# remove prefix from the event
-#	$event = substr($event, PREFIX_LENGTH);					# remove prefix from the event
 
 	# SEARCH FOR A MATCH ON THE EVENT USING OUR LIST OF REGEX'S
 	# If a match is found we dispatch the event to the proper event method 'event_{match}'
 	my ($re, $params) = &{$self->{evregex}}($event);			# finds an EVENT match (fast)
 	if ($re) {
-		return if $self->{evconf}{$re}{options}{ignore};		# should this match be ignored?
-		my $func = $self->{evconf}{$re}{event} || 'event_' . $re;	# use specified $event or 'event_$re'
-		if ($self->can($func)) {
-			$self->$func($timestamp, $params);			# call event handler
-		} else {
-			$self->warn("Event '$re' ignored (No event method available). Further warnings supressed.") unless $self->{_noeventmethod}{$re};
-			$self->{_noeventmethod}{$re}++;				# keep tally the total times we saw this
-		}
-
+		return if $self->{evconf}{$re}{ignore};				# should this match be ignored?
+		my $func = 'event_' . ($self->{evconf}{$re}{alias} || $re);	# use specified $event or 'event_$re'
+		$self->$func($timestamp, $params);				# call event handler
 	} else {
-		$self->warn("Unknown log event was ignored from source $src line $line: $event") if $self->{report_unknown};
+		$self->info("Unknown log event was ignored from source $src line $line: $event") if $self->{report_unknown};
 	}
+
+	# do some extra processing ...
+=pod
+	if (defined $self->{last_min} and $self->{last_min} != $self->{min}) {
+		# every minute collect some player data
+		$self->{last_min} = $self->{min};
+		$self->{_plrtot} += $self->get_online_count;
+		$self->{_plrcnt}++;
+	}
+	if (defined $self->{last_hour} and ($self->{last_hour} != $self->{hour} or $self->{last_day} != $self->{day})) {
+		print "$self->{hour}: " . int($self->{_plrtot} / $self->{_plrcnt}) . "\n";
+		$self->get_map->hourly('online', int($self->{_plrtot} / $self->{_plrcnt}));
+		$self->{_plrcnt} = 0;
+		$self->{_plrtot} = 0;
+		$self->{last_hour} = $self->{hour};
+		$self->{last_day} = $self->{day};
+	}
+=cut
 }
 
 sub process_feed {
 	my ($self, $feeder) = @_;
-	my $total = $self->SUPER::process_feed($feeder);
+	my @total = $self->SUPER::process_feed($feeder);
 
 	# after the feed ends make sure all stats in memory are saved.
 	# the logstartend event does everything we need to save all in-memory stats.
-#	$self->event_logstartend($self->{lasttimestamp}, [ 'started' ]);	
 	$self->event_logstartend($self->{timestamp}, [ 'started' ]);	
 
-	return $total;
+	return wantarray ? @total : $total[0];
 }
 
 # parses the player string and returns the player object matching the uniqueid. 
 # creates a new player object if no current player matches.
 sub get_plr {
-	my ($self, $str, $plrids_only) = @_;
-	my ($p,$plrstr,$plrids,$name,$uid,$worldid,$team,$ipaddr,$uniqueid);
+	my ($self, $plrstr, $plrids_only) = @_;
+	my ($p,$str,$plrids,$name,$uid,$worldid,$team,$ipaddr,$uniqueid);
+	my ($origname);
 
-	# return the cached player via their signature if they exist (small performance gain)
+	# return the cached player via their signature if they exist
+	# this can potentially be a big performance gain since the rest of 
+	# the function doesn't have to do anything.
 	if (!$plrids_only) {
-		$p = $self->cached($str);
-#		print "SIMPLE: $str\n" if $p and $str =~ /:8868013/;
-		return $p if defined $p;
+		if (defined($p = $self->cached($plrstr, 'signature'))) {
+#			print "SIMPLE: $str\n" if $p; # and $plrstr =~ /:2677794/;
+			$p->plrids;
+			return $p;
+		}
 	}
-	$plrstr = $str;					# save the full player string
+
+	$str = $plrstr;
 	# using multiple substr calls inplace of a single regex is a lot faster 
 	$team = substr($str, rindex($str,'<'), 128, '');
-	$team = lc substr($team, 1, -1);
-	$team = "" if $team eq 'unassigned';		# CS:Source uses 'Unassigned' for new players that haven't joined a team
-	$team =~ tr/ /_/;				# convert spaces to _ on team names (some mods are known to do this)
-	$team =~ tr/a-z0-9_//cs;			# remove all non-alphanumeric characters
+	$team = $self->team_normal(substr($team, 1, -1));
+
 	$worldid = substr($str, rindex($str,'<'), 128, '');
 	$worldid = substr($worldid, 1, -1);
+
 	$uid = substr($str, rindex($str,'<'), 128, '');
 	$uid = substr($uid, 1, -1);
 	if (!$worldid or $uid eq '-1') {		# ignore any players with an ID of -1 ... its invalid!
-		$::ERR->debug1("Ignoring invalid player identifier in src '$self->{_src}' line '$self->{_line}': '$plrstr'",3);
+		$::ERR->debug1("Ignoring invalid player identifier from logsource '$self->{_src}' line '$self->{_line}': '$plrstr'",3);
 		return undef;
 	}
+
 	$name = $str;
 	$name =~ s/^\s+//;
 	$name =~ s/\s+$//;
-	$name = '- no name -' if $name eq "";		# do not allow blank names
+	return undef if $name eq '';			# do not allow blank names, period.
+#	$origname = $name;				# original name before any possible aliases are found
 	$ipaddr = exists $self->{ipcache}{$uid} ? $self->{ipcache}{$uid} : 0;
 
 	# For BOTS: replace STEAMID's with the player name otherwise all bots will be combined into the same STEAMID
 	if ($worldid eq 'BOT' or $worldid eq '0') {
 		return undef if $self->{ignore_bots};
-		$worldid = "BOT:" . lc substr($name, 0, 124);	# limit the total characters (128-4)
+		$worldid = "BOT:" . lc substr($name, 0, 124);	# limit the total characters (128 - 4)
 	}
 
+	# complete ignore player events for players with STEAM_ID_PENDING, it just causes problems
+	if ($worldid eq 'STEAM_ID_PENDING') {
+		return undef;
+	}
+
+	# lookup the alias for the player's uniqueid
 	if ($self->{uniqueid} eq 'worldid') {
 		$worldid = $self->get_plr_alias($worldid);
 	} elsif ($self->{uniqueid} eq 'name') {
@@ -234,43 +262,56 @@ sub get_plr {
 		$ipaddr = ip2int($self->get_plr_alias(int2ip($ipaddr)));
 	}
 
+	# assign the player ID's. This is now an official hash of how to 
+	# match the player in the database.
 	$plrids = { name => $name, worldid => $worldid, ipaddr => $ipaddr };
-	return { %$plrids, uid => $uid, team => $self->team_normal($team) } if $plrids_only;
+	return { %$plrids, uid => $uid, team => $team } if $plrids_only;
 
 	$p = undef;
 
+	# If we get to this point the player signature did not match a current player in memory
+	# So we need to try and figure out if they are really a new player or a known player that 
+	# changed their name, teams or has reconnected within the same log file.
+
 	# based on their UID the player already existed (changed teams or name since the last event)
-	if (exists $self->{plrs}{$uid}) {
-		$p = $self->{plrs}{$uid};
-#		print "UID EXISTS: $plrstr\n" if $plrstr =~ /:8868013/;
-		$p->plrids($plrids);							# update new player ids
-		$p->{team} = $self->team_normal($team);
-		$self->delcache($p->signature($plrstr));				# delete previous and set new sig
-		$self->addcache($p, $plrstr);
+	if ($p = $self->cached($uid, 'uid')) {
+#		print "UID CACHE: $plrstr\n";# if $plrstr =~ /:2677794/;
+		$p->team($team);						# keep team up to date
+		$p->plrids($plrids);						# update new player ids
+		$self->delcache($p->signature($plrstr), 'signature');		# delete previous and set new sig
+		$self->addcache($p, $plrstr, 'signature');			# update sig cache
+
 	} elsif ($p = $self->cached($plrids->{$self->{uniqueid}}, 'uniqueid')) {
 		# the only time the UIDs won't match is when a player has extra events that follow a disconnect event.
 		# this happens with a couple of minor events like dropping the bomb in CS. The bomb drop event is triggered
 		# after the player disconnect event and thus causes confusion with internal routines. So I cache the uniqueid
 		# of the player and then fix the 'uid' if needed here...
-#		print "CACHED: $plrstr\n" if $plrstr =~ /:8868013/;
-		if ($p->{uid} ne $uid) {
-			delete $self->{plrs}{ $p->{uid} };
-			$self->{plrs}{$uid} = $p;
-			$p->uid($uid);
-			$p->{team} = $self->team_normal($team);
+#		print "UNIQUEID CACHE: $plrstr\n"; # if $plrstr =~ /:2677794/;
+		if ($p->uid ne $uid) {
+			$p->team($team);
+			$p->plrids($plrids);
+			$self->delcache($p->uid($uid), 'uid');
+			$self->delcache($p->signature($plrstr), 'signature');
+			$self->addcache($p, $p->uid, 'uid');
+			$self->addcache($p, $p->signature, 'signature');
 		}
+
 	} else {
-#		print "* NEW: $plrstr\n" if $plrstr =~ /:8868013/;
-		$p = PS::Player->new($plrids, $self);
-		return undef unless $p;
-		$p->active(1);		# always mark active for now......
+#		print "* NEW: $plrstr\n" if $plrstr =~ /:2677794/;
+		$p = new PS::Player($plrids, $self) || return undef;
+		if (my $p1 = $self->cached($p->plrid, 'plrid')) {	# make sure this player isn't loaded already
+			undef $p;
+			$p = $p1;
+			$self->delcache_all($p);
+		}
+		$p->active(1);						# we have to assume the player is active
 		$p->signature($plrstr);
 		$p->timerstart($self->{timestamp});
 		$p->uid($uid);
-		$p->plrids;		# update plr_ids info
-		$p->{team} = $self->team_normal($team);
-		$self->{plrs}{$uid} = $p;
-		$self->addcache($p, $plrstr, $p->uniqueid);
+		$p->team($team);
+		$p->plrids;
+
+		$self->addcache_all($p);
 		$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
 	}
 
@@ -285,7 +326,7 @@ sub get_map {
 		return $self->{maps}{$name};
 	}
 
-	$self->{maps}{$name} = PS::Map->new($name, $self->{conf}, $self->{db});
+	$self->{maps}{$name} = new PS::Map($name, $self->{conf}, $self->{db});
 	$self->{maps}{$name}->timerstart($self->{timestamp});
 	$self->{maps}{$name}->statdate($self->{timestamp});
 	return $self->{maps}{$name};
@@ -299,7 +340,7 @@ sub get_weapon {
 		return $self->{weapons}{$name};
 	}
 
-	$self->{weapons}{$name} = PS::Weapon->new($name, $self->{conf}, $self->{db});
+	$self->{weapons}{$name} = new PS::Weapon($name, $self->{conf}, $self->{db});
 	$self->{weapons}{$name}->statdate($self->{timestamp});
 	return $self->{weapons}{$name};
 }
@@ -316,7 +357,7 @@ sub get_role {
 		return $self->{roles}{$name};
 	}
 
-	$self->{roles}{$name} = PS::Role->new($name, $team, $self->{conf}, $self->{db});
+	$self->{roles}{$name} = new PS::Role($name, $team, $self->{conf}, $self->{db});
 	$self->{roles}{$name}->statdate($self->{timestamp});
 	return $self->{roles}{$name};
 }
@@ -336,7 +377,7 @@ sub event_kill {
 
 	my $m = $self->get_map;
 	my $r1 = $self->get_role($p1->{role}, $p1->{team});
-	my $r2 = $self->get_role($p2->{role}, $p1->{team});
+	my $r2 = $self->get_role($p2->{role}, $p2->{team});
 	my $props = $self->parseprops($propstr);
 
 	$weapon = 'unknown' unless $weapon;
@@ -346,8 +387,6 @@ sub event_kill {
 
 	# I directly access the player variables in the objects (bad OO design), 
 	# but the speed advantage is too great to do it the "proper" way.
-
-	my $ffkill = (($p1->{team} and $p2->{team}) and ($p1->{team} eq $p2->{team}));
 
 	$p1->update_streak('kills', 'deaths');
 	$p1->{basic}{kills}++;
@@ -370,34 +409,25 @@ sub event_kill {
 	$p2->{roles}{ $r2->{roleid} }{deaths}++ if $r2;
 	$p2->{victims}{ $p1->{plrid} }{deaths}++;
 
+	# most mods have a headshot property
+	# we only record this on the victim because the 'weaponstats' plugin will track the headshots separately.
 	if ($props->{headshot}) {
-#		$p1->{basic}{headshotkills}++;
-#		$p1->{weapons}{ $w->{weaponid} }{headshotkills}++;
 		$p1->{victims}{ $p2->{plrid} }{headshotkills}++;
-
-#		$p2->{basic}{headshotdeaths}++;
-#		$p2->{weapons}{ $w->{weaponid} }{headshotdeaths}++;
 		$p2->{victims}{ $p1->{plrid} }{headshotdeaths}++;
-
-#		$w->{basic}{headshotkills}++;
-
 		$r1->{basic}{headshotkills}++ if $r1;
 	}
 
 	$m->{basic}{lasttime} = $timestamp;
 	$m->{basic}{kills}++;
 	$m->{mod}{ $p1->{team} . 'kills'}++ if $p1->{team};		# kills on the team
-#	$m->{mod}{ $p2->{team} . 'kills'}++;		# how many plr2 (victim) teammates were killed
+	$m->hourly('kills', $timestamp);
 
-#	$w->{basic}{lasttime} = $timestamp;
 	$w->{basic}{kills}++;
-
 	$r1->{basic}{kills}++ if $r1;
-
-	$r2->{basic}{deaths}++ if $r2;
+	$r2->{basic}{deaths}++ if $r1;
 
 	# friendly-fire kills
-	if ($ffkill) {
+	if (($p1->{team} and $p2->{team}) and ($p1->{team} eq $p2->{team})) {
 		$p1->{maps}{ $m->{mapid} }{ffkills}++;
 		$p1->{weapons}{ $w->{weaponid} }{ffkills}++;
 		$p1->{basic}{ffkills}++;
@@ -414,7 +444,7 @@ sub event_kill {
 	}
 
 	# allow mods to add their own stats for kills
-#	$self->mod_event_kill($p1, $p2, $w, $m);
+	$self->mod_event_kill($p1, $p2, $w, $m, $r1, $r2, $props) if $self->can('mod_event_kill');
 
 	my $func = $self->{calcskill_kill};
 	$self->$func($p1, $p2, $w);
@@ -422,17 +452,20 @@ sub event_kill {
 
 sub event_connected {
 	my ($self, $timestamp, $args) = @_;
-#	my ($plrstr, $uid, $ipstr, $props) = @$args;
 	my ($plrstr, $ipstr, $props) = @$args;
 	my $ip = lc((split(/:/,$ipstr,2))[0]);
-	$ip = '127.0.0.1' if $ip eq 'localhost' or $ip eq 'loopback';
-	$ip = '127.0.0.1' if $ip !~ /(?:\d{1,3}\.){3}\d{1,3}/;
+	$ip = '127.0.0.1' if $ip eq 'localhost' or $ip eq 'loopback' or $ip !~ /(?:\d{1,3}\.){3}\d{1,3}/;
 
 	# strip out the worldid/uid and do not use get_plr() since players will have a STEAM_ID_PENDING
-	my $str = $plrstr;
+	# I have to re-encode the player string here before stripping out the uid/worlid otherwise UTF8
+	# seems to interfere with character positions and sometimes the uid is not parsed properly.
+	# I'm not 100% sure why this is happening here, and not in the main get_plr() routine which uses
+	# some of the same code...
+	my $str = encode_utf8($plrstr);
 	substr($str, rindex($str,'<'), 128, '');				# remove the team
 	my $worldid = substr(substr($str, rindex($str,'<'), 128, ''), 1, -1);
 	my $uid = substr(substr($str, rindex($str,'<'), 128, ''), 1, -1);
+#	print "$ip\t$worldid\t$uid\n";
 
 	$self->{ipcache}{$uid} = ip2int($ipstr);				# save the IP addr
 	return if index(uc $worldid, "PENDING") > 0;				# do nothing if it's STEAM_ID_PENDING
@@ -458,13 +491,14 @@ sub _do_connected {
 	my $p1 = ref $plrstr ? $plrstr : $self->get_plr($plrstr) || return;
 	my $m = $self->get_map;
 	my $bot = $p1->is_bot;
-#	$p1->plrids;
-	$p1->{_connected}++;
+
+	$p1->{_connected} = 1;
 	if (!$bot or !$self->{ignore_bots_conn}) {
 		$p1->{basic}{connections}++;
 		if ($m) {
 			$p1->{maps}{ $m->{mapid} }{connections}++;
 			$m->{basic}{connections}++;
+			$m->hourly('connections', $timestamp);
 		}
 	}
 }
@@ -474,13 +508,11 @@ sub event_disconnected {
 	my ($plrstr) = @$args;
 	my $p1 = $self->get_plr($plrstr) || return;
 
+	# we do not remove the player from the caches (more events may occur after disconnect)
 	$p1->disconnect($timestamp, $self->get_map);
+#	print "SAVING PLAYER FROM DISCONNECT\n" if ($p1->worldid eq 'STEAM_0:0:1179775');
 	$p1->save;
 	$p1->active(0);
-
-#	delete $self->{plrs}{ $p1->uid };
-#	$self->delcache($p1->signature, $p1->uniqueid);
-#	$p1 = undef;
 }
 
 sub event_entered_game {
@@ -506,17 +538,21 @@ sub event_entered_game {
 	$p1->active(1);
 }
 
-# override parent method
+# normalize a role name
+sub role_normal {
+	my ($self, $role) = @_;
+	return lc $role;
+}
+
 # normalize a team name
 sub team_normal {
 	my ($self, $teamstr) = @_;
-	my $team = $teamstr;
+	my $team = lc $teamstr;
 
-	$team = lc $team;
-	$team =~ tr/ /_/;
+	$team =~ tr/ /_/;					# remove spaces
 	$team =~ tr/a-z0-9_//cs;				# remove all non-alphanumeric characters
 	$team = 'spectator' if $team eq 'spectators';		# some MODS have a trailing 's'.
-	$team = '' if $team eq 'unassigned';			# don't use "0"
+	$team = '' if $team eq 'unassigned';			# don't use ZERO
 
 	return $team;
 }
@@ -530,18 +566,18 @@ sub event_joined_team {
 	my $m = $self->get_map;
 	$self->_do_connected($timestamp, $p1) unless $p1->{_connected};
 
-	$self->{plrs}{ $p1->uid } = $p1;
-	$self->delcache($p1->signature($plrstr));		# delete old sig from cache and set new sig
-	$self->addcache($p1, $p1->signature, $p1->uniqueid);	# add current sig and uniqueid to cache
-
-	$p1->{team} = $self->team_normal($team);
+	# do nothing if the player changed to the same team. 
+	# this occurs at least on CSTRIKE servers. Not sure about others.
+	my $normal_team = $self->team_normal($team);
+	return if $p1->team eq $normal_team;
+	$p1->team($normal_team);
 	$p1->{basic}{lasttime} = $timestamp;
 
 	# now for the all-important stat... how many times we joined this team.
-	if ($p1->{team}) {
-		$p1->{mod_maps}{ $m->{mapid} }{"joined$team"}++;
-		$p1->{mod}{"joined$team"}++;
-		$m->{mod}{"joined$team"}++;
+	if ($normal_team) {
+		$p1->{mod_maps}{ $m->{mapid} }{'joined' . $normal_team}++;
+		$p1->{mod}{'joined' . $normal_team}++;
+		$m->{mod}{'joined' . $normal_team}++;
 	}
 }
 
@@ -549,13 +585,32 @@ sub event_changed_name {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $name) = @$args;
 	my $p1 = $self->get_plr($plrstr) || return;
-##	$self->_do_connected($timestamp, $p1) unless $p1->{_connected};
 
-	# The get_plr method will automatically take care of the plr caches for name changes
-	$p1->plrids({ name => $name, worldid => $p1->worldid, ipaddr => $p1->ipaddr });
-#	$p1->plrids({ name => encode('utf8',$name), worldid => $p1->worldid, ipaddr => $p1->ipaddr });
+	# The get_plr() routine will detect that the player name was changed.
+	# so we don't need to do anything special here.
+
+	# save the new name to the player object
+	$p1->name($name);
 	$p1->{basic}{lasttime} = $timestamp;
 
+#	$p1->plrids({ name => $name, worldid => $p1->uniqueid, ipaddr => $p1->ipaddr });
+#	$p1->plrids({ name => encode('utf8',$name), worldid => $p1->uniqueid, ipaddr => $p1->ipaddr });
+
+}
+
+sub event_changed_role {
+	my ($self, $timestamp, $args) = @_;
+	my ($plrstr, $role) = @$args;
+#	print "BEFORE: $plrstr\n";
+	my $p1 = $self->get_plr($plrstr) || return;
+#	print "AFTER:  $plrstr\n";
+	$role = $self->role_normal($role); 
+	$p1->{role} = $role;
+#	print_r($p1->{roles}) if $p1->worldid eq 'STEAM_0:0:1179775';
+
+	my $r1 = $self->get_role($role, $p1->{team}) || return;
+	$p1->{roles}{ $r1->{roleid} }{joined}++;
+	$r1->{basic}{joined}++;
 }
 
 sub event_suicide {
@@ -592,12 +647,19 @@ sub event_round {
 	$trigger = lc $trigger;
 	if ($trigger eq 'round_start') {
 		$m->{basic}{rounds}++;
-		while (my ($uid, $p1) = each %{$self->{plrs}}) {
+		$m->hourly('rounds', $timestamp);
+		# make sure a game is recorded. Logs that do not start with a 'map started' event
+		# will end up having 1 less game recorded than normal unless we fudge it here.
+		if (!$m->{basic}{games}) {
+			$m->{basic}{games}++;
+			$m->hourly('games', $timestamp);
+		}
+		foreach my $p1 ($self->get_plr_list) {
 			$p1->{basic}{lasttime} = $timestamp;
-			$p1->{isdead} = 0;
+			$p1->is_dead(0);
 			$p1->{basic}{rounds}++;
 			$p1->{maps}{ $m->{mapid} }{rounds}++;
-			$p1->save if $self->{plr_save_on_round};
+#			$p1->save if $self->{plr_save_on_round};
 		}
 	}
 }
@@ -612,7 +674,7 @@ sub event_chat {
 	my $p1 = $self->get_plr($plrstr) || return;
 	return if $self->isbanned($p1);
 
-	$msg = $msg; #encode('utf8',$msg);
+#	$msg = encode('utf8',$msg);
 	return unless $msg =~ /^$self->{usercmds}{prefix}(.+)\s+(.+)/o;
 	my ($cmd, $param) = ($1, $2);
 
@@ -639,6 +701,7 @@ sub event_startedmap {
 	$m = $self->get_map;
 	$m->statdate($timestamp);
 	$m->{basic}{games}++;
+	$m->hourly('games', $timestamp);
 }
 
 sub event_logstartend {
@@ -650,17 +713,17 @@ sub event_logstartend {
 	# we use this time to close out any previous maps and save all current player data in memory
 	return unless lc $startedorclosed eq 'started';
 
+#	$self->show_cache;
+
 	$self->{db}->begin;
 
-#	print scalar keys %{$self->{plrs}}, " players online.\n" if scalar keys %{$self->{plrs}};
 	# SAVE PLAYERS
-	while (my ($uid,$p1) = each %{$self->{plrs}}) {
-		$p1->end_all_streaks;					# do not count streaks across map/log changes
-		$p1->disconnect($timestamp, $m);
-		$p1->save if $p1->active;
-		$p1 = undef;
+	foreach my $p ($self->get_plr_list) {
+		$p->end_all_streaks;					# do not count streaks across map/log changes
+		$p->disconnect($timestamp, $m);
+		$p->save; # if $p->active;
+		$p = undef;
 	}
-	$self->{plrs} = {};
 	$self->initcache;
 
 	# SAVE WEAPONS
@@ -884,17 +947,8 @@ sub event_ban {
 
 	$type = lc $type;
 	if (substr($type,0,3) eq 'ban') {		# STEAMID
-		my $plr = $self->get_plr($plrstr, 1);	# does not create a player object
-		return unless $plr->{worldid};
-#		$self->{bans}{worldid}{ $plr->{worldid} } = 1;
-		$self->addban('worldid', $plr->{worldid}, reason => 'Auto Ban', 'bandate' => $timestamp);
-	} elsif ($type eq 'addip') {	# IP ADDR
-		my $props = $self->parseprops($propstr);
-		return unless $props->{IP};
-#		$self->{bans}{ipaddr}{ ip2int($props->{IP}) } = 1;
-		$self->addban('ipaddr', $props->{IP}, reason => 'Auto Ban', 'bandate' => $timestamp);
-	} else {
-		$self->warn("Unknown BAN type ignored from source $self->{_src} line $self->{_line}: $self->{_event}");
+		my $plr = $self->get_plr($plrstr) || return;
+		$self->addban($plr, reason => 'Auto Ban', 'ban_date' => $timestamp);
 	} 
 }
 
@@ -906,13 +960,8 @@ sub event_unban {
 
 	$type = lc $type;
 	if ($type eq 'id') {		# STEAMID
-		my $plr = $self->get_plr($plrstr, 1);	# does not create a player object
-		return unless $plr->{worldid};
-#		$self->{bans}{worldid}{ $plr->{worldid} } = 0;
-	} elsif ($type eq 'ip') {	# IP ADDR
-		my $props = $self->parseprops($propstr);
-		return unless $props->{IP};
-#		$self->{bans}{ipaddr}{ ip2int($props->{IP}) } = 0;
+		my $plr = $self->get_plr($plrstr) || return;
+		$self->unban($plr, 'reason' => 'Auto Unban', 'unban_date' => $timestamp);
 	}
 }
 
@@ -939,13 +988,26 @@ sub event_plugin {
 sub event_rcon {
 	my ($self, $timestamp, $args) = @_;
 	my ($bad, $challenge, $pw, $cmd, $ipport) = @$args;
-
 }
 
 sub event_kick {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $who, $propstr) = @$args;
+}
 
+sub event_cheated {
+	my ($self, $timestamp, $args) = @_;
+	my ($plrstr) = @$args;
+}
+
+sub event_pingkick {
+	my ($self, $timestamp, $args) = @_;
+	my ($plrstr) = @$args;
+}
+
+sub event_ffkick {
+	my ($self, $timestamp, $args) = @_;
+	my ($plrstr) = @$args;
 }
 
 sub parseprops {
@@ -956,7 +1018,13 @@ sub parseprops {
 	while ($str =~ s/^\s*\((\S+)(?:\s+"([^"]+)")?\)//) {	# (variable "value")       
 		$var = $1;
 		$val = (defined $2) ? $2 : 1;			# if "value" doesn't exist the var is a true 'boolean' 
-		$props->{$var} = $val;
+		if (exists $props->{$var}) {
+			# convert to array if its not already
+			$props->{$var} = [ $props->{$var} ] unless ref $props->{$var};
+			push(@{$props->{$var}}, $val);		# add to array
+		} else {
+			$props->{$var} = $val;
+		}
 	}
 	return wantarray ? %$props : $props;
 }
@@ -990,110 +1058,3 @@ sub logcompare {
 }
 
 1;
-
-# DO NOT REMOVE THE __DATA__ BLOCK BELOW. IT CONTAINS RUNTIME INFORMATION FOR EVENT MATCHING
-__DATA__
-
-[kill]
-  regex = /^"([^"]+)" killed "([^"]+)" with "([^"]*)"(.*)/
-
-[attacked]
-  regex = /^"([^"]+)" attacked "([^"]+)" with "([^"]+)"(.*)/
-#  options = ignore
-
-[plrtrigger]
-  regex = /^"([^"]+)" triggered "([^"]+)"(.*)/
-
-[round]
-  regex = /^World triggered "([^"]+)"(.*)/
-
-## PsychoStats PIP records these for more accurate IP ADDR tracking on players
-# handled in the plrtrigger event directly
-#[ipaddress]
-#  regex = /^"([^"]+)" triggered "(?:ip)?address"(.*)/
-
-## any 3rd party plugin that has a prefix: [BLAH]
-[plugin]
-  regex = /^\[([^\]]+)\]\s*(.*)/
-
-[entered_game]
-  regex = /^"([^"]+)" entered the game(.*)/
-
-[joined_team]
-  regex = /^"([^"]+)" joined team "([^"]+)"/
-
-[suicide]
-  regex = /^"([^"]+)" committed suicide with "([^"]+)"(.*)/
-
-[changed_name]
-  regex = /^"([^"]+)" changed name to "([^"]+)"/
-
-[connected]
-  regex = /^"([^"]+)" connected, address "([^"]+)"/
-
-[connected_steamid]
-  regex = /^"([^"]+)" (?:STEAM|VALVE) USERID (.+)/
-  options = ignore
-
-[disconnected]
-  regex = /^"([^"]+)" disconnected/
-
-[chat]
-  regex = /^"([^"]+)" say(_team)* "(.*)"?(.*)/
-#  options = ignore
-
-[rcon]
-  regex = /^(Bad )?Rcon: "rcon (-*\d+) "?(.*?)"? (.+?)(?:" from "([^"]+)")?/
-
-[cheated]
-  regex = /^Secure: "([^"]+)" was detected cheating/
-
-# was kicked and banned "for 30.00 minutes" by "Console"
-# was kicked and banned "permanently" by "Console"
-# was banned "permanently" by "Console"
-[ban]
-#  regex = /^(Addip|Ban(?:id)?): "([^"]+)" was (?:kicked and )?(?:banned)(?: by IP)? "([^"]+)" by "([^"]+)"(.*)/
-  regex = /^(Addip|Ban(?:id)?): "([^"]+)" was (?:kicked and )?(?:banned)(?: by IP)? "([^"]+)" by "([^"]+)"(.*)/
-
-[unban]
-  regex = /^Remove(id|ip): "([^"]+)" was unbanned by "([^"]+)"(.*)/
-
-#[removeipban]
-#  regex = /^Removeip: "([^"]+)" was unbanned by "([^"]+)"(.*)/
-
-[kick]
-  regex = /^Kick: "([^"]+)" was kicked by "([^"]+)"(.*)/
-
-[pingkick]
-  regex = /^"([^"]+)" kicked due to high ping(.*)/
-
-[ffkick]
-  regex = /^"([^"]+)" has been auto kicked from the game for TKing/
-
-[startedmap]
-  regex = /^(Started|Loading) map "([^"]+)"(.*)/
-
-[logstartend]
-  regex = /^Log file (started|closed)(.*)/
-
-[ignored1]
-  regex = /^[Ss]erver (?:cvars?|say|shutdown)/
-  options = ignore
-
-[ignored2]
-  regex = /^(?:\]TSC\[|Succeeded|FATAL|-)/
-  options = ignore
-
-[ignored3]
-  regex = /^(?:Config|Swear|server_(?:cvar|message))/
-  options = ignore
-
-# newer steam servers do not prepend "server_cvar" in front of cvars. 
-[ignored4]
-  regex = /^"[^"]+" = "/
-  options = ignore
-
-[ignored5]
-  regex = /^CONSOLE :/
-  options = ignore
-

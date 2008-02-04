@@ -1,83 +1,111 @@
 <?php 
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
-include(PS_ROOTDIR . '/includes/forms.php');
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$validfields = array('themefile','submit','cancel','ref');
-globalize($validfields);
+$validfields = array('submit','cancel','ref');
+$cms->theme->assign_request_vars($validfields, true);
 
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
-}
+if ($cancel or $cms->user->logged_in()) previouspage('index.php');
 
-if ($cancel) previouspage('index.php');
+$bad_pw_error = $cms->trans('Invalid username or password');
 
-// form fields ...
-$formfields = array(
-	'username'	=> array('label' => $ps_lang->trans("Username"). ':', 		'val' => 'B', 'statustext' => $ps_lang->trans("Enter the username for your player account")),
-	'password'	=> array('label' => $ps_lang->trans("Password") .':', 		'val' => 'B', 'statustext' => $ps_lang->trans("Enter your account password")),
-	'autologin'	=> array('label' => $ps_lang->trans("Remember my login"), 		'val' => '',  'statustext' => $ps_lang->trans("Check this if you want to have your login remembered")),
-);
+$form = $cms->new_form();
+$form->default_modifier('trim');
+$form->default_validator('blank', $cms->trans("This field can not be blank"));
+$form->field('username', 'user_exists');
+$form->field('password');
+//$form->field('autologin');	// use $cms->input['autologin'] instead
 
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'login';
+if ($submit) {
+	$form->validate();
+	$input = $form->values();
+	$valid = !$form->has_errors();
+	// protect against CSRF attacks
+	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
 
-$form = array();
-$errors = array();
-
-$data['invalidlogin'] = '';
-
-if (user_logged_on() and $ref) previouspage();
-
-if (!user_logged_on() and $_POST['submit']) {
-	$form = packform($formfields);
-	trim_all($form);
-	$invalid = 0;
-
-	// manually verify fields that need it
-	if (!username_exists($form['username'])) {
-		if (!$invalid) $ps->errlog(sprintf("Failed login attempt for unknown user '%s' from IP [%s]", $form['username'], remote_addr()));
-		$data['invalidlogin'] = $ps_lang->trans("Invalid username or password");
-		$invalid = 1;
+	$u = null;
+	if ($valid) {
+		// attempt to authenticate
+		$id = $cms->user->auth($input['username'], $input['password']);
+		if ($id) {
+			// now load the user if possible
+			$u = $cms->new_user();
+			if (!$u->load($id)) {
+				$form->error('fatal', $cms->trans("Error retreiving user from database") . ":" . $u->loaderr);
+				$valid = false;
+			}
+		} else { // auth failed
+			$form->error('fatal', $bad_pw_error);
+			$ps->errlog(sprintf("Failed login attempt for user '%s' (bad password) from IP [%s]", $input['username'], remote_addr()));
+			$valid = false;
+		}
 	}
 
-	$u = load_user_only($form['username'], TRUE);
-	if (!$invalid) {
-		if ($u['password'] != md5($form['password'])) {
-			$ps->errlog(sprintf("Failed login attempt for user '%s' (bad password) from IP [%s]", $form['username'], remote_addr()));
-			$data['invalidlogin'] = $ps_lang->trans("Invalid username or password");
-			$invalid = 1;
-		}
-		if (!$u['confirmed'] and !$invalid) {
-			$data['invalidlogin'] = $ps_lang->trans("Your user has not been confirmed yet and can not login at this time.");
-			$ps->errlog(sprintf("Failed login attempt for user '%s' (not confirmed) from IP [%s]", $form['username'], remote_addr()));
-		}
-
-		if (!user_has_access($u['accesslevel'], ACL_USER) and !$invalid) {
-			$formfields['username']['error'] = $ps_lang->trans("Your user is not allowed to login at this time");
-			$ps->errlog(sprintf("Failed login attempt for user '%s' (access denied) from IP [%s]", $form['username'], remote_addr()));
-		}
-
+	// verify the user's confirmation flag is enabled
+	if ($valid and !$u->confirmed()) {
+		$form->error('fatal', $cms->trans("This user has not been confirmed yet and can not login at this time."));
+		$ps->errlog(sprintf("Failed login attempt for user '%s' (not confirmed) from IP [%s]", $input['username'], remote_addr()));
+		$valid = false;
 	}
 
-	$errors = all_form_errors($formfields);
-	if (!count($errors) and !$invalid) {
+	// verify the user has permissions to login
+	if ($valid and !$u->has_access()) {
+		$form->error('fatal', $cms->trans("User does not have permission to login"));
+		$ps->errlog(sprintf("Failed login attempt for user '%s' (access denied) from IP [%s]", $input['username'], remote_addr()));
+		$valid = false;
+	}
+
+	// If authenetication was valid then we'll set the users online flag and redirect to their previous page
+	if (!$form->has_errors()) {
 //		header("Cache-Control: no-cache, must-revalidate");
-		session_online_status(1, $u['userid']);
-		if ($form['autologin']) session_save_autologin($u['userid'], $u['password']);
-		previouspage('index.php');
+		$cms->session->online_status(1, $u->userid());
+		if ($cms->input['autologin']) $cms->session->save_login($u->userid(), $u->password());
+		if (!empty($_REQUEST['ref']) and strpos($_REQUEST['ref'], 'loggedin') === false) {
+			$_REQUEST['ref'] .= strpos($_REQUEST['ref'], '?') === false ? '?' : '&';
+			$_REQUEST['ref'] .= 'loggedin=1';
+		}
+		previouspage(ps_url_wrapper('index.php'));
 	}
-
-	$data += $form;	
 }
 
+if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
 
-$data['form'] = $formfields;
-$data['errors'] = $errors;
+// assign variables to the theme
+$cms->theme->assign(array(
+	'errors'	=> $form->errors(),
+	'form'		=> $form->values(),
+	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+));
 
-$data['PAGE'] = 'login';
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_js('js/forms.js');
+$cms->theme->add_css('css/forms.css');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 
-include(PS_ROOTDIR . "/includes/footer.php");
+// validator functions --------------------------------------------------------------------------
+
+function user_exists($var, $value, &$form) {
+	global $cms, $ps, $bad_pw_error;
+	if (!$cms->user->username_exists($value)) {
+		$ps->errlog(sprintf("Failed login attempt for unknown user '%s' from IP [%s]", $value, remote_addr()));
+		$form->error('fatal', $bad_pw_error);
+		return false;
+	}
+	return true;
+}
+
+function password_match($var, $value, &$form) {
+	global $valid, $cms, $ps;
+	if (!empty($value)) {
+		if ($value != $form->input['password2']) {
+			$valid = false;
+			$form->error($var, $cms->trans("Passwords do not match"));
+		}
+	}
+	return $valid;
+}
+
 ?>

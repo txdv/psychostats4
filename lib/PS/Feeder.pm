@@ -11,8 +11,13 @@ use strict;
 use warnings;
 use base qw( PS::Debug );
 use util qw( :numbers );
+use Data::Dumper;
 
-our $VERSION = '1.00';
+our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
+
+our $WAIT   = 1;
+our $ERROR  = 0;
+our $NOWAIT = -1;
 
 sub new {
 	my $proto = shift;
@@ -28,7 +33,12 @@ sub new {
 	my $modtype = $conf->get('modtype');
 	my $base = "file";
 
-	$base = $1 if $logsource =~ m|^([^:]+)://.+|;
+	if (ref $logsource) {	# logsource is a loaded hash
+		$base = $logsource->{type};
+	} else {		# logsource is a string and might have a protocol prefix
+		$base = $1 if $logsource =~ m|^([^:]+)://.+|;
+	}
+
 	my @ary = ($modtype) ? ($modtype, $gametype) : ($gametype);
 	while (@ary) {
 		$class = join("::", $baseclass, reverse(@ary), $base);
@@ -83,6 +93,12 @@ sub new {
 	return $self;
 }
 
+sub _init {  # called by local new()
+	my $self = shift;
+	$self->{orig_logsource} = $self->{logsource};
+	$self->parsesource;
+}
+
 sub bytes_per_second {
 	my ($self, $tail) = @_;
 	return undef unless defined $self->{_lasttimebytes};
@@ -111,45 +127,50 @@ sub save_state {
 	my $self = shift;
 	my $state = shift || $self->{state} || {};
 	my $db = $self->{db};
-	delete($state->{plrs});
+	delete($state->{players});
 
-	return if (defined $self->{game}->{timestamp} and ($self->{_state_saved} == $self->{game}->{timestamp}));
+	return if (defined $self->{game}{timestamp} and ($self->{_state_saved} == $self->{game}{timestamp}));
 #	$::ERR->verbose("Saving state");
 
-	$db->begin;
-	my $id = $state->{id} ? $state->{id} : $db->select($db->{t_state}, 'id', [ logsource => $self->{logsource} ]);
-	$self->{db}->delete($db->{t_state}, [ logsource => $self->{logsource} ]);
+	my ($state_id) = $db->select($db->{t_state}, 'id', [ logsource => $self->{logsource}{id} ]);
+#	$self->{db}->delete($db->{t_state}, [ logsource => $state_id ]);
 
-	$state->{id} = $self->{db}->next_id($db->{t_state});
-	$state->{logsource} = $self->{logsource}; # unless $state->{logsource};
-	$state->{map} = $self->{game}->{curmap}; # unless $state->{map};
-	$state->{timestamp} = $self->{game}->{timestamp}; # unless $state->{timestamp};
-#	$state->{timestamp} = $self->{game}->{lasttimestamp};
-	$state->{lastupdate} = time; # unless $state->{lastupdate};
+	$state->{id} 		= $state_id ? $state_id : $self->{db}->next_id($db->{t_state});
+	$state->{logsource} 	= $self->{logsource}{id};
+	$state->{lastupdate} 	= time;
+	$state->{timestamp} 	= $self->{game}->{timestamp};
+	$state->{map} 		= $self->{game}->{curmap};
 
-	$self->{db}->insert($db->{t_state}, $state);
+	local $Data::Dumper::Indent = 0;
+	local $Data::Dumper::Terse = 1;
 
-	$self->{db}->delete($db->{t_state_plrs}, [ id => $id ]) if $id;
-	while (my ($uid, $p) = each %{$self->{game}->get_plr_list}) {
-		my $set = {
-			id	=> $state->{id},
-			plrid 	=> $p->{plrid}, 
-			uid	=> $uid,
-			isdead	=> $p->{isdead} || 0,
-			team	=> $p->{team} || '',
-			role	=> $p->{role} || '',
+	my @players = ();
+	foreach my $p ($self->{game}->get_plr_list) {
+		next unless $p->active;		# don't remember player if they are not active
+		my $plr = {
+			plrid 	=> $p->plrid, 
+			uid	=> $p->uid,
+			isdead	=> $p->is_dead || 0,
+			team	=> $p->team || '',
+			role	=> $p->role || '',
 			plrsig	=> $p->signature,
 			name	=> $p->name,
-			worldid	=> $p->worldid,
+			worldid	=> $p->uniqueid,
 			ipaddr	=> $p->ipaddr,
 		};
-#		use Data::Dumper; print Dumper($set);
-		$self->{db}->insert($db->{t_state_plrs}, $set);
+		push(@players, $plr);
 	}
-	$self->{db}->commit;
-	$self->{db}->optimize($db->{t_state}, $db->{t_state_plrs});
+	$state->{players} = Dumper(\@players);
+	$state->{ipaddrs} = Dumper($self->{game}{ipcache});
+#	$state->{ipaddrs} = join("\n", map { "$_=" . $self->{game}{ipcache}{$_} } keys %{$self->{game}{ipcache}} );
 
-	$self->{_state_saved} = $self->{game}->{timestamp};
+	if ($state_id) {
+		$self->{db}->update($db->{t_state}, $state, [ id => $state_id ]);
+	} else {
+		$self->{db}->insert($db->{t_state}, $state);
+	}
+
+	$self->{_state_saved} = $self->{game}{timestamp};
 }
 
 sub load_state {
@@ -157,22 +178,23 @@ sub load_state {
 	my $db = $self->{db};
 	my $state;
 
-	$state = $db->get_row_hash("SELECT * FROM $db->{t_state} WHERE logsource=" . $db->quote($self->{logsource})) || {};
+	$state = $db->get_row_hash("SELECT * FROM $db->{t_state} WHERE logsource=" . $db->quote($self->{logsource}{id})) || {};
 
-	$state->{plrs} = [];
-	if ($state->{id}) {
-		$state->{plrs} = $db->get_rows_hash("SELECT * FROM $db->{t_state_plrs} WHERE id=" . $db->quote($state->{id}));
-	}
+	my $plrs = [];
+	my $ips  = {};
+	$plrs = eval $state->{players} if $state->{players};
+	$ips  = eval $state->{ipaddrs} if $state->{ipaddrs};
+	$state->{players} = $plrs;
+	$state->{ipaddrs} = $ips;
 	$self->{game}->restore_state($state);
-
 	return $state;
 }
 
-
-sub _init { }
-sub init { 1 }	# 1=wait; 0=error; -1=nowait
+sub init { 1 }	# called by subclass. ret: 1=wait; 0=error; -1=nowait
 sub done { $_[0]->save_state }
+sub defaultmap { $_[0]->{logsource}{defaultmap} }
 sub next_event { undef }
 sub idle { }
+sub parsesource { }
 
 1;

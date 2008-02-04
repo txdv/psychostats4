@@ -23,7 +23,7 @@ sub calc {
 	my $a = $self->{award};
 	my $gametype = $conf->get_main('gametype');
 	my $modtype = $conf->get_main('modtype');
-	my $allowpartial = $range ne 'day' ? $conf->get_main("awards.allow_partial_$range") : 1;
+	my $allowpartial = $conf->get_main("awards.allow_partial_$range");
 	my $tail = $gametype && $modtype ? "_${gametype}_$modtype" : $gametype ? "_$gametype" : "";
 	my @mainkeys = keys %{$db->tableinfo($db->{t_plr_data})};
 	my @modkeys = $db->table_exists($db->{t_plr_data} . $tail) ? keys %{$db->tableinfo($db->{t_plr_data} . $tail)} : ();
@@ -59,28 +59,27 @@ sub calc {
 
 		next if (!$complete and !$allowpartial);
 
-		$cmd  = "SELECT $expr value, plr.plrid ";
+		$cmd  = "SELECT $expr awardvalue, plr.*, pp.* ";
 		$cmd .= "FROM ($db->{t_plr_data} data, $db->{t_plr} plr) ";
+		$cmd .= "LEFT JOIN $db->{t_plr_profile} pp ON pp.uniqueid=plr.uniqueid ";
 		$cmd .= "LEFT JOIN $db->{t_plr_data}$tail mdata ON mdata.dataid=data.dataid " if @modkeys;
 		$cmd .= "WHERE plr.plrid=data.plrid ";
-		$cmd .= "AND plr.allowrank ";
+		$cmd .= "AND plr.allowrank " if $a->{rankedonly};
 		$cmd .= "AND (statdate BETWEEN '$start' AND '$end') ";
 		$cmd .= "GROUP BY data.plrid ";
 		# must use 'having' and not 'where', since we're using expressions
 		$cmd .= "HAVING $where " if $a->{where};
 		$cmd .= "ORDER BY 1 $order ";
-		$cmd .= "LIMIT $limit ";
+		$cmd .= "LIMIT 1 ";  # $limit
 #		print "$cmd\n";
 
 		$::ERR->verbose("Calc " . ($complete ? 'complete' : 'partial ') . 
 			" $a->{type} award on " . sprintf("%-5s",$range) . " $start for '$a->{name}'");
 		my $plrs = $db->get_rows_hash($cmd) || next;
-#		next unless @$plrs;
 
 		# if all players have a 0 value ignore the award
 		my $total = 0;
-		$total += abs($_->{value} || 0) for @$plrs;
-#		next unless $total;
+		$total += abs($_->{awardvalue} || 0) for @$plrs;
 		$plrs = [] unless $total;
 
 		$db->begin;
@@ -90,32 +89,41 @@ sub calc {
 			$db->delete($db->{t_awards_plrs}, [ awardid => $id ]);
 		}
 
+		if (!@$plrs) {	# do not add anything if we have no valid players
+			$db->commit;
+			next;
+		}
+
 		$id = $db->next_id($db->{t_awards});
 		my $award = {
 			id		=> $id,
 			awardid		=> $a->{id},
 			awardtype	=> 'player',
 			awardname	=> $a->{name},
+#			awardphrase	=> $a->{phrase}, #simple_interpolate($a->{phrase}, $interpolate),
 			awarddate	=> $start,
 			awardrange	=> $range,
 			awardcomplete	=> $complete,
 			topplrid	=> @$plrs ? $plrs->[0]{plrid} : 0,
-			topplrvalue	=> @$plrs ? $plrs->[0]{value} : 0
+			topplrvalue	=> @$plrs ? $plrs->[0]{awardvalue} : 0
+#			topplrvalue	=> $self->format(@$plrs ? $plrs->[0]{awardvalue} : 0)
 		};
 		$db->insert($db->{t_awards}, $award);
 
+=pod
+		# we're not saving multiple players per award anymore. Only the top player above.
 		my $idx = 0;
 		foreach my $p (@$plrs) {
-			next unless $p->{value};
+			next unless $p->{awardvalue};
 			$db->insert($db->{t_awards_plrs}, {
 				id	=> $db->next_id($db->{t_awards_plrs}),
 				idx	=> ++$idx,
 				awardid	=> $id,
 				plrid	=> $p->{plrid},
-				value	=> $p->{value}
+				value	=> $self->format($p->{awardvalue})
 			});
 		}
-
+=cut
 		$db->commit;
 	}
 

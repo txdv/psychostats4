@@ -3,8 +3,7 @@
 #	$Id$
 #
 
-# FindBin isn't going to work on systems that run the stats.pl as SETUID
-BEGIN { 
+BEGIN { # FindBin isn't going to work on systems that run the stats.pl as SETUID
 	use strict;
 	use warnings;
 
@@ -14,10 +13,10 @@ BEGIN {
 }
 
 BEGIN { # make sure we're running the minimum version of perl required
-	my $minver = 5.8;
+	my $minver = 5.08;
 	my $curver = 0.0;
 	my ($major,$minor,$release) = split(/\./,sprintf("%vd", $^V));
-	$curver = "$major.$minor";
+	$curver = sprintf("%d.%02d",$major,$minor);
 	if ($curver < $minver) {
 		print "Perl v$major.$minor.$release is too old to run PsychoStats.\n";
 		print "Minimum version $minver is required. You must upgrade before continuing.\n";
@@ -59,7 +58,7 @@ BEGIN { # do checks for required modules
 			print "\n";
 		} else {
 			print "The following modules need to be upgraded to the version shown below\n";
-			print "\t$_ v$bad_kitty{$_} or newer\n" for keys %bad_kitty;
+			print "\t$_ v$bad_kitty{$_} or newer (currently installed: $PM_LOADED{$_})\n" for keys %bad_kitty;
 			print "\n";
 		}
 
@@ -78,7 +77,7 @@ BEGIN { # do checks for required modules
 	}
 }
 
-use Data::Dumper;
+use POSIX qw( :sys_wait_h setsid );
 use File::Spec::Functions qw(catfile);
 use PS::CmdLine;
 use PS::DB;
@@ -90,7 +89,7 @@ use PS::Game;
 use util qw( :win compacttime );
 
 # The $VERSION and $PACKAGE_DATE are automatically updated via the packaging script.
-our $VERSION = '3.0';
+our $VERSION = '3.1';
 our $PACKAGE_DATE = time;
 our $REVISION = ('$Rev$' =~ /(\d+)/)[0] || '0';
 
@@ -102,9 +101,10 @@ our $GRACEFUL_EXIT = 0; #-1;			# (used in CATCH_CONTROL_C)
 
 $SIG{INT} = \&CATCH_CONTROL_C;
 
-my ($opt, $dbconf, $db, $conf, $game, $logsource, $feeder, @dodaily);
+my ($opt, $dbconf, $db, $conf);
 my $starttime = time;
-my $totallogs = 0;
+my $total_logs = 0;
+my $total_lines = 0;
 
 eval { binmode(STDOUT, ":encoding(utf8)"); };
 
@@ -113,7 +113,7 @@ $DEBUG = $opt->get('debug') || 0;		# sets global debugging for ALL CLASSES
 
 # display our version and exit
 if ($opt->get('version')) {
-	print "PsychoStats version $VERSION (rev $REVISION)\n"; # (Perl " . sprintf("%vd", $^V) . ")\n";
+	print "PsychoStats version $VERSION (rev $REVISION)\n";
 	print "Packaged on " . scalar(localtime $PACKAGE_DATE) . "\n";
 #	print "Author:  Jason Morriss <stormtrooper\@psychostats.com>\n";
 	print "Website: http://www.psychostats.com/\n";
@@ -167,7 +167,7 @@ $DBCONF = {
 	dbpass		=> $opt->dbpass || $dbconf->{dbpass},
 	dbtblprefix	=> $opt->dbtblprefix || $dbconf->{dbtblprefix}
 };
-$db = PS::DB->new($DBCONF);
+$db = new PS::DB($DBCONF);
 
 $conf = new PS::ConfigHandler($opt, $db);
 my $total = $conf->load(qw( main ));
@@ -176,8 +176,10 @@ $ERR = new PS::ErrLog($conf, $db);			# Now all error messages will be logged to 
 $db->init_tablenames($conf);
 $db->init_database;
 
+# ---------------------------------------------------------------------------------------------------------------
+# handle a 'stats reset' request
 if (defined $opt->get('reset')) {
-	my $game = PS::Game->new($conf, $db);
+	my $game = new PS::Game($conf, $db);
 	my $res = $opt->get('reset');
 	my $all = (index($opt->get('reset'),'all') >= 0);
 	my %del = (
@@ -186,17 +188,12 @@ if (defined $opt->get('reset')) {
 		weapons => ($all || (index($res,'we') >= 0)),
 	);
 	$game->reset(%del);
-	exit;
+	&main::exit;
 }
 
 $ERR->debug2("$total config settings loaded.");
 $ERR->fatal("No 'gametype' configured.") unless $conf->get_main('gametype');
 $ERR->info("PsychoStats v$VERSION initialized.");
-
-# force 'daily' option if we're trying to calculate a single day award
-if (defined $conf->get_opt('award') and $conf->get_opt('start')) {
-	$opt->set('daily', 'awards');
-}
 
 # if -unknown is specified, temporarily enable report_unknown
 if ($opt->get('unknown')) {
@@ -205,12 +202,13 @@ if ($opt->get('unknown')) {
 
 # if a modtype was specified update the config
 if (defined $opt->get('modtype') and $conf->getconf('modtype','main') ne $opt->get('modtype')) {
-	$db->update($db->{t_config}, { value => $opt->get('modtype') }, [ conftype => 'main', section => '', var => 'modtype' ]);
+	$db->update($db->{t_config}, { value => $opt->get('modtype') }, [ conftype => 'main', section => undef, var => 'modtype' ]);
 	my $oldmod = $conf->getconf('modtype', 'main');
 	$conf->set('modtype', $opt->get('modtype'), 'main');
 	$ERR->info("Changing modtype from '$oldmod' to '" . $conf->get_main('modtype') . "' (per command line)");
 }
 
+# ---------------------------------------------------------------------------------------------------------------
 # rescan clantags
 if (defined $opt->get('scanclantags')) {
 	my $all = lc $opt->get('scanclantags') eq 'all' ? 1 : 0;
@@ -226,12 +224,12 @@ if (defined $opt->get('scanclantags')) {
 	my $total = $db->count($db->{t_plr}, [ allowrank => 1, clanid => 0 ]);
 	$::ERR->info("$total ranked players will be scanned.");
 
-	my $game = PS::Game->new($conf, $db);
+	my $game = new PS::Game($conf, $db);
 	my $clanid;
 	my $cur = 1;
 	my $clans = {};
 	my $members = 0;
-	my $plrsth = $db->query("SELECT p.plrid,pp.uniqueid,pp.name FROM $db->{t_plr} p, $db->{t_plr_profile} pp WHERE p.uniqueid=pp.uniqueid and p.allowrank=1 and p.clanid = 0");
+	my $plrsth = $db->query("SELECT p.plrid,pp.uniqueid,pp.name FROM $db->{t_plr} p, $db->{t_plr_profile} pp WHERE p.uniqueid=pp.uniqueid and p.allowrank=1 and p.clanid=0");
 	while (my ($plrid,$uniqueid,$name) = $plrsth->fetchrow_array) {
 		$::ERR->verbose(sprintf("%6.2f%% completed.\r", $cur++ / $total * 100), 1);
 		$clanid = $game->scan_for_clantag($name) || next;
@@ -245,10 +243,117 @@ if (defined $opt->get('scanclantags')) {
 	$opt->set('daily', ($opt->get('daily') || '') . ',clans');
 }
 
-# PERFORM DAILY OPERATIONS 
-# This will exit afterwards (no logs are processed)
-DODAILY:
-if (my $daily = lc $opt->get('daily')) {
+# ------------------------------------------------------------------------------------------
+# PERFORM DAILY OPERATIONS and exit if we did any (no logs should be processed)
+if ($opt->get('daily')) {
+	&main::exit if do_daily($opt->get('daily'));
+}
+
+# ------------------------------------------------------------------------------------------
+# process log sources ... the endless while loop is a placeholder.
+my $more_logs = !$opt->get('nologs');
+while ($more_logs) { # infinite loop
+	my $logsource = load_logsources();
+	if (!defined $logsource or @$logsource == 0) {
+		$ERR->fatal("No log sources defined! You must configure a log source (or use -log on command line)!");
+	}
+
+	my @total;
+	my $game = new PS::Game($conf, $db);
+	foreach my $source (@$logsource) {
+		my $feeder = new PS::Feeder($source, $game, $conf, $db);
+		next unless $feeder;
+
+		# Let Feeder initialize (read directories, establish remote connections, etc).
+		my $type = $feeder->init;	# 1=wait; 0=error; -1=nowait;
+		next unless $type;		# ERROR
+
+		if ($type == 1) { 		# WAIT
+			$conf->setinfo('stats.lastupdate', time) unless $conf->get_info('stats.lastupdate');
+			@total = $game->process_feed($feeder);
+			$total_logs  += $total[0];
+			$total_lines += $total[1];
+			$conf->setinfo('stats.lastupdate', time);
+			$feeder->done;
+		} elsif ($type == -1) {		# NOWAIT
+			# TODO: we need to allow for non-waiting log sources (ie: log streams)
+			# we need to start the current process and then continue with any other 
+			# sources simultaneously. 
+			# if there is more than 1 source then each NOWAIT source needs it's own 
+			# $game, $conf and $db objects, otherwise they will mess each other up.
+			my $d = @$logsource > 1 ? new PS::DB($DBCONF) : $db;
+			my $c = @$logsource > 1 ? new PS::ConfigHandler($opt, $d) : $conf;
+			my $g = @$logsource > 1 ? new PS::Game($c, $d) : $game;
+			# fork off a process to handle this source
+			# ... 
+			$conf->setinfo('stats.realtime_update', time);
+		}
+
+		last if $GRACEFUL_EXIT > 0;
+	}
+	&main::exit if $GRACEFUL_EXIT > 0;
+
+	last;
+}
+
+# check to make sure we don't need to do any daily updates before we exit
+check_daily($conf) unless $opt->get('nodaily');
+
+END {
+	$ERR->info("PsychoStats v$VERSION exiting (elapsed: " . compacttime(time-$starttime) . ", logs: $total_logs, lines: $total_lines)") if defined $ERR;
+	$opt->debug("DEBUG END: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE") if $DEBUGFILE and defined $opt;
+}
+
+# ------- FUNCTIONS ---------------------------------------------------------------------------------------------------
+
+# returns a list of log sources
+sub load_logsources {
+	my $list = [];
+	if ($opt->get('logsource')) {
+		my $game = new PS::Game($conf, $db);
+		my $log = new PS::Feeder($opt->get('logsource'), $game, $conf, $db);
+		if (!$log) {
+			$ERR->fatal("Error loading logsource from command line.");
+		}
+		push(@$list, $log->{logsource});
+	} else {
+		$list = $db->get_rows_hash("SELECT * FROM $db->{t_config_logsources} WHERE enabled=1 ORDER BY idx");
+	}
+	return wantarray ? @$list : [ @$list ];
+}
+
+# do daily updates, if needed
+sub check_daily {
+	my ($conf) = @_;
+	my @dodaily = ();
+	do_daily(join(',', @PS::Game::DAILY));
+=pod
+	$conf->reload;
+	foreach my $v (@PS::Game::DAILY) {
+		my $lastupdate = $conf->getinfo("daily_$v.lastupdate") || 0;
+		my $when = $conf->get_main("auto.update_$v");
+		next unless $when;
+		my $offset = (time - $lastupdate) / 60;		# number of minutes since last update
+		if ($lastupdate) {
+			push(@dodaily, $v) if
+				($when eq 'all') ||
+				($when eq 'hourly'  and $offset >= 60) || 
+				($when eq 'daily'   and $offset >= 60*24) || 
+				($when eq 'weekly'  and $offset >= 60*24*6) || 
+				($when eq 'monthly' and $offset >= 60*24*30);
+		} else {
+			push(@dodaily, $v);
+		}
+	}
+	do_daily(join(',',@dodaily)) if @dodaily;
+=cut
+}
+
+sub do_daily {
+	my ($daily) = @_;
+	$daily = lc $opt->get('daily') unless defined $daily;
+	return 0 unless $daily;
+
 	my %valid = map { $_ => 0 } @PS::Game::DAILY;
 	my @badlist = ();
 	foreach (split(/,/, $daily)) {
@@ -266,9 +371,9 @@ if (my $daily = lc $opt->get('daily')) {
 	}
 	$ERR->info("Daily updates about to be performed: $daily");
 
-	$game = PS::Game->new($conf, $db);
+	my $game = new PS::Game($conf, $db);
 	foreach (split(/,/, $daily)) {
-		my $func = "daily_$_";
+		my $func = "daily_" . $_;
 		if ($game->can($func)) {
 			$game->$func;
 		} else {
@@ -276,70 +381,34 @@ if (my $daily = lc $opt->get('daily')) {
 		}
 	}
 
-	&main::exit;
+	return 1;
 }
 
-# --- Now we can get down to business! Initializing the proper game engine and log feeders
-# endless while loop is a place holder for now ...
-while (!$opt->get('nologs')) {
-	$logsource = $conf->get_main('logsource');
-	if (!defined $logsource) {
-		$ERR->warn("No logsource defined! Aborting stats update!");
-		last;
+sub run_as_daemon {
+	my ($pid_file) = @_;
+	defined(my $pid = fork) or die "Can't fork process: $!";
+	exit if $pid;   # the parent exits
+
+	# 1st generation child
+	open(STDIN, '/dev/null');
+	open(STDOUT, '>>/dev/null') unless $DEBUG;
+	open(STDERR, '>>/dev/null') unless $DEBUG;
+	chdir('/');     # run from root so we don't lock other potential mounts or directories
+	setsid();       # POSIX; sets us as the process leader (our parent PID is 1)
+	umask(0);
+
+	# 2nd generation child (for SysV; avoids re-acquiring a controlling terminal)
+	# setsid() needs to be done before this, see above.
+	defined($pid = fork) or die "Can't fork sub-process: $!";
+	exit if $pid;
+	# now we're no longer the process leader but are in process group 1.
+
+	if ($pid_file) {
+		open(F, ">$pid_file") or warn("Can not write PID $$ to file: $pid_file: $!\n");
+		print F $$;
+		close(F);
+		chmod 0644, $pid_file;
 	}
-	$logsource = [ $logsource ] unless ref $logsource;	# force it into an array ref
-
-	$game = PS::Game->new($conf, $db);
-	foreach my $source (@$logsource) {
-		next unless $source;				# ignore empty sources
-		# ignore feeder if it returns undef (undef = specified feeder is not implemented)
-		$feeder = PS::Feeder->new($source, $game, $conf, $db) || next;
-
-		# Let Feeder initialize (read directories, establish remote connections, etc)
-		my $type = $feeder->init;			# the feeder will report any errors that occur
-		next unless $type;
-
-		$conf->setinfo('stats.lastupdate', time) unless $conf->get_info('stats.lastupdate');
-		$totallogs += $game->process_feed($feeder);
-		$conf->setinfo('stats.lastupdate', time);
-
-		$feeder->done;
-
-		&main::exit if $GRACEFUL_EXIT > 0;
-	}
-	&main::exit if $GRACEFUL_EXIT > 0;
-
-	# If we're running as a daemon then we loop, 
-	# otherwise we exit after a single iteration of the loop
-	# a proper 'daemonize' function has not been added yet
-	if ($opt->get('daemon')) {	# only accept 'daemon' from the command line, not the config
-		sleep(5);		# sleep for a bit before we loop again
-	} else {
-		last;
-	}
-}
-
-# check for auto.update_* options
-foreach my $v (@PS::Game::DAILY) {
-	my $lastupdate = $conf->getinfo("daily_$v.lastupdate") || 0;
-	my $when = $conf->get_main("auto.update_$v");
-	next unless $when;
-	my $offset = (time - $lastupdate) / 60;		# number of minutes since last update
-	if ($lastupdate) {
-		push(@dodaily, $v) if
-			($when eq 'all') ||
-			($when eq 'hourly'  and $offset >= 60) || 
-			($when eq 'daily'   and $offset >= 60*24) || 
-			($when eq 'weekly'  and $offset >= 60*24*6) || 
-			($when eq 'monthly' and $offset >= 60*24*28);
-	} else {
-		push(@dodaily, $v);
-	}
-}
-if (@dodaily) {
-	$opt->set('daily', join(',',@dodaily));
-#	print $opt->get('daily'),"\n";
-	goto DODAILY;
 }
 
 # PS::ErrLog points to this to actually exit on a fatal error, incase I need to do some cleanup
@@ -347,12 +416,6 @@ sub main::exit {
 #	<> if iswindows();
 	CORE::exit(@_) 
 }
-
-END {
-	$ERR->info("PsychoStats v$VERSION exiting (elapsed: " . compacttime(time-$starttime) . "; logs: $totallogs)") if defined $ERR;
-	$opt->debug("DEBUG END: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE") if $DEBUGFILE and defined $opt;
-}
-
 
 sub CATCH_CONTROL_C {
 	$GRACEFUL_EXIT++;

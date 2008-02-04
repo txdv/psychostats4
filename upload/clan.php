@@ -1,45 +1,44 @@
 <?php
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
 $validfields = array(
-	'id', 'themefile',
-	'vsort','vorder','vstart','vlimit',
-	'msort','morder','mstart','mlimit',
-	'wsort','worder','wstart','wlimit',
-	'psort','porder','pstart','plimit',
-	'xml', 'weaponxml'
+	'id', 'v', 'xml',
+	'psort','porder','pstart','plimit',	// players
+	'vsort','vorder','vstart','vlimit',	// victims
+	'msort','morder','mstart','mlimit',	// maps
+	'wsort','worder','wstart','wlimit',	// weapons
+	'rsort','rorder','rstart','rlimit',	// roles
 );
-globalize($validfields);
+$cms->theme->assign_request_vars($validfields, true);
 
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'clan';
+$load_google = (bool)($ps->conf['theme']['map']['google_key'] != '');
 
 if (!$psort) $psort = 'skill';
-if (!$vsort) $vsort = 'skill';
-if (!$wlimit) $wlimit = 100;
 
 // SET DEFAULTS. Since they're basically the same for each list, we do this in a loop
 foreach ($validfields as $var) {
-  switch (substr($var, 1)) {
-    case 'sort':
-	if (!$$var) $$var = 'kills';
-	break;
-    case 'order':
-	if (!$$var) $$var = 'desc';
-	break;
-    case 'start':
-	if (!is_numeric($$var) || $$var < 0) $$var = 0;
-	break;
-    case 'limit':
-	if (!is_numeric($$var) || $$var < 0) $$var = 10;
-	break;
-    default:
-        break;
-  }
-  $data[$var] = $$var;			// save the variable into the theme hash
+	switch (substr($var, 1)) {
+		case 'sort':
+			if (!$$var) $$var = 'kills';
+			break;
+		case 'order':
+			if (!$$var or !in_array($$var, array('asc', 'desc'))) $$var = 'desc';
+			break;
+		case 'start':
+			if (!is_numeric($$var) || $$var < 0) $$var = 0;
+			break;
+		case 'limit':
+			if (!is_numeric($$var) || $$var < 0 || $$var > 100) $$var = 20;
+			break;
+		default:
+		        break;
+	}
 }
 
-$data['clan'] = $ps->get_clan(array(
+$clan = $ps->get_clan(array(
 	'clanid' 	=> $id,
 	'membersort'	=> $psort,
 	'memberorder'	=> $porder,
@@ -62,85 +61,168 @@ $data['clan'] = $ps->get_clan(array(
 	'victimstart'	=> $vstart,
 	'victimlimit'	=> $vlimit,
 	'victimfields'	=> '',
-), $smarty);
+));
 
-if ($xml) {
+$x = substr($xml,0,1);
+if ($x == 'c') {		// clan
 
-} elseif ($weaponxml) {
+} elseif ($xml == 'w') {	// weapons
 	$ary = array();
 	// re-arrange the weapons list so the uniqueid of each weapon is a key.
 	// weapon uniqueid's should never have any weird characters so this should be safe.
-	foreach ($data['clan']['weapons'] as $w) {
+	foreach ($clan['weapons'] as $w) {
 		$ary[ $w['uniqueid'] ] = $w;
 	} 
 	print_xml($ary);
+	exit();
 }
 
-if ($data['clan']['clanid']) {
-  $data['plrpager'] = pagination(array(
-	'baseurl'	=> "$PHP_SELF?id=$id&plimit=$plimit&psort=$psort&porder=$porder",
-	'total'		=> $data['clan']['totalmembers'],
+if ($clan['clanid']) {
+  $memberpager = pagination(array(
+	'baseurl'	=> ps_url_wrapper(array( 'id' => $id, 'plimit' => $plimit, 'psort' => $psort, 'porder' => $porder)), 
+	'total'		=> $clan['totalmembers'],
 	'startvar'	=> 'pstart',
 	'start'		=> $pstart,
 	'perpage'	=> $plimit,
-	'prefix'	=> $ps_lang->trans("Goto") . ': ',
-        'next'          => $ps_lang->trans("Next"),
-        'prev'          => $ps_lang->trans("Previous"),
+	'separator'	=> ' ',
+        'next'          => $cms->trans("Next"),
+        'prev'          => $cms->trans("Previous"),
   ));
 
-  $data['weaponpager'] = pagination(array(
-	'baseurl'	=> "$PHP_SELF?id=$id&wlimit=$wlimit&wsort=$wsort&worder=$worder",
-	'total'		=> $data['clan']['totalweapons'],
+  $weaponpager = pagination(array(
+	'baseurl'	=> ps_url_wrapper(array( 'id' => $id, 'wlimit' => $wlimit, 'wsort' => $wsort, 'worder' => $worder)),
+	'total'		=> $clan['totalweapons'],
 	'startvar'	=> 'wstart',
 	'start'		=> $wstart,
 	'perpage'	=> $wlimit,
+	'separator'	=> ' ',
 	'urltail'	=> "weapons",
-	'prefix'	=> $ps_lang->trans("Goto") . ': ',
-        'next'          => $ps_lang->trans("Next"),
-        'prev'          => $ps_lang->trans("Previous"),
+        'next'          => $cms->trans("Next"),
+        'prev'          => $cms->trans("Previous"),
   ));
 
-  $data['mappager'] = pagination(array(
-	'baseurl'	=> "$PHP_SELF?id=$id&mlimit=$mlimit&msort=$msort&morder=$morder",
-	'total'		=> $data['clan']['totalmaps'],
+  $mappager = pagination(array(
+	'baseurl'	=> ps_url_wrapper(array( 'id' => $id, 'mlimit' => $mlimit, 'msort' => $msort, 'morder' => $morder)),
+	'total'		=> $clan['totalmaps'],
 	'startvar'	=> 'mstart',
 	'start'		=> $mstart,
 	'perpage'	=> $mlimit,
+	'separator'	=> ' ',
 	'urltail'	=> "maps",
-	'prefix'	=> $ps_lang->trans("Goto") . ': ',
-        'next'          => $ps_lang->trans("Next"),
-        'prev'          => $ps_lang->trans("Previous"),
+        'next'          => $cms->trans("Next"),
+        'prev'          => $cms->trans("Previous"),
   ));
 
-  $data['victimpager'] = pagination(array(
-	'baseurl'       => "$PHP_SELF?id=$id&vlimit=$vlimit&vsort=$vsort&vorder=$vorder",
-	'total'         => $data['clan']['totalvictims'],
+/*
+  $victimpager = pagination(array(
+	'baseurl'       => ps_url_wrapper(array( 'id' => $id, 'vlimit' => $vlimit, 'vsort' => $vsort , 'vorder' => $vorder)),
+	'total'         => $clan['totalvictims'],
 	'startvar'      => 'vstart',
 	'start'         => $vstart,
 	'perpage'       => $vlimit,
+	'separator'	=> ' ',
 	'urltail'       => 'victims',
-	'prefix'	=> $ps_lang->trans("Goto") . ': ',
-	'next'          => $ps_lang->trans("Next"),
-	'prev'          => $ps_lang->trans("Previous"),
+	'next'          => $cms->trans("Next"),
+	'prev'          => $cms->trans("Previous"),
   ));
+*/
 }
 
-$data['mapblockfile'] = $smarty->get_block_file('block_maps');
-$data['teamblockfile'] = $smarty->get_block_file('block_team');
+//$data['mapblockfile'] = $smarty->get_block_file('block_maps');
+//$data['teamblockfile'] = $smarty->get_block_file('block_team');
 
-$data['PAGE'] = 'clan';
-$smarty->assign($data);
-if ($data['clan']['clanid']) {
-  $smarty->parse($themefile);
+
+$ptable = $cms->new_table($clan['members']);
+$ptable->attr('class', 'ps-table ps-player-table');
+$ptable->sort_baseurl(array( 'id' => $id, '_anchor' => 'members' ));
+$ptable->start_and_sort($pstart, $psort, $porder, 'p');
+$ptable->columns(array(
+	'rank'			=> $cms->trans("Rank"),
+	'name'			=> array( 'label' => $cms->trans("Player"), 'callback' => 'ps_table_plr_link' ),
+	'kills'			=> array( 'label' => $cms->trans("Kills"), 'modifier' => 'commify' ),
+	'deaths'		=> array( 'label' => $cms->trans("Deaths"), 'modifier' => 'commify' ),
+	'killsperdeath' 	=> array( 'label' => $cms->trans("K:D"), 'tooltip' => $cms->trans("Kills Per Death") ),
+	'headshotkills'		=> array( 'label' => $cms->trans("HS"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Headshot Kills") ),
+	'headshotkillspct'	=> array( 'label' => $cms->trans("HS%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Headshot Kills Percentage") ),
+	'skill'			=> $cms->trans("Skill"),
+));
+$ptable->column_attr('name', 'class', 'left');
+$ps->clan_players_table_mod($ptable);
+$cms->filter('clan_members_table_object', $ptable);
+
+
+$wtable = $cms->new_table($clan['weapons']);
+$wtable->if_no_data($cms->trans("No Weapons Found"));
+$wtable->attr('class', 'ps-table ps-weapon-table');
+$wtable->sort_baseurl(array( 'id' => $id, '_anchor' => 'weapons' ));
+$wtable->start_and_sort($wstart, $wsort, $worder, 'w');
+$wtable->columns(array(
+	'uniqueid'		=> array( 'label' => $cms->trans("Weapon"), 'callback' => 'ps_table_weapon_link' ),
+	'kills'			=> array( 'label' => $cms->trans("Kills"), 'modifier' => 'commify' ),
+	'deaths'		=> array( 'label' => $cms->trans("Deaths"), 'modifier' => 'commify' ),
+	'headshotkills'		=> array( 'label' => $cms->trans("HS"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Headshot Kills") ),
+	'headshotkillspct'	=> array( 'label' => $cms->trans("HS%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Headshot Kills Percentage") ),
+	'accuracy'		=> array( 'label' => $cms->trans("Acc"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Accuracy") ),
+	'shotsperkill' 		=> array( 'label' => $cms->trans("S:K"), 'tooltip' => $cms->trans("Shots Per Kill") ),
+	'damage' 		=> array( 'label' => $cms->trans("Dmg"), 'callback' => 'dmg', 'tooltip' => $cms->trans("Damage") ),
+));
+$wtable->column_attr('uniqueid', 'class', 'first');
+$ps->clan_weapons_table_mod($wtable);
+$cms->filter('clan_weapons_table_object', $wtable);
+
+
+// build map table
+$mtable = $cms->new_table($clan['maps']);
+$mtable->if_no_data($cms->trans("No Maps Found"));
+$mtable->attr('class', 'ps-table ps-map-table');
+$mtable->sort_baseurl(array( 'id' => $id, '_anchor' => 'maps' ));
+$mtable->start_and_sort($mstart, $msort, $morder, 'm');
+$mtable->columns(array(
+//	'+'		=> '#',
+	'uniqueid'	=> array( 'label' => $cms->trans("Map"), 'callback' => 'ps_table_map_text_link' ),
+	'kills'		=> array( 'label' => $cms->trans("K"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Kills") ), 
+	'deaths'	=> array( 'label' => $cms->trans("D"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Deaths") ), 
+	'ffkills'	=> array( 'label' => $cms->trans("FF"), 'modifier' => 'commify', 'tooltip' => $cms->trans('Friendly Fire Kills') ),
+	'killsperdeath' => array( 'label' => $cms->trans("K:D"), 'tooltip' => $cms->trans("Kills Per Death") ),
+	'killsperminute'=> array( 'label' => $cms->trans("K:M"), 'tooltip' => $cms->trans("Kills Per Minute") ),
+	'games'		=> array( 'label' => $cms->trans("G"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Games") ),
+	'rounds'	=> array( 'label' => $cms->trans("R"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Rounds") ),
+	'onlinetime'	=> array( 'label' => $cms->trans("Online"), 'modifier' => 'compacttime' ),
+	'lasttime'	=> array( 'label' => $cms->trans("Last"), 'modifier' => 'ps_date_stamp' ),
+));
+$mtable->column_attr('uniqueid','class','left');
+$ps->clan_maps_table_mod($mtable);
+$cms->filter('clan_maps_table_object', $mtable);
+
+
+$cms->theme->assign(array(
+	'clan'			=> $clan,
+	'members_table'		=> $ptable->render(),
+	'weapons_table'		=> $wtable->render(),
+	'maps_table'		=> $mtable->render(),
+	'totalranked'		=> $totalranked,
+	'weaponpager'		=> $weaponpager,
+	'memberpager'		=> $memberpager,
+	'mappager'		=> $mappager,
+//	'victimpager'		=> $victimpager,
+));
+
+// allow mods to have their own section on the left side bar
+$ps->clan_left_column_mod($clan, $cms->theme);
+
+$basename = basename(__FILE__, '.php');
+if ($clan['clanid']) {
+	$cms->theme->add_css('css/2column.css');	// this page has a left column
+	$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 } else {
-  $smarty->assign(array(
-	'errortitle'	=> $ps_lang->trans("No Clan Found!"),
-	'errormsg'	=> $ps_lang->trans("No clan matches your search criteria"),
-	'redirect'	=> "",
-  ));
-  $smarty->parse('nomatch');
+	$cms->full_page_err($basename, array(
+		'message_title'	=> $cms->trans("No Clan Found!"),
+		'message'	=> $cms->trans("Invalid clan ID specified.") . " " . $cms->trans("Please go back and try again.")
+	));
 }
-ps_showpage($smarty->showpage());
 
-include(PS_ROOTDIR . "/includes/footer.php");
+function dmg($dmg) {
+	return "<acronym title='" . commify($dmg) . "'>" . abbrnum0($dmg) . "</acronym>";
+}
+
 ?>

@@ -1,13 +1,35 @@
-Version 3.1 beta (Not Released)
+Version 3.1 (2008-01-01)
 * Implemented CMS and plugin architecture in the PHP front-end.
 * Recoded theme routines to be more robust and tolerant.
 * Redesigned default theme template. XHTML compliant and easier to maintain.
 (pre-3.1 themes are NOT backwards compatible!)
-* UTF8 encoded strings should now be displayed correctly across all HTML output.
-
-Version 3.0.7 beta (2007-06-??)
-* Fixed minor exploit reported by 
-http://nvd.nist.gov/nvd.cfm?cvename=CVE-2007-2780
+* Log state routines have been recoded and made more accurate.
+* Logsources have been recoded and have their own config table.
+* Events code has been recoded and have their own config table.
+* Events can be configured via the ACP and new event code can be dropped into
+the 'Events' directory if users wish to add new event handlers w/o modifying
+existing code. Wiki doc's will need to be updated (yuk)
+* Implemented -maxlogs, -maxlines command line options to allow stats updates
+to exit early. This will help systems under resource restraints.
+* Split plr_ids table (name,ipaddr,steamid) into 3 separate tables to make
+queries against these fields easier and less confusing.
+* Removed 'headshotdeaths' stat since its not very reliable to track.
+* Player events with a steamid of STEAM_ID_PENDING are completely ignored now.
+* CMS security: Implemented defense against CSRF exploits.
+* CMS security: Implemented separate admin login for ACP pages.
+* Removed ps_config_layout table and combined all config related stuff
+into ps_config. Also added 'label' field.
+* daily awards are now created (along with monthly and weekly).
+* Removed 'auto' section of config as it's no longer needed. Daily updates 
+(all maxdays decay activity players clans ranks awards) are performed 
+automatically by stats.pl based on new 'daily' settings in the config.
+* DB routines are more robust and will attempt to reconnect if a query fails.
+* Implemented Team Fortress 2 support.
+* Roles can now have mod based stats.
+* Reduced code required for mod sub-classes, which makes it easier to add new
+support for game mods.
+* Recoded class_PS.php to be a real class with sub-classes for game:mods.
+* 1 million and 1 tweaks and fixes.
 
 Version 3.0.6 beta (2007-05-01)
 * Fixed query.html: rcon commands would not work.

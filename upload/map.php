@@ -1,9 +1,14 @@
 <?php
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$validfields = array('id', 'sort', 'order', 'start', 'limit', 'maxmaps', 'themefile');
-globalize($validfields);
+// how many players per stat
+$MAX_PLAYERS = 10;
+
+$validfields = array('id', 'sort', 'order', 'start', 'limit');
+$cms->theme->assign_request_vars($validfields, true);
 
 $sort = strtolower($sort);
 $order = strtolower($order);
@@ -11,119 +16,74 @@ if (!preg_match('/^\w+$/', $sort)) $sort = 'kills';
 if (!in_array($order, array('asc','desc'))) $order = 'desc';
 if (!is_numeric($start) || $start < 0) $start = 0;
 if (!is_numeric($limit) || $limit < 0) $limit = 10;
-if (!is_numeric($maxmaps) || $maxmaps < 0) $maxmaps = 50;
 
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
-}
-
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'map';
-
-$data['toptenlimit'] = $limit;
-$data['totalmaps'] = $ps->get_total_maps(array(), $smarty);
-
-$data['maps'] = $ps->get_map_list(array(
+$topten = array();
+$totalmaps = $ps->get_total_maps();
+$maps = $ps->get_map_list(array(
 	'sort'		=> 'kills',
 	'order'		=> 'desc',
-	'start'		=> 0,
-	'limit'		=> $maxmaps,
-), $smarty);
+	'start'		=> 0, //$start,
+	'limit'		=> 50, //$limit,
+));
+
+// a map name was given; look up the ID for it
+if (!is_numeric($id) and !empty($id)) {
+	list($id) = $ps->db->fetch_list("SELECT mapid FROM $ps->t_map WHERE uniqueid=" . $ps->db->escape($id, true));
+}
 
 $map = $ps->get_map(array( 
 	'mapid' => $id 
-), $smarty);
+));
 
-$data['teamblockfile'] = $smarty->get_block_file('block_team');
-$data['toptenblockfile'] = $smarty->get_block_file('block_map_topten');
-$data['map'] = $map;
 
-if ($map['mapid'] and $data['toptenblockfile']) {
-	// generic vars that will work for any MODTYPE
-	$vars = array('kills', 'ffkills','onlinetime');
-	$data['toptendesc'] = array(
-		'kills'		=> array( 'label' => $ps_lang->trans("Most Kills")),
-		'ffkills'	=> array( 'label' => $ps_lang->trans("Most FF Kills")),
-		'onlinetime'	=> array( 'label' => $ps_lang->trans("Most Online Time"), 'modifier' => 'compacttime'),
+if ($map['mapid']) {
+
+	$setup = array(
+		'mapid' 	=> $id,
+		'order'		=> 'desc',
+		'limit'		=> $limit,
 	);
 
-	// vars for halflife
-	if ($ps->conf['main']['gametype'] == 'halflife') {
-		$modtype = $ps->conf['main']['modtype'];
-		// cstrike
-		if ($modtype == 'cstrike') {
-			$prefix = substr($map['uniqueid'], 0, 3);
-			if ($prefix == 'cs_') {
-				$vars = array_merge($vars, array('rescuedhostages', 'touchedhostages', 'killedhostages'));
-				$data['toptendesc'] += array(
-					'touchedhostages'	=> array( 'label' => $ps_lang->trans("Most Hostages Touched")),
-					'rescuedhostages'	=> array( 'label' => $ps_lang->trans("Most Hostages Rescued")),
-					'killedhostages'	=> array( 'label' => $ps_lang->trans("Most Hostages Killed")),
-				);
-			} elseif ($prefix == 'de_') {
-				$vars = array_merge($vars, array('bombdefused', 'bombexploded', 'bombplanted', 'bombrunner'));
-				$data['toptendesc'] += array(
-					'bombdefused'	=> array( 'label' => $ps_lang->trans("Most Bombs Defused")),
-					'bombexploded'	=> array( 'label' => $ps_lang->trans("Most Bombs Exploded")),
-					'bombplanted'	=> array( 'label' => $ps_lang->trans("Most Bombs Planted")),
-					'bombrunner'	=> array( 'label' => $ps_lang->trans("Most Active Bomb Runner")),
-				);
-			} elseif ($prefix == 'as_') {
-				$vars = array_merge($vars, array('vip', 'vipescaped', 'vipkilled'));
-			} 
+	$ps->reset_map_stats();
 
-		// dod
-		} elseif ($modtype == 'dod') {
-			$vars = array_merge($vars, array('alliesflagscaptured', 'alliesareascaptured', 'axisflagscaptured'));
-			$vars = array_merge($vars, array('axisareascaptured', 'flagscaptured', 'areascaptured'));
-			$data['toptendesc'] += array(
-				'alliesflagscaptured'	=> array( 'label' => $ps_lang->trans("Most Ally flags captured")),
-				'alliesareascaptured'	=> array( 'label' => $ps_lang->trans("Most Ally areas captured")),
-				'axisflagscaptured'	=> array( 'label' => $ps_lang->trans("Most Axis flags captured")),
-				'axisareascaptured'	=> array( 'label' => $ps_lang->trans("Most Axis areas captured")),
-				'flagscaptured'		=> array( 'label' => $ps_lang->trans("Most flags captured")),
-				'areascaptured'		=> array( 'label' => $ps_lang->trans("Most flags captured")),
-			);
+	// generic stats that will work for any game/mod
+	$ps->add_map_player_list('kills', 	$setup + array('label' => $cms->trans("Most Kills")) );
+	$ps->add_map_player_list('ffkills', 	$setup + array('label' => $cms->trans("Most FF Kills")) );
+	$ps->add_map_player_list('ffdeaths', 	$setup + array('label' => $cms->trans("Most FF Deaths")) );
+	$ps->add_map_player_list('onlinetime', 	$setup + array('label' => $cms->trans("Most Online Time"), 'modifier' => 'compacttime') );
 
-		// natural
-		} elseif ($modtype == 'natural') {
-			$vars = array_merge($vars, array('structuresbuilt', 'structuresdestroyed', 'structuresrecycled'));
-			$data['toptendesc'] += array(
-				'structuresbuilt'	=> array( 'label' => $ps_lang->trans("Structures Built")),
-				'structuresdestroyed'	=> array( 'label' => $ps_lang->trans("Structures Destroyed")),
-				'structuresrecycled'	=> array( 'label' => $ps_lang->trans("Structures Recycled")),
-			);
-		}
-	}
+	// each mod will add their own stats to the output
+	$ps->add_map_player_list_mod($map, $setup);
 
-	// load the top10 data for each $var discovered above ...
-	foreach ($vars as $v) {
-		$list = $ps->get_map_player_list(array(
-			'mapid' 	=> $id,
-			'sort'		=> $v,
-			'order'		=> 'desc',
-			'limit'		=> $limit,
-			'fields'	=> $v,
-			'where'		=> sprintf("%s > 0", $ps->db->qi($v)),
-		), $smarty);
-		if (count($list)) {
-			$data["topten"][$v] = $list;
-		}
-	}
+	// allow plugins to add their own stats to the map details
+	$cms->action('add_map_player_list');
+
+	// build all topten stats
+	$topten = $ps->build_map_stats();
 }
 
-$smarty->assign($data);
 
-if ($data['map']['mapid']) {
-	$smarty->parse($themefile);
+$cms->theme->assign(array(
+	'maps'		=> $maps,
+	'map'		=> $map,
+	'mapimg'	=> $ps->mapimg($map, array( 'noimg' => '' )),
+	'totalmaps'	=> $totalmaps,
+	'topten'	=> $topten,
+	'totaltopten'	=> count($topten),
+));
+
+$basename = basename(__FILE__, '.php');
+if ($map['mapid']) {
+	// allow mods to have their own section on the left side bar
+	$ps->map_left_column_mod($map, $cms->theme);
+
+	$cms->theme->add_css('css/2column.css');	// this page has a left column
+	$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 } else {
-	$smarty->assign(array(
-		'errortitle'	=> $ps_lang->trans("No Map Found!"),
-		'errormsg'	=> $ps_lang->trans("No map matches your search criteria"),
-		'redirect'	=> "<a href='maps.php'>" . $ps_lang->trans("Return to the maps list") . "</a>",
+	$cms->full_page_err($basename, array(
+		'message_title'	=> $cms->trans("No Map Found!"),
+		'message'	=> $cms->trans("Invalid map ID specified.") . " " . $cms->trans("Please go back and try again.")
 	));
-	$smarty->parse('nomatch');
 }
-ps_showpage($smarty->showpage());
 
-include(PS_ROOTDIR . "/includes/footer.php");
 ?>

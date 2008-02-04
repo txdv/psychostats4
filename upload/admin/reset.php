@@ -1,104 +1,84 @@
 <?php
-if (!defined("VALID_PAGE")) die("<b>Access Denied!</b>");
+define("PSYCHOSTATS_PAGE", true);
+define("PSYCHOSTATS_ADMIN_PAGE", true);
+include("../includes/common.php");
+include("./common.php");
 
-if ($register_admin_controls) {
-	$menu =& $PSAdminMenu->getSection( $ps_lang->trans("Manage Players") );
+$validfields = array('ref','cancel','submit');
+$cms->theme->assign_request_vars($validfields, true);
 
-	$opt =& $menu->newOption( " * " . $ps_lang->trans("Reset All Stats") . " * ", 'reset' );
-	$opt->link(ps_url_wrapper(array('c' => 'reset')));
+$message = '';
+$cms->theme->assign_by_ref('message', $message);
 
-	return 1;
+if ($cancel) {
+	previouspage(ps_url_wrapper(array( '_amp' => '&', '_base' => 'manage.php' )));
 }
 
-$data['PS_ADMIN_PAGE'] = "reset";
+$form = $cms->new_form();
+$form->default_modifier('trim');
+$form->field('player_profiles');
+$form->field('player_aliases');
+$form->field('player_bans');
+$form->field('clan_profiles');
+$form->field('users');
 
-if ($cancel) previouspage('admin.php');
+// process the form if submitted
+$valid = true;
+$db_errors = array();
+if ($submit) {
+	$form->validate();
+	$input = $form->values();
+	$valid = !$form->has_errors();
+	// protect against CSRF attacks
+	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
 
-$validfields = array('confirm', 'delplrprofiles', 'delclanprofiles', 'delweapons');
-globalize($validfields);
-foreach ($validfields as $var) { $data[$var] = $$var; }
+	if ($valid) {
+		$ok = $ps->reset_stats($input);
 
-// form fields ...
-$formfields = array(
-	'confirm'		=> array('label' => $ps_lang->trans("Confirm Reset").':',		'val' => '',   'statustext' => $ps_lang->trans("You must check this box to confirm that you want to reset your stats!")),
-	'delplrprofiles'	=> array('label' => $ps_lang->trans("Delete Player Profiles").':',	'val' => '',   'statustext' => $ps_lang->trans("If checked <b>player</b> profiles will be deleted. I recommend leaving this unchecked.")),
-	'delclanprofiles'	=> array('label' => $ps_lang->trans("Delete Clan Profiles").':',	'val' => '',   'statustext' => $ps_lang->trans("If checked <b>clan</b> profiles will be deleted. I recommend leaving this unchecked.")),
-	'delweapons'		=> array('label' => $ps_lang->trans("Delete Weapons").':',		'val' => '',   'statustext' => $ps_lang->trans("If checked <b>Weapon</b> definitions will be deleted. This is usually unchecked if you want your weapons to retain their real names and weights.")),
-);
-
-$empty_c = array( 'c_map_data', 'c_plr_data', 'c_plr_maps', 'c_plr_victims', 'c_plr_weapons', 'c_weapon_data', 'c_role_data', 'c_plr_roles' );
-$empty_m = array( 't_map_data', 't_plr_data', 't_plr_maps' );
-$empty = array( 
-	't_awards', 't_awards_plrs', 
-	't_clan', 
-	't_errlog',
-	't_map', 't_map_data', 
-	't_plr', 't_plr_data', 't_plr_ids', 't_plr_maps', 't_plr_roles', 't_plr_sessions', 't_plr_victims', 't_plr_weapons', 
-	't_role', 't_role_data', 
-	't_search', 't_state', 't_state_plrs', 
-	't_weapon_data'
-);
-
-$msg = '';
-
-if ($submit and !$confirm) {
-	$errors['fatal'] = $ps_lang->trans("You must check the confirmation checkbox!");
-} elseif ($confirm) {
-	// delete complied data
-	foreach ($empty_c as $t) {
-		$tbl = $ps->$t;
-#		if (!$ps->db->truncate($tbl) and !preg_match("/exist/", $ps->db->errstr)) {
-		if (!$ps->db->droptable($tbl) and !preg_match("/unknown table/i", $ps->db->errstr)) {
-			$errors['fatal'] .= "$tbl: " . $ps->db->errstr . "<br>";
+		if ($ok !== true) {
+			$db_errors = $ok;	// $ok is an array of errors
+			$form->error('fatal', "Errors occured during database reset; Please see below");
+		} else {
+			$message = $cms->message('success', array(
+				'message_title'	=> $cms->trans("Database was reset!"), 
+				'message'	=> $cms->trans("The database has been reset. Stats will be empty until your next stats update."),
+			));
+//			previouspage(ps_url_wrapper('manage.php'));
 		}
 	}
-
-	// delete most of everything else
-	foreach ($empty as $t) {
-		$tbl = $ps->$t;
-		if (!$ps->db->truncate($tbl) and !preg_match("/exist/", $ps->db->errstr)) {
-			$errors['fatal'] .= "$tbl: " . $ps->db->errstr . "<br>";
-		}
-	}
-
-	// delete mod specific tables
-	foreach ($empty_m as $t) {
-		$tbl = $ps->$t . $ps->tblsuffix;
-		if (!$ps->db->truncate($tbl) and !preg_match("/exist/", $ps->db->errstr)) {
-			$errors['fatal'] .= "$tbl: " . $ps->db->errstr . "<br>";
-		}
-	}
-
-	if ($delplrprofiles) {
-		$tbl = $ps->t_plr_profile;
-		if (!$ps->db->truncate($tbl)) $errors['fatal'] .= "$tbl: " . $ps->db->errstr . "<br>";
-		// should I update the users table here to remove any plr->user relationships?
-	} 
-
-	if ($delclanprofiles) {
-		$tbl = $ps->t_clan_profile;
-		if (!$ps->db->truncate($tbl)) $errors['fatal'] .= "$tbl: " . $ps->db->errstr . "<br>";
-	}
-
-	if ($delweapons) {
-		$tbl = $ps->t_weapon;
-		if (!$ps->db->truncate($tbl)) $errors['fatal'] .= "$tbl: " . $ps->db->errstr . "<br>";
-	}
-
-	if (!$errors) {
-		$msg = $ps_lang->trans("All player statistics have been reset!");
-	}
-
-	$ps->errlog("Player stats have been reset!!!", 'info', $ps_user['userid']);
-
+} else {
+	// default all options to keep
+	$form->input(array(
+		'player_profiles'	=> true,
+		'player_aliases'	=> true,
+		'player_bans'		=> true,
+		'clan_profiles'		=> true,
+		'users'			=> true
+	));
 }
 
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
-}
+$cms->crumb('Manage', ps_url_wrapper($_SERVER['REQUEST_URI']));
+$cms->crumb('Reset Stats', ps_url_wrapper($PHP_SELF));
 
-$data['errors'] = $errors;
-$data['form'] = $formfields;
-$data['msg'] = $msg;
+// save a new form key in the users session cookie
+// this will also be put into a 'hidden' field in the form
+if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+
+// assign variables to the theme
+$cms->theme->assign(array(
+	'errors'	=> $form->errors(),
+	'db_errors'	=> $db_errors,
+	'form'		=> $form->values(),
+	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'page'		=> basename(__FILE__, '.php'), 
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/2column.css');
+$cms->theme->add_css('css/forms.css');
+//$cms->theme->add_js('js/jquery.interface.js');
+$cms->theme->add_js('js/forms.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer', '');
 
 ?>

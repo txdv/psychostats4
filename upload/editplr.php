@@ -1,228 +1,259 @@
 <?php
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
-include(PS_ROOTDIR . "/includes/forms.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$minpwlen = 5;
+$validfields = array('ref','id','del','submit','cancel');
+$cms->theme->assign_request_vars($validfields, true);
 
-$validfields = array('themefile','submit','cancel','ref','id');
-globalize($validfields);
-
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
+if ($cancel) {
+	previouspage(ps_url_wrapper(array( '_amp' => '&', '_base' => 'index.php' )));
 }
 
-if ($cancel) previouspage('index.php');
-if (!user_logged_on()) gotopage("login.php?ref=" . urlencode($PHP_SELF . "?id=$id"));
+// load the matching player if an ID was given
+$plr = array();
+$plr_user =& $cms->new_user();
+$allow_username_change = ($ps->conf['main']['allow_username_change'] or $cms->user->is_admin());
 
-// form fields ...
-$formfields = array(
-	'username'	=> array('label' => $ps_lang->trans("Username"). ':', 		'val' => '', 'statustext' => $ps_lang->trans("Changing your username is optional")),
-	'accesslevel'	=> array('label' => $ps_lang->trans("Accesslevel"). ':', 		'val' => '', 'statustext' => $ps_lang->trans("Assign an accesslevel for this user")),
-	'password'	=> array('label' => $ps_lang->trans("New Password") .':', 		'val' => '', 'statustext' => $ps_lang->trans("Changing your password is optional")),
-	'password2'	=> array('label' => $ps_lang->trans("Repeat New Password") .':', 	'val' => '', 'statustext' => $ps_lang->trans("Retype your new password")),
-	'oldpassword'	=> array('label' => $ps_lang->trans("Current Password") .':', 	'val' => '', 'statustext' => $ps_lang->trans("You must enter your current password to change it")),
-	// use 'plrname' instead of 'name' so PsychoNuke works
-	'plrname'	=> array('label' => $ps_lang->trans("Player Name"). ':', 		'val' => 'B', 'statustext' => $ps_lang->trans("Player name may change automatically unless you check the 'lock name' box")),
-	'name'		=> array(							'val' => ''),
-	'namelocked'	=> array('label' => $ps_lang->trans("Lock Name?"), 		'val' => '', 'statustext' => $ps_lang->trans("Locking your name will insure it does not get changed by stats updates")),
-	'icon'		=> array('label' => $ps_lang->trans("Icon"). ':',	 		'val' => '', 'statustext' => $ps_lang->trans("Choose an interesting icon that represents your player")),
-	'cc'		=> array('label' => $ps_lang->trans("Country"). ':',		'val' => '', 'statustext' => $ps_lang->trans("Choose your country")),
-	'email'		=> array('label' => $ps_lang->trans("Email Address") .':', 	'val' => 'E', 'statustext' => $ps_lang->trans("An email address that other players can use to contact you")),
-	'aim'		=> array('label' => $ps_lang->trans("AIM Screen name"). ':',	'val' => '', 'statustext' => $ps_lang->trans("AOL Instant Messenger (AIM) screen name")),
-	'icq'		=> array('label' => $ps_lang->trans("ICQ Number"). ':',		'val' => '', 'statustext' => $ps_lang->trans("ICQ Number")),
-	'msn'		=> array('label' => $ps_lang->trans("MSN Email Address"). ':',	'val' => '', 'statustext' => $ps_lang->trans("Microsoft MSN email address")),
-	'website'	=> array('label' => $ps_lang->trans("Website"). ':',		'val' => '', 'statustext' => $ps_lang->trans("Enter your website if you have one")),
-	'logo'		=> array('label' => $ps_lang->trans("Logo HTML"). ':',		'val' => '', 'statustext' => $ps_lang->trans("Your logo is displayed exactly as entered (HTML included)")),
-);
-
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'editplr';
-$data['PAGE'] = 'editplr';
-
-$form = array();
-$errors = array();
-
-// no player id? default to current user (user might not have a plrid either)
-if (empty($id)) $id = $ps_user['plrid'];
-$edit_allowed = ($id == $ps_user['plrid'] || user_is_admin());
-$require_oldpassword = ($id == $ps_user['plrid']);			// only require password if we are editing ourself
-$allow_username_change = (user_is_admin() || $ps->conf['main']['allow_username_change']);
-$allow_icon_upload = ($ps->conf['theme']['allow_icon_upload'] or user_is_admin());
-$allow_icon_overwrite = ($ps->conf['theme']['allow_icon_overwrite'] or user_is_admin());
-
-if (!$allow_username_change) {
-	unset($formfields['username']);
-}
-
-// if the ID is still empty then we're most likely an admin with no player associated
-if (empty($id)) {
-	abort('nomatch', $ps_lang->trans("No player ID"), $ps_lang->trans("You must specify a player ID"));
-}
-
-// a non-numeric ID was given
-if (!is_numeric($id)) {
-	abort('nomatch', $ps_lang->trans("Invalid player ID"), $ps_lang->trans("An invalid player ID was specified"));
-}
-
-// Current user is not an admin and is trying to edit someone else
-if (!$edit_allowed) {
-	abort('nomatch', $ps_lang->trans("Access Denied!"), $ps_lang->trans("You do not have permission to edit other players"));
-}
-
-if (empty($id) or !is_numeric($id)) $id = $ps_user['plrid'];
-if ($id == $ps_user['plrid']) {
-	$theuser = $ps_user;
-} else {
-	$theuser = load_player($id);
-}
-if (!$theuser) {
-	abort('nomatch', $ps_lang->trans("No Player Found!"), $ps_lang->trans("The player ID does not exist"));
-}
-
-if ($allow_icon_upload) {
-	$allow_icon_upload = is_writable(catfile($ps->conf['theme']['rootimagesdir'], 'icons'));
-}
-
-$data['profile'] = $theuser;	// allow the form to reference the original profile information
-$data['require_oldpassword'] = $require_oldpassword;
-$data['allow_username_change'] = $allow_username_change;
-$data['allow_icon_upload'] = $allow_icon_upload;
-$data['allow_icon_overwrite'] = $allow_icon_overwrite;
-
-// process submitted form
-if ($submit and $_SERVER['REQUEST_METHOD'] == 'POST') {
-	$form = packform($formfields);
-	trim_all($form);
-//	if (get_magic_quotes_gpc()) stripslashes_all($form);
-
-	$form['cc'] = strtoupper($form['cc']);
-
-	// do not allow accesslevel to change if we're not an admin or if we are editing ourself.
-	if (!user_is_admin() or $theuser['userid'] == $ps_user['userid']) {
-		unset($form['accesslevel']);
+if ($id) {
+	// load the player based on their plrid
+	$plr = $ps->get_player_profile($id);
+	if ($plr and $plr['uniqueid'] == null) { // no matching profile; lets create one (all plrs should have one, regardless)
+		$_id = $ps->db->escape($id, true);
+		list($uid) = $ps->db->fetch_list("SELECT uniqueid FROM $ps->t_plr WHERE plrid=$_id");
+		list($name) = $ps->db->fetch_list("SELECT name FROM $ps->t_plr_ids_name WHERE plrid=$_id ORDER BY totaluses DESC LIMIT 1");
+		$ps->db->insert($ps->t_plr_profile, array( 'uniqueid' => $uid, 'name' => $name ));
+		$plr['uniqueid'] = $uid;
+		$plr['name'] = $name;
 	}
 
-	// is username being changed (and is it allowed)?
-	if ($allow_username_change and $form['username'] != $theuser['username']) {
-		if (empty($form['username'])) {
-			$formfields['username']['error'] = $ps_lang->trans("Username can not be blank");
-		} elseif (username_exists($form['username'])) {
-			$formfields['username']['error'] = $ps_lang->trans("Username already exists");
+	if (!$plr) {
+		$data = array( 'message' => $cms->trans("Invalid player ID Specified") );
+		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+		exit();		
+	}
+	if ($plr['userid']) {
+		$plr_user->load($plr['userid']);
+		if (!$plr_user->userid()) {	// the user doesn't actually exist
+			// remove userid from plr profile
+			$ps->db->update($ps->t_plr_profile, array( 'userid' => null ), 'plrid', $plr['plrid']);
+			$plr_user->userid(0);
 		}
-	} else {
-		unset($form['username']);
+	}
+} else {
+	$data = array( 'message' => $cms->trans("Invalid player ID Specified") );
+	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+}
+
+// check privileges to edit this player
+if (!ps_user_can_edit_player($plr)) {
+	$data = array( 'message' => $cms->trans("Insufficient privileges to edit player!") );
+	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	exit;
+}
+
+
+// delete it, if asked to
+/* we don't want normal users deleting themselves ... */
+if ($cms->user->is_admin() and $del and $id and $plr['plrid'] == $id) {
+	if (!$ps->delete_player($id)) {
+		$data = array( 'message' => $cms->trans("Error deleting player: " . $ps->db->errstr) );
+		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+		exit();
+	}
+	// don't use previouspage, since chances are the player.php is the referrer and will no longer be valid.
+	gotopage(ps_url_wrapper(array( '_amp' => '&', '_base' => 'index.php' )));
+}
+/**/
+
+// create the form variables
+$form = $cms->new_form();
+$form->default_modifier('trim');
+$form->field('plrname','blank');	// 'plrname' is used instead of 'name' to avoid conflicts with some software (nuke)
+$form->field('email');
+$form->field('aim');
+$form->field('icq');
+$form->field('msn');
+$form->field('website');
+$form->field('icon');
+$form->field('cc');
+$form->field('logo');
+$form->field('namelocked');
+if (!$plr_user->userid() or $cms->user->is_admin() or ($plr_user->userid() and $ps->conf['main']['allow_username_change'])) {
+	$form->field('username');
+}
+$form->field('password');
+$form->field('password2');
+if ($cms->user->is_admin()) {
+	$form->field('accesslevel');
+//	$form->field('confirmed');
+}
+
+// process the form if submitted
+$valid = true;
+if ($submit) {
+	$form->validate();
+	$input = $form->values();
+	$valid = !$form->has_errors();
+	// protect against CSRF attacks
+	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
+
+	$input['name'] = $input['plrname'];
+	unset($input['plrname']);
+
+	// force a protocol prefix on the website url (http://)
+	if (!empty($input['website']) and !preg_match('|^\w+://|', $input['website'])) {
+		$input['website'] = "http://" . $input['website'];
 	}
 
-	// is password being changed?
-	if (!empty($form['password'])) {
-		if ($ps_user['plrid'] == $theuser['plrid']) {	// user is changing their own password
-			if (md5($form['oldpassword']) != $theuser['password']) {
-				$formfields['oldpassword']['error'] = $ps_lang->trans("Invalid password");
-//				unset($form['oldpassword'],$form['password'], $form['password2']);
+	// strip out any bad tags from the logo.
+	if (!empty($input['logo'])) {
+		$logo = ps_strip_tags($input['logo']);
+		$c1 = md5($logo);
+		$c2 = md5($input['logo']);
+		if ($c1 != $c2) {
+			$form->error('logo', $cms->trans("Invalid tags were removed.") . " " .
+				$cms->trans("Resubmit to try again.") 
+			);
+			$form->set('logo', $logo);
+		}
+		$input['logo'] = $logo;
+	}
+
+	if ($cms->user->is_admin()) {
+		if (!array_key_exists($input['accesslevel'], $cms->user->accesslevels())) {
+			$form->error('accesslevel', $cms->trans("Invalid access level specified"));
+		}
+	}
+
+	if (!$form->error('username') and $input['username'] != $plr_user->username()) {
+		// load the user matching the username
+		$_u = $plr_user->load_user($input['username'], 'username');
+		// do not allow a duplicate username if another user has it already
+		if ($_u and $_u['userid'] != $plr_user->userid()) {
+			$form->error('username', $cms->trans("Username already exists; please try another name"));
+		}
+		unset($_u);
+	}
+
+	// if a username is given we need to make sure a password was provided too (if there wasn't one already)
+	if (!$form->error('username') and $input['username'] != '' or ($plr_user->userid() and $input['password'] != '')) {
+		// verify the passwords match if one was specified
+		if (!$plr_user->userid() and $input['password'] == '') {
+			$form->error('password', $cms->trans("A password must be entered for new users"));
+		} elseif ($input['password'] != '') {
+			if ($input['password'] != $input['password2']) {
+				$form->error('password', $cms->trans("Passwords do not match; please try again"));
+				$form->error('password2', ' ');
+			}
+		} else {
+			unset($input['password']);
+		}
+		unset($input['password2']);
+	}
+
+	
+	$valid = ($valid and !$form->has_errors());
+	if ($valid) {
+		// setup user record
+		$u['username'] = $input['username'] ? $input['username'] : $plr_user->username();
+		if ($input['password'] != '') $u['password'] = $plr_user->hash($input['password']);
+		if ($cms->user->is_admin()) {
+			$u['accesslevel'] = $input['accesslevel'];
+			$u['confirmed'] = 1; //$input['confirmed'];
+		}
+		unset($input['username']);
+		unset($input['password']);
+		unset($input['password2']);
+		unset($input['accesslevel']);
+
+		$input['cc'] = strtoupper($input['cc']);
+
+		// save a NEW user record if this player didn't have one
+		$inserted = false;
+		if (!$plr_user->userid() and $u['username'] != '') {
+			$inserted = true;
+			$u['userid'] = $plr_user->next_userid();	// assign an ID
+			$input['userid'] = $u['userid'];		// point the plr_profile to this userid
+			$ok = $plr_user->insert_user($u);
+			if (!$ok) {
+				$form->error('fatal', $cms->trans("Error saving user: " . $plr_user->db->errstr));
+				unset($input['userid']);
 			} else {
-				if ($form['password'] != $form['password2']) {
-					$formfields['password']['error'] = $ps_lang->trans("Passwords do not match");
-					$formfields['password2']['error'] = $ps_lang->trans("Please try again");
-//					unset($form['oldpassword'],$form['password'], $form['password2']);
+				$plr_user->load($u['userid']);
+			}
+		}
+
+		// update player record (even if the user failed to insert above)
+		if ($id) {
+			$ok = $ps->db->update($ps->t_plr_profile, $input, 'uniqueid', $plr['uniqueid']);
+		} else {
+			$ok = $ps->db->insert($ps->t_plr_profile, $input);
+		}
+
+		// update user record if something was changed
+		if (!$inserted and $ok) {
+			$changed = false;
+			foreach (array('username', 'password', 'accesslevel', 'confirmed') as $k) {
+				if (!array_key_exists($k, $u)) continue;
+				if ($plr_user->$k() != $u[$k]) {
+					$changed = true;
+					break;
 				}
 			}
-		} else {				// user (admin) is changing another user
-			if ($form['password'] != $form['password2']) {
-				$formfields['password']['error'] = $ps_lang->trans("Passwords do not match");
-				$formfields['password2']['error'] = $ps_lang->trans("Please try again");
-//				unset($form['oldpassword'],$form['password'], $form['password2']);
+			if ($changed) {
+				$ok = $plr_user->update_user($u, $plr_user->userid());
 			}
 		}
 
-		if (!$formfields['password']['error'] and strlen($form['password']) < $minpwlen) {
-			$formfields['password']['error'] = sprintf($ps_lang->trans("Password must be at least %d characters long"), $minpwlen);
-			unset($form['oldpassword'],$form['password'], $form['password2']);
-		}
-	}
-
-	// if we have no registered user yet make sure we have a username and password (if either was specified)
-	if (!$theuser['userid'] and ($form['username'] != '' or $form['password'] != '')) {
-		if (!$formfields['username']['error'] and $form['username'] == '') {
-			$formfields['username']['error'] = $ps_lang->trans("You must create a username to register");
-		}
-		if (!$formfields['password']['error'] and $form['password'] == '') {
-			$formfields['password']['error'] = $ps_lang->trans("You must create a password for the new user");
-		}
-	}
-
-	// make sure 'website' variable has a protocol prefix
-	if (!empty($form['website'])) {
-		if (!preg_match('|^\w+://|', $form['website'])) {
-			$form['website'] = "http://" . $form['website'];
-		}
-	}
-
-	if (!empty($form['logo']) and strlen($form['logo']) > $ps->conf['theme']['format']['max_logo_size']) {
-		$form['logo'] = substr($form['logo'], 0, $ps->conf['theme']['format']['max_logo_size']);
-	}
-
-	// automatically verify all fields
-	foreach ($formfields as $key => $ignore) {
-		form_checks($form[$key], $formfields[$key]);
-	}
-
-	$errors = all_form_errors($formfields);
-
-	// If there are no errors act on the data given
-	if (!count($errors)) {
-		$set = $form;
-		$set['logo'] = ps_strip_tags($set['logo']);
-		$userset = array();
-		$set['name'] = $set['plrname'];		// work around for 'PsychoNuke'
-		unset($set['plrname']);
-		if ($set['password'] != '') $userset['password'] = md5($form['password']);
-		if ($set['username'] != '') $userset['username'] = $set['username'];
-		if ($set['accesslevel'] != '') $userset['accesslevel'] = $set['accesslevel'];
-		unset($set['username'], $set['password'], $set['password2'], $set['oldpassword'], $set['accesslevel']);
-
-		// do not save user info if we have no username and this is a new user
-		// otherwise you end up partially 'registering' the user (with no username or password)
-		if (!$theuser['userid'] and !array_key_exists('username', $userset)) {
-			$userset = array();
+		if (!$ok) {
+			$form->error('fatal', "Error updating database: " . $ps->db->errstr);
+		} else {
+			previouspage('index.php');
 		}
 
-		trimset($userset, $theuser);
-		trimset($set, $theuser);
-
-		$ok = $ok1 = $ok2 = 1;
-		if (count($userset)) {
-			if ($theuser['userid']) {
-				$ok1 = update_user($userset, $theuser['userid']);
-			} else {
-				$userset['userid'] = next_user_id();
-				if (user_is_admin()) $userset['confirmed'] = 1;
-				if ($userset['accesslevel'] == '') $userset['accesslevel'] = ACL_USER;
-				$ok1 = insert_user($userset, $theuser['userid']);
-				if ($ok1) $set['userid'] = $userset['userid'];
-			}
-		} 
-		if (count($set)) {
-			$ok2 = $ps_db->update($ps->t_plr_profile, $set, 'uniqueid', $theuser['uniqueid']);
-		}
-		$ok = ($ok1 && $ok2);
-		if ($ok) previouspage('index.php');
 	}
 
-	$data += $form;	
-
-} else {		// init defaults, if any
-	// pack all the variables together and merge them with the data
-	$data += $theuser;
-	$data['plrname'] = $data['name'];
+} else {
+	// fill in defaults
+	if ($id) {
+		$plr['plrname'] = $plr['name'];
+		$in = $plr;
+		if ($plr_user->userid()) {
+			$in = array_merge($in, $plr_user->to_form_input());
+		} else {
+			$in['accesslevel'] = $plr_user->acl_user();
+		}
+		$form->input($in);
+	} else {
+//		$form->set('accesslevel', $plr_user->acl_user());
+//		$form->set('confirmed', 1);
+	}
 }
 
-$data['icons'] = load_icons(catfile($ps->conf['theme']['rootimagesdir'], 'icons'));
-$data['countries'] = load_countries();
-$data['form'] = $formfields;
-$data['errors'] = $errors;
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
+// save a new form key in the players session cookie
+// this will also be put into a 'hidden' field in the form
+if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
 
-include(PS_ROOTDIR . "/includes/footer.php");
+$allowed_html_tags = str_replace(',', ', ', $ps->conf['theme']['format']['allowed_html_tags']);
+if ($allowed_html_tags == '') $allowed_html_tags = '<em>' . $cms->translate("none") . '</em>';
+$cms->theme->assign(array(
+	'errors'	=> $form->errors(),
+	'plr'		=> $plr,
+	'plr_user'	=> $plr_user->to_form_input(),
+	'allowed_html_tags' => $allowed_html_tags,
+	'accesslevels'	=> $plr_user->accesslevels(),
+	'form'		=> $form->values(),
+	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'allow_username_change' => $allow_username_change, 
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/forms.css');
+$cms->theme->add_js('js/forms.js');
+$cms->theme->add_js('js/editplr.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer', '');
+
 ?>

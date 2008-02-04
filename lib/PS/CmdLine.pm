@@ -14,7 +14,7 @@ use Getopt::Long;
 use Pod::Usage;
 use util qw( :win );
 
-our $VERSION = '1.01';
+our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
 our $AUTOLOAD;
 our @OPTS = ();
 
@@ -41,8 +41,9 @@ sub _getOptions {
 	my $self = shift;
 
 	my $optok = GetOptions(
-		# TEST OPTIONS
+		# CONFIG OVERRIDES
 		'uniqueid=s'	=> \$self->{param}{uniqueid},
+		'maxdays=s'	=> \$self->{param}{maxdays},
 
 		# BASIC OPTIONS
 		'config=s'	=> \$self->{param}{config},
@@ -59,16 +60,21 @@ sub _getOptions {
 		'd|debug:i'	=> \$self->{param}{debug},
 		'debugfile:s'	=> \$self->{param}{debugfile},
 		'dumpevents'	=> \$self->{param}{dumpevents},
+		'dumpbonuses'	=> \$self->{param}{dumpbonuses},
 
 		# LOG OPTIONS
 		'logsource=s'	=> \$self->{param}{logsource},
 		'nologsource'	=> \$self->{param}{nologs},
+		'passive|pasv'	=> \$self->{param}{passive},	# FTP logsource's
+		'maxlogs=s'	=> \$self->{param}{maxlogs},	# maximum logs to process before exiting
+		'maxlines=s'	=> \$self->{param}{maxlines},	# maximum lines ...
 
 		# DAEMON OPTIONS
 		'daemon'	=> \$self->{param}{daemon},
 
 		# DAILY OPTIONS
 		'daily:s'	=> \$self->{param}{daily},
+		'nodaily'	=> \$self->{param}{nodaily},
 
 		# AWARD OPTIONS
 		'award:s'	=> \$self->{param}{award},
@@ -209,7 +215,7 @@ stats.pl -daily [daily options]
 
 =over 4
 
-=item B<-config> [filename]
+=item B<-config> <filename>
 
 Specifies an alternate filename to load the required database settings 
 for PsychoStats. By default the stats.cfg file is loaded.
@@ -261,34 +267,56 @@ The password to connect to the database server. Defaults to NULL.
 The table prefix string to use for all tables within the PsychoStats
 database. Defaults to 'ps_'. 
 
-=item B<-debug> [1 .. 5]
+=item B<-debug> [1,2,3,4,5]
 
 Enables Debug output. If no numberic value is given it defaults to 1. The 
 higher the value the more debug output shown. 5 will show all SQL commands
 queried and is not normally recommended.
 
-=item B<-debugfile> [filename]
+=item B<-debugfile> <filename>
 
 All debug output is written to a debug.txt file in the current directory.
 If a filename is specified its name is used instead. Using this implies
 "-debug 1" if no debug was specified.
 
-=item B<-logsource> [path]
+=item B<-help>
+
+If you do not know what this does by now, go seek help, YOU NEED IT!
+
+=item B<-logsource> <path>
 
 Process the log source given. Will ignore all log sources currently
 configured in the database. This does not add the logsource to your 
 configuration permanently.
 
-=item B<-modtype> [type]
+=item B<-maxlines> <number>
+
+Specifies the maximum number of log lines to process before exiting. Normally
+you never need this but on some systems that have system resource restraints
+using this can help limit resource usage. By default all available lines will
+be processed.
+
+=item B<-maxlogs> <number>
+
+Specifies the maximum number of logs to process before exiting, see -maxlines
+for more information.
+
+=item B<-modtype> <type>
 
 Processes logs using the specified MOD type. IE: cstrike, dod. Using this
 option has a side effect of actually changing the value in your database
 configuration permanently. Most users will not have to use this. The update
 will fail if an unknown modtype is specified.
 
-=item B<-help>
+=item B<-nodaily>
 
-If you do not know what this does by now, go seek help, YOU NEED IT!
+Skips all daily processing procedures after logs are processed.
+
+=item B<-passive, -pasv>
+
+Enables PASSIVE mode for FTP logsources. This provides a quick way to toggle
+passive mode on or off w/o having to edit the configuration first. Once you
+figure out which method works you can edit the config to make it permanent.
 
 =item B<-reset> [all,players,clans,weapons]
 

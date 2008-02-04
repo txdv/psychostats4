@@ -3,10 +3,10 @@ package PS::Map;
 use strict;
 use warnings;
 use base qw( PS::Debug );
-use POSIX;
+use POSIX qw( strftime );
 use util qw( :date );
 
-our $VERSION = '1.00';
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
 our $BASECLASS = undef;
 
 our $GAMETYPE = '';
@@ -25,6 +25,18 @@ our $TYPES = {
 	connections	=> '+',
 	onlinetime	=> '+',	
 	lasttime	=> '>',
+};
+
+our $TYPES_HOURLY = {
+	dataid		=> '=', 
+	mapid		=> '=',
+	statdate	=> '=',
+	hour		=> '=',
+	online		=> '=',		# total players online in the hour
+	games		=> '+',
+	rounds		=> '+',
+	kills		=> '+',
+	connections	=> '+',
 };
 
 sub new {
@@ -119,6 +131,9 @@ sub _init {
 
 	return unless $self->{mapname};
 
+	$self->{basic} = {};
+	$self->{mod} = {};
+
 	$self->{conf_maxdays} = $self->{conf}->get_main('maxdays');
 
 	$self->{mapid} = $self->{db}->select($self->{db}->{t_map}, 'mapid', 
@@ -176,24 +191,53 @@ sub timer {
 }
 
 sub get_types { $TYPES }
+sub get_types_hourly { $TYPES_HOURLY }
 
 sub save {
 	my $self = shift;
 	my $db = $self->{db};
 	my $dataid;
 
-	# save basic map stats ...
-	$dataid = $db->save_stats( $db->{c_map_data}, { %{$self->{basic} || {}}, %{$self->{mod} || {}} }, $self->get_types, 
+	# save compiled stats ...
+	$dataid = $db->save_stats( $db->{c_map_data}, { %{$self->{basic}}, %{$self->{mod}} }, $self->get_types, 
 		[ mapid => $self->{mapid} ], $self->{statdate});
 
-	if (diffdays_ymd(POSIX::strftime("%Y-%m-%d", localtime), $self->{statdate}) <= $self->{conf_maxdays}) {
+	# save basic and mod history
+	if (diffdays_ymd(strftime("%Y-%m-%d", localtime), $self->{statdate}) <= $self->{conf_maxdays}) {
 		$dataid = $db->save_stats($db->{t_map_data}, $self->{basic}, $TYPES, 
 			[ mapid => $self->{mapid}, statdate => $self->{statdate} ]
 		);
+		if ($dataid and $self->{mod}) {
+			$db->save_stats($db->{t_map_data_mod}, $self->{mod}, $self->mod_types, [ dataid => $dataid ]);
+			$self->{mod} = {};
+		}
 	}
 	$self->{basic} = {};
 
+	# save hourly map stats ...
+	if (defined $self->{hourly}) {
+		foreach my $date (keys %{$self->{hourly}}) {
+			foreach my $hour (keys %{$self->{hourly}{$date}}) {
+				$db->save_stats($db->{t_map_hourly}, $self->{hourly}{$date}{$hour}, $TYPES_HOURLY, 
+					[ mapid => $self->{mapid}, statdate => $date, hour => $hour ]
+				);
+			}
+		}
+	}
+
 	return $dataid;
+}
+
+# adds an hourly stat to the current hour
+sub hourly {
+	my ($self, $var, $timestamp, $inc) = @_;
+	my ($date, $hour) = split(' ', strftime("%Y-%m-%d %H", localtime($timestamp)));
+	$inc = 1 unless defined $inc;
+	if (ref $var eq 'ARRAY') {
+		$self->{hourly}{$date}{$hour}{$_} += $inc for @$var;
+	} else {
+		$self->{hourly}{$date}{$hour}{$var} += $inc;
+	}
 }
 
 sub has_mod_tables { 0 }

@@ -8,7 +8,7 @@ use Carp;
 use Getopt::Long;
 use Pod::Usage;
 
-our $VERSION = '1.00';
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
 our $AUTOLOAD;
 
 # private: Loads command line parameters

@@ -1,185 +1,85 @@
 <?php
-if (!defined("VALID_PAGE")) die("<b>Access Denied!</b>");
+define("PSYCHOSTATS_PAGE", true);
+define("PSYCHOSTATS_ADMIN_PAGE", true);
+include("../includes/common.php");
+include("./common.php");
 
-if ($register_admin_controls) {
-	$menu =& $PSAdminMenu->getSection( $ps_lang->trans("Configuration") );
+$validfields = array('ref','start','limit','order','sort','move','id');
+$cms->theme->assign_request_vars($validfields, true);
 
-	$opt =& $menu->newOption( $ps_lang->trans("Clantags"), 'clantags' );
-	$opt->link(ps_url_wrapper(array('c' => 'clantags')));
+if (!is_numeric($start) or $start < 0) $start = 0;
+if (!is_numeric($limit) or $limit < 0) $limit = 50;
+if (!in_array($order, array('asc','desc'))) $order = 'asc';
+$sort = 'type,idx';
 
-	return 1;
-}
-
-$data['PS_ADMIN_PAGE'] = "clantags";
-
-if ($cancel) previouspage("admin.php?c=".urlencode($c));
-
-$validfields = array('s','id','move','act','new','del','export','import','msg');
-globalize($validfields);
-foreach ($validfields as $var) { $data[$var] = $$var; }
-
-if ($import) gotopage("$PHP_SELF?c={$c}_import");
-
-// form fields ...
-$formfields = array(
-	// act = 'edit'
-	'idx'		=> array('label' => $ps_lang->trans("Order").':',		'val' => 'N', 'statustext' => $ps_lang->trans("Scanning order of clantag")),
-	'clantag'	=> array('label' => $ps_lang->trans("Clantag").':',	'val' => 'B',  'statustext' => $ps_lang->trans("Clantag definition")),
-	'overridetag'	=> array('label' => $ps_lang->trans("Override Tag").':',	'val' => '',   'statustext' => $ps_lang->trans("Override automatic clantag match with the tag specified")),
-	'pos'		=> array('label' => $ps_lang->trans("Position").':',	'val' => 'B',  'statustext' => $ps_lang->trans("Position of plain clantags (not used for regex clantags)")),
-	'type'		=> array('label' => $ps_lang->trans("Type").':',		'val' => 'B',  'statustext' => $ps_lang->trans("Type of clantag")),
-	'example'	=> array('label' => $ps_lang->trans("Example").':',	'val' => 'B',  'statustext' => $ps_lang->trans("Example of what the clantag would match")),	
+$_order = array(
+	'start'	=> $start,
+	'limit'	=> $limit,
+	'order' => $order, 
+	'sort'	=> $sort
 );
 
-$sections = array(
-	array(
-		'label'	=> 'plain',
-		'comment' => 'Plain clantag definitions',
-	),
-	array(
-		'label'	=> 'regex',
-		'comment' => 'Regular expression clantag definitions',
-	)
-);
-
-$act = strtolower($act);
-$move = strtolower($move);
-if (!is_numeric($id)) $id = 0;
-if (!is_numeric($move)) $move = 0;
-
-$plainlist = array();
-$regexlist = array();
-$plainlist = $ps_db->fetch_rows(1, "SELECT * FROM $ps->t_config_clantags WHERE type='plain' ORDER BY idx");
-$regexlist = $ps_db->fetch_rows(1, "SELECT * FROM $ps->t_config_clantags WHERE type='regex' ORDER BY idx");
-
-if (empty($s)) {
-	$s =  'plain';
-	if (!count($plainlist) and count($regexlist)) {
-		$s = 'regex';
-	}
-}
-
-# export the data and exit
-if ($export) {
-	$list = array_merge($plainlist, $regexlist);
-	// get the first item in the list so we can determine what keys are available
-	$i = $list[0];
-	unset($i['clantag'], $i['id']);			// remove unwanted keys
-	$keys = array_keys($i);				// get a list of the keys (no values)
-	array_unshift($keys, 'clantag');		// make sure event is always the first key
-
-	$csv = csv($keys);				// 1st row is always the key order
-	foreach ($list as $i) {
-		$set = array();
-		foreach ($keys as $k) {			// we want to make sure our key order is the same
-			$set[] = $i[$k];		// and we only use keys from the original $keys list
-		}
-		$csv .= csv($set);
-	}
-
-	// remove all pending output buffers first 
-	while (@ob_end_clean());
-	header("Pragma: no-cache");
-	header("Content-Type: text/csv");
-	header("Content-Length: " . strlen($csv));
-	header("Content-Disposition: attachment; filename=\"ps-clantags.csv\"");
-	print $csv;
-	exit();
-}
-
-$ct = array();
-if ($id) {
-	$ct = $ps_db->fetch_row(1, "SELECT * FROM $ps->t_config_clantags WHERE id='" . $ps_db->escape($id) . "'");
-}
-
-# re-order the clantag list
-if ($move and $ct['id']) {
-	$list = ($ct['type'] == 'plain') ? $plainlist : $regexlist;
-	$move = ($move > 0) ? 15 : -15;	
-
+// re-order tags
+if ($move and $id) {
+	$list = $ps->db->fetch_rows(1, "SELECT id,idx FROM $ps->t_config_clantags ORDER BY idx");
+	$inc = $move == 'up' ? -15 : 15;
 	$idx = 0;
-	foreach ($list as $i => $a) {
+	// loop through all tags and set their idx linearly
+	for ($i=0; $i < count($list); $i++) {
 		$list[$i]['idx'] = ++$idx * 10;
-		if ($list[$i]['id'] == $id) $list[$i]['idx'] += $move;
+		if ($list[$i]['id'] == $id) $list[$i]['idx'] += $inc;
+		$ps->db->update($ps->t_config_clantags, array( 'idx' => $list[$i]['idx'] ), 'id', $list[$i]['id']);
 	}
-	usort($list, 'sortidx');
+	unset($submit);
+}
 
-	$idx = 0;
-	$ps_db->begin();
-	foreach ($list as $i) {
-		$ps_db->update($ps->t_config_clantags, array('idx' => ++$idx), 'id', $i['id']);
-	}
-	$ps_db->commit();
+$list = $ps->db->fetch_rows(1, "SELECT * FROM $ps->t_config_clantags " . $ps->getsortorder($_order));
+$total = $ps->db->count($ps->t_config_clantags);
+$pager = pagination(array(
+	'baseurl'	=> ps_url_wrapper(array('sort' => $sort, 'order' => $order, 'limit' => $limit)),
+	'total'		=> $total,
+	'start'		=> $start,
+	'perpage'	=> $limit, 
+	'pergroup'	=> 5,
+	'separator'	=> ' ', 
+	'force_prev_next' => true,
+	'next'		=> $cms->trans("Next"),
+	'prev'		=> $cms->trans("Previous"),
+));
 
-	# update the array in memory so things sort correctly on the webpage
-	if ($ct['type'] == 'plain') {
-		$plainlist = $list;
+// massage the tags array a bit so we don't have to do the logic in the theme template
+$tags = array();
+$first = $list ? $list[0]['id'] : array();
+$last  = $list ? $list[ count($list) - 1]['id'] : array();
+foreach ($list as $tag) {
+	if ($tag['id'] == $first) {
+		$tag['down'] = 1;
+	} elseif ($tag['id'] == $last) {
+		$tag['up'] = 1;
 	} else {
-		$regexlist = $list;
+		$tag['down'] = 1;
+		$tag['up'] = 1;
 	}
+	$tags[] = $tag;
 }
 
+$cms->crumb('Manage', ps_url_wrapper(array('_base' => 'manage.php' )));
+$cms->crumb('Clan Tags', ps_url_wrapper(array('_base' => 'clantags.php' )));
 
 
-$form = array();
-$errors = array();
+// assign variables to the theme
+$cms->theme->assign(array(
+	'page'		=> basename(__FILE__, '.php'), 
+	'clantags'	=> $tags,
+	'pager'		=> $pager,
+));
 
-if ($submit and $del and $ct['id']) {
-	$ps_db->delete($ps->t_config_clantags, 'id', $ct['id']);
-	previouspage(sprintf("$PHP_SELF?c=%s&s=%s", urlencode($c), urlencode($ct['type'])));
-
-} elseif ($submit and $act == 'edit' and $_SERVER['REQUEST_METHOD'] == 'POST') {
-	$form = packform($formfields);
-	trim_all($form);
-
-	// automatically verify all fields
-	foreach ($formfields as $key => $ignore) {
-		form_checks($form[$key], $formfields[$key]);
-	}
-
-	$errors = all_form_errors($formfields);
-
-	if (!count($errors)) {
-		$set = $form;
-		if (!$id) {
-			$set['id'] = $ps_db->next_id($ps->t_config_clantags);
-		}
-
-		$ok = 0;
-		$ps_db->begin();
-		if ($id) {
-			$ok = $ps_db->update($ps->t_config_clantags, $set, 'id', $id);
-		} else {
-			$ok = $ps_db->insert($ps->t_config_clantags, $set);
-		}
-
-		if ($ok) {
-			$ps_db->commit();
-			previouspage(sprintf("$PHP_SELF?c=%s&s=%s", urlencode($c), urlencode($set['type'])));
-		} else {
-			$ps_db->rollback();
-		}
-	}
-	$data += $form;	
-	$data['adminpage'] = 'clantags_edit';
-} elseif ($act == 'edit') {
-	$data += $ct;
-	$data['adminpage'] = 'clantags_edit';
-} elseif ($submit and $new) {
-	$data['adminpage'] = 'clantags_edit';
-}
-
-$data['form'] = $formfields;
-$data['errors'] = $errors;
-$data['plainlist'] = $plainlist;
-$data['regexlist'] = $regexlist;
-$data['tag'] = $ct;
-$data['id'] = $id;
-$data['act'] = $act;
-$data['s'] = $s;
-$data['sections'] = $sections;
-
-
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/2column.css');
+$cms->theme->add_css('css/forms.css');
+//$cms->theme->add_js('js/jquery.interface.js');
+$cms->theme->add_js('js/forms.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer', '');
 
 ?>
-

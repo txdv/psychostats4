@@ -2,25 +2,19 @@
 /*
 	Common IMAGE routines. This file generally only contains simple setup 
 	and configs for all images created within the context of PsychoStats.
-
-	Most of the config in here are simple overrides from the jtp-config.php.
 */
-if (!defined("VALID_PAGE")) die("<b>Access Denied!</b>");
+if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FILE__));
 
 if (defined("PSFILE_IMGCOMMON_PHP")) return 1;
 define("PSFILE_IMGCOMMON_PHP", 1);
 
-define("NOTIMER", 1);
-//define("NOTHEME", 1);
-define("NOSESSION", 1);
-define("NO_CONTENT_TYPE", 1);
-include(dirname(__FILE__) . "/common.php");
+// some routines (PEAR::XML) are coded with relative paths so I need to explicitly update the include_path
+ini_set('include_path', ini_get('include_path') . PATH_SEPARATOR . dirname(__FILE__));
 
-// XML Image Config
-$xmlconfig = implode("", file(THEME_DIR . "/config.xml"));
-$imgconf = XML_unserialize($xmlconfig);
-$imgconf = $imgconf['config'];
-if (!is_array($imgconf)) $imgconf = array();
+require_once(dirname(__FILE__) . "/common.php");
+require_once(dirname(__FILE__) . "/XML/Unserializer.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
 // JPGRAPH config
 
@@ -34,9 +28,9 @@ define("CACHE_TIMEOUT", $ps->conf['theme']['images']['cache_timeout']);
 
 // Path to store cached images. If left blank system defaults will be used
 if (!empty($ps->conf['theme']['images']['cache_dir'])) {
-	define("CACHE_DIR", $ps->conf['theme']['images']['cache_dir']);
+	define("CACHE_DIR", catfile($ps->conf['theme']['images']['cache_dir']) . DIRECTORY_SEPARATOR);
 } else {
-	define("CACHE_DIR", tmppath("jpgraph_cache"));
+	define("CACHE_DIR", catfile(get_temp_dir(), "ps_img_cache") . DIRECTORY_SEPARATOR);
 }
 
 // Path to the TTF fonts. If left blank system defaults will be used
@@ -73,35 +67,49 @@ function isImgCached($file) {
 	if (file_exists($filename)) {
 		if (CACHE_TIMEOUT == 0) return true;
 		$diff = time() - filemtime($filename);
-#		print "$diff < " . (CACHE_TIMEOUT * 60) . "<br>";
 		return ($diff < CACHE_TIMEOUT * 60);
 	} 
 	return false;
 }
 
 function stdImgFooter(&$graph,$left=true,$right=true) {
-	global $ps;
-	if ($left and imgconf('images.footer attr.show',1)) {
-		$graph->footer->left->Set(sprintf(imgconf('images.footer.left', 'PsychoStats v%s'), $ps->conf['info']['version']));
-		$graph->footer->left->SetColor(imgconf('images.footer attr.color', 'black@0.5'));
-		$graph->footer->left->SetFont(constant(imgconf('images.footer attr.font','FF_FONT0')),FS_NORMAL);
+	global $ps, $imgconf;
+	$i =& $imgconf;
+	if ($left and imgdef($i['common']['footer']['show'],1)) {
+		$graph->footer->left->Set(sprintf(imgdef($i['common']['footer']['left'], 'PsychoStats v%s'), $ps->version(true)));
+		$graph->footer->left->SetColor(imgdef($i['common']['footer']['color'], 'black@0.5'));
+		$graph->footer->left->SetFont(constant(imgdef($i['common']['footer']['font'],'FF_FONT0')),FS_NORMAL);
 	}
 
-	if ($right and imgconf('images.footer attr.show',1)) {
-		$graph->footer->right->Set(date(imgconf('images.footer.right', 'Y-m-d @ H:i:s')));
-		$graph->footer->right->SetColor(imgconf('images.footer attr.color', 'black@0.5'));
-		$graph->footer->right->SetFont(constant(imgconf('images.footer attr.font','FF_FONT0')),FS_NORMAL);
+	if ($right and imgdef($i['common']['footer']['show'],1)) {
+		$graph->footer->right->Set(date(imgdef($i['common']['footer']['right'], 'Y-m-d @ H:i:s')));
+		$graph->footer->right->SetColor(imgdef($i['common']['footer']['color'], 'black@0.5'));
+		$graph->footer->right->SetFont(constant(imgdef($i['common']['footer']['font'],'FF_FONT0')),FS_NORMAL);
 	}
 }
 
-function imgconf($var, $default='') {
-	global $imgconf;
-	$keys = explode('.', $var);
-	$a =& $imgconf;	
-	foreach ($keys as $k) {
-		if (!array_key_exists($k, $a)) return $default;
-		$a =& $a[$k];
+function imgdef($var, $def = '') {
+	if ($var != '') {
+		return $var;
 	}
-	return $a != '' ? $a : $default;
+	return $def;		
 }
+
+function load_img_conf() {
+	global $ps, $cms;
+	$xml = &new XML_Unserializer(array(
+		XML_UNSERIALIZER_OPTION_ATTRIBUTES_PARSE    => true,
+		XML_UNSERIALIZER_OPTION_ATTRIBUTES_ARRAYKEY => false
+	));
+	$status = $xml->unserialize($cms->theme->parse('images.xml'));
+	if (PEAR::isError($status)) {
+		die("Error reading $file: " . $status->getMessage());
+	} else {
+		$conf = $xml->getUnserializedData();
+		if (!is_array($conf)) $conf = array();
+		return $conf;
+	}
+}
+
+
 ?>

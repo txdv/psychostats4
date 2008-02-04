@@ -6,7 +6,7 @@ use base qw( PS::Debug );
 use POSIX;
 use util qw( :date );
 
-our $VERSION = '1.00';
+our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
 our $BASECLASS = undef;
 
 our $GAMETYPE = '';
@@ -25,13 +25,13 @@ our $TYPES = {
 	damage		=> '+',
 	hits		=> '+',
 	shots		=> '+',
-	shot_chest	=> '+',
-	shot_head	=> '+',
-	shot_leftarm	=> '+',
-	shot_leftleg	=> '+',
-	shot_rightarm	=> '+',
-	shot_rightleg	=> '+',
-	shot_stomach	=> '+',
+#	shot_chest	=> '+',
+#	shot_head	=> '+',
+#	shot_leftarm	=> '+',
+#	shot_leftleg	=> '+',
+#	shot_rightarm	=> '+',
+#	shot_rightleg	=> '+',
+#	shot_stomach	=> '+',
 	accuracy	=> [ percent => qw( hits shots ) ],
 	shotsperkill	=> [ ratio => qw( shots kills ) ],
 	joined		=> '+',
@@ -101,10 +101,9 @@ sub _init_table {
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
 	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
-# roles currently do not allow for game/modtype extensions
-#	if ($tail and $self->has_mod_tables) {
-#		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($basetable . $tail)};
-#	}
+	if ($tail and $self->has_mod_tables) {
+		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
+	}
 
 	# remove unwanted/special keys
 	delete @$fields{ qw( statdate ) };
@@ -128,11 +127,13 @@ sub _init {
 	my $self = shift;
 	my $db = $self->{db};
 
+	$self->{basic} = {};
+	$self->{mod} = {};
 	return unless $self->{uniqueid};
 
 	$self->{conf_maxdays} = $self->{conf}->get_main('maxdays');
 
-	my $team = $self->{team};
+#	my $team = $self->{team};
 	($self->{roleid}, $self->{name}, $self->{team}) = $db->select($db->{t_role}, [qw( roleid name team )], 
 		"uniqueid=" . $db->quote($self->{uniqueid})
 	);
@@ -142,13 +143,15 @@ sub _init {
 		my $res = $db->insert($db->{t_role}, { 
 			roleid 		=> $self->{roleid},
 			uniqueid 	=> $self->{uniqueid},
-			team		=> $self->{team} || $team || '',
+			team		=> $self->{team} || undef,
 		});
 		$self->fatal("Error adding role to database: " . $db->errstr) unless $res;
-	} elsif (!$self->{team} and $team) {	# if the team was previously unknown, update it now
-		$db->update($db->{t_role}, { team => $team }, [ uniqueid => $self->{uniqueid} ]);
-		$self->{team} = $team;
+#	} elsif (!$self->{team} and $team) {	# if the team was previously unknown, update it now
+#		$db->update($db->{t_role}, { team => $team }, [ uniqueid => $self->{uniqueid} ]);
+#		$self->{team} = $team;
 	}
+
+	return $self;
 }
 
 sub name { $_[0]->{name} || $_[0]->{uniqueid} }
@@ -162,15 +165,16 @@ sub statdate {
 	$self->{statdate} = sprintf("%04d-%02d-%02d",$y,$m,$d);
 }
 
-sub get_types { return wantarray ? %$TYPES : $TYPES; }
+sub get_types { $TYPES }
 
 sub save {
 	my $self = shift;
 	my $db = $self->{db};
 	my $dataid;
 
-	# save basic role stats ...
-	$db->save_stats( $db->{c_role_data}, $self->{basic}, $TYPES, [ roleid => $self->{roleid} ], $self->{statdate});
+	# save basic+mod role stats ...
+	$dataid = $db->save_stats( $db->{c_role_data}, { %{$self->{basic}}, %{$self->{mod}} }, $self->get_types, 
+		[ roleid => $self->{roleid} ], $self->{statdate});
 
 	if (diffdays_ymd(POSIX::strftime("%Y-%m-%d", localtime), $self->{statdate}) <= $self->{conf_maxdays}) {
 		$dataid = $self->{db}->save_stats($db->{t_role_data},  $self->{basic}, $TYPES, [ roleid => $self->{roleid}, statdate => $self->{statdate} ]);

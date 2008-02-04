@@ -1,89 +1,102 @@
 <?php
-define("VALID_PAGE", 1);
-include(dirname(__FILE__) . '/includes/common.php');
+define("PSYCHOSTATS_PAGE", true);
+include(dirname(__FILE__) . "/includes/common.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-/**
--- get breakdown of all CC's and how many players match each
-select pp.cc,count(pp.cc) total,cn from ps_plr_profile pp, ps_geoip_cc c where c.cc=pp.cc group by pp.cc order by total DESC;
+// change this if you want the default sort of the player listing to be something else like 'kills'
+$DEFAULT_SORT = 'skill';
+$DEFAULT_LIMIT = 100;
 
-**/
+// collect url parameters ...
+$validfields = array('sort','order','start','limit','q');
+$cms->theme->assign_request_vars($validfields, true);
 
-$validfields = array('submit','show','sort','order','start','limit','andor','search','themefile','xml');
-globalize($validfields);
 
 $sort = trim(strtolower($sort));
 $order = trim(strtolower($order));
-$show = trim(strtolower($show));
-if (!preg_match('/^\w+$/', $sort)) $sort = 'skill';
+if (!preg_match('/^\w+$/', $sort)) $sort = $DEFAULT_SORT;
 if (!in_array($order, array('asc','desc'))) $order = 'desc';
 if (!is_numeric($start) || $start < 0) $start = 0;
-if (!is_numeric($limit) || $limit < 0) $limit = 100;
-if (!in_array(strtolower($andor), array('and','or','exact'))) $andor = 'or';
-if ($search == '') $search = '';
-$search = trim($search);
+if (!is_numeric($limit) || $limit < 0 || $limit > 500) $limit = $DEFAULT_LIMIT;
+$q = trim($q);
 
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
-}
+// fetch stats, etc...
+$totalplayers = $ps->get_total_players(array('allowall' => 1, 'filter' => $q));
+$overalltotal = $q == '' ? $totalplayers : $ps->get_total_players(array('allowall' => 1));
+$totalranked  = $ps->get_total_players(array('allowall' => 0, 'filter' => $q));
 
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'index';
-
-$data['search_urlencoded'] = urlencode($search);
-$data['totalplayers'] = $ps->get_total_players(array('allowall' => 1), $smarty);
-$data['rankedplayers'] = $ps->get_total_players(array('allowall' => 0), $smarty);
-$totalresults = 0;
-
-// if $submit is true a new 'search' was requested
-if ($submit and $search != '') {
-	$show = 'results';
-	$data['totalplayersearch'] = $totalresults = $ps->search_players(array(
-		'search' 	=> $search,
-		'ranked' 	=> 1,
-	));
-} elseif ($show == 'results') {
-	$res = $ps->get_search_results();
-	$total = $res['results'] ? count(explode(',',$res['results'])) : 0;
-	$data['totalplayersearch'] = $total;
-} else {
-	$show = '';
-	$data['totalplayersearch'] = $data['rankedplayers'];
-}
-
-
-$data['players'] = $ps->get_player_list(array(
+$players = $ps->get_player_list(array(
+	'filter'	=> $q,
 	'sort'		=> $sort,
 	'order'		=> $order,
 	'start'		=> $start,
 	'limit'		=> $limit,
-	'search'	=> $show == 'results' ? TRUE : FALSE,
-	'joinclaninfo' 	=> 0,
-), $smarty);
-//print $ps->db->lastcmd;
+	'joinclaninfo' 	=> false,
+));
 
-// spit out XML string and exit
-if ($xml) print_xml($data['players']);
-
-// If we found an exact match from a player search we jump directly to their stats page
-//if ($search && $limit > 1 && count($data['players']) == 1 && $data['players'][0]['plrid']) {
-if ($search && count($data['players']) == 1 && $data['players'][0]['plrid']) {
-	gotopage("player.php?id=" . $data['players'][0]['plrid']);
-}
-
-$data['pagerstr'] = pagination(array(
-	'baseurl'	=> ps_url_wrapper(array('show' => $show, 'search' => $search, 'sort' => $sort, 'order' => $order, 'limit' => $limit)),
-	'total'		=> $data['totalplayersearch'],
+$pager = pagination(array(
+	'baseurl'	=> ps_url_wrapper(array('sort' => $sort, 'order' => $order, 'limit' => $limit, 'q' => $q)),
+	'total'		=> $totalranked,
 	'start'		=> $start,
 	'perpage'	=> $limit, 
 	'pergroup'	=> 5,
-	'next'		=> $ps_lang->trans("Next"),
-	'prev'		=> $ps_lang->trans("Previous"),
-	'class'		=> 'menu',
+	'separator'	=> ' ', 
+	'force_prev_next' => true,
+	'next'		=> $cms->trans("Next"),
+	'prev'		=> $cms->trans("Previous"),
 ));
 
-$data['PAGE'] = 'index';
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
+// build a dynamic table that plugins can use to add custom columns of data
+$table = $cms->new_table($players);
+$table->if_no_data($cms->trans("No Players Found"));
+$table->attr('class', 'ps-table ps-player-table');
+$table->sort_baseurl(array( 'q' => $q ));
+$table->start_and_sort($start, $sort, $order);
+$table->columns(array(
+	'rank'			=> array( 'label' => $cms->trans("Rank"), 'callback' => 'dash_if_empty' ),
+	'name'			=> array( 'label' => $cms->trans("Player"), 'callback' => 'ps_table_plr_link' ),
+	'kills'			=> array( 'label' => $cms->trans("Kills"), 'modifier' => 'commify' ),
+	'deaths'		=> array( 'label' => $cms->trans("Deaths"), 'modifier' => 'commify' ),
+	'killsperdeath' 	=> array( 'label' => $cms->trans("K:D"), 'tooltip' => $cms->trans("Kills Per Death") ),
+	'headshotkills'		=> array( 'label' => $cms->trans("HS"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Headshot Kills") ),
+	'headshotkillspct'	=> array( 'label' => $cms->trans("HS%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Headshot Kills Percentage") ),
+	'onlinetime'		=> array( 'label' => $cms->trans("Online"), 'modifier' => 'compacttime' ),
+	'activity'		=> array( 'label' => $cms->trans("Activity"), 'modifier' => 'activity_bar' ),
+	'skill'			=> $cms->trans("Skill"),
+));
+$table->column_attr('name', 'class', 'left');
+$ps->index_table_mod($table);
+$cms->filter('players_table_object', $table);
 
-include(PS_ROOTDIR . '/includes/footer.php');
+
+// assign variables to the theme
+$cms->theme->assign(array(
+	'q'		=> $q,
+	'search_blurb'	=> sprintf($cms->trans('Search criteria "<em>%s</em>" matched %d ranked players out of %d total'), ps_escape_html($q),$totalplayers,$totalranked),
+	'players'	=> $players,
+	'players_table'	=> $table->render(),
+	'overalltotal'	=> $overalltotal,
+	'totalplayers'	=> $totalplayers,
+	'totalranked' 	=> $totalranked,
+	'pager'		=> $pager,
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+//$cms->theme->add_js('js/index.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
+
+function activity_bar($pct) {
+//	$out = $pct > 0 ? sprintf("%0.0f%%", $pct) : '-';
+	$out = pct_bar(array(
+		'pct' => $pct
+	));
+	return $out;
+}
+
+function dash_if_empty($val) {
+	return !empty($val) ? $val : '-';
+}
+
 ?>

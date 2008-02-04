@@ -2,27 +2,38 @@
 /*
 	Displays a graph that shows the total connections for the last 30 days
 */
-define("VALID_PAGE", 1);
-include(dirname(__FILE__) . '/includes/imgcommon.php');
-include(JPGRAPH_DIR . '/jpgraph_bar.php');
+define("PSYCHOSTATS_PAGE", true);
+include(dirname(__FILE__) . "/includes/imgcommon.php");
 include(JPGRAPH_DIR . '/jpgraph_line.php');
+include(JPGRAPH_DIR . '/jpgraph_regstat.php');
 
 $imgfilename = 'auto';
 $data = array();
+$datay = array();
+$datax = array();
 $labels = array();
 $sum = 0;
 $avg = 0;
 $maxconn = 0;
 
-$max = 30;	// more than 30 starts to look ugly
+$smooth = 3;	// how many points to smooth the curves
+$max = 31;	// more than 30 starts to look ugly
+
+$imgconf = array();
+$q = array();
 
 if (!isImgCached($imgfilename)) {
-//	$ps_db->query("SELECT statdate,SUM(connections),SUM(kills) FROM $ps->t_map_data GROUP BY statdate ORDER BY statdate LIMIT $max");
-//	while (list($statdate,$totalforday,$killsforday) = $ps_db->fetch_row(0)) {
-	$ps_db->query("SELECT statdate,SUM(connections) FROM $ps->t_map_data GROUP BY statdate ORDER BY statdate DESC LIMIT $max");
-	while (list($statdate,$totalforday) = $ps_db->fetch_row(0)) {
+	$imgconf = load_img_conf();
+	$q =& $imgconf['connimg'];
+
+//	$ps->db->query("SELECT statdate,SUM(connections),SUM(kills) FROM $ps->t_map_data GROUP BY statdate ORDER BY statdate LIMIT $max");
+//	while (list($statdate,$totalforday,$killsforday) = $ps->db->fetch_row(0)) {
+	$ps->db->query("SELECT statdate,SUM(connections) FROM $ps->t_map_data GROUP BY statdate ORDER BY statdate DESC LIMIT $max");
+	$i = 1;
+	while (list($statdate,$totalforday) = $ps->db->fetch_row(0)) {
 		$sum += $totalforday;
-		array_unshift($data, $totalforday);
+		array_unshift($datay, $totalforday);
+		array_push($datax, $i++);
 		array_unshift($labels, $statdate);
 //		array_unshift($kills, $killsforday);
 		if ($totalforday > $maxconn) $maxconn = $totalforday;
@@ -41,91 +52,100 @@ if (!isImgCached($imgfilename)) {
 
 // Not enough data to produce a proper graph
 // jpgraph will crash if we give it an empty array
-if (!count($data)) {
+if (!count($datax)) {
 	$sum = 0;
-	$data[] = 0;
+	$datax[] = 0;
+	$datay[] = 0;
+	$datax[] = 1;
+	$datay[] = 1;
 	$labels = array("");
 }
 
 // calculate the average of our dataset
-if (count($data)) {
-	$avg = $sum / count($data);
+if (count($datay)) {
+	$avg = $sum / count($datay);
 }
 
 // Setup the graph.
-$graph = new Graph(600,250,$imgfilename, CACHE_TIMEOUT);
-$graph->SetScale("textlin");
+$graph = new Graph(imgdef($q['width'],600), imgdef($q['height'], 250), $imgfilename, CACHE_TIMEOUT);
+$graph->SetScale("linlin");
 //$graph->SetY2Scale("lin");
 $graph->SetMargin(60,30,20,75);
-$graph->title->Set(imgconf('connimg.frame.title', 'Connections Per Day'));
+$graph->title->Set(imgdef($q['frame']['title']['_content'], 'Connections Per Day'));
 
-$graph->xaxis->SetTickLabels($labels);
+//$graph->xaxis->SetTickLabels($labels);
 $graph->xaxis->HideTicks();
 $graph->xaxis->SetLabelAngle(90);
+$graph->xaxis->SetLabelFormatCallback('xlabels');
+$graph->xaxis->SetLabelAlign('center', 'top');
 
 $graph->yaxis->HideZeroLabel(); 
 //$graph->y2axis->HideZeroLabel(); 
 
-$graph->ygrid->SetFill((bool)imgconf('connimg.frame.ygrid attr.show', true),
-	imgconf('connimg.frame.ygrid attr.color1', 'whitesmoke@0.5'),
-	imgconf('connimg.frame.ygrid attr.color2', 'lightblue@0.5')
+$graph->ygrid->SetFill((bool)imgdef($q['frame']['ygrid']['show'], true),
+	imgdef($q['frame']['ygrid']['color1'], 'whitesmoke@0.5'),
+	imgdef($q['frame']['ygrid']['color2'], 'lightblue@0.5')
 );
-$graph->ygrid->Show((bool)imgconf('connimg.frame.ygrid attr.show', true));
+$graph->ygrid->Show((bool)imgdef($q['frame']['ygrid']['show'], true));
 
-$font1 = constant(imgconf('connimg.frame.title attr.font', 'FF_FONT1'));
-$legendfont = constant(imgconf('connimg.legend attr.font', 'FF_FONT1'));
+$font1 = constant(imgdef($q['frame']['title']['font'], 'FF_FONT1'));
+$legendfont = constant(imgdef($q['legend']['font'], 'FF_FONT1'));
 $graph->legend->SetFont($legendfont,FS_NORMAL);
 $graph->title->SetFont($font1, FS_BOLD);
 $graph->yaxis->title->SetFont($font1,FS_BOLD);
 $graph->xaxis->SetFont(FF_FONT0,FS_NORMAL);
 //$graph->xaxis->title->SetFont($font1,FS_BOLD);
 
+/*
 $graph->SetBackgroundGradient(
-	imgconf('connimg.frame attr.color1', 'gray'),
-	imgconf('connimg.frame attr.color2', 'whitesmoke'),
-	constant(imgconf('connimg.frame attr.type', 'GRAD_LEFT_REFLECTION')),
-	constant(imgconf('connimg.frame attr.style', 'BGRAD_MARGIN'))
+	imgdef($q['frame']['color1'], 'gray'),
+	imgdef($q['frame']['color2'], 'whitesmoke'),
+	constant(imgdef($q['frame']['type'], 'GRAD_LEFT_REFLECTION')),
+	constant(imgdef($q['frame']['style'], 'BGRAD_MARGIN'))
 ); 
-$graph->SetFrame(false);
-//$graph->SetFrame(true,'gray',0); 
+/**/
+//$graph->SetFrame(false);
+$graph->SetMarginColor(imgdef($q['frame']['margin'], '#d7d7d7')); 
+$graph->SetFrame(true,imgdef($q['frame']['color'],'gray'),imgdef($q['frame']['width'], 1)); 
 //$graph->SetShadow();
 
+//$smooth = max(imgdef($q['smooth'], 10), 10);
+
+$s = new Spline($datax, $datay);
+list($x,$y) = $s->Get(count($datay) * $smooth);
+
 // Create the bar pot
-$p1 = new BarPlot($data);
-//$p1->SetFillGradient("lightgray","whitesmoke",GRAD_RAISED_PANEL);
-//$p1->SetFillGradient("lightblue","lightgray",GRAD_HOR);
-$p1->SetFillGradient(
-	imgconf('connimg.frame.bar attr.color1', '#3658F5'),
-	imgconf('connimg.frame.bar attr.color2', '#030C36'),
-	constant(imgconf('connimg.frame.bar attr.type', 'GRAD_HOR'))
-);
-$p1->SetLegend(imgconf('connimg.frame.bar', 'Maximum') . " [$maxconn]");
+$p1 = new LinePlot($y);
+$p1->SetLegend(imgdef($q['frame']['plot'][0]['_content'], 'Maximum') . " [$maxconn]");
+$p1->SetWeight(imgdef($q['frame']['plot'][0]['weight'], 1));
+$p1->SetFillColor(imgdef($q['frame']['plot'][0]['color'], 'blue@0.90'));
+$p1->SetBarCenter();
 
 $avg = intval($avg);
 if ($avg) {
 	$avgdata = array();
-	for ($i=0; $i < count($data); $i++) {
+	for ($i=0; $i < count($datay) * $smooth; $i++) {
 		$avgdata[] = $avg;
 	}
 
 	$p2 = new LinePlot($avgdata);
 //	$p2->SetStyle('dashed');
-	$p2->SetLegend(imgconf('connimg.frame.plot', 'Average') . " [$avg]");
-	$p2->SetWeight(imgconf('connimg.frame.plot attr.weight', 2));
-	$p2->SetColor(imgconf('connimg.frame.plot attr.color', 'khaki4'));
+	$p2->SetLegend(imgdef($q['frame']['plot'][1]['_content'], 'Average') . " [$avg]");
+	$p2->SetWeight(imgdef($q['frame']['plot'][1]['weight'], 2));
+	$p2->SetColor(imgdef($q['frame']['plot'][1]['color'], 'khaki4'));
 	$p2->SetBarCenter();
 	$graph->Add($p2);
 
 	$graph->legend->SetAbsPos(
-		imgconf('connimg.legend attr.x', 20),
-		imgconf('connimg.legend attr.y', 15),
-		imgconf('connimg.legend attr.halign', 'right'),
-		imgconf('connimg.legend attr.valign', 'top')
+		imgdef($q['legend']['x'], 20),
+		imgdef($q['legend']['y'], 15),
+		imgdef($q['legend']['halign'], 'right'),
+		imgdef($q['legend']['valign'], 'top')
 	);
-	$graph->legend->SetFillColor(imgconf('connimg.legend attr.color', 'lightblue@0.5'));
+	$graph->legend->SetFillColor(imgdef($q['legend']['color'], 'lightblue@0.5'));
 	$graph->legend->SetShadow(
-		imgconf('connimg.legend.shadow attr.color', 'gray@0.5'),
-		imgconf('connimg.legend.shadow attr.width', '2')
+		imgdef($q['legend']['shadow']['color'], 'gray@0.5'),
+		imgdef($q['legend']['shadow']['width'], '2')
 	);
 }
 
@@ -153,9 +173,19 @@ if (!$sum) {
 	$graph->AddText($t);
 }
 
-//if (imgconf('connimg attr.antialias', 0)) $graph->img->SetAntiAliasing();
+//if (imgdef($q['antialias'], false)) $graph->img->SetAntiAliasing();
 
 stdImgFooter($graph);
 $graph->Stroke();
+
+
+function xlabels($x) {
+	global $labels, $smooth;
+	$idx = floor($x / $smooth);
+	$idx = $x / $smooth;
+//	return $labels[$idx];
+	return $idx < count($labels) ? $labels[$idx] : $labels[count($labels)-1];
+}
+
 
 ?>

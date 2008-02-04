@@ -11,7 +11,7 @@ use Carp;
 use Data::Dumper;
 use PS::Config;
 
-our $VERSION = '1.00';
+our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
 our $AUTOLOAD;
 
 sub new {
@@ -93,6 +93,15 @@ sub load {
 		$total += $self->{configs}{$ct}->load($ct);			# load the config
 	}
 	return $total;
+}
+
+# reloads all configs previously loaded
+sub reload {
+	my $self = shift;
+	my @configs = @{$self->{order}};
+	$self->{configs} = {};
+	$self->{order} = [];
+	$self->load(@configs);
 }
 
 sub get_opt {

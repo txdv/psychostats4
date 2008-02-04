@@ -1,194 +1,271 @@
 <?php
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 include(PS_ROOTDIR . "/includes/class_calendar.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$validfields = array('themefile','time','y','m','d','type','w');
-globalize($validfields);
+// collect url parameters ...
+$validfields = array('v','d','time','p');
+$cms->theme->assign_request_vars($validfields, true);
 
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'awards';
+// v = what view to display awards as (day,week,month);
+// d = date to view awards for (with the specified view)
+// p = limit awards matching this plrid
 
-$types = array('player', 'weapon', 'weaponclass');
-$type = strtolower($type);
-if (!in_array($type, $types)) $type = 'player';
-
-// get a list of weapons
-$weapon = array();
-$weaponlist = array();
-if ($type == 'weapon') {
-	$weaponlist = $ps->get_weapon_list(array(
-		'sort'		=> 'kills',
-		'order'		=> 'desc',
-		'start'		=> 0,
-		'limit'		=> 100
-	), $smarty);
-
-	// make sure $w matches a weapon in the database; default to the first weapon loaded
-	if (!empty($weaponlist)) {
-		$ok = 0;
-		foreach ($weaponlist as $weap) {
-			if ($weap['uniqueid'] == $w) { 
-				$weapon = $weap;
-				$ok = 1;
-				break;
-			}
-		}
-		if (!$ok) {
-			$w = $weaponlist[0]['uniqueid'];
-			$weapon = $weaponlist[0];
-		}
-	} else {
-		$w = '';
-	}
-
-} elseif ($type == 'weaponclass') {
-	$weaponclasses = $ps_db->fetch_list("SELECT distinct class FROM $ps->t_weapon WHERE class != '' ORDER BY class");
-	if (!empty($weaponclasses)) {
-		$ok = 0;
-		foreach ($weaponclasses as $class) {
-			if ($class == $w) { 
-				$ok = 1;
-				break;
-			}
-		}
-		if (!$ok) $w = $weaponclasses[0];
-	} else {
-		$w = '';
+if (!in_array($v, array('day','week','month'))) {
+	if ($ps->conf['main']['awards']['daily']) {
+		$v = 'day';
+	} elseif ($ps->conf['main']['awards']['weekly']) { 
+		$v = 'week';
+	} else { 
+		$v = 'month';
 	}
 }
 
-// get all available award dates (newest first)
-$dates = $ps_db->fetch_list("select distinct awarddate from $ps->t_awards WHERE awardtype='$type' AND topplrid != 0 order by awarddate DESC");
+if (!is_numeric($p)) $p = '';
+$_p = $ps->db->escape($p, true);
 
-$hadnotime = !is_numeric($time);
-
-// $time is needed because thats what the calendar class uses to prev/next months
-if (!is_numeric($time)) $time = time();
-
-if (!is_numeric($y)) $y = date('Y',$time);
-if (!is_numeric($m)) $m = date('m',$time);
-if (!is_numeric($d)) $d = '01'; //date('d',$time);
-$date = sprintf("%04d-%02d-%02d",$y,$m,$d);
-
-// select the newest monthly award day (or weekly if there are no monthly)
-if (count($dates) and !in_array($date, $dates)) {
-	if ($hadnotime) {
-		$list = $ps_db->fetch_list("select awarddate from $ps->t_awards where awardrange='month' AND awardtype='$type' AND topplrid != 0 order by awarddate DESC limit 1");
-		$date = count($list) ? $list[0] : $dates[0];
-	} else {
-		$low = sprintf("%04d-%02d-%02d",$y,$m,1);
-		$high = sprintf("%04d-%02d-%02d",$y,$m, date('t', $time));
-		$list = $ps_db->fetch_list("select awarddate from $ps->t_awards where (awarddate BETWEEN '$low' and '$high') AND awardtype='$type' AND topplrid != 0 order by awarddate limit 1");
-		$date = count($list) ? $list[0] : $low;
-	}
-	list($y,$m,$d) = split('-', $date);
-}
-
-$cal = new Calendar($date);
-$cal->startofweek( $ps->conf['main']['awards']['startofweek'] == 'monday' ? 1 : 0 );	// 0=sun, 1=mon
-$cal->set_conf(array(
-	'timeurl_callback' => 'cal_timeurl'
-));
-
-$awardlist = array();
-$cmd  = "SELECT a.*, ac.format, ac.desc, ac.groupname, plr.*, pp.* ";
-$cmd .= "FROM ($ps->t_awards a, $ps->t_config_awards ac) ";
-$cmd .= "LEFT JOIN $ps->t_plr plr ON plr.plrid=a.topplrid ";
-$cmd .= "LEFT JOIN $ps->t_plr_profile pp ON pp.uniqueid=plr.uniqueid ";
-$cmd .= "WHERE awarddate='$date' AND awardtype='$type' ";
-if ($type == 'weapon' or $type == 'weaponclass') $cmd .= "AND awardweapon='" . $ps_db->escape($w) . "' ";
-$cmd .= "AND ac.id=a.awardid ";
-$cmd .= "AND topplrid != 0 ";
-$cmd .= "ORDER BY awardname ";
-$awardlist = $ps_db->fetch_rows(1, $cmd);
-//print "explain " . $ps_db->lastcmd . ";";
-
-if (!empty($awardlist)) {
-	$range = $awardlist[0]['awardrange'];
-	if ($type == 'player') {
-		$data['awardlisttitle'] = $ps_lang->trans("Player");
-	} elseif ($type == 'weapon') {
-		$data['awardlisttitle']  = $weapon['name'] != '' ? $weapon['name'] : $weapon['uniqueid'];
-	} elseif ($type == 'weaponclass') {
-		$data['awardlisttitle']  = $w;
-	}
-	$data['awardlisttitle'] .= " ";
-	$t = $cal->ymd2time($date);
-	if ($range == 'month') {
-		$data['awardlisttitle'] .= $ps_lang->trans("Awards for") . date(" F Y", $t);
-	} elseif ($range == 'week') {
-		$data['awardlisttitle'] .= $ps_lang->trans("Awards for week") . date(" #W: M j, Y", $t);
-	} else {
-		$data['awardlisttitle'] .= $ps_lang->trans("Awards for day") . date(" #z: D M j", $t);
-	}
-} else {
-	if ($type == 'player') {
-		$data['awardlisttitle']  = $ps_lang->trans("Awards");
-	} else {
-		$data['awardlisttitle']  = $weapon['name'] != '' ? $weapon['name'] : $weapon['uniqueid'];
-		$data['awardlisttitle'] .= " " . $ps_lang->trans("Awards");
-	}
-}
-
-// get a list of award ranges available for the current month
-$low = sprintf("%04d-%02d-%02d",$y,$m,1);
-$high = sprintf("%04d-%02d-%02d",$y,$m, date('t', $time));
-$ranges = $ps_db->fetch_rows(1, 
-	"SELECT awardrange,awarddate,count(*) total FROM $ps->t_awards a " .
-	"WHERE (awarddate BETWEEN '$low' AND '$high') " .
-	"AND awardtype='$type' " . 
-	"AND topplrid != 0 " .
-	"GROUP BY awardrange,awarddate " .
-	"ORDER BY awarddate"
+$views = array(
+	'day'	=> $cms->trans("Day"),
+	'week'	=> $cms->trans("Week"),
+	'month'	=> $cms->trans("Month")
 );
 
-$datelist = array();
-foreach ($ranges as $r) {
-	$datelist[ $r['awardrange'] ][] = array(
-		'total' => $r['total'],
-		'time'	=> $cal->ymd2time($r['awarddate']),
-		'date'	=> $r['awarddate'],
-		'week'	=> date('W', $cal->ymd2time($r['awarddate'])),
-		'y'	=> substr($r['awarddate'],0,4),
-		'm'	=> substr($r['awarddate'],5,2),
-		'd'	=> substr($r['awarddate'],8,2),
-	);
+// get the min/max ranges for each award range (view).
+$range = array();
+$cmd = "SELECT awardrange,MAX(awarddate),MIN(awarddate) FROM $ps->t_awards ";
+if ($p) $cmd .= " WHERE topplrid=$_p ";
+$cmd .= "GROUP BY awardrange";
+$list = $ps->db->fetch_rows(0, $cmd);
+foreach ($list as $a) {
+	$range[$a[0]]['max'] = $a[1];
+	$range[$a[0]]['min'] = $a[2];
+}
+unset($list);
+
+// no date or the string is invalid?
+if (empty($d) or !preg_match('/\d\d\d\d-\d\d?-\d\d?/', $d)) {
+	$d = date('Y-m-d');
+//	$d = $range[$v]['max'];
 }
 
-// populate calendar days that have awards
-foreach ($dates as $day) {
-	list($_y,$_m,$_d) = split('-', $day);
-	$url = array('_base' => $PHP_SELF, 'y' => $_y, 'm' => $_m, 'd' => $_d, 'type' => $type);
-	if ($type == 'weapon' or $type == 'weaponclass') $url['w'] = $w;
-	$cal->day($day, array(
-		'link'  => ps_url_wrapper($url),
+// determine if this date exists
+/*
+list($valid_date) = $ps->db->fetch_list(sprintf("SELECT 1 FROM $ps->t_awards WHERE awarddate=%s AND awardrange=%s LIMIT 1",
+	$ps->db->escape($d, true),
+	$ps->db->escape($v, true)
+));
+// if the selected date is not in the database then default to the newest date for the current view
+if (!$valid_date) {
+	$d = $range[$v]['max'];
+}
+*/
+
+// either the selected date or the next oldest date will be returned
+$cmd = "SELECT awarddate FROM $ps->t_awards WHERE awardrange = '$v' AND awarddate <= '$d' "; 
+if ($p) $cmd .= "AND topplrid=$_p ";
+$cmd .= "ORDER BY awarddate DESC LIMIT 1";
+list($d) = $ps->db->fetch_list($cmd);
+
+// if date is still empty then we have no awards in the database (at least not for the selected view)
+if (empty($d)) {
+	$cms->full_page_err('awards', array(
+		'message_title'	=> $cms->trans("No Awards Found"),
+		'message'	=> $cms->trans("There are currently no awards in the database to display.")
 	));
 }
 
+$andplr = $p ? " AND topplrid=$_p" : "";
 
-$data['calendar'] = $cal->draw();
-$data['weaponlist'] = $weaponlist;
-$data['awardlist'] = $awardlist;
-$data['weaponclasses'] = $weaponclasses;
-$data['datelist'] = $datelist;
-$data['weapon'] = $weapon;
-$data['date'] = $date;
-$data['time'] = $cal->ymd2time($date);
-$data['type'] = $type;
-$data['y'] = $y;
-$data['m'] = $m;
-$data['d'] = $d;
-$data['w'] = $w;
+// select them separately, since it's possible a date will not exist $nX should be empty in that case.
+list($p1) = $ps->db->fetch_list("SELECT awarddate FROM $ps->t_awards WHERE awardrange = 'day' AND awarddate < '$d' $andplr ORDER BY awarddate DESC LIMIT 1");
+list($p2) = $ps->db->fetch_list("SELECT awarddate FROM $ps->t_awards WHERE awardrange = 'week' AND awarddate < '$d' $andplr ORDER BY awarddate DESC LIMIT 1");
+list($p3) = $ps->db->fetch_list("SELECT awarddate FROM $ps->t_awards WHERE awardrange = 'month' AND awarddate < '$d' $andplr ORDER BY awarddate DESC LIMIT 1");
 
-$data['PAGE'] = 'awards';
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
+list($n1) = $ps->db->fetch_list("SELECT awarddate FROM $ps->t_awards WHERE awardrange = 'day' AND awarddate > '$d' $andplr LIMIT 1");
+list($n2) = $ps->db->fetch_list("SELECT awarddate FROM $ps->t_awards WHERE awardrange = 'week' AND awarddate > '$d' $andplr LIMIT 1");
+list($n3) = $ps->db->fetch_list("SELECT awarddate FROM $ps->t_awards WHERE awardrange = 'month' AND awarddate > '$d' $andplr LIMIT 1");
 
-include(PS_ROOTDIR . "/includes/footer.php");
+$prev = array( 'day' => $p1, 'week' => $p2, 'month' => $p3 );
+$next = array( 'day' => $n1, 'week' => $n2, 'month' => $n3 );
 
-function cal_timeurl(&$cal, $time) {
-	global $PHP_SELF, $type, $w;
-	return ps_url_wrapper(array( '_base' => $PHP_SELF, 'time' => $time, 'type' => $type, 'w' => $w ));
+// create column information based on view
+if ($v == 'month') {
+} elseif ($v == 'week') {
+} else { // day
 }
+
+// create a calendar
+$cal = new Calendar($d);
+$cal->startofweek( $ps->conf['main']['awards']['startofweek'] == 'monday' ? 1 : 0 );	// 0=sun, 1=mon
+$cal->set_conf(array(
+	'show_timeurl'	=> false,
+));
+
+$first = $cal->first_date();
+$last = $cal->last_date();
+
+// populate the calendar with days that have awards
+$list = $ps->db->fetch_rows(1, "SELECT awarddate,awardrange FROM $ps->t_awards WHERE awardrange <> 'week' AND (awarddate BETWEEN '$first' AND '$last') $andplr GROUP BY awarddate");
+foreach ($list as $day) {
+	$cal->day($day['awarddate'], array('link' => ps_url_wrapper(array( 'v' => $day['awardrange'], 'd' => $day['awarddate'], 'p' => $p ))));
+}
+
+$list = $ps->db->fetch_rows(1, "SELECT awarddate FROM $ps->t_awards WHERE awardrange='week' AND (awarddate BETWEEN '$first' AND '$last') $andplr GROUP BY awarddate");
+foreach ($list as $week) {
+	$cal->week($week['awarddate'], array('link' => ps_url_wrapper(array( 'v' => 'week', 'd' => $week['awarddate'], 'p' => $p ))));
+}
+// select the week on the calendar so it highlights the week instead of the 1st day
+$cal->selected($v);
+$cms->theme->assign('calendar', $cal->draw());
+
+// load the awards for the date specified (for all players; not just the selected one if $p is selected)
+$list = $ps->db->fetch_rows(1, 
+	"SELECT a.*,ac.phrase,ac.negative,ac.format,ac.rankedonly,ac.description,p.*,pp.* ". 
+	"FROM $ps->t_awards a, $ps->t_config_awards ac, $ps->t_plr p, $ps->t_plr_profile pp " .
+	"WHERE ac.id=a.awardid AND p.plrid=a.topplrid AND pp.uniqueid=p.uniqueid AND awardrange='$v' AND awarddate='$d' " .
+	"ORDER BY idx,awardtype,awardname"
+);
+$awards = array();
+foreach ($list as $a) {
+	if ($a['awardtype'] == 'player') {
+		$awards[ $a['awardtype'] ][] = $a;
+	} else {
+		$awards[ $a['awardtype'] ][ $a['awardweapon'] ][] = $a;
+	}
+}
+//print_r($awards);
+
+
+// assign variables to the theme
+$cms->theme->assign(array(
+	'page'		=> basename(__FILE__,'.php'),
+	'view_str' 	=> $views[$v],
+	'view'		=> $v,
+	'date'		=> $d,
+	'next'		=> $next,
+	'next_str'	=> next_str($next),
+	'prev'		=> $prev,
+	'prev_str'	=> prev_str($prev),
+	'awards_for_str'=> curr_str($d,$v),
+	'awards'	=> $awards,
+	'plrid'		=> $p
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/2column.css');	// this page has a left column
+$cms->theme->add_css('css/calendar.css');
+$cms->theme->add_js('js/calendar.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
+
+function curr_str($d, $v) {
+	global $cms, $p;
+	$str = "";
+	if ($v == 'day') {
+		$str = $cms->trans("Daily awards for");
+		list($y1,$m1,$d1) = explode('-', date("Y-m-d"));
+		list($y2,$m2,$d2) = explode('-', $d);
+		if ("$y2$m2" == "$y1$m1" and $d2 == $d1) {
+			$str .= " " . $cms->trans("Today");
+		} else {
+			$str .= date(" M j Y", ymd2time($d));
+		}
+	} elseif ($v == 'week') {
+		$first = ymd2time($d);
+		$second = ymd2time($d) + 60*60*24*6;
+		$str = $cms->trans("Weekly awards for week") . date(" W, M", $first);
+		if (date("m",$first) == date("m",$second)) {	// is it the same month?
+			$str .= " " . date("j", $first) . "-" . date("j Y", $second);
+		} else {
+			$str .= " " . date(" d Y", $first) . " - " . date("M d Y", ymd2time($d)+60*60*24*6);
+		}
+	} else {
+		$str = $cms->trans("Monthly awards for") . date(" F Y", ymd2time($d));
+	}
+	return $str;
+}
+
+function next_str($next) {
+	global $cms, $v, $p;
+	$str = "";
+
+	if ($next['day']) {
+		list($y1,$m1,$d1) = explode('-', date("Y-m-d"));
+		list($y2,$m2,$d2) = explode('-', $next['day']);
+		if ("$y2$m2" == "$y1$m1" and $d2+0 == $d1+1) {
+			$str .= sprintf(" %s <a href='%s'>%s</a>", 
+				"<img src='" . $cms->theme->url() . "/img/icons/arrow_right.png' />",
+				ps_url_wrapper(array( 'v' => 'day', 'd' => $next['day'], 'p' => $p )),
+				$cms->trans("Today")
+			);
+		} else {
+			$str .= sprintf(" %s <a href='%s'>%s</a>", 
+				"<img src='" . $cms->theme->url() . "/img/icons/arrow_right.png' />",
+				ps_url_wrapper(array( 'v' => 'day', 'd' => $next['day'], 'p' => $p )),
+				date("M d", ymd2time($next['day']))
+			);
+		}
+	}
+
+	if ($next['week']) {
+		$str .= sprintf(" %s <a href='%s'>%s</a>", 
+			"<img src='" . $cms->theme->url() . "/img/icons/arrow_right.png' />",
+			ps_url_wrapper(array( 'v' => 'week', 'd' => $next['week'], 'p' => $p )),
+			$cms->trans("Week") . date(" W; M d", ymd2time($next['week']))
+		);
+	}
+
+	if ($next['month']) {
+		$str .= sprintf(" %s <a href='%s'><b>%s</b></a>", 
+			"<img src='" . $cms->theme->url() . "/img/icons/arrow_right.png' />",
+			ps_url_wrapper(array( 'v' => 'month', 'd' => $next['month'], 'p' => $p )), 
+			date("M", ymd2time($next['month']))
+		);
+	}
+	return "<div class='next'>$str</div>";
+}
+
+function prev_str($prev) {
+	global $cms, $v, $p;
+	$str = "";
+
+	if ($prev['month']) {
+		$str .= sprintf("<a href='%s'><b>%s</b></a> %s ", 
+			ps_url_wrapper(array( 'v' => 'month', 'd' => $prev['month'], 'p' => $p )), 
+			date("M", ymd2time($prev['month'])),
+			"<img src='" . $cms->theme->url() . "/img/icons/arrow_left.png' />"
+		);
+	}
+
+	if ($prev['week']) {
+		$str .= sprintf("<a href='%s'>%s</a> %s ", 
+			ps_url_wrapper(array( 'v' => 'week', 'd' => $prev['week'], 'p' => $p )),
+			$cms->trans("Week") . date(" W; M d", ymd2time($prev['week'])),
+			"<img src='" . $cms->theme->url() . "/img/icons/arrow_left.png' />"
+		);
+	}
+
+	if ($prev['day']) {
+		list($y1,$m1,$d1) = explode('-', date("Y-m-d"));
+		list($y2,$m2,$d2) = explode('-', $prev['day']);
+		if ("$y2$m2" == "$y1$m1" and $d2+0 == $d1-1) {
+			$str .= sprintf("<a href='%s'>%s</a> %s ", 
+				ps_url_wrapper(array( 'v' => 'day', 'd' => $prev['day'], 'p' => $p )),
+				$cms->trans("Yesterday"),
+				"<img src='" . $cms->theme->url() . "/img/icons/arrow_left.png' />"
+			);
+		} else {
+			$str .= sprintf("<a href='%s'>%s</a> %s ", 
+				ps_url_wrapper(array( 'v' => 'day', 'd' => $prev['day'], 'p' => $p )),
+				date("M d", ymd2time($prev['day'])),
+				"<img src='" . $cms->theme->url() . "/img/icons/arrow_left.png' />"
+			);
+		}
+	}
+
+	return "<div class='prev'>$str</div>";
+}
+
 ?>

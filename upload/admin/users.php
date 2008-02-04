@@ -1,122 +1,95 @@
 <?php
-if (!defined("VALID_PAGE")) die("<b>Access Denied!</b>");
+define("PSYCHOSTATS_PAGE", true);
+define("PSYCHOSTATS_ADMIN_PAGE", true);
+include("../includes/common.php");
+include("./common.php");
 
-if ($register_admin_controls) {
-	$menu =& $PSAdminMenu->getSection( $ps_lang->trans("Manage Users") );
+$validfields = array('ref','start','limit','order','sort','filter','c', 'sel', 'delete','confirm');
+$cms->theme->assign_request_vars($validfields, true);
 
-	$opt =& $menu->newOption( $ps_lang->trans("View"), 'users' );
-	$opt->link(ps_url_wrapper(array('c' => 'users')));
+$message = '';
+$cms->theme->assign_by_ref('message', $message);
 
-	return 1;
-}
+if (!is_numeric($start) or $start < 0) $start = 0;
+if (!is_numeric($limit) or $limit < 0) $limit = 100;
+if (!in_array($order, array('asc','desc'))) $order = 'asc';
+if (!in_array($sort, array('username'))) $sort = 'username';
+$c = trim($c);
+if ($c == '') $c = -1;
 
-$data['PS_ADMIN_PAGE'] = "users";
+$_order = array(
+	'start'		=> $start,
+	'limit'		=> $limit,
+	'order' 	=> $order, 
+	'sort'		=> $sort,
+	'username'	=> $filter,
+	'confirmed'	=> $c
+);
 
-if ($cancel) previouspage('admin.php?c=' . urlencode($c));
-
-$validfields = array('filter','export','import','new','id','act','actionlist','start','limit','acl','delete','confirm','unconfirm');
-globalize($validfields);
-foreach ($validfields as $var) { $data[$var] = $$var; }
-
-//if ($import) gotopage("$PHP_SELF?c=users_import");
-
-if (!is_numeric($id)) $id = 0;
-if (!is_numeric($acl) and $acl != '') $acl = ACL_USER;
-if (!is_numeric($start) || $start < 0) $start = 0;
-if (!is_numeric($limit) || $limit < 0) $limit = 50;
-$sort = "username";
-$order = "asc";
-$filter = trim($filter);
-
-if ($new) gotopage("edituser.php?new=1&ref=" . urlencode("$PHP_SELF?c=$c&filter=$filter&acl=$acl"));
-
-// perform the action requested on the selected users ...
-if (is_array($actionlist) and count($actionlist)) {
-	for ($i=0; $i < count($actionlist); $i++) {
-		// remove invalid elements, and the userid that matches the current user
-		if (!is_numeric($actionlist[$i])) unset($actionlist[$i]);
-		if ($actionlist[$i] == $ps_user['userid']) unset($actionlist[$i]);
-	}
-
-	if ($delete) {
-		$ps_db->query("UPDATE $ps->t_plr_profile SET userid=0 WHERE userid IN (" . join(',', $actionlist) . ")");
-		$ps_db->query("DELETE FROM $ps->t_user WHERE userid IN (" . join(',', $actionlist) . ")");
-		$data['msg'] = count($actionlist) . " " . $ps_lang->trans("users deleted");
-	} elseif ($confirm) {
-		$ps_db->query("UPDATE $ps->t_user SET confirmed=1 WHERE userid IN (" . join(',', $actionlist) . ")");
-		$data['msg'] = count($actionlist) . " " . $ps_lang->trans("users confirmed");
-	} elseif ($unconfirm) {
-		$ps_db->query("UPDATE $ps->t_user SET confirmed=0 WHERE userid IN (" . join(',', $actionlist) . ")");
-		$data['msg'] = count($actionlist) . " " . $ps_lang->trans("users unconfirmed");
-	}
-}
-
-$where = '';
-if ($filter != '') {
-	if ($where) $where .= "AND ";
-	$where .= "(";
-	$where .= "u.username LIKE '%" . $ps_db->escape($filter) . "%' ";
-	$where .= "OR pp.name LIKE '%" . $ps_db->escape($filter) . "%' ";
-	$where .= ") ";
-}
-if ($acl != '') {
-	if ($where) $where .= "AND ";
-	$where .= "accesslevel = $acl";
-}
-
-$list = array();
-$cmd .= "SELECT u.*,p.plrid,pp.name FROM $ps->t_user u ";
-$cmd .= "LEFT JOIN $ps->t_plr_profile pp ON pp.userid=u.userid ";
-$cmd .= "LEFT JOIN $ps->t_plr p ON p.uniqueid=pp.uniqueid ";
-if ($where) $cmd .= "WHERE $where ";
-$cmd .= $ps->_getsortorder(array('start' => $start, 'limit' => $limit, 'order' => $order, 'sort' => $sort));
-$list = $ps_db->fetch_rows(1,$cmd);
-
-# export the data and exit
-# DISABLED FOR THE MOMENT; I have security concerns with allowing this, since passwords (MD5 hashes) are exported
-if (FALSE and $export) {
-	// get the first item in the list so we can determine what keys are available
-	$i = $list[0];
-	unset($i['username'], $i['userid']);		// remove unwanted keys
-	$keys = array_keys($i);				// get a list of the keys (no values)
-	array_unshift($keys, 'username');		// make sure username is always the first key
-
-	$csv = csv($keys);				// 1st row is always the key order
-	foreach ($list as $i) {
-		$set = array();
-		foreach ($keys as $k) {			// we want to make sure our key order is the same
-			$set[] = $i[$k];		// and we only use keys from the original $keys list
+if (($delete or $confirm) and is_array($sel) and count($sel)) {
+	$total_processed = 0;
+	foreach ($sel as $id) {
+		// do not allow the current user to mess with their own account
+		if (is_numeric($id) and $id != $cms->user->userid()) {
+			if ($delete) {
+				if ($cms->user->delete_user($id)) {
+					$ps->db->update($ps->t_plr_profile, array( 'userid' => null ), 'userid', $id);
+					$total_processed++;
+				}
+			} else { // confirm
+				if ($cms->user->confirm_user(1, $id)) {
+					$total_processed++;
+				}
+			}
 		}
-		$csv .= csv($set);
 	}
-
-	// remove all pending output buffers first 
-	while (@ob_end_clean());
-	header("Pragma: no-cache");
-	header("Content-Type: text/csv");
-	header("Content-Length: " . strlen($csv));
-	header("Content-Disposition: attachment; filename=\"ps-users.csv\"");
-	print $csv;
-	exit();
+	if ($delete) {
+		$message = $cms->message('success', array(
+			'message_title'	=> $cms->trans("Users Deleted!"),
+			'message'	=> sprintf($cms->trans("%d users were deleted successfully"), $total_processed),
+		));
+	} else {
+		$message = $cms->message('success', array(
+			'message_title'	=> $cms->trans("Users Confirmed!"),
+			'message'	=> sprintf($cms->trans("%d users were confirmed successfully"), $total_processed),
+		));
+	}
 }
 
-$data['totalusers'] = $ps_db->count($ps->t_user, '*', $where);
-$data['userlist'] = $list;
+$uobj =& $cms->new_user();	// start a user object
 
-$data['pagerstr'] = pagination(array(
-	'baseurl'	=> "$PHP_SELF?c=$c&limit=$limit&filter=" . urlencode($filter) . "&acl=" . urlencode($acl),
-	'total'		=> $data['totalusers'],
+$users = $uobj->get_user_list(true, $_order);	// true = get associated plr info too
+$total = $uobj->total_users($_order);
+$pager = pagination(array(
+	'baseurl'	=> ps_url_wrapper(array('sort' => $sort, 'order' => $order, 'limit' => $limit, 'filter' => $filter, 'c' => $c)),
+	'total'		=> $total,
 	'start'		=> $start,
 	'perpage'	=> $limit, 
-	'pergroup'	=> 3,
-	'prefix'	=> '', //$ps_lang->___trans("Goto") . ': ',
-	'next'		=> $ps_lang->trans("Next"),
-	'prev'		=> $ps_lang->trans("Prev"),
-//	'class'		=> 'menu',
+	'pergroup'	=> 5,
+	'separator'	=> ' ', 
+	'force_prev_next' => true,
+	'next'		=> $cms->trans("Next"),
+	'prev'		=> $cms->trans("Previous"),
 ));
 
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
-}
+$cms->crumb('Manage', ps_url_wrapper(array('_base' => 'manage.php' )));
+$cms->crumb('Users', ps_url_wrapper(array('_base' => $PHP_SELF )));
+
+
+// assign variables to the theme
+$cms->theme->assign(array(
+	'page'		=> basename(__FILE__, '.php'), 
+	'user'		=> $cms->user->to_form_input(),
+	'users'		=> $users,
+	'pager'		=> $pager,
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/2column.css');
+$cms->theme->add_css('css/forms.css');
+$cms->theme->add_js('js/users.js');
+$cms->theme->add_js('js/message.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer', '');
 
 ?>

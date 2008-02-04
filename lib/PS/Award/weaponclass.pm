@@ -21,7 +21,7 @@ sub calc {
 	my $conf = $self->{conf};
 	my $a = $self->{award};
 	my $classes = $db->get_list("SELECT distinct class FROM $db->{t_weapon} WHERE class != '' ORDER BY class");
-	my $allowpartial = $range ne 'day' ? $conf->get_main("awards.allow_partial_$range") : 1;
+	my $allowpartial = $conf->get_main("awards.allow_partial_$range");
 	my ($cmd, $fields);
 
 	my ($newest) = $db->get_row_array("SELECT MAX(statdate) FROM $db->{t_plr_weapons}");
@@ -48,7 +48,7 @@ sub calc {
 
 			next if (!$complete and !$allowpartial);
 
-			$cmd  = "SELECT $expr value, plr.plrid ";
+			$cmd  = "SELECT $expr awardvalue, plr.plrid ";
 			$cmd .= "FROM $db->{t_plr_weapons} data, $db->{t_weapon} w, $db->{t_plr} plr ";
 			$cmd .= "WHERE data.plrid=plr.plrid AND data.weaponid=w.weaponid ";
 			$cmd .= "AND w.class=" . $db->quote($class) . " ";
@@ -68,7 +68,7 @@ sub calc {
 
 			# if all players have a 0 value ignore the award
 			my $total = 0;
-			$total += abs($_->{value} || 0)for @$plrs;
+			$total += abs($_->{awardvalue} || 0)for @$plrs;
 #			next unless $total;
 			$plrs = [] unless $total;
 
@@ -79,6 +79,11 @@ sub calc {
 			if ($id) {
 				$db->delete($db->{t_awards}, [ id => $id ]);
 				$db->delete($db->{t_awards_plrs}, [ awardid => $id ]);
+			}
+
+			if (!@$plrs) {	# do not add anything if we have no valid players
+				$db->commit;
+				next;
 			}
 
 			$id = $db->next_id($db->{t_awards});
@@ -92,22 +97,24 @@ sub calc {
 				awardrange	=> $range,
 				awardcomplete	=> $complete,
 				topplrid	=> @$plrs ? $plrs->[0]{plrid} : 0,
-				topplrvalue	=> @$plrs ? $plrs->[0]{value} : 0
+				topplrvalue	=> @$plrs ? $plrs->[0]{awardvalue} : 0
+#				topplrvalue	=> $self->format(@$plrs ? $plrs->[0]{awardvalue} : 0)
 			};
 			$db->insert($db->{t_awards}, $award);
 
+=pod
 			my $idx = 0;
 			foreach my $p (@$plrs) {
-				next unless $p->{value};
+				next unless $p->{awardvalue};
 				$db->insert($db->{t_awards_plrs}, {
 					id	=> $db->next_id($db->{t_awards_plrs}),
 					idx	=> ++$idx,
 					awardid	=> $id,
 					plrid	=> $p->{plrid},
-					value	=> $p->{value}
+					value	=> $p->{awardvalue}
 				});
 			}
-
+=cut
 			$db->commit;
 		}
 	}

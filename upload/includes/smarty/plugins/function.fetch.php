@@ -14,6 +14,7 @@
  * Purpose:  fetch file, web or ftp data and display results
  * @link http://smarty.php.net/manual/en/language.function.fetch.php {fetch}
  *       (Smarty online manual)
+ * @author Monte Ohrt <monte at ohrt dot com>
  * @param array
  * @param Smarty
  * @return string|null if the assign parameter is passed, Smarty assigns the
@@ -65,7 +66,7 @@ function smarty_function_fetch($params, &$smarty)
                     $port = $uri_parts['port'];
                 }
                 if(!empty($uri_parts['user'])) {
-                    $ps_user = $uri_parts['user'];
+                    $user = $uri_parts['user'];
                 }
                 if(!empty($uri_parts['pass'])) {
                     $pass = $uri_parts['pass'];
@@ -79,7 +80,7 @@ function smarty_function_fetch($params, &$smarty)
                             break;
                         case "user":
                             if(!empty($param_value)) {
-                                $ps_user = $param_value;
+                                $user = $param_value;
                             }
                             break;
                         case "pass":
@@ -171,8 +172,8 @@ function smarty_function_fetch($params, &$smarty)
                             fputs($fp, $curr_header."\r\n");
                         }
                     }
-                    if(!empty($ps_user) && !empty($pass)) {
-                        fputs($fp, "Authorization: BASIC ".base64_encode("$ps_user:$pass")."\r\n");
+                    if(!empty($user) && !empty($pass)) {
+                        fputs($fp, "Authorization: BASIC ".base64_encode("$user:$pass")."\r\n");
                     }
 
                     fputs($fp, "\r\n");

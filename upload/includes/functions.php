@@ -1,14 +1,18 @@
 <?php
-	/*
-		functions.php
+/***
 
-		General utility functions
-	*/
+	functions.php
+	$Id$
 
-if (defined("FILE_FUNCTIONS_PHP")) return 1; 
-define("FILE_FUNCTIONS_PHP", 1); 
+	General utility functions for PsychoStats.
 
-if (!defined("VALID_PAGE")) die("Access Denied!");
+***/
+
+if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FILE__));
+
+if (defined("FILE_PS_FUNCTIONS_PHP")) return 1; 
+define("FILE_PS_FUNCTIONS_PHP", 1); 
+
 
 define("ACL_NONE", -1);
 define("ACL_DENIED", -1);
@@ -17,6 +21,155 @@ define("ACL_CLANADMIN", 5);
 define("ACL_ADMIN", 99);
 
 // --------------------------------------------------------------------------------------------------------------------
+// Interpolates special $tokens in the string.
+// $tokens is a hash array containing variables and can be nested 1 level deep (ie $tok1 or $tok2.value)
+// if $fill is true than any tokens in the string that do not have a matching variable in $tokens is not removed.
+function simple_interpolate($str, $tokens, $fill = false) {
+	$return = "";
+	$ofs = 0;
+	$idx = 0;
+	$i = 0;
+	while (preg_match('/\$([a-z][a-z\d_]+)(?:\.([a-z][a-z\d_]+))?/', $str, $m, PREG_OFFSET_CAPTURE, $ofs)) {
+		if ($i++ > 1000)  {
+			die("ENDLESS LOOP in simple_interpolate (line " . __LINE__ . ") with string '$str'");
+		}
+		$var1	= strtolower($m[1][0]);
+		$var2 	= $m[2][0] ? strtolower($m[2][0]) : '';
+		$idx	= $m[0][1];	// get position of where match begins
+		if (array_key_exists($var1, $tokens)) {
+			if (!empty($var2)) {
+				if (array_key_exists($var2, $tokens[$var1])) {
+					$rep = $tokens[$var1][$var2];
+				} else {
+					$rep = $fill ? "$var1.$var2" : '';
+				}
+			} else {
+				$rep = $tokens[$var1];
+			}
+		} else {
+			$rep = $fill ? $var1 : '';
+		}
+
+		// We replace each token 1 by 1 even if $token1 matches more than once.
+		// this will prevent possible $tokens inside replacement strings from being interpolated.
+		$varstr = $var2 ? "$var1.$var2" : $var1;
+		$str = substr_replace($str, $rep, $idx, strlen($varstr)+1);
+		$ofs = $idx + strlen($rep);
+	}
+	return $str;
+}
+// --------------------------------------------------------------------------------------------------------------------
+function pct_bar($args = array()) {
+	global $cms;
+	require_once(dirname(__FILE__) . "/class_Color.php");
+	$args += array(
+		'pct'		=> 0,
+		'color1'	=> 'cc0000',
+		'color2'	=> '00cc00',
+		'degrees'	=> 1,
+		'width'		=> null,
+		'class'		=> 'pct-bar',
+		'styles'	=> '',
+		'title'		=> null,
+	);
+	static $colors = array();
+	if (!empty($args['width']) and (!is_numeric($args['width']) or $args['width'] < 1)) $args['width'] = 100;
+	$w = $args['width'] ? $args['width'] : 100;
+//	$width = $args['pct'] / 100 * $w; 				// scaled width
+	$key = $args['color1'] . ':' . $args['color2'];
+	if (!$colors[$key]) {
+		$c = new Image_Color();
+		$c->setColors($args['color1'], $args['color2']);
+		$colors[$key] = $c->getRange(100, $args['degrees']);	// 100 colors, no matter the width
+/**
+		foreach ($colors[$key] as $col) {
+			printf("<div style='color: white; background-color: %s'>%s</div>", $col, $col);
+		}
+/**/
+	}
+
+	$styles = !empty($args['styles']) ? $args['styles'] : '';
+	if (!empty($args['width'])) {
+		$styles = " width: " . $args['width'] . "px;";
+	}
+	if (!empty($styles)) $styles = " style='$styles'";
+
+	$out = sprintf("<span %s title='%s'%s><span style='width: %s; background-color: #%s'></span></span>",
+		!empty($args['class']) ? "class='" . $args['class'] . "'" : "",
+		!empty($args['title']) ? $args['title'] : (int)($args['pct']) . '%',
+		$styles,
+		(int)($args['pct']) . '%',
+		$colors[$key][intval($args['pct']) - 1]
+	);
+	return $out;
+}
+// --------------------------------------------------------------------------------------------------------------------
+// Returns HTML for a dual percentage bar between 2 percentages. Pure html+css.
+function dual_bar($args = array()) {
+	global $cms;
+	$args += array(
+		'pct1'		=> 0,
+		'pct2'		=> 0,
+		'color1'	=> 'cc0000',
+		'color2'	=> '00cc00',
+		'title1'	=> null,
+		'title2'	=> null,
+		'width'		=> null,
+		'class'		=> 'dual-bar',
+		'styles'	=> '',
+	);
+	if (!empty($args['width']) and (!is_numeric($args['width']) or $args['width'] < 1)) $args['width'] = 100;
+	$w = $args['width'] ? $args['width'] : 100;
+//	$width = $args['pct'] / 100 * $w; 				// scaled width
+
+	if (!$args['pct2']) {
+		$args['pct2'] = $args['pct1'] ? 100 - $args['pct1'] : 100;
+	}
+
+	$styles  = (int)$args['pct2'] ? "background-color: #" . $args['color2'] . "; " : '';
+	$styles .= !empty($args['styles']) ? $args['styles'] : '';
+	if (!empty($args['width'])) {
+		$styles .= " width: " . $args['width'] . "px;";
+	}
+	if (!empty($styles)) $styles = " style='$styles'";
+	// add the 'title' to the end of the styles string for the title of the 2nd (right) bar
+	$styles .= " title='" . ($args['title2'] ? $args['title2'] : $args['pct2'].'%') . "'";
+
+	$out = sprintf("<span %s%s>" . 
+			"<span class='left'  title='%s' style='width: %s; background-color: #%s'></span>" . 
+			"<span class='center'%s></span>" . 
+#######			"<span class='right' title='%s' style='width: %s; background-color: #%s'></span>" . 
+			"</span>",
+		!empty($args['class']) ? "class='" . $args['class'] . "'" : "",
+		$styles, 
+
+		!empty($args['title1']) ? $args['title1'] : (int)($args['pct1']) . '%',
+		(int)($args['pct1']) . '%',
+		$args['color1'],
+
+		(int)($args['pct2']) ? '' : " style='display: none'"
+
+// instead of trying to float a 2nd span for the other percentage, just set the background of the overall div
+#		!empty($args['title2']) ? $args['title2'] : (int)($args['pct2']) . '%',
+#		(int)($args['pct2']) . '%',
+#		$args['color2']
+	);
+	return $out;
+}
+// --------------------------------------------------------------------------------------------------------------------
+// safer rename function (win/linux compatable)
+function rename_file($oldfile,$newfile) {
+	// first, try to rename since it's atomic (and faster)
+	if (!rename($oldfile,$newfile)) {
+		if (copy($oldfile,$newfile)) {		// try to copy file instead
+			return unlink($oldfile);	// .. but be sure to remove old file
+		}
+		return false;
+	}
+	return true;
+}
+// --------------------------------------------------------------------------------------------------------------------
+// builds an URL 
 function url($arg = array()) {
 	if (!is_array($arg)) $arg = array( '_base' => $arg );
 	$arg += array(					// argument defaults
@@ -26,18 +179,13 @@ function url($arg = array()) {
 		'_encodefunc'	=> 'rawurlencode',	// how to encode params
 		'_amp'		=> '&amp;',		// param separator
 		'_raw'		=> '',			// raw URL appended to final result (is not encoded)
-		'_nosid'	=> 0,			// if true the SID will not be appended
+		'_ref'		=> NULL,		// if true/numeric referrer is autoset, if a string it is used instead
 		// any other key => value pair is treated as a parameter in the URL
 	);
-	$base = ($arg['_base'] === NULL) ? $_SERVER['PHP_SELF'] : $arg['_base'];
+	$base = ($arg['_base'] === NULL) ? ps_escape_html($_SERVER['PHP_SELF']) : $arg['_base'];
 	$enc = $arg['_encode'] ? 1 : 0;
 	$encodefunc = ($arg['_encodefunc'] && function_exists($arg['_encodefunc'])) ? $arg['_encodefunc'] : 'rawurlencode';
 	$i = (strpos($base, '?') === FALSE) ? 0 : 1;
-
-	# auto-append sid to url's if the session method is GET
-#	if (!$arg['_nosid'] and session_method() == 'get' and !array_key_exists(session_sidname(), $arg)) {
-#		$arg[session_sidname()] = session_sid();
-#	}
 
 	foreach ($arg as $key => $value) {
 		if ($key{0} == '_') continue;		// ignore any param starting with '_'
@@ -45,8 +193,21 @@ function url($arg = array()) {
 		$base .= "$key=";			// do not encode keys
 		$base .= $enc ? $encodefunc($value) : $value;
 	}
+
+	if ($arg['_ref']) {
+		$base .= ($i++) ? $arg['_amp'] : '?';
+		if ($arg['_ref'] and $arg['_ref'] == 1) {
+			$base .= 'ref=' . $encodefunc($_SERVER['PHP_SELF'] .
+				($_SERVER['QUERY_STRING'] != null ? '?' . $_SERVER['QUERY_STRING'] : '')
+			);
+		} elseif (!empty($arg['_ref'])) {
+			$base .= 'ref=' . $encodefunc($arg['_ref']);
+		}
+	}
+
 	if ($arg['_raw']) $base .= ($i ? $arg['_amp'] : '?') . $arg['_raw'];
 	if ($arg['_anchor']) $base .= '#' . $arg['_anchor'];
+
 	return $base;
 }
 
@@ -148,22 +309,25 @@ function previouspage($alt=NULL) {
 // --------------------------------------------------------------------------------------------------------------------
 // Always specify an ABSOLUTE URL. Never send a relative URL, as the redirection will not work correctly.
 function gotopage($url) {
+	global $cms;
 //	while (@ob_end_clean()) /* nop */; 		// erase all pending output buffers
-	session_close();				// user_handler_* function
-	if (session_method() == 'get') {
+	$cms->session->close();
+	// if the SID was set from a command line we need to make sure the redirect contains the SID
+	if ($cms->session->sid_method() == 'get' and $cms->session->sid()) {
 		$query = parse_url($url);
 		if (is_array($query)) {
 			parse_str($query['query'], $args);
-			if (!array_key_exists(session_sidname(), $args)) {
-				$url .= (strpos($url, '?') !== FALSE ? '&' : '?') . session_sidname() . "=" . session_sid();
+			if (!array_key_exists($cms->session->sid_name(), $args)) {
+				$url .= (strpos($url, '?') !== FALSE ? '&' : '?') . $cms->session->sid_name() . "=" . $cms->session->sid();
 			}
 		}
 	}
 	if (!headers_sent()) { 				// in case output buffering (OB) isn't supported
-//		die(ps_url_wrapper($url));
 		header("Location: " . ps_url_wrapper($url)); 
 	} else { 					// Last ditch effort. Try a meta refresh to redirect to new page
+		$url = ps_escape_html($url);
 		print "<meta http-equiv=\"refresh\" content=\"0;url=$url\">\n"; 
+		print "<a href='$url'>Redirect Failed. Please click here to proceed</a>";
 	} 
 	exit();
 }
@@ -171,12 +335,12 @@ function gotopage($url) {
 // converts all HTML entities from all elements in the array.
 function htmlentities_all(&$ary, $trimtags=0) {
 	if (!is_array($ary)) {
-		$ary = htmlentities($ary);
+		$ary = ps_escape_html($ary);
 		return;
 	}
 	reset($ary);
 	while (list($key,$val) = each($ary)) {
-		$ary[$key] = htmlentities($ary[$key]);
+		$ary[$key] = ps_escape_html($ary[$key]);
 	}
 }
 // --------------------------------------------------------------------------------------------------------------------
@@ -243,22 +407,6 @@ function tidy_all(&$ary, $trimtags=0) {
 	stripslashes_all($ary);
 }
 // --------------------------------------------------------------------------------------------------------------------
-// strips non-valid html tags from the string given.
-// will also remove certain keywords like 'onmouseover', 'onclick', etc...
-function ps_strip_tags($html) {
-	global $ps;
-	$allowed = '<' . str_replace(',', '><', preg_replace('/\\s+/m', ',', $ps->conf['theme']['format']['allowed_html_tags'])) . '>';
-	while($html != strip_tags($html, $allowed)) {
-		$html = strip_tags($html, $allowed);
-	}
-	return preg_replace('/<(.*?)>/ie', "'<' . ps_strip_attribs('\\1') . '>'", $html);
-}
-function ps_strip_attribs($html) {
-	$attribs = 'javascript|on(?:dbl)?click|onmouse(?:click|over|out)|onkey(?:press|up|down)';
-	$html = stripslashes(preg_replace("/([^\w](?:$attribs))(?!_disabled)/i", '\\1_disabled', $html));
-	return $html;
-}
-// --------------------------------------------------------------------------------------------------------------------
 // Globalizes REQUEST variables specified, so we never have to worry about register_globals not being on
 function globalize($ary=array()) {
 	$items = is_array($ary) ? $ary : array( $ary );
@@ -267,129 +415,127 @@ function globalize($ary=array()) {
 	}
 }
 // --------------------------------------------------------------------------------------------------------------------
-function pager($url, $numitems, $perpage, $start, $pergroup=3, $urltail='', $force_prev_next=0, $next='Next', $prev='Previous', $class='pager') {
-  $total = ceil($numitems / $perpage);			// calculate total pages needed for dataset
-  $current = floor($start / $perpage) + 1;		// what page we're currently on
-  if ($total == 1) return "";				// There's no pages to output, so we output nothing
-  if ($pergroup < 3) $pergroup = 3;			// pergroup can not be lower than 3
-  if ($pergroup % 2 == 0) $pergroup++;			// pergroup is EVEN, so we add 1 to make it ODD
-  $maxlinks = $pergroup * 3 + 1;
-  $halfrange = floor($pergroup/2);
-  $minrange = $current - $halfrange;			// gives us our current min/max ranges based on $current page
-  $maxrange = $current + $halfrange;
-  if (empty($class)) $class="pager";
+function pagination($args = array()) {
+	$args += array(
+		'baseurl'		=> '',
+		'total'			=> 0,
+		'perpage'		=> 100,
+		'start'			=> 0,
+		'startvar'		=> 'start',
+		'pergroup'		=> 3,
+		'force_prev_next'	=> false,
+		'urltail'		=> '',
+		'prefix'		=> '',
+		'next'			=> 'Next',
+		'prev'			=> 'Previous',
+		'separator'		=> ', ',
+		'middle_separator'	=> ' ... ',
+	);
+	$total = ceil($args['total'] / $args['perpage']);		// calculate total pages needed for dataset
+	$current = floor($args['start'] / $args['perpage']) + 1;	// what page we're currently on
+	if ($total <= 1) return "";					// There's no pages to output, so we output nothing
+	if ($args['pergroup'] < 3) $args['pergroup'] = 3;		// pergroup can not be lower than 3
+	if ($args['pergroup'] % 2 == 0) $args['pergroup']++;		// pergroup is EVEN, so we add 1 to make it ODD
+	$maxlinks = $args['pergroup'] * 3 + 1;
+	$halfrange = floor($args['pergroup'] / 2);
+	$minrange = $current - $halfrange;				// gives us our current min/max ranges based on $current page
+	$maxrange = $current + $halfrange;
+	$output = "";
 
-  $output = "";
+	if ($total > $maxlinks) {
+		// create first group of links ...
+		$list = array();
+		for ($i=1; $i <= $args['pergroup']; $i++) {
+			if ($i == $current) {
+				$list[] = "<span class='pager-current'>$i</span>";
+			} else {
+				$list[] = sprintf("<a href='%s' class='pager-goto'>%d</a>", 
+					ps_url_wrapper(array('_base' => $args['baseurl'], $args['startvar'] => ($i-1)*$args['perpage'], '_anchor' => $args['urltail'])), 
+					$i
+				);
+			}
+		}
+		$output .= implode($args['separator'], $list);
 
-  if ($total > $maxlinks) {
+		// create middle group of links ...
+		if ($maxrange > $args['pergroup']) {
+			$output .= ($minrange > $args['pergroup']+1) ? $args['middle_separator'] : $args['separator'];
+			$min = ($minrange > $args['pergroup']+1) ? $minrange : $args['pergroup'] + 1;
+			$max = ($maxrange < $total - $args['pergroup']) ? $maxrange : $total - $args['pergroup'];
 
-    // create first group of links ...
-    $list = array();
-    for ($i=1; $i <= $pergroup; $i++) {
-      if ($i == $current) {
-        $list[] = "<span class='pager-current'>$i</span>";
-      } else {
-        $list[] = sprintf("<a href='%s' class='pager-goto'>%d</a>", ps_url_wrapper(array('_base' => $url, 'start' => ($i-1)*$perpage, '_anchor' => $urltail)), $i);
-      }
-    }
-    $output .= implode(', ', $list);
+			$list = array();
+			for ($i=$min; $i <= $max; $i++) {
+				if ($i == $current) {
+					$list[] = "<span class='pager-current'>$i</span>";
+				} else {
+					$list[] = sprintf("<a href='%s' class='pager-goto'>%d</a>", 
+						ps_url_wrapper(array('_base' => $args['baseurl'], $args['startvar'] => ($i-1)*$args['perpage'], '_anchor' => $args['urltail'])), 
+						$i
+					);
+				}
+			}
+			$output .= implode($args['separator'], $list);
+			$output .= ($maxrange < $total - $args['pergroup']) ? $args['middle_separator'] : $args['separator'];
+		} else {
+			$output .= $args['middle_separator'];
+		}
 
-    // create middle group of links ...
-    if ($maxrange > $pergroup) {
-      $output .= ($minrange > $pergroup+1) ? ' ... ' : ', ';
-      $min = ($minrange > $pergroup+1) ? $minrange : $pergroup + $half + 1;
-      $max = ($maxrange < $total - $pergroup) ? $maxrange : $total - $pergroup;
+		// create last group of links ...
+		$list = array();
+		for ($i=$total-$args['pergroup']+1; $i <= $total; $i++) {
+			if ($i == $current) {
+				$list[] = "<span class='pager-current'>$i</span>";
+			} else {
+				$list[] = sprintf("<a href='%s' class='pager-goto'>%d</a>", 
+					ps_url_wrapper(array('_base' => $args['baseurl'], $args['startvar'] => ($i-1)*$args['perpage'], '_anchor' => $args['urltail'])), 
+					$i
+				);
+			}
+		}
+		$output .= implode($args['separator'], $list);
 
-      $list = array();
-      for ($i=$min; $i <= $max; $i++) {
-        if ($i == $current) {
-          $list[] = "<span class='pager-current'>$i</span>";
-        } else {
-          $list[] = sprintf("<a href='%s' class='pager-goto'>%d</a>", ps_url_wrapper(array('_base' => $url, 'start' => ($i-1)*$perpage, '_anchor' => $urltail)), $i);
-        }
-      }
-      $output .= implode(', ', $list);
-      $output .= ($maxrange < $total - $pergroup) ? ' ... ' : ', ';
-    } else {
-      $output .= ' ... ';
-    }
+	} else {
+		$list = array();
+		for ($i=1; $i <= $total; $i++) {
+			if ($i == $current) {
+				$list[] = "<span class='pager-current'>$i</span>";
+			} else {
+				$list[] = sprintf("<a href='%s' class='pager-goto'>%d</a>", 
+					ps_url_wrapper(array('_base' => $args['baseurl'], $args['startvar'] => ($i-1)*$args['perpage'], '_anchor' => $args['urltail'])), 
+					$i
+				);
+			}
+		}
+		$output .= implode($args['separator'], $list);
+	}
 
-    // create last group of links ...
-    $list = array();
-    for ($i=$total-$pergroup+1; $i <= $total; $i++) {
-      if ($i == $current) {
-        $list[] = "<span class='pager-current'>$i</span>";
-      } else {
-        $list[] = sprintf("<a href='%s' class='pager-goto'>%d</a>", ps_url_wrapper(array('_base' => $url, 'start' => ($i-1)*$perpage, '_anchor' => $urltail)), $i);
-      }
-    }
-    $output .= implode(', ', $list);
+	// create 'Prev/Next' links
+	if (($args['force_prev_next'] and $total) or $current > 1) {
+		if ($current > 1) {
+			$output = sprintf("<a href='%s' class='pager-prev'>%s</a> ", 
+				ps_url_wrapper(array('_base' => $args['baseurl'], $args['startvar'] => ($current-2)*$args['perpage'], '_anchor' => $args['urltail'])), 
+				$args['prev']
+			) . $output;
+		} else {
+			$output = "<span class='pager-prev'>" . $args['prev'] . "</span> " . $output;
+		}
+	}
+	if (($args['force_prev_next'] and $total) or $current < $total) {
+		if ($current < $total) {
+			$output .= sprintf(" <a href='%s' class='pager-next'>%s</a> ", 
+				ps_url_wrapper(array('_base' => $args['baseurl'], $args['startvar'] => $current*$args['perpage'], '_anchor' => $args['urltail'])), 
+				$args['next']
+			);
+		} else {
+			$output .= " <span class='pager-next'>" . $args['next'] . "</span>";
+		}
+	}
 
-  } else {
-    $list = array();
-    for ($i=1; $i <= $total; $i++) {
-      if ($i == $current) {
-        $list[] = "<span class='pager-current'>$i</span>";
-      } else {
-        $list[] = sprintf("<a href='%s' class='pager-goto'>%d</a>", ps_url_wrapper(array('_base' => $url, 'start' => ($i-1)*$perpage, '_anchor' => $urltail)), $i);
-      }
-    }
-    $output .= implode(', ', $list);
-  }
+	if ($args['prefix'] != '' and !empty($output)) {
+		$output = $args['prefix'] . $output;
+	}
 
-  // create 'Prev/Next' links
-  if ($force_prev_next or $current > 1) {
-    if ($current > 1) {
-      $output = sprintf("<a href='%s' class='pager-prev'>$prev</a> ", ps_url_wrapper(array('_base' => $url, 'start' => ($current-2)*$perpage, '_anchor' => $urltail))) . $output;
-    } else {
-      $output = "$prev $output";
-    }
-  }
-  if ($force_prev_next or $current < $total) {
-    if ($current < $total) {
-      $output .= sprintf(" <a href='%s' class='pager-next'>$next</a> ", ps_url_wrapper(array('_base' => $url, 'start' => $current*$perpage, '_anchor' => $urltail)));
-    } else {
-      $output .= " $next";
-    }
-  }
-
-  return "<span class='pager'>$output</span>";
-}
-// ----------------------------------------------------------------------------------------------------------------------------
-// Interface function for pager() ... simply allows for an array of paramaters to be passed.
-// Adds a couple extra paramaters as well (startvar and prefix)
-function pagination($args=array()) {
-  $args += array(
-	'baseurl'		=> '',
-	'total'			=> 0,
-	'perpage'		=> 100,
-	'start'			=> 0,
-	'startvar'		=> '',
-	'pergroup'		=> 3,
-	'force_prev_next'	=> 0,
-	'urltail'		=> '',
-	'prefix'		=> '',
-	'next'			=> 'Next',
-	'prev'			=> 'Previous',
-	'class'			=> '',
-  );
-  $output = pager(
-	$args['baseurl'], 
-	$args['total'], 
-	$args['perpage'], 
-	$args['start'], 
-	$args['pergroup'], 
-	$args['urltail'],
-	$args['force_prev_next'],
-	$args['next'],
-	$args['prev'],
-	$args['class']
-  );
-
-  if ($args['startvar'] != '' and $args['startvar'] != 'start') $output = str_replace('start=', $args['startvar'] . '=', $output);
-  if ($args['prefix'] != '' and !empty($output)) $output = $args['prefix'] . $output;
-
-  return $output;
+	return "<span class='pager'>$output</span>";
 }
 // ----------------------------------------------------------------------------------------------------------------------------
 // PS2.0 :: PHP version of the sub loadConfig() (doesn't have all features of original function, but is good enough here)
@@ -590,21 +736,33 @@ function loadCachedConfig($args=array(), $cache_dir='', $file_id='') {
 }
 // --------------------------------------------------------------------------------------------------------------------
 function commify($num) {
-  return number_format($num);
+	return number_format($num);
 }
 // ------------------------------------------------------------------------------------------------------------------- 
 //
-function abbrnum($num, $tail=2) {
-  $size = array(' bytes',' KB',' MB',' GB',' TB');
-  if (!is_numeric($tail)) $tail = 2;
-  $i = 0;
+function abbrnum($num, $tail=2, $size = null, $base = 1024) {
+	if ($size === null) {
+		$size = array(' bytes',' KB',' MB',' GB',' TB');
+	}
+	if (!is_numeric($tail)) $tail = 2;
+	if (!$num) return '0' . $size[0];
 
-  if (!$num) return '0' . $size[0];
-  while (($num >= 1024) and ($i < 2)) {        
-    $num /= 1024;      
-    $i++;
-  }
-  return sprintf("%." . $tail . "f",$num) . $size[$i];
+	$i = 0;
+	while (($num >= $base) and ($i < count($size))) {
+		$num /= $base;
+		$i++;
+	}
+
+	return sprintf("%." . $tail . "f",$num) . $size[$i];
+}
+
+// shortcut for callback functions
+function abbrnum0($string, $tail = 0) {
+	if (intval($string) < 1000) {
+		return $string;
+	} else {
+		return abbrnum($string, $tail, array('', 'K', 'M', 'B'), 1000);
+	}
 }
 // --------------------------------------------------------------------------------------------------------------------
 function compacttime($seconds, $format="hh:mm:ss") {
@@ -623,7 +781,8 @@ function compacttime($seconds, $format="hh:mm:ss") {
   return $str;
 }
 // --------------------------------------------------------------------------------------------------------------------
-// Concatinate file path parts together always using / as the directory separator
+// Concatenate file path parts together always using / as the directory separator.
+// since '/' is always used this can be used on URL's as well.
 function catfile() {
   $args = func_get_args();
   $args = str_replace(array('\\\\','\\'), '/', $args);
@@ -638,20 +797,6 @@ function catfile() {
   return $path;
 }
 // --------------------------------------------------------------------------------------------------------------------
-// Concatinate file path parts together using the proper DIRECTORY_SEPARATOR
-function old_catfile() {
-  $args = func_get_args();
-  $path = array_shift($args);
-  foreach ($args as $part) {
-    if (substr($path, -1, 1) == DIRECTORY_SEPARATOR) $path = substr($path, 0, -1);
-    if ($part{0} != DIRECTORY_SEPARATOR) $part = DIRECTORY_SEPARATOR . $part;
-    $path .= $part;
-  }
-  // remove the trailing slash if it's present
-  if (substr($path, -1, 1) == DIRECTORY_SEPARATOR) $path = substr($path, 0, -1);
-  return $path;
-}
-// --------------------------------------------------------------------------------------------------------------------
 // returns a CSV line of text with the elements of the $data array
 function csv($data,$del=',',$enc='"') {
 	$csv = '';
@@ -662,27 +807,35 @@ function csv($data,$del=',',$enc='"') {
 	}
 	return "$csv\n";
 }
-// --------------------------------------------------------------------------------------------------------------------
-// returns the temp directory for the system or the path to the current script directory if unknown
-function tmppath($suffix='') {
-	$path = '';
-	if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-		if (!empty($_SERVER['TEMP'])) {
-			$path = $_SERVER['TEMP'];
-		} elseif (!empty($_SERVER['TMP'])) {
-			$path = $_SERVER['TMP'];
+
+//if (!function_exists('sys_get_temp_dir')) {	// PHP4 doesn't have this function (added in 5.2.1)
+	// if a temp directory can not be found a blank string is returned instead.
+	function get_temp_dir() {
+		// Search environment and system variables for path
+		if (!empty($_ENV['TMP'])) {
+			return realpath($_ENV['TMP']);
+		} elseif (!empty($_ENV['TMPDIR'])) {
+			return realpath($_ENV['TMPDIR']);
 		} elseif (!empty($_ENV['TEMP'])) {
-			$path = $_ENV['TEMP'];
-		} elseif (!empty($_ENV['TMP'])) {
-			$path = $_ENV['TMP'];
-		} else {
-			$path = dirname($_SERVER["SCRIPT_FILENAME"]);
+			return realpath($_ENV['TEMP']);
+		} elseif (!empty($_SERVER['TEMP'])) {
+			return realpath($_SERVER['TEMP']);
+		} elseif (!empty($_SERVER['TMP'])) {
+			return realpath($_SERVER['TMP']);
+		} else { 
+			// Make a temp file using the built in routines and discover where it was written to.
+			// creating a file is slow (relatively), so its best to cache the return of this function just in case.
+			$temp_file = tempnam(md5(uniqid(rand(), true)), '');
+			if ($temp_file) {
+				$temp_dir = realpath(dirname($temp_file));
+				unlink($temp_file);
+				return $temp_dir;
+			} else {
+				return '';
+			}
 		}
-	} else {
-		$path = "/tmp";
 	}
-	return catfile($path, $suffix);
-}
+//}
 // --------------------------------------------------------------------------------------------------------------------
 function ymd2time($date, $char='-') {
 	list($y,$m,$d) = split($char, $date);
@@ -690,6 +843,40 @@ function ymd2time($date, $char='-') {
 }
 function time2ymd($time, $char='-') {
 	return date(implode($char, array('Y','m','d')), $time);
+}
+// --------------------------------------------------------------------------------------------------------------------
+function array_map_recursive($function, $data) {
+	if (is_array($data)) {
+		foreach ($data as $i => $item) {
+			$data[$i] = is_array($item)
+				? array_map_recursive($function, $item)
+				: $function($item);
+		}
+	}
+	return $data;
+}
+// --------------------------------------------------------------------------------------------------------------------
+// Inserts $arr2 after the $key (string). if $before is true then it's inserted before the $key specified.
+// I do not know why PHP doesn't have this built in already. It can be very useful. (array_splice works on numeric indexes only)
+function array_insert($arr1, $key, $arr2, $before = false) {
+	$index = array_search($key, array_keys($arr1));
+	if ($index === false){
+		$index = count($arr1); // insert at end of array if $key not found
+	} else {
+		if (!$before) $index++;
+	}
+	$end = array_splice($arr1, $index);
+	return array_merge($arr1, $arr2, $end);
+}
+// --------------------------------------------------------------------------------------------------------------------
+// joins a single key value from an array into a string using the glue
+function key_join($glue, $pieces, $key) {
+	if (!is_array($pieces)) return '';
+	$str = '';
+	foreach ($pieces as $p) {
+		$str .= $p[$key] . $glue;
+	}
+	return substr($str, 0, -strlen($glue));
 }
 // --------------------------------------------------------------------------------------------------------------------
 // very simple recursive array2xml routine
@@ -715,7 +902,7 @@ function array2xml($data, $key_prefix = 'key_', $depth = 0) {
 }
 // --------------------------------------------------------------------------------------------------------------------
 // dumps all output buffers, sends a content-type, prints the xml
-function print_xml($data, $clear_ob = 1, $send_ct = 1, $do_exit = 1) {
+function print_xml($data, $clear_ob = true, $send_ct = true, $do_exit = true) {
 	if ($clear_ob) while (@ob_end_clean());
 	if ($send_ct) @header("Content-Type: text/xml; charset=utf-8");
 #	print XML_serialize($data);

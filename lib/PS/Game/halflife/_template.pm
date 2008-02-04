@@ -13,19 +13,22 @@ our $VERSION = '1.00';
 sub _init { 
 	my $self = shift;
 	$self->SUPER::_init;
-	$self->load_events(*DATA);
-	$self->{conf}->load('game_halflife_{template}');
 
-	$self->{plr_save_on_round} = ($self->{plr_save_on} eq 'round');
+	# do special initializion here. Most mods won't need to do anything.
 
 	return $self;
 }
 
-sub has_mod_tables { 1 }
+sub has_mod_tables { 0 }
+sub has_roles { 0 }
+sub has_mod_roles { 0 }
 
+# event functions go here ...
+# replace the function below with an actual event function
+
+sub event_eventname {
+	my ($self, $timestamp, $args) = @_;
+	my ($match1, $match2, $match3) = @$args;
+}
 
 1;
-
-# event matching expressions do under the __DATA__ block
-__DATA__
-

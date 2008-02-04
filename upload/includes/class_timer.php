@@ -1,9 +1,11 @@
 <?php
-// Jason's Timer object to time pieces of code (or an entire script)
-// 2 Special MARKERS are used automatically and should not be created by yourself
-// MAIN and MAINEND. These mark the start and end of the entire script. 
-// When the object is created, the MAIN marker is created automatically.
-// MAINEND is created when you call stop(), or if you use timediff(x) or timediff(x,'MAINEND')
+/***
+	Basic Timer Class
+	$Id$
+
+	Provides a benchmark timer to time the span between 2 points within your code.
+
+***/
 
 if (defined("CLASS_TIMER_PHP")) return 1; 
 define("CLASS_TIMER_PHP", 1); 

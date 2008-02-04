@@ -9,7 +9,7 @@ use Data::Dumper;
 
 use Carp;
 
-our $VERSION = '1.00';
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
 our $AUTOLOAD;
 
 sub new {
@@ -38,7 +38,7 @@ sub load {
 
 	$cmd = "SELECT $vars FROM $db->{t_config} WHERE conftype ";
 	$cmd .= (@conftypes == 1) ? "= $where " : "IN ($where) ";
-	$cmd .= "ORDER BY idx,id ";
+	$cmd .= "ORDER BY id ";
 #	$cmd .= "ORDER BY section,var,idx ";
 
 	$db->query($cmd);
@@ -46,7 +46,7 @@ sub load {
 		$db->{sth}->bind_columns(\($section, $var, $value));
 		while ($db->{sth}->fetch) {
 			next if !defined $var or $var eq '';			# ignore empty/blank variable names
-			if ($section eq '' or $section eq 'global') {
+			if (!defined $section or $section eq '' or $section eq 'global') {
 				_assignvar($self->{conf}, $var, $value);
 			} else {
 				unless (exists $self->{conf}{$section}) {

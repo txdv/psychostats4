@@ -1,4 +1,4 @@
-# parent class to most anything else. This just provides bery basic debugging method to all classes
+# parent class to most anything else. This just provides very basic debugging methods to all classes
 # Don't try and create objects from this class directly.
 package PS::Debug;
 
@@ -12,6 +12,7 @@ our $ANSI = 0;
 #	$ANSI = 1;
 #}
 
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
 our $DEBUG = 0;		# enable global debugging for everything if TRUE
 
 # may be called as a class or package method

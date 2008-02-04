@@ -1,25 +1,35 @@
 <?php
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$validfields = array('themefile','s');
-globalize($validfields);
-
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'server';
+// collect url parameters ...
+$validfields = array('s');
+$cms->theme->assign_request_vars($validfields, true);
 
 $servers = array();
-$servers = $ps_db->fetch_rows(1, 
-	"SELECT *,INET_NTOA(serverip) serverip, CONCAT_WS(':', INET_NTOA(serverip),serverport) ipport " . 
+$servers = $ps->db->fetch_rows(1, 
+	"SELECT * " . 
 	"FROM $ps->t_config_servers " . 
 	"WHERE enabled=1 " . 
-	"ORDER BY idx,serverip,serverport"
+	"ORDER BY idx,host,port"
 );
-$data['servers'] = $servers;
 
-$data['PAGE'] = 'server';
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
+for ($i=0; $i < count($servers); $i++) {
+	$servers[$i]['ip'] = gethostbyname($servers[$i]['host']);
+}
 
-include(PS_ROOTDIR . "/includes/footer.php");
+// assign variables to the theme
+$cms->theme->assign(array(
+	'servers'	=> $servers
+));
+
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/2column.css');	// this page has a left column
+$cms->theme->add_css('css/query.css');
+$cms->theme->add_js('js/' . $basename . '.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
+
 ?>

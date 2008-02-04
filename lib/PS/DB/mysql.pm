@@ -7,6 +7,8 @@ use DBI;
 use Data::Dumper;
 use Carp;
 
+our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+
 sub init {
 	my $self = shift;
 
@@ -14,12 +16,12 @@ sub init {
 
 	# setup our database connection
 	if (!$self->{dbh}) {
-		my $dsn = 'DBI:' . $self->{dbtype} . ':database=' . $self->{dbname};
-		$dsn .= ';host=' . $self->{dbhost} if defined $self->{dbhost};
-		$dsn .= ';port=' . $self->{dbport} if defined $self->{dbport};
-#		$dsn .= ';' . $self->{dbopts} if defined $self->{dbopts};
-		$self->{dbh} = DBI->connect($dsn, $self->{dbuser}, $self->{dbpass}, {PrintError => 0, RaiseError => 0, AutoCommit => 1});
-		$self->fatal("Error connecting to database using dsn \"$dsn\":\n" . $DBI::errstr) unless ref $self->{dbh};
+		$self->{dsn} = 'DBI:' . $self->{dbtype} . ':database=' . $self->{dbname};
+		$self->{dsn} .= ';host=' . $self->{dbhost} if defined $self->{dbhost};
+		$self->{dsn} .= ';port=' . $self->{dbport} if defined $self->{dbport};
+#		$self->{dsn} .= ';' . $self->{dbopts} if defined $self->{dbopts};
+		$self->connect;
+		$self->fatal("Error connecting to database using dsn \"$self->{dsn}\":\n" . $DBI::errstr) unless ref $self->{dbh};
 	}
 
 	$self->{dbh}{mysql_auto_reconnect} = 1;		# always try to reconnect if we loose connection
@@ -35,12 +37,27 @@ sub init {
 		$self->{version} = "0.0.0";
 	}
 
-	if ($self->version(2) >= 4.1) {
+	my $ver = $self->version(2);
+	if ($ver >= 4.1) {
 		$self->{dbh}->do("SET NAMES 'utf8'");
 		$self->{dbh}->do("SET CHARACTER SET 'utf8'");
 	}
+	if ($ver >= 5) {
+		# disable strict mode, to avoid some common errors regarding table inserts.
+		# we'd rather have warnings.
+		$self->{dbh}->do("SET SESSION sql_mode=''");
+	} 
+
 
 	$self->debug("DB MYSQL v" . $self->{version} . " initialized" . ($self->subselects ? ' (sub-selects supported)' : ''));
+}
+
+sub connect {
+	my ($self) = @_;
+	$self->{dbh} = undef;
+	$self->{dbh} = DBI->connect($self->{dsn}, $self->{dbuser}, $self->{dbpass}, {
+		PrintError => 0, RaiseError => 0, AutoCommit => 1
+	});
 }
 
 sub type { "mysql" }
@@ -118,6 +135,8 @@ sub create_index {
 }
 
 sub _create_footer { ") DEFAULT CHARACTER SET utf8" }
+
+sub errno { $_[0]->{dbh}{mysql_errno} }
 
 1;
 

@@ -1,9 +1,13 @@
 <?php
-/********
+/***
+	PsychoQuery class
+	$Id$
 
 	Main PsychoQuery Factory class. This returns a new PQ object based on the type of server you intend to query.
-	This is the only file you need to 'include' into your applications. The PQ directory must be somewhere in your
-	'include_path'.
+	This is the only file you need to 'include' into your applications. The PQ directory must be in the same directory
+	This class is completely self-contained and does not require any other files from the PsychoStats software in 
+	order to be used in other scripts. Have fun. If you do find a use for it, please let me know.
+	stormtrooper@psychostats.com
 
 	Example:
 
@@ -12,12 +16,12 @@
 		$pq = PQ::create($conf);
 		print_r($pq->query_info('1.2.3.4:27015'));
 
-********/
+***/
 
 if (defined("CLASS_PQ_PHP")) return 1;
 define("CLASS_PQ_PHP", 1);
 
-include_once(PS_ROOTDIR . "/includes/PQ/PQ_PARENT.php");
+include_once(dirname(__FILE__) . "/PQ/PQ_PARENT.php");
 
 class PQ {
 
@@ -59,10 +63,11 @@ function &create($conf) {
 	$filename = strtolower($conf['querytype']);
 	$classname = "PQ_" . $filename;
 
-	if (!include_once("PQ/" . $filename . ".php")) {
+	if (!include_once(dirname(__FILE__) . "/PQ/" . $filename . ".php")) {
 		trigger_error("Unsupported 'querytype' specified (${conf['querytype']}) for new PQ object", E_USER_ERROR);
 	} else {
-		return new $classname($conf);
+		$pq =& new $classname($conf);
+		return $pq;
 	}
 }
 
@@ -70,14 +75,18 @@ function &create($conf) {
 
 // returns an array of query types that are allowed when creating a new PQ object. 
 // this is not an object method. It's a plain function.
-function pq_query_types() {
-	// this should be made more robust to read the files in the PQ directory to create a list.
-	$q = array();
-	$q['halflife'] 		= 'Halflife 1 or 2';
-	$q['oldhalflife'] 	= 'Halflife 1 only (no steam)';
-	$q['gamespy'] 		= 'Gamespy (partial support)';
-	$q['quake3'] 		= 'Quake 3';
-	return $q;
+if (!function_exists('pq_query_types')) {
+	function pq_query_types() {
+		// this should be made more robust to read the files in the PQ directory to create a list.
+		$q = array();
+		$q['halflife'] 		= 'Halflife 1 or 2';
+		$q['oldhalflife'] 	= 'Halflife 1 only (no steam)';
+# these haven't been tested or used in a long time so I have no idea if they work. 
+# so I'm commenting them out for now.
+#		$q['gamespy'] 		= 'Gamespy (partial support)';
+#		$q['quake3'] 		= 'Quake 3';
+		return $q;
+	}
 }
 
 ?>

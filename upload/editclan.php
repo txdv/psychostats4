@@ -1,203 +1,249 @@
 <?php
-define("VALID_PAGE", 1);
+define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
-include(PS_ROOTDIR . "/includes/forms.php");
+$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
+$ps->theme_setup($cms->theme);
 
-$minpwlen = 5;
+$validfields = array('ref','id','del','submit','cancel','memberlist','value','add','del','ajax');
+$cms->theme->assign_request_vars($validfields, true);
 
-$validfields = array('themefile','submit','cancel','ref','id','search','add','del','members','plrids','dosearch');
-globalize($validfields);
+$message = '';
+$cms->theme->assign_by_ref('message', $message);
 
-foreach ($validfields as $var) {
-	$data[$var] = $$var;
+//print_r($cms->input); die;
+
+// ajax autocomplete request for player searching
+$limit = 50;
+if ($cms->user->logged_in() and $memberlist) {
+	$value = trim($value);
+	$match = '%' . $ps->db->escape($value) . '%';
+	$list = $ps->db->fetch_rows(1, 
+		"SELECT p.plrid,p.uniqueid,pp.name FROM $ps->t_plr p, $ps->t_plr_profile pp " . 
+		"WHERE pp.uniqueid=p.uniqueid AND p.clanid=0 AND (pp.uniqueid LIKE '$match' OR pp.name LIKE '$match') " .
+		"ORDER BY name " . 
+		"LIMIT $limit "	// limit the results
+	);
+
+/*
+	$xml = '<?xml version="1.0"?><ajaxresponse>';
+	foreach ($list as $p) {
+		$xml .= sprintf("<item><text><![CDATA[%s]]></text><value><![CDATA[%s]]></value><plrid>%d</plrid></item>\n", 
+			"<b>" . $p['name'] . "</b><br/><small>" . $p['uniqueid'] . "</small>",
+			$p['name'],
+			$p['plrid']
+		);
+	}
+	$xml .= "</ajaxresponse>\n";
+	header("Content-Type: text/xml");
+	print $xml;
+*/
+
+	$html = "";
+	foreach ($list as $p) {
+		$html .= sprintf("<option value='%d'>%s %s</option>\n", 
+			$p['plrid'], 
+			$ps->conf['main']['uniqueid'] != 'name' ? ps_escape_html($p['uniqueid']).':' : '',
+			ps_escape_html($p['name'])
+		);
+	}
+	print $html; //str_replace('  ', '&nbsp;&nbsp;', $html);
+
+	exit;
 }
 
-if ($cancel) previouspage('index.php');
-if (!user_logged_on()) gotopage("login.php?ref=" . urlencode($PHP_SELF . "?id=$id"));
 
-// form fields ...
-$formfields = array(
-	// use 'clanname' instead of 'name' so PsychoNuke works. 'name' still needs to be defined in the formfields array.
-	'clanname'	=> array('label' => $ps_lang->trans("Clan Name"). ':', 		'val' => '', 'statustext' => $ps_lang->trans("Enter the real name of the clan")),
-	'name'		=> array(							'val' => ''),
-	'locked'	=> array('label' => $ps_lang->trans("Lock Members?"), 		'val' => '', 'statustext' => $ps_lang->trans("Lock the member list from automatic updates")),
-	'icon'		=> array('label' => $ps_lang->trans("Icon"). ':',	 	'val' => '', 'statustext' => $ps_lang->trans("Choose an interesting icon that represents your clan")),
-	'email'		=> array('label' => $ps_lang->trans("Email Address") .':', 	'val' => 'E', 'statustext' => $ps_lang->trans("An email address that other players can use to contact you about the clan")),
-	'aim'		=> array('label' => $ps_lang->trans("AIM Screen name"). ':',	'val' => '', 'statustext' => $ps_lang->trans("AOL Instant Messenger (AIM) screen name")),
-	'icq'		=> array('label' => $ps_lang->trans("ICQ Number"). ':',		'val' => '', 'statustext' => $ps_lang->trans("ICQ Number")),
-	'msn'		=> array('label' => $ps_lang->trans("MSN Email Address"). ':',	'val' => '', 'statustext' => $ps_lang->trans("Microsoft MSN email address")),
-	'website'	=> array('label' => $ps_lang->trans("Website"). ':',		'val' => '', 'statustext' => $ps_lang->trans("Enter your website if you have one")),
-	'logo'		=> array('label' => $ps_lang->trans("Logo HTML"). ':',		'val' => '', 'statustext' => $ps_lang->trans("Your logo is displayed exactly as entered (HTML included)")),
-);
-
-if (empty($themefile) or !$ps->conf['theme']['allow_user_change']) $themefile = 'editclan';
-$data['PAGE'] = 'editclan';
-
-$form = array();
-$errors = array();
-
-// no clan id? default to current user clan (user might not have a clanid either)
-if (empty($id)) $id = $ps_user['clanid'];
-$edit_allowed = (($id == $ps_user['clanid'] && user_is_clanadmin()) || user_is_admin());
-$allow_icon_upload = ($ps->conf['theme']['allow_icon_upload'] or user_is_admin());
-$allow_icon_overwrite = ($ps->conf['theme']['allow_icon_overwrite'] or user_is_admin());
-
-// if the ID is still empty then we're most likely an admin with no clan associated
-if (empty($id)) {
-	abort('nomatch', $ps_lang->trans("No clan ID"), $ps_lang->trans("You must specify a clan ID"));
+if ($cancel) {
+	previouspage(ps_url_wrapper(array( '_amp' => '&', '_base' => 'clans.php' )));
 }
 
-// a non-numeric ID was given
-if (!is_numeric($id)) {
-	abort('nomatch', $ps_lang->trans("Invalid clan ID"), $ps_lang->trans("An invalid clan ID was specified"));
-}
+$clan = array();
+$members = array();
 
-// Current user is not an admin and is trying to edit someone else
-if (!$edit_allowed) {
-	abort('nomatch', $ps_lang->trans("Access Denied!"), $ps_lang->trans("You do not have privilege to edit other clans"));
-}
-
-$theclan = load_clan($id);
-if (!$theclan) {
-	abort('nomatch', $ps_lang->trans("No Clan Found!"), $ps_lang->trans("The clan ID does not exist"));
-}
-$clanmembers = load_clan_members($id);
-
-$data['profile'] = $theclan;	// allow the form to reference the original profile information
-$data['allow_icon_upload'] = $allow_icon_upload;
-$data['allow_icon_overwrite'] = $allow_icon_overwrite;
-
-
-// process submitted form
-if ($submit and $_SERVER['REQUEST_METHOD'] == 'POST') {
-	$form = packform($formfields);
-	trim_all($form);
-//	if (get_magic_quotes_gpc()) stripslashes_all($form);
-
-	// make sure 'website' variable has a protocol prefix
-	if (!empty($form['website'])) {
-		if (!preg_match('|^\w+://|', $form['website'])) {
-			$form['website'] = "http://" . $form['website'];
-		}
+// load the matching clan if an ID was given
+if ($id) {
+	// load the clan based on their clanid
+	$clan = $ps->get_clan_profile($id);
+	if ($clan and $clan['profile_clantag'] == null) { // no matching profile; lets create one (all clans should have one, regardless)
+		$_id = $ps->db->escape($id, true);
+		$ps->db->insert($ps->t_clan_profile, array( 'clantag' => $clan['clantag'] ));
 	}
 
-	if (!empty($form['logo']) and strlen($form['logo']) > $ps->conf['theme']['format']['max_logo_size']) {
-		$form['logo'] = substr($form['logo'], 0, $ps->conf['theme']['format']['max_logo_size']);
+	if (!$clan) {
+		$data = array( 'message' => $cms->trans("Invalid clan ID Specified") );
+		$cms->full_page_err(basename(__FILE__, '.php'), $data);
 	}
+} else {
+	$data = array( 'message' => $cms->trans("Invalid clan ID Specified") );
+	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+}
 
-	// automatically verify all fields
-	foreach ($formfields as $key => $ignore) {
-		form_checks($form[$key], $formfields[$key]);
+// check privileges to edit this clan
+if (!ps_user_can_edit_clan($clan['clanid'], ps_user_plrid())) {
+	$data = array( 'message' => $cms->trans("Insufficient privileges to edit clan!") );
+	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+}
+
+// add or delete a member (ajax request)
+if ($add) {
+	if (!is_array($add)) $add = array( $add );
+	$cmd = "SELECT plrid FROM $ps->t_plr p WHERE plrid IN (%s) AND p.clanid=0";
+	$ids = array();
+	$msg = "";
+	foreach ($add as $plrid) {
+		if (is_numeric($plrid)) $ids[] = $plrid;
 	}
-
-	$errors = all_form_errors($formfields);
-
-	// If there are no errors act on the data given
-	if (!count($errors)) {
-		$set = $form;
-		$set['logo'] = ps_strip_tags($set['logo']);
-		$clanset = array();
-		$clanset['locked'] = $set['locked'];
-		$set['name'] = $set['clanname'];		// so PsychoNuke works
-		unset($set['locked'], $set['clanname']);
-
-		trimset($clanset, $theclan);
-		trimset($set, $theclan);
-
-		$ok = $ok1 = $ok2 = 1;
-		if (count($clanset)) {
-			$ok1 = $ps_db->update($ps->t_clan, $clanset, 'clanid', $theclan['clanid']);
-		} 
-		if (count($set)) {
-			$ok2 = $ps_db->update($ps->t_clan_profile, $set, 'clantag', $theclan['clantag']);
-		}
-		$ok = ($ok1 && $ok2);
-		if ($ok) previouspage('index.php');
+	if (!count($ids)) {
+		$ids[] = 0;
+		$msg = "error";
 	}
-
-	$data += $form;	
-
-} elseif ($del and is_array($members)) {
-	del_member($members);
-	$clanmembers = load_clan_members($id);
-	$data += $theclan;
-	$data['clanname'] = $data['name'];
-
-} elseif (($dosearch and $search) or ($add and is_array($plrids))) {
-	$added = false;
-	// add members from list
-	if ($add) $added = add_member($plrids);
-
-	// redo search
-	if ($search) {
-		$ps->search_players(array(
-			'search' 	=> $search,
-			'ranked' 	=> 0,
-			'limit'		=> 100,		// limit our results ... 
-			'ignoresingle'	=> true,	// must be true, or you get confusing results sometimes
-//			'where'		=> "p.clanid != '0'",
-			'where'		=> sprintf("p.clanid != '%s'", $ps->db->escape($id)),
+	$list = $ps->db->fetch_list(sprintf($cmd, join(',',$ids)));
+	$ps->db->update($ps->t_plr, array( 'clanid' => $id ), 'plrid', $ids);
+	foreach ($ids as $plrid) {
+		$plr = $ps->get_player_profile($plrid);
+		$msg .= "<tr>" .
+			"<td>" . ($plr['rank'] ? $plr['rank'] : '-') . "</td>" .
+			"<td class='item'><a href='" . ps_url_wrapper(array('_base' => 'editplr.php', 'id' => $plr['plrid'])) . "'>{$plr['name']}</a></td>" .
+			"<td>{$plr['uniqueid']}</td>" .
+			"<td>{$plr['skill']}</td>" .
+			"<td><a id='mem-" . $plr['plrid'] . "' href='" . ps_url_wrapper(array('id' => $id, 'del' => $plr['plrid'])) . "'><img src='" . $cms->theme->url() . "/img/icons/delete.png'/></a></td>" . 
+			"</tr>\n";
+	}
+	if ($ajax) {
+		print $msg;
+		exit;
+	} else {
+		$message = $cms->message('success', array(
+			'message_title'	=> $cms->trans("Member Added!"),
+			'message'	=> sprintf($cms->trans("%s (%s) was added to the clan."), $plr['name'], $plr['uniqueid'])
 		));
-		$res = $ps->get_search_results();
-		$total = $res['results'] ? count(explode(',',$res['results'])) : 0;
-		if ($total == 1 and !$added) {
-			add_member(array( $res['results'] ));
-//			$data['search'] = '';
-		} else {
-//			$data['searchresults'] = $ps->db->fetch_rows(1, "SELECT p.plrid,pp.uniqueid,pp.name FROM $ps->t_plr p, $ps->t_plr_profile pp WHERE p.plrid IN (" . $ps->db->escape($res['results']) . ") AND p.uniqueid=pp.uniqueid and p.clanid != '" . $ps->db->escape($id) . "' ORDER BY pp.name");
-			$data['searchresults'] = $ps->db->fetch_rows(1, "SELECT p.plrid,pp.uniqueid,pp.name FROM $ps->t_plr p, $ps->t_plr_profile pp WHERE p.plrid IN (" . $ps->db->escape($res['results']) . ") AND p.uniqueid=pp.uniqueid ORDER BY pp.name");
-			if (!$data['searchresults']) {
-				$data['nosearchresults'] = $ps_lang->trans("No players found");
-			}
+	}
+
+} elseif ($del) {
+	$plr = $ps->get_player_profile($del);
+	$msg = "error";
+	if ($plr['clanid'] == $id) {
+		$ps->db->update($ps->t_plr, array( 'clanid' => 0 ), 'plrid', $plr['plrid']);
+		$msg = "success";
+	}
+
+	if ($ajax) {
+		print $msg;
+		exit();
+	} else {
+		$message = $cms->message('success', array(
+			'message_title'	=> $cms->trans("Member Removed!"),
+			'message'	=> sprintf($cms->trans("%s (%s) was removed from the clan."), $plr['name'], $plr['uniqueid'])
+		));
+	}
+}
+
+
+
+$members = $ps->get_clan_members($id);
+
+// create the form variables
+$form = $cms->new_form();
+$form->default_modifier('trim');
+$form->field('clanname');	// 'clanname' is used instead of 'name' to avoid conflicts with some software (nuke)
+$form->field('email');
+$form->field('aim');
+$form->field('icq');
+$form->field('msn');
+$form->field('website');
+$form->field('icon');
+$form->field('cc');
+$form->field('logo');
+$form->field('locked');
+
+// process the form if submitted
+$valid = true;
+if ($submit) {
+	$form->validate();
+	$input = $form->values();
+	$valid = !$form->has_errors();
+	// protect against CSRF attacks
+	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
+
+	$input['name'] = $input['clanname'];
+	unset($input['clanname']);
+
+	// force a protocol prefix on the website url (http://)
+	if (!empty($input['website']) and !preg_match('|^\w+://|', $input['website'])) {
+		$input['website'] = "http://" . $input['website'];
+	}
+
+	// strip out any bad tags from the logo.
+	if (!empty($input['logo'])) {
+		$logo = ps_strip_tags($input['logo']);
+		$c1 = md5($logo);
+		$c2 = md5($input['logo']);
+		if ($c1 != $c2) {
+			$form->error('logo', $cms->trans("Invalid tags were removed.") . " " .
+				$cms->trans("Resubmit to try again.") 
+			);
+			$form->set('logo', $logo);
 		}
+		$input['logo'] = $logo;
 	}
-	$clanmembers = load_clan_members($id);
-	$data += $theclan;
-	$data['clanname'] = $data['name'];
 
-} else {		// init defaults, if any
-	// pack all the variables together and merge them with the data
-	$data += $theclan;
-	$data['clanname'] = $data['name'];
+	$valid = ($valid and !$form->has_errors());
+	if ($valid) {
+		$input['clantag'] = $clan['clantag'];
+
+		$locked = $input['locked'] ? 1 : 0;
+		unset($input['locked']);
+
+		$input['cc'] = strtoupper($input['cc']);
+
+		if ($id) {
+			$ok = $ps->db->update($ps->t_clan_profile, $input, 'clantag', $clan['clantag']);
+		} else {
+			$ok = $ps->db->insert($ps->t_clan_profile, $input);
+		}
+
+		// update 'locked' value, if changed
+		if ($ok and $locked != $clan['locked']) {
+			$ok = $ps->db->update($ps->t_clan, array( 'locked' => $locked ), 'clantag', $clan['clantag']);
+		}
+
+		if (!$ok) {
+			$form->error('fatal', "Error updating database: " . $ps->db->errstr);
+		} else {
+			previouspage(ps_url_wrapper(array( '_amp' => '&', '_base' => 'clans.php' )));
+		}
+
+	}
+
+} else {
+	// fill in defaults
+	if ($id) {
+		$clan['clanname'] = $clan['name'];
+		$form->input($clan);
+	}
 }
 
-$data['icons'] = load_icons(catfile($ps->conf['theme']['rootimagesdir'], 'icons'));
-$data['form'] = $formfields;
-$data['errors'] = $errors;
-$data['clanmembers'] = $clanmembers;
+// save a new form key in the users session cookie
+// this will also be put into a 'hidden' field in the form
+if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
 
-$smarty->assign($data);
-$smarty->parse($themefile);
-ps_showpage($smarty->showpage());
+$allowed_html_tags = str_replace(',', ', ', $ps->conf['theme']['format']['allowed_html_tags']);
+if ($allowed_html_tags == '') $allowed_html_tags = '<em>' . $cms->translate("none") . '</em>';
+$cms->theme->assign(array(
+	'errors'	=> $form->errors(),
+	'clan'		=> $clan,
+	'members'	=> $members,
+	'allowed_html_tags' => $allowed_html_tags,
+	'form'		=> $form->values(),
+	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+));
 
-function del_member($plrids) {
-	global $ps,$id,$data,$ps_lang;
-	if (!is_array($plrids)) $plrids = array( $plrids );
-	for ($i=0; $i < count($plrids); $i++) {
-		if (!is_numeric($plrids[$i])) unset($plrids[$i]);			
-	}
-	$ps->db->query("UPDATE $ps->t_plr SET clanid=0 WHERE plrid IN (" . implode(',',$plrids) . ")");
-	if ($ps->db->affected_rows()) {
-		$data['msg'] = $ps_lang->trans(sprintf("%s members removed from clan roster", $ps->db->affected_rows()));
-	}
-}
+// display the output
+$basename = basename(__FILE__, '.php');
+$cms->theme->add_css('css/forms.css');
+$cms->theme->add_js('js/jquery.interface.js');	// needed for autocomplete
+$cms->theme->add_js('js/forms.js');
+$cms->theme->add_js('js/message.js');
+$cms->theme->add_js('js/editclan.js');
+$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer', '');
 
-function add_member($plrids) {
-	global $ps,$id,$data,$ps_lang;
-	$added = false;
-	if (!is_array($plrids)) $plrids = array( $plrids );
-	for ($i=0; $i < count($plrids); $i++) {
-		if (!is_numeric($plrids[$i])) unset($plrids[$i]);			
-	}
-	$ps->db->query("UPDATE $ps->t_plr SET clanid='" . $ps->db->escape($id) . "' WHERE plrid IN (" . implode(',',$plrids) . ")");
-	if ($ps->db->affected_rows()) {
-		$added = true;
-		$data['msg'] = $ps_lang->trans(sprintf("%s members added to clan roster", $ps->db->affected_rows()));
-		$ps->del_search_results();
-	}
-	return $added;
-}
-
-
-include(PS_ROOTDIR . "/includes/footer.php");
 ?>
