@@ -127,8 +127,8 @@ function team_wins($value, $data) {
 	$bar = dual_bar(array(
 		'pct1'	=> $data['alienwonpct'], 
 		'pct2'	=> $data['marinewonpct'],
-		'title1'=> $cms->trans("Alien Wins") . " (" . $data['alienwonpct'] . "%)",
-		'title2'=> $cms->trans("Marine Wins") . " (" . $data['marinewonpct'] . "%)",
+		'title1'=> $data['alienwon'] . " " . $cms->trans("Alien Wins") . " (" . $data['alienwonpct'] . "%)",
+		'title2'=> $data['marinewon'] . " " . $cms->trans("Marine Wins") . " (" . $data['marinewonpct'] . "%)",
 	));
 	return $bar;
 }

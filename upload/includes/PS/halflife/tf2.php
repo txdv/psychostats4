@@ -94,13 +94,12 @@ function add_map_player_list_mod($map, $setup = array()) {
 // Add or remove columns from maps.php listing
 function maps_table_mod(&$table) {
 	global $cms;
-	$table->remove_columns('rounds');
 	$table->insert_columns(
 		array( 
-			'bluekillspct' => array( 'label' => 'Kill Ratio', 'callback' => array(&$this, 'team_wins'), 'tooltip' => $cms->trans("Blue / Red Kill Ratio") ), 
+			'bluewonpct' => array( 'label' => 'Wins', 'tooltip' => $cms->trans("Red / Blue Wins"), 'callback' => array(&$this, 'team_wins') ), 
 		),
-		'onlinetime',
-		false
+		'rounds',
+		true
 	);
 }
 
@@ -138,6 +137,7 @@ function player_left_column_mod(&$plr, &$theme) {
 	static $strings = array();
 	if (!$strings) {
 		$strings = array(
+			'won'			=> $cms->trans("Red / Blue Wins"),
 			'flagscaptured'		=> $cms->trans("Flags Captured"),
 			'flagsdefended'		=> $cms->trans("Flags Defended"),
 			'captureblocked'	=> $cms->trans("Captures Blocked"),
@@ -147,7 +147,8 @@ function player_left_column_mod(&$plr, &$theme) {
 	$tpl = 'player_left_column_mod';
 	if ($theme->template_found($tpl, false)) {
 		$actions = array();
-		foreach (array('flagscaptured', 'flagsdefended', 'captureblocked', 'pointcaptured') as $var) {
+
+		foreach (array('won','flagscaptured', 'flagsdefended', 'captureblocked', 'pointcaptured') as $var) {
 			$actions[] = array(
 				'label'	=> $strings[$var],
 				'value'	=> dual_bar(array(
@@ -175,23 +176,13 @@ function player_left_column_mod(&$plr, &$theme) {
 function team_wins($value, $data) {
 	global $cms;
 	$bar = dual_bar(array(
-		'pct1'	=> $data['redkillspct'], 
-		'pct2'	=> $data['bluekillspct'],
-		'title1'=> $cms->trans("Red Kills") . " (" . $data['redkillspct'] . "%)",
-		'title2'=> $cms->trans("Blue Kills") . " (" . $data['bluekillspct'] . "%)",
-		'color1'=> 'cc0000',
-		'color2'=> '0000cc',
-	));
-/*
-	$bar = dual_bar(array(
 		'pct1'	=> $data['redwonpct'], 
 		'pct2'	=> $data['bluewonpct'],
-		'title1'=> $cms->trans("Red Wins") . " (" . $data['redwonpct'] . "%)",
-		'title2'=> $cms->trans("Blue Wins") . " (" . $data['bluewonpct'] . "%)",
+		'title1'=> $data['redwon'] . " " . $cms->trans("Red Wins") . " (" . $data['redwonpct'] . "%)",
+		'title2'=> $data['bluewon'] . " " . $cms->trans("Blue Wins") . " (" . $data['bluewonpct'] . "%)",
 		'color1'=> 'cc0000',
 		'color2'=> '0000cc',
 	));
-*/
 	return $bar;
 }
 

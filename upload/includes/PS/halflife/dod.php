@@ -194,8 +194,8 @@ function team_wins($value, $data) {
 	$bar = dual_bar(array(
 		'pct1'	=> $data['axiswonpct'], 
 		'pct2'	=> $data['allieswonpct'],
-		'title1'=> $cms->trans("Axis Wins") . " (" . $data['axiswonpct'] . "%)",
-		'title2'=> $cms->trans("Ally Wins") . " (" . $data['allieswonpct'] . "%)",
+		'title1'=> $data['axiswon'] . " " . $cms->trans("Axis Wins") . " (" . $data['axiswonpct'] . "%)",
+		'title2'=> $data['allieswon'] . " " . $cms->trans("Ally Wins") . " (" . $data['allieswonpct'] . "%)",
 	));
 	return $bar;
 }
