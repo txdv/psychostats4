@@ -207,7 +207,7 @@ sub save {
 		$dataid = $db->save_stats($db->{t_map_data}, $self->{basic}, $TYPES, 
 			[ mapid => $self->{mapid}, statdate => $self->{statdate} ]
 		);
-		if ($dataid and $self->{mod}) {
+		if ($dataid and $self->{mod} and $self->has_mod_tables) {
 			$db->save_stats($db->{t_map_data_mod}, $self->{mod}, $self->mod_types, [ dataid => $dataid ]);
 			$self->{mod} = {};
 		}

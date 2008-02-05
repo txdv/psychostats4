@@ -905,7 +905,7 @@ sub save {
 		$dataid = $db->save_stats($db->{t_plr_data}, 
 			{ dayskill => $self->skill, dayrank => $self->rank, %{$self->{basic}} }, $TYPES, 
 			[ plrid => $plrid, statdate => $self->{statdate} ]);
-		if ($dataid and $self->{mod}) {
+		if ($dataid and $self->{mod} and $self->has_mod_tables) {
 			$dataid = $self->{db}->save_stats($self->{db}->{t_plr_data_mod}, $self->{mod}, $self->mod_types, [ dataid => $dataid ]);
 		}
 	}
@@ -1099,7 +1099,7 @@ sub save_map {
 	# save basic and mod history
 	if ($self->{save_history}) {
 		$dataid = $self->{db}->save_stats($self->{db}->{t_plr_maps},  $data, $TYPES_MAPS, [ plrid => $self->{plrid}, mapid => $id, statdate => $self->{statdate} ]);
-		if ($dataid and $self->{mod_maps}{$id}) {
+		if ($dataid and $self->{mod_maps}{$id} and $self->has_mod_tables) {
 			$self->{db}->save_stats($self->{db}->{t_plr_maps_mod}, $self->{mod_maps}{$id}, $self->mod_types_maps, [ dataid => $dataid ]);
 		}
 	}
