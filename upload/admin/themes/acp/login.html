@@ -20,7 +20,7 @@
 {if $errors.fatal}<div class="err fatal"><h4><#Fatal Error#></h4><p>{$errors.fatal}</p></div>{/if}
 <div class="inline-notes">
 	<h4><#No Administrator session found#></h4>
-	<p><#You must login to access the Administrator Control Panel#></p>
+	<p><#You must <strong style="color: red">re-login</strong> to access the Administrator Control Panel#></p>
 </div>
 <div{if $errors.username} class="err"{/if}>
 	<p class="err" id="err-username">{$errors.username|escape}</p>

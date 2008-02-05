@@ -28,7 +28,13 @@
 </p>
 <p>
 	<label><#Activity Level#></label>
+{**}
+	<em>{if $clan.activity != -1}{pctbar pct=$clan.activity width=50 fixedwidth=true}{else}-{/if}</em>
 	<span>{if $clan.activity != -1}{$clan.activity}%{else}-{/if}</span>
+{**
+{**
+	<span>{if $clan.activity != -1}{$clan.activity}%{else}-{/if}</span>
+{**}
 </p>
 <p>
 	<label><#Bonus Points#></label>

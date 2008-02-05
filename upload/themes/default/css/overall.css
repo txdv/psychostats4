@@ -38,10 +38,10 @@ acronym {
 
 /* --- OVERALL HEADER ------------------------------------- */
 #ps-overall-header {
-	height: 122px;
+	height: 110px;
 	background: url(../img/header-bg.png) repeat-x;
 	overflow: hidden;
-	display: none; /* !!!!!!!!!!!!!!!!!!!!! */
+	display: block; /* !!!!!!!!!!!!!!!!!!!!! */
 }
 
 #ps-overall-logo {

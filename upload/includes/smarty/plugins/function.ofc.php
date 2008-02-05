@@ -9,7 +9,7 @@ function smarty_function_ofc($args, &$smarty) {
 		'height'	=> 240,
 		'url'		=> null,
 		'data'		=> null,
-		'swfobject'	=> false,
+		'swfobject'	=> true,
 		'baseurl'	=> 'includes/ofc/',
 	);
 	if ($args['url'] == null) {
