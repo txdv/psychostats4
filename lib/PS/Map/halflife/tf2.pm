@@ -10,10 +10,6 @@ our $TYPES = {
 	reddeaths		=> '+',
 	bluedeaths		=> '+',
 
-	# since TF2 does not have wins yet, use this... 
-	bluekillspct		=> [ percent2 => qw( bluekills redkills ) ],
-	redkillspct		=> [ percent2 => qw( redkills bluekills ) ],
-
 	redwon			=> '+',
 	redwonpct		=> [ percent2 => qw( redwon bluewon ) ],
 	bluewon			=> '+',

@@ -215,7 +215,7 @@ sub get_plr {
 	if (!$plrids_only) {
 		if (defined($p = $self->cached($plrstr, 'signature'))) {
 #			print "SIMPLE: $str\n" if $p; # and $plrstr =~ /:2677794/;
-			$p->plrids;
+#			$p->plrids;
 			return $p;
 		}
 	}
@@ -277,7 +277,7 @@ sub get_plr {
 	if ($p = $self->cached($uid, 'uid')) {
 #		print "UID CACHE: $plrstr\n";# if $plrstr =~ /:2677794/;
 		$p->team($team);						# keep team up to date
-		$p->plrids($plrids);						# update new player ids
+#		$p->plrids($plrids);						# update new player ids
 		$self->delcache($p->signature($plrstr), 'signature');		# delete previous and set new sig
 		$self->addcache($p, $plrstr, 'signature');			# update sig cache
 
@@ -289,7 +289,7 @@ sub get_plr {
 #		print "UNIQUEID CACHE: $plrstr\n"; # if $plrstr =~ /:2677794/;
 		if ($p->uid ne $uid) {
 			$p->team($team);
-			$p->plrids($plrids);
+#			$p->plrids($plrids);
 			$self->delcache($p->uid($uid), 'uid');
 			$self->delcache($p->signature($plrstr), 'signature');
 			$self->addcache($p, $p->uid, 'uid');
@@ -309,7 +309,7 @@ sub get_plr {
 		$p->timerstart($self->{timestamp});
 		$p->uid($uid);
 		$p->team($team);
-		$p->plrids;
+#		$p->plrids;
 
 		$self->addcache_all($p);
 		$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
@@ -524,6 +524,9 @@ sub event_entered_game {
 #	$self->_do_connected($timestamp, $plrstr) unless $p1->{_connected};
 	$self->_do_connected($timestamp, $p1) unless $p1->{_connected};
 
+	# update the plrids when we enter the game, instead of updating it on every event.
+	$p1->plrids;
+
 	$p1->{basic}{games}++;
 	$p1->{maps}{ $m->{mapid} }{games}++;
 	$p1->{maps}{ $m->{mapid} }{lasttime} = $timestamp;
@@ -645,7 +648,8 @@ sub event_round {
 	my $m = $self->get_map;
 
 	$trigger = lc $trigger;
-	if ($trigger eq 'round_start') {
+	# mini_round_start is a TF2 trigger, but its more efficient to put it here instead of halflife/tf2.pm
+	if ($trigger eq 'round_start' or $trigger eq 'mini_round_start') {
 		$m->{basic}{rounds}++;
 		$m->hourly('rounds', $timestamp);
 		# make sure a game is recorded. Logs that do not start with a 'map started' event

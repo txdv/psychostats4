@@ -289,20 +289,21 @@ CREATE TABLE `ps_plr_ids_ipaddr` (
   `plrid` int(10) unsigned NOT NULL default '0',
   `ipaddr` int(10) unsigned NOT NULL default '0',
   `totaluses` int(10) unsigned NOT NULL default '1',
+  `firstseen` datetime default NULL,
   PRIMARY KEY  (`plrid`,`ipaddr`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_ids_name` (
-  `id` int(10) unsigned NOT NULL auto_increment,
   `plrid` int(10) unsigned NOT NULL default '0',
   `name` varchar(128) NOT NULL default '',
   `totaluses` int(10) unsigned NOT NULL default '1',
-  PRIMARY KEY  (`id`),
-  KEY `plrid` (`plrid`)
-) ENGINE=MyISAM AUTO_INCREMENT=16141 DEFAULT CHARSET=utf8;
+  `firstseen` datetime default NULL,
+  PRIMARY KEY  (`plrid`,`name`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_ids_worldid` (
   `plrid` int(10) unsigned NOT NULL default '0',
   `worldid` varchar(128) NOT NULL,
   `totaluses` int(10) unsigned NOT NULL default '1',
+  `firstseen` datetime default NULL,
   PRIMARY KEY  (`plrid`,`worldid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_maps` (

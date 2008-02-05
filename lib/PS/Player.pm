@@ -176,6 +176,7 @@ sub new {
 		origname	=> $plrids->{name},
 		ipaddr 		=> $plrids->{ipaddr}, 
 		uid 		=> $plrids->{uid},
+		firstseen	=> $game->{timestamp},
 		game 		=> $game, 
 		conf 		=> $game->{conf}, 
 		db 		=> $game->{db},
@@ -847,7 +848,7 @@ sub most_used_name {
 sub last_used_name {
 	my $self = shift;
 	my $db = $self->{db};
-	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "id DESC");
+	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "firstseen DESC");
 	if (defined $name) {
 		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
 		$self->name($name);
@@ -1012,8 +1013,8 @@ sub save {
 	# update plr_ids_name plr_ids_ipaddr plr_ids_worldid
 	if ($db->type eq 'mysql') {
 		foreach my $var (keys %{$self->{_plrids}}) {
-			$db->do("INSERT INTO " . $db->{'t_plr_ids_' . $var} . " (plrid,$var,totaluses) " . 
-				"VALUES ($plrid," . $db->quote($self->{$var}) . ",$self->{_plrids}{$var}) " . 
+			$db->do("INSERT INTO " . $db->{'t_plr_ids_' . $var} . " (plrid,$var,totaluses,firstseen) " . 
+				"VALUES ($plrid," . $db->quote($self->{$var}) . ",$self->{_plrids}{$var},FROM_UNIXTIME($self->{firstseen})) " . 
 				"ON DUPLICATE KEY UPDATE totaluses=totaluses+$self->{_plrids}{$var}"
 			);
 #			print $db->lastcmd,"\n";
