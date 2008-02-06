@@ -327,7 +327,7 @@ function return_ofc_data() {
 	if (!in_array($field, array('skill','kills','onlinetime'))) $field = 'dayskill';
 	$plrid = $cms->input['id'];
 
-	$ps->db->query("SELECT statdate,$field FROM $ps->t_plr_data WHERE plrid=" . $ps->db->escape($plrid, true) . " ORDER BY statdate LIMIT $max");
+	$ps->db->query("SELECT statdate,$field FROM $ps->t_plr_data WHERE plrid=" . $ps->db->escape($plrid, true) . " ORDER BY statdate DESC LIMIT $max");
 	$i = 1;
 	while (list($statdate,$skill) = $ps->db->fetch_row(0)) {
 		$skill = round($skill);
@@ -337,6 +337,9 @@ function return_ofc_data() {
 	}
 
 	if ($data) {
+		$data = array_reverse($data);
+		$labels = array_reverse($labels);
+
 		$avg = $sum / count($data);
 		$data_avg[] = $avg;
 		$data_avg = array_pad($data_avg, count($data)-1, 'null');	// yes, 'null' is a string
