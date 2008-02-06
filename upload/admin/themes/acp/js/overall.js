@@ -1,3 +1,6 @@
+// jquery.xml2json.js
+(function($){$.extend({xml2json:xml2json});function xml2json(xml,root){var o={};$(root==undefined?'response':root,xml).children().each(function(){o[this.tagName]=$(this).text()});return o}})(jQuery);
+
 var delete_message = '';
 $(document).ready(function() {
 	// setup handlers for frame collapse/expand divs
@@ -113,3 +116,47 @@ function move_row(e) {
 	return false;
 }
 
+var toggling = {};
+var cross = 'cross';
+var tick  = 'tick';
+var toggle_var = 'enabled';
+function click_toggle(e) {
+	var a = $(this);
+	var img = $('img', a);
+	var src = img.attr('src');
+
+	var href = a.attr('href');
+	var params = href.substring(href.indexOf('?')+1) + '&ajax=1';
+
+	e.preventDefault();
+	if (toggling[href]) return false;
+	toggling[href] = true;
+
+	img.attr('src', themeurl + '/img/icons/ajax-16x16.gif');
+
+	// send AJAX request to update database
+	$.ajax({
+		url: href.substr(0, href.indexOf('?')),
+		data: params, 
+		cache: false, 
+		type: 'POST',
+		success: function(xml){
+			var o = $.xml2json(xml);
+			if (parseInt(o.code) != 1) {
+				// force the browser to reload, because if the request errors it means
+				// the user session timedout and is no longer logged in (most likely).
+				window.location = window.location;
+				return false;
+			}
+
+			if (parseInt(o[toggle_var]) == 1) {
+				img.attr('src', src.replace(cross,tick));
+			} else {
+				img.attr('src', src.replace(tick,cross));
+			}
+			toggling[href] = undefined;
+		}
+	});
+
+	return false;
+}

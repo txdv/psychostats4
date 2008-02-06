@@ -20,6 +20,37 @@ define("ACL_USER", 1);
 define("ACL_CLANADMIN", 5);
 define("ACL_ADMIN", 99);
 
+// wrapper for xml_response. returns a single 'code' and 'message' xml response
+function xml_result($code, $message, $header = true, $extra = array()) {
+	$data = array_merge(array( 'code' => $code, 'message' => $message ), $extra);
+	if ($header) header("Content-Type: text/xml");
+	return xml_response($data);
+}
+// converts the array key=>value pairs into an XML (SML) response string.
+// this function is recursive and will work with sub arrays to create nested <nodes>.
+// key names are not checked for validity. 
+function xml_response($data = array(), $root = 'response', $indent = 0) {
+	$tab = str_repeat("\t", $indent);
+	$do_root = !empty($root);
+	$xml = $do_root ? "$tab<$root>\n" : "";
+	foreach ($data as $key => $value) {
+		if (is_array($value)) {
+			$xml .= xml_response($value, $key, $indent + 1);
+		} else {
+			if (is_numeric($key)) $key = 'index';
+			$xml .= "$tab\t<$key>"; // one extra tab is added to nest under its root node
+			if (strpos($value,'<') || strpos($value,'>') || strpos($value,'&')) {
+				$xml .= "<![CDATA[$value]]>"; 
+			} else {
+				$xml .= $value;
+			}
+			$xml .= "</$key>\n";
+		}
+	}
+	if ($do_root) $xml .= "$tab</$root>\n";
+	return $xml;
+}
+
 // --------------------------------------------------------------------------------------------------------------------
 // Interpolates special $tokens in the string.
 // $tokens is a hash array containing variables and can be nested 1 level deep (ie $tok1 or $tok2.value)

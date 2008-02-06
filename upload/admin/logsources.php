@@ -4,7 +4,7 @@ define("PSYCHOSTATS_ADMIN_PAGE", true);
 include("../includes/common.php");
 include("./common.php");
 
-$validfields = array('ref','start','limit','order','sort','move','id','ajax');
+$validfields = array('ref','start','limit','order','sort','move','toggle','id','ajax');
 $cms->theme->assign_request_vars($validfields, true);
 
 if (!is_numeric($start) or $start < 0) $start = 0;
@@ -18,6 +18,17 @@ $_order = array(
 	'order' => $order, 
 	'sort'	=> $sort
 );
+
+// toggle the enabled flag on a logsource
+if ($toggle and $id) {
+	$ok = $ps->db->query("UPDATE $ps->t_config_logsources SET enabled=IF(enabled=1, 0, 1) WHERE id=" . $ps->db->escape($id, true));
+	list($enabled) = $ps->db->fetch_list("SELECT enabled FROM $ps->t_config_logsources WHERE id=" . $ps->db->escape($id, true));
+	unset($submit);
+	if ($ajax) {
+		print xml_result(1, "success", true, array( 'enabled' => $enabled ));
+		exit;
+	}
+}
 
 // re-order log sources
 if ($move and $id) {
@@ -39,7 +50,11 @@ if ($move and $id) {
 	}
 }
 
-$list = $ps->db->fetch_rows(1, "SELECT * FROM $ps->t_config_logsources " . $ps->getsortorder($_order));
+$list = $ps->db->fetch_rows(1, 
+	"SELECT l.*,s.lastupdate,s.timestamp,s.file,s.line,s.pos,s.map FROM $ps->t_config_logsources l " . 
+	"LEFT JOIN $ps->t_state s ON s.logsource=l.id " . 
+	$ps->getsortorder($_order)
+);
 $total = $ps->db->count($ps->t_config_logsources);
 $pager = pagination(array(
 	'baseurl'	=> ps_url_wrapper(array('sort' => $sort, 'order' => $order, 'limit' => $limit)),

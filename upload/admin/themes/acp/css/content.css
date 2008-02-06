@@ -80,6 +80,11 @@
 	background: url(../img/table-footer-bg.png) repeat-x 0 bottom; /* 72px */
 	text-align: right;
 }
+.ps-table-footer .legend {
+	text-align: left;
+	font-size: 80%;
+	padding: 2px;
+}
 .ps-table {
 	width: 100%;
 	text-align: left;
@@ -97,6 +102,9 @@
 	border-right: 1px solid #BBB;
 	text-align: center;
 	line-height: 1.5em;
+}
+.ps-table td.smaller {
+	font-size: 90%;
 }
 .ps-table tr { background-color: #EEE; }
 .ps-table tr.even { background-color: #E0E0E0; }

@@ -8,12 +8,13 @@
 	<meta name="author" content="Stormtrooper" />
 {theme->meta_tags}
 
-	<title>{$title|default:"PsychoStats"}</title>
+	<title>{$title|default:"PsychoStats ACP"}</title>
 
 	<link rel="stylesheet" type="text/css" media="screen,projection,print" href="{theme->url}/css/overall.css" />
 	<link rel="stylesheet" type="text/css" media="screen,projection,print" href="{theme->url}/css/content.css" />
 {theme->css_links}
 
+	<script type="text/javascript">var themeurl = '{theme->url|escape:'javascript'}';</script>
 	<script src="{theme->url}/js/jquery.js" type="text/javascript"></script>
 	<script src="{theme->url}/js/overall.js" type="text/javascript"></script>
 {theme->js_sources}
