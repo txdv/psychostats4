@@ -47,10 +47,12 @@ $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 function return_ofc_data() {
 	global $cms, $ps;
 
+	$hours = array();
 	$labels = array();
 	$data = array();
 	$data_avg = array();
 	$conns = array();
+	$conns_avg = array();
 	$sum = 0;
 	$avg = 0;
 	$maxlimit = 100;
@@ -58,31 +60,53 @@ function return_ofc_data() {
 	$minlimit = 0;
 	$max = 24;
 
+	list($newest) = $ps->db->fetch_list("SELECT hour FROM $ps->t_map_hourly ORDER BY statdate DESC,hour DESC LIMIT 1");
+	if ($newest === null) $newest = date("H");
+
+	// build a list of hours in the proper order
+	for ($h=$newest; count($hours)<24; $h--) {
+		if ($h < 0) $h = 23;
+		$hours[ sprintf('%02d:00', $h) ] = 'null';
+	}
+	$hours = array_reverse($hours);
+
+	// get the last 24 hours of data
 	$ps->db->query(
 		"SELECT statdate,hour,SUM(kills),SUM(connections) " . 
 		"FROM $ps->t_map_hourly " . 
 		"GROUP BY statdate,hour " . 
-		"ORDER BY statdate,hour LIMIT $max"
+		"ORDER BY statdate DESC,hour DESC LIMIT $max"
 	);
-	$i = 1;
-#	print $ps->db->lastcmd;
+
+	// build our data and labels
+	$data = $hours;
+	$conns = $hours;
+	$maxdata = 0;
+	$maxconn = 0;
 	while (list($statdate,$hour,$kills,$connections) = $ps->db->fetch_row(0)) {
-		$skill = round($kills);
+		$hh = sprintf('%02d:00', $hour);
 		$sum += $kills;
-		$data[] = $kills;
-		$conns[] = $connections;
-		$labels[] = "$hour:00";
+		$data[$hh] = $kills;
+		$conns[$hh] = $connections;
+		$maxdata = max($maxdata, $kills);
+		$maxconn = max($maxconn, $connections);
+		print "($statdate, $hour, $kills, $connections)<br>\n";
 	}
+	$labels = array_keys($hours);
+#	print_r($hours);
+#	print_r($data);
+#	print_r($conns);
+#	print_r($labels);
 
 	if ($data) {
 		$avg = $sum / count($data);
-		$data_avg[] = $avg;
-		$data_avg = array_pad($data_avg, count($data)-1, 'null');	// yes, 'null' is a string
-		$data_avg[] = $avg;
-		$maxlimit  = ceil(ceil(max($data) / 100) * 100);
+		$data_avg = array_pad(array(), count($data), $avg);
+#		$maxlimit  = ceil(ceil($maxdata / 100) * 100);
 	}
 	if ($conns) {
-		$maxlimit2 = ceil(ceil(max($conns) / 100) * 100);
+		$avg = $sum / count($conns);
+		$conns_avg = array_pad(array(), count($conns), $avg);
+#		$maxlimit2 = ceil(ceil($maxconn / 100) * 100);
 	}
 
 	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
@@ -93,12 +117,14 @@ function return_ofc_data() {
 
 	$g->set_data($data_avg);
 	$g->set_data($data);
+//	$g->set_data($conns_avg);
 	$g->set_data($conns);
 	$g->attach_to_y_right_axis(3);
 
-	$g->line(1, '#9999ee', 'Avg', 9);
-	$g->line(2, '#5555ff', 'Kills', 9);
-	$g->line(2, '#000000', 'Connections', 9);
+	$g->line(1, '#9999ee', 'Average Kills', 9);
+	$g->line_dot(2, 5, '#5555ff', 'Kills', 9);
+//	$g->line(1, '#666666', 'Average Connections', 9);
+	$g->line_hollow(1, 3, '#000000', 'Connections', 9);
 
 	// label each point with its value
 	$g->set_x_labels($labels);
@@ -117,13 +143,19 @@ function return_ofc_data() {
 //	$g->set_x_offset( false );
 
 	// set the Y max
+	$g->set_y_max($maxdata);
+	$g->set_y_min(0);
+	$g->set_y_right_max($maxconn);
+	$g->set_y_right_min(0);
+/*
 	$g->set_y_max($maxlimit);
 	$g->set_y_min($minlimit);
 	$g->set_y_right_min($minlimit);
 	$g->set_y_right_max($maxlimit2);
-
+*/
 	$g->set_y_legend('Kills',12,'#5555ff');
 	$g->set_y_right_legend('Connections',12,'#000000');
+//	$g->y_label_steps();
 
 	$g->set_tool_tip( '#key#<br>#val# (#x_label#)' );
 
