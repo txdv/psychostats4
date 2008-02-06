@@ -192,3 +192,21 @@ input.search { /* generic search class */
 	border: 1px solid gray;
 	width: 125px;
 }
+
+.gmapinfo {
+	text-align: left;
+	font-size: 90%;
+}
+.gmapinfo h4 {
+	text-align: center;
+	border-bottom: 1px solid gray;
+	font-size: 110%;
+}
+.gmapinfo label {
+	font-weight: bold;
+	float: left;
+	width: 50px;
+}
+.gmapinfo span {
+	clear: right;
+}

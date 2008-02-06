@@ -14,6 +14,10 @@
 	<link rel="stylesheet" type="text/css" media="screen,projection,print" href="{theme->url}/css/content.css" />
 {theme->css_links}
 
+	<script type="text/javascript">{* these variables are used in various js routines throughout the stats *}
+		var themeurl = '{theme->url|escape:'javascript'}';
+		var iconsurl = '{$conf.theme.icons_url|escape:'javascript'}';
+	</script>
 	<script src="{theme->url}/js/jquery.js" type="text/javascript"></script>
 	<script src="{theme->url}/js/overall.js" type="text/javascript"></script>
 {theme->js_sources}

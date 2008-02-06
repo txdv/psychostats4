@@ -931,6 +931,7 @@ function array2xml($data, $key_prefix = 'key_', $depth = 0) {
 	if (!$depth) $xml .= "</data>\n";
 	return $xml;
 }
+
 // --------------------------------------------------------------------------------------------------------------------
 // dumps all output buffers, sends a content-type, prints the xml
 function print_xml($data, $clear_ob = true, $send_ct = true, $do_exit = true) {
@@ -975,5 +976,15 @@ function rgbGradient($low, $high, $totalsteps) {
 	return $ary;
 }
 
+// returns a list of $key values from the array of arrays
+function array_values_by_key(&$ary, $key) {
+	$list = array();
+	if (is_array($ary) and count($ary)) {
+		foreach ($ary as $a) {
+			$list[] = $a[$key];
+		}
+	}
+	return $list;
+}
 
 ?>

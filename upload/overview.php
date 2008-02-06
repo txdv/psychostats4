@@ -11,19 +11,57 @@ $cms->theme->assign_request_vars($validfields, true);
 // return a list of geocoded IP's using the most active IPs in the database
 if (is_numeric($ip) and $ip > 0) {
 	if ($ip > 100) $ip = 100;
-	// this will eventually be updated to return the associated player information too, 
-	// so each pin in the map can show what player it is.
-	$list = $ps->db->fetch_list(
-		"SELECT DISTINCT INET_NTOA(ipaddr) ipaddr " .
-		"FROM $ps->t_plr_ids_ipaddr ip " . 
-		"WHERE (ipaddr NOT BETWEEN 167772160 AND 184549375) AND " .	// 10/8
+	$list = $ps->db->fetch_rows(1,
+		"SELECT DISTINCT INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
+		"FROM $ps->t_plr_ids_ipaddr ip, $ps->t_plr p, $ps->t_plr_profile pp, $ps->c_plr_data c " . 
+		"WHERE ip.plrid=p.plrid AND p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND " . 
+		"(ipaddr NOT BETWEEN 167772160 AND 184549375) AND " .		// 10/8
 		"(ipaddr NOT BETWEEN 2886729728 AND 2887778303) AND " .		// 172.16/12
 		"(ipaddr NOT BETWEEN 3232235520 AND 3232301055) AND " .		// 192.168/16
 		"(NOT ipaddr IN (2130706433, 0)) " .				// 127.0.0.1, 0.0.0.0
 		"ORDER BY totaluses DESC LIMIT $ip"
 	);
+	$iplist = array();
+	foreach ($list as $p) {
+		$iplist[$p['ipaddr']] = $p;
+	}
+	$xml = $ps->ip_lookup(array_values_by_key($iplist,'ipaddr'), true);
+
+	// process the returned XML so we can add more attributes to the data (plr data)
+	// I assume the returned XML is in a proper <markers></markers> format to keep this XML routine simple.
+	// its hard to find a simple 'xml2array' function that doesn't add all sorts of extra nested arrays...
+	$xp = xml_parser_create(); $index = null;
+	xml_parser_set_option($xp, XML_OPTION_CASE_FOLDING, false);
+	xml_parser_set_option($xp, XML_OPTION_SKIP_WHITE, true);
+	xml_parse_into_struct($xp,$xml,$vals,$index);
+	xml_parser_free($xp);
+
+	$markers = array();
+	foreach ($vals as $m) {
+		if ($m['tag'] != 'marker') continue;
+		$set = $m['attributes'];
+		$ip = $set['ip'];
+
+		$set = array_merge($set, $iplist[$ip]);
+		unset($set['ip']);
+		$set['onlinetime'] = compacttime($set['onlinetime']);
+
+		$markers[ $ip ] = $set;
+	}
+
+	// now, spew out the markers XML
+	$xml = "<markers>\n";
+	foreach ($markers as $m) {
+		$node = "  <marker ";
+		foreach ($m as $key => $val) {
+			$node .= "$key=\"" . addslashes($val) . "\" ";
+		}
+		$node .= "/>\n";
+		$xml .= $node;
+	}
+	$xml .= "</markers>\n";
 	header("Content-Type: text/xml");
-	print $ps->ip_lookup($list);
+	print $xml;
 	exit;
 } elseif ($ofc) {	// collect hourly stats for OFC
 	return_ofc_data();

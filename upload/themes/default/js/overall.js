@@ -1,3 +1,6 @@
+// jquery.xml2json.js
+(function($){$.extend({xml2json:xml2json});function xml2json(xml,root){var o={};$(root==undefined?'response':root,xml).children().each(function(){o[this.tagName]=$(this).text()});return o}})(jQuery);
+
 // When the page is loaded this is automatically called
 var ps_popups = new Array();
 var ps_popup_delay = 0.25;

@@ -18,10 +18,12 @@ function init_google() {
 	$('#map').hover(disable_wheel, enable_wheel);
 
 	map = new GMap2(document.getElementById("map"), {
+		// ...
 	});
 	map.setCenter(new GLatLng(40.317232,-95.339355), 4);	// US
 //	map.setCenter(new GLatLng(48.57479,11.425781), 4);	// Europe
 
+	// initialize map
  	var mapControl = new GMapTypeControl();
 	map.setMapType(G_SATELLITE_MAP);
 	map.addMapType(G_PHYSICAL_MAP);
@@ -34,6 +36,14 @@ function init_google() {
 	// start adding markers to the map
 	var markers = {};
 	$.get('overview.php', { ip: 100 }, function(xml) {
+		var icon = new GIcon();
+		icon.image = themeurl + '/img/icons/man32.png';
+		icon.shadow = themeurl + '/img/icons/man32.shadow.png';
+		icon.iconSize = new GSize(32,32);
+		icon.shadowSize = new GSize(59,32);
+		icon.iconAnchor = new GPoint(16,32);
+		icon.infoWindowAnchor = new GPoint(16,16);
+
 		// add each ip marker to the map
 		$('marker', xml).each(function(i){
 			var t = $(this);
@@ -42,12 +52,39 @@ function init_google() {
 			var latlng = lat+','+lng;
 			if (markers[latlng]) return;	// don't add the same marker more than once
 			markers[latlng] = true;
-			var m = new GLatLng(t.attr('lat'), t.attr('lng'));
-			map.addOverlay(new GMarker(m));
+
 			// auto center on the first marker, chances are most markers will be surrounding the same area
 			if (i == 0) map.setCenter(new GLatLng(lat, lng), 4);
+
+			// define the point, create the marker and add the icon and event listener for it...
+			var point = new GLatLng(t.attr('lat'), t.attr('lng'));
+			var marker = new GMarker(point, {icon: icon});
+			marker.psinfo = null;
+			GEvent.addListener(marker, "click", function() {
+				if (marker.psinfo == null) marker.psinfo = makeInfo(t);
+				marker.openInfoWindowHtml(marker.psinfo);
+			});
+
+			// add the marker to the map
+			map.addOverlay(marker);
 		});
 	});
+}
+
+function makeInfo(o) {
+	var dom = $('#infowin').clone();
+	var plrname = $('.name', dom);
+	dom.removeAttr('id').addClass('gmapinfo');
+	plrname.text(o.attr('name'));
+	plrname.attr('href', plrname.attr('href').replace('id=x', 'id=' + encodeURIComponent( o.attr('plrid') ) ) );
+	if (o.attr('icon')) {
+		plrname.prepend("<img src='" + iconsurl + '/' + encodeURIComponent( o.attr('icon') ) + "' alt=''/>");
+	}
+
+	$('.rank', dom).html(o.attr('rank') + ' <em>(Skill: ' + o.attr('skill') + ')</em>');
+	$('.kills', dom).html(o.attr('kills') + ' <em>(Headshots: ' + o.attr('headshotkills') + ')</em>');
+	$('.onlinetime', dom).html(o.attr('onlinetime'));
+	return dom.html();
 }
 
 // we simply disable the mousewheel by preventing the default
