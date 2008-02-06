@@ -43,7 +43,7 @@ if (is_numeric($ip) and $ip > 0) {
 		$ip = $set['ip'];
 
 		$set = array_merge($set, $iplist[$ip]);
-		unset($set['ip']);
+		unset($set['ip'],$set['ipaddr']);
 		$set['onlinetime'] = compacttime($set['onlinetime']);
 
 		$markers[ $ip ] = $set;
