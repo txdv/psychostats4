@@ -446,8 +446,8 @@ sub event_kill {
 	# allow mods to add their own stats for kills
 	$self->mod_event_kill($p1, $p2, $w, $m, $r1, $r2, $props) if $self->can('mod_event_kill');
 
-	my $func = $self->{calcskill_kill};
-	$self->$func($p1, $p2, $w);
+	# calculate new skill values for the players
+	$self->calcskill_kill_func($p1, $p2, $w);
 }
 
 sub event_connected {

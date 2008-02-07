@@ -96,9 +96,6 @@ sub _init {
 	$self->{banned}{name} = {};
 	$self->{banned_age} = time;
 
-	# this will be made configurable at some point (didn't want to put this in the DB yet) ...
-	$self->{calcskill_kill} = 'calcskill_kill_default';
-
 	# get() the option ONCE from the config instead of calling it over and over in the event code
 	$self->{clantag_detection} = $conf->get_main('clantag_detection');
 	$self->{report_unknown} = $conf->get_main('errlog.report_unknown');
@@ -115,16 +112,61 @@ sub _init {
 	$self->{maxdays_exclusive} = $conf->get_main('maxdays_exclusive');
 	$self->{plr_save_on_round} = $conf->get_main('plr_save_on_round');
 
-	# initialize the adjustment levels for the ELO calculations
-	$self->{_adj_onlinetime} = [];
-	$self->{_adj} = [];
-	foreach my $key (sort grep { /^kill_onlinetime_\d+$/ } keys %{$self->{skillcalc}}) {
-		my $num = ($key =~ /(\d+)$/)[0];
-		my $adjkey = "kill_adj_$num";
-		next unless exists $self->{skillcalc}{$adjkey};			# only allow matching adjustments
-		push(@{$self->{_adj}}, $self->{skillcalc}{$adjkey});
-		push(@{$self->{_adj_onlinetime}}, $self->{skillcalc}{$key});
+	$self->{calcskill_kill} = 'calcskill_kill_' . $conf->get_main('calcskill_kill');
+	$self->{calcskill_kill_init} = $self->{calcskill_kill} . '_init';
+
+	# if there is no method available, try to load a new code file for it.
+	if (!$self->can($self->{calcskill_kill})) {
+		my $file = catfile($FindBin::Bin, 'lib', 'PS', 'Skill', $self->{calcskill_kill} . '.pl');
+		if (-f $file) {
+			my $code = "";
+			if (open(F, "<$file")) {
+				$code = join('', <F>);
+				close(F);
+			} else {
+				$self->fatal("Error reading skill code file ($file): $!");
+			}
+
+			# sanity check; if the eval fails then ignore this code
+			my $eval = new Safe;
+			$eval->permit(qw( sort ));
+			$eval->reval($code);
+			if ($@) {
+				$self->fatal("Error in skill code '$self->{calcskill_kill}': $@");
+			} else {
+				# eval it in the current scope
+				# this has to be done since reval() makes it private in its own scope
+				eval $code;
+			}
+		} else {
+			$self->fatal(
+				"Error reading skill code '" . $conf->get_main('calcskill_kill') . "' file $file\n" . 
+				"File does not exist.\n" . 
+				"Are you sure you're using the correct skill calculation?\n" . 
+				"Try changing the 'Skill Calculation' config setting to 'default'."
+			);
+		}
 	}
+
+	# if there is still no method available, we die ... 
+	if (!$self->can($self->{calcskill_kill}) or $self->{calcskill_kill} eq 'func' or $self->{calcskill_kill} eq 'init') {
+		$::ERR->fatal("Invalid skill function configured (" . $conf->get_main('calcskill_kill') . ") " . 
+			"Try using 'default' or 'alternative' instead."
+		);
+	}
+
+	{ 	# LOCALIZE BLOCK
+		# make an alias in the object for the skill function. This way, we don't have to 
+		# constantly dereference a varaible to call the function in the 'event_kill' routine. 
+		# $self->calcskill_kill_func will now work because of this block of code. Neat, huh?
+		no strict 'refs';
+		my $func = __PACKAGE__ . '::calcskill_kill_func';
+		*$func 	 = $self->can($self->{calcskill_kill}) || sub { die "Abstract call to calcskill_kill_func\n" };
+		$func 	 = __PACKAGE__ . '::calcskill_kill_init';
+		*$func 	 = $self->can($self->{calcskill_kill_init}) || sub { };
+	}
+	# run init code for skill calculation, if available
+	$self->calcskill_kill_init;
 
 	# initializes the clantags from the config.
 	if ($self->{clantag_detection}) {
@@ -682,15 +724,53 @@ sub reset_isdead {
 	map { $self->{c_plrid}{$_}->is_dead($isdead || 0) } keys %{$self->{c_plrid}};
 }
 
+=pod
+sub calcskill_kill_alternative {
+	my ($self,$k,$v,$w) = @_;
+	my ($kbonus, $vbonus);
+
+	my $kskill = $k->skill || $self->{baseskill};
+	my $vskill = $v->skill || $self->{baseskill};
+
+	# don't allow player skill to go negative ...
+	$kskill = 1 if $kskill < 1;
+	$vskill = 1 if $vskill < 1;
+
+	if ($kskill > $vskill) {
+		# killer is better than the victim
+		$kbonus = ($kskill + $vskill)**2 / $kskill**2;
+		$vbonus = $kbonus * $vskill / ($vskill + $kskill);
+	} else {
+		# the victim is better than the killer
+		$kbonus = ($vskill + $kskill)**2 / $vskill**2 * $vskill / $kskill;
+		$vbonus = $kbonus * ($vskill + $self->{baseskill}) / ($vskill + $kskill);
+	}
+
+	# do not allow the victim to lose more than X points
+	$vbonus = 10 if $vbonus > 10;
+
+	$vbonus = $vskill if $vbonus > $vskill;
+	$kbonus = $kskill if $kbonus > $kskill;
+
+	# apply weapon weight to skill bonuses
+	my $weight = $w->weight;
+	if ($weight) {
+		$kbonus *= $weight;
+		$vbonus *= $weight;
+	}
+
+	$kskill += $kbonus;
+	$vskill -= $vbonus;
+
+	$k->skill($kskill);
+	$v->skill($vskill);
+}
+
 sub calcskill_kill_default {
 	my ($self,$k,$v,$w) = @_;
 
 	my $kskill = $k->skill || $self->{baseskill};
 	my $vskill = $v->skill || $self->{baseskill};
-
-#	if ($k->plrid eq '98' or $v->plrid eq '98') {
-#		print "1)" . $k->name . "(" . $kskill . ") killed " . $v->name . "(" . $vskill . ")\n";
-#	}
 
 	my $diff = $kskill - $vskill;					# difference in skill
 	my $prob = 1 / ( 1 + 10 ** ($diff / $self->{baseskill}) );	# find probability of kill
@@ -726,26 +806,14 @@ sub calcskill_kill_default {
 		$vbonus *= $weight;
 	}
 
-#	print $k->plrid . ": $kskill + $kbonus\t " . $v->plrid . ": $vskill - $vbonus (prob: $prob)\n";
-#	die if $kskill > 15000 or $vskill > 15000;
-
 	$kskill += $kbonus;
 	$vskill -= $vbonus;
 
 	$k->skill($kskill);
 	$v->skill($vskill);
-
-#	if ($k->plrid eq '31' or $v->plrid eq '31') {
-#		print "2) " . $k->name . "(" . $k->skill . ") killed " . $v->name . "(" . $v->skill . ")\n\n";
-#	}
-
-	return (
-		$kskill,						# killers new skill value
-		$vskill,						# victims ...
-		$kbonus,						# total bonus points given to killer
-		$vbonus							# ... victim
-	);
 }
+=pod
+=cut
 
 use constant 'PI' => 3.1415926;
 use constant 'T'  => 1;
@@ -1149,6 +1217,7 @@ sub daily_activity {
 			"WHERE p.plrid=d.plrid AND $lasttime > p.lastactivity";
 	} else {
 		# need to figure something out for SQLite
+		die("Unable to calculate activity for DB::" . $db->type);
 	}
 	my $ok = $db->query($cmd);
 
@@ -1377,6 +1446,29 @@ sub _delete_stale_weapons {
 	if ($self->{maxdays_exclusive}) {
 		$db->do("DELETE FROM $db->{c_weapon_data} WHERE lastdate <= $sql_oldest");
 	}
+
+	$db->commit;
+
+	return $total;
+}
+
+sub _delete_stale_hourly {
+	my $self = shift;
+	my $oldest = shift || return;
+	my $db = $self->{db};
+	my $conf = $self->{conf};
+	my $sql_oldest = $db->quote($oldest);
+	my @delete;
+
+	return 0 unless $db->table_exists($db->{t_map_hourly});
+
+	$db->begin;
+
+	# keep track of what stats are being deleted 
+	my $total = $db->count($db->{t_map_hourly}, "statdate <= $sql_oldest");
+
+	# delete basic data
+	$db->do("DELETE FROM $db->{t_map_hourly} WHERE statdate <= $sql_oldest");
 
 	$db->commit;
 
@@ -1744,6 +1836,11 @@ sub daily_maxdays {
 
 	$t{roles} = $total = $self->_delete_stale_roles($oldest);
 	$::ERR->info(sprintf("%s stale roles deleted!", commify($total))) if $total;
+	$alltotal += $total;
+	return if $::GRACEFUL_EXIT > 0;
+
+	$t{hourly} = $total = $self->_delete_stale_hourly($oldest);
+	$::ERR->info(sprintf("%s stale hourly stats deleted!", commify($total))) if $total;
 	$alltotal += $total;
 	return if $::GRACEFUL_EXIT > 0;
 

@@ -44,6 +44,8 @@ sub _getOptions {
 		# CONFIG OVERRIDES
 		'uniqueid=s'	=> \$self->{param}{uniqueid},
 		'maxdays=s'	=> \$self->{param}{maxdays},
+		'baseskill=i'	=> \$self->{param}{baseskill},
+		'skill=s'	=> \$self->{param}{calcskill_kill},
 
 		# BASIC OPTIONS
 		'config=s'	=> \$self->{param}{config},

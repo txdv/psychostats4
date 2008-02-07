@@ -134,13 +134,14 @@ sub _init {
 	($self->{weaponid}, $self->{name}, $self->{skillweight}) = $db->select($db->{t_weapon}, [qw( weaponid name skillweight )], 
 		"uniqueid=" . $db->quote($self->{uniqueid})
 	);
+	$self->{skillweight} = undef if $self->{skillweight} and ($self->{skillweight} == 0.00 or $self->{skillweight} == 1.00);
 	# weapon didn't exist so we have to create it
 	if (!$self->{weaponid}) {
 		$self->{weaponid} = $db->next_id($db->{t_weapon}, 'weaponid');
 		my $res = $db->insert($db->{t_weapon}, { 
 			weaponid 	=> $self->{weaponid},
 			uniqueid 	=> $self->{uniqueid},
-			skillweight 	=> 0.00,
+#			skillweight 	=> 0.00,
 		});
 		$self->fatal("Error adding weapon to database: " . $db->errstr) unless $res;
 	}
