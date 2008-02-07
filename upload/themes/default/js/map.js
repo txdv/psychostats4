@@ -20,8 +20,9 @@ function init_google() {
 	map = new GMap2(document.getElementById("map"), {
 		// ...
 	});
-	map.setCenter(new GLatLng(40.317232,-95.339355), 4);	// US
-//	map.setCenter(new GLatLng(48.57479,11.425781), 4);	// Europe
+
+	var ll = mapconf.center ? mapconf.center.split(',') : [ 40.317232,-95.339355 ]; 	// Default is US
+	map.setCenter(new GLatLng(ll[0],ll[1]), mapconf.zoom ? mapconf.zoom : 4);		// 48.57479,11.425781 - Eurpoe
 
 	// initialize map
  	var mapControl = new GMapTypeControl();
@@ -54,7 +55,7 @@ function init_google() {
 			markers[latlng] = true;
 
 			// auto center on the first marker, chances are most markers will be surrounding the same area
-			if (i == 0) map.setCenter(new GLatLng(lat, lng), 4);
+//			if (i == 0) map.setCenter(new GLatLng(lat, lng), 4);
 
 			// define the point, create the marker and add the icon and event listener for it...
 			var point = new GLatLng(t.attr('lat'), t.attr('lng'));
@@ -78,12 +79,14 @@ function makeInfo(o) {
 	plrname.text(o.attr('name'));
 	plrname.attr('href', plrname.attr('href').replace('id=x', 'id=' + encodeURIComponent( o.attr('plrid') ) ) );
 	if (o.attr('icon')) {
-		plrname.prepend("<img src='" + iconsurl + '/' + encodeURIComponent( o.attr('icon') ) + "' alt=''/>");
+		plrname.prepend("<img src='" + iconsurl + '/' + encodeURIComponent( o.attr('icon') ) + "' alt=''/> ");
 	}
 
 	$('.rank', dom).html(o.attr('rank') + ' <em>(Skill: ' + o.attr('skill') + ')</em>');
 	$('.kills', dom).html(o.attr('kills') + ' <em>(Headshots: ' + o.attr('headshotkills') + ')</em>');
 	$('.onlinetime', dom).html(o.attr('onlinetime'));
+//	$('.activity', dom).html(o.attr('activity') + '%');
+	$('.activity_bar', dom).html(o.attr('activity_bar'));
 	return dom.html();
 }
 

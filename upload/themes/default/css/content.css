@@ -393,10 +393,31 @@
 }
 
 #map {
-	height: 300px;
+	height: 350px;
 	border: 1px solid gray;
-	width: 800px;
+	width: 90%;
 	margin: 0 auto 1em auto;
+}
+
+.ofc-left {
+	width: 49%;
+	float: left;
+	margin-bottom: 1em;
+}
+.ofc-right {
+	width: 49%;
+	float: left;
+	margin-bottom: 1em;
+}
+.ofc-least {
+	width: 24%;
+	float: left;
+	margin-bottom: 1em;
+}
+.ofc-most {
+	width: 74%;
+	float: left;
+	margin-bottom: 1em;
 }
 
 /* --- weapon 'classes' ------------------- */

@@ -11,8 +11,9 @@ $cms->theme->assign_request_vars($validfields, true);
 // return a list of geocoded IP's using the most active IPs in the database
 if (is_numeric($ip) and $ip > 0) {
 	if ($ip > 100) $ip = 100;
+/*
 	$list = $ps->db->fetch_rows(1,
-		"SELECT DISTINCT INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
+		"SELECT DISTINCT INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
 		"FROM $ps->t_plr_ids_ipaddr ip, $ps->t_plr p, $ps->t_plr_profile pp, $ps->c_plr_data c " . 
 		"WHERE ip.plrid=p.plrid AND p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND " . 
 		"(ipaddr NOT BETWEEN 167772160 AND 184549375) AND " .		// 10/8
@@ -20,6 +21,18 @@ if (is_numeric($ip) and $ip > 0) {
 		"(ipaddr NOT BETWEEN 3232235520 AND 3232301055) AND " .		// 192.168/16
 		"(NOT ipaddr IN (2130706433, 0)) " .				// 127.0.0.1, 0.0.0.0
 		"ORDER BY totaluses DESC LIMIT $ip"
+	);
+*/
+	// return a list of IP's of the highest ranking players.
+	$list = $ps->db->fetch_rows(1,
+		"SELECT DISTINCT INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
+		"FROM $ps->t_plr_ids_ipaddr ip, $ps->t_plr p, $ps->t_plr_profile pp, $ps->c_plr_data c " . 
+		"WHERE ip.plrid=p.plrid AND p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND p.allowrank=1 AND " . 
+		"(ipaddr NOT BETWEEN 167772160 AND 184549375) AND " .		// 10/8
+		"(ipaddr NOT BETWEEN 2886729728 AND 2887778303) AND " .		// 172.16/12
+		"(ipaddr NOT BETWEEN 3232235520 AND 3232301055) AND " .		// 192.168/16
+		"(NOT ipaddr IN (2130706433, 0)) " .				// 127.0.0.1, 0.0.0.0
+		"ORDER BY p.rank,p.skill,c.kills DESC LIMIT $ip"
 	);
 	$iplist = array();
 	foreach ($list as $p) {
@@ -45,6 +58,7 @@ if (is_numeric($ip) and $ip > 0) {
 		$set = array_merge($set, $iplist[$ip]);
 		unset($set['ip'],$set['ipaddr']);
 		$set['onlinetime'] = compacttime($set['onlinetime']);
+		$set['activity_bar'] = pct_bar(array('pct' => $set['activity'], 'width' => 215, 'title' => "Activity: " . $set['activity'] . "%" ));
 
 		$markers[ $ip ] = $set;
 	}
@@ -54,7 +68,7 @@ if (is_numeric($ip) and $ip > 0) {
 	foreach ($markers as $m) {
 		$node = "  <marker ";
 		foreach ($m as $key => $val) {
-			$node .= "$key=\"" . addslashes($val) . "\" ";
+			$node .= "$key=\"" . ps_escape_html($val) . "\" ";
 		}
 		$node .= "/>\n";
 		$xml .= $node;
@@ -64,7 +78,10 @@ if (is_numeric($ip) and $ip > 0) {
 	print $xml;
 	exit;
 } elseif ($ofc) {	// collect hourly stats for OFC
-	return_ofc_data();
+	switch ($ofc) {
+		case 'h24': return_ofc_24(); break;
+		case 'cc':  return_ofc_cc(); break;
+	}
 	exit;
 }
 
@@ -82,7 +99,78 @@ if ($ps->conf['theme']['map']['google_key']) {
 }
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 
-function return_ofc_data() {
+function return_ofc_cc() {
+	global $cms, $ps;
+
+	$max = 8;		// 2 less than the real max (10)
+	$data = array();
+	$labels = array();
+	$exclude = array();
+	$total = 0;
+
+	$ps->db->query(
+		"SELECT pp.cc,cn,COUNT(*) " . 
+		"FROM $ps->t_plr_profile pp, $ps->t_geoip_cc cc " . 
+		"WHERE pp.cc IS NOT NULL AND cc.cc=pp.cc " . 
+		"GROUP BY pp.cc " . 
+		"ORDER BY 3 DESC LIMIT $max"
+	);
+	while (list($cc,$cn,$cctotal) = $ps->db->fetch_row(0)) {
+		$total += $cctotal;
+		$data[] = $cctotal;
+		$labels[] = '(' . strtoupper($cc) . ") $cn";
+		$exclude[] = $cc;
+	}
+
+	// get 'other' CC's that were not not in the top <$max>
+	list($cctotal) = $ps->db->fetch_list(
+		"SELECT COUNT(*) " . 
+		"FROM $ps->t_plr_profile pp, $ps->t_geoip_cc cc " . 
+		"WHERE pp.cc IS NOT NULL AND cc.cc=pp.cc AND NOT pp.cc IN (" . 
+			implode(',', array_map(create_function('$s','global $ps; return $ps->db->escape($s,true);'), $exclude)) . 
+		") "
+	);
+	$data[] = $cctotal;
+	$labels[] = $cms->trans("Other");
+
+/**/
+	// get a count of players that have no CC defined
+	list($cctotal) = $ps->db->fetch_list(
+		"SELECT COUNT(*) " . 
+		"FROM $ps->t_plr_profile pp " . 
+		"WHERE pp.cc IS NULL "
+	);
+	$data[] = $cctotal;
+	$labels[] = $cms->trans("Unknown");
+/**/
+
+	$total = array_sum($data);
+
+	// calculate percentages for each value (the OFC pie function only accepts percentages, not absolute values.....)
+	$values = array();
+	for ($i = 0; $i < count($data); $i++) {
+		$values[$i] = sprintf("%0.1f", $data[$i] / $total * 100);
+		if (fmod($values[$i], 1) == 0) $values[$i] = round($values[$i]);
+	}
+#	print_r($values);
+#	print_r($labels);
+
+	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
+	$g = new graph();
+	$g->bg_colour = '#C4C4C4';
+
+	$g->title($cms->trans('Country Breakdown'), '{font-size: 16px;}');
+	$g->pie(75,'#505050','{font-size: 12px; display: none;}');
+	$g->pie_values($values, $labels);
+//	$g->pie_slice_colours( array('#3334AD','#C79810','#d01f3c') );
+	$g->pie_slice_colours(array('#0033FF','#00B3FF','#00FFCC','#00FF4D','#CC00FF','#7A95FF','#FFD83D','#B3FF00','#FF0033','#FFCC00'));
+	$g->set_tool_tip('#x_label#<br>#val#%');
+
+	// display the data
+	print $g->render();
+}
+
+function return_ofc_24() {
 	global $cms, $ps;
 
 	$hours = array();
@@ -150,7 +238,7 @@ function return_ofc_data() {
 	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
 	$g = new graph();
 
-	$g->title('Last 24 Hours', '{font-size: 16px; font-weight: bold}');
+	$g->title($cms->trans('Last 24 Hours'), '{font-size: 16px;}');
 	$g->bg_colour = '#C4C4C4';
 
 	$g->set_data($data_avg);

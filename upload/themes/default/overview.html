@@ -21,13 +21,13 @@
 <!--content block-->
 <div id="ps-main-content" class="ps-page-{$page}">
 
-{ofc data="h24" width='800' height=200}
-<p>&nbsp;</p>
+<div>
+	<div class="ofc-least">{ofc data="cc" width='100%' height=200}</div>
+	<div class="ofc-most">{ofc data="h24" width='100%' height=200}</div>
+	<div style="clear: both"></div>
+</div>
 
 {if $conf.theme.map.google_key}<div id="map"></div>{/if}
-
-<img src="{url _base='imgconn.php'}" alt="[img]" />
-<img src="{url _base='imgcc.php'}" alt="[img]" />
 
 </div> {* end ps-main-content *}
 
@@ -35,7 +35,7 @@
 
 </div> {* end ps-page-container *}
 
-<div id="infowin">
+<div id="infowin" style="display: none">
 	<div class="gmapinfo">
 	<h4><a href="{url _base='player.php' id='x'}" class="name"></a></h4>
 	<p>
@@ -49,6 +49,7 @@
 	<p>
 		<label><#Online#>:</label>
 		<span class="onlinetime"></span>
+		<span class="activity_bar"></span>
 	</p>
 	</div>
 </div>
