@@ -338,7 +338,8 @@ CREATE TABLE `ps_plr_profile` (
   `namelocked` tinyint(1) unsigned NOT NULL default '0',
   PRIMARY KEY  (`uniqueid`),
   UNIQUE KEY `userid` (`userid`),
-  KEY `name` (`name`)
+  KEY `name` (`name`),
+  KEY `cc` (`cc`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_roles` (
   `dataid` int(10) unsigned NOT NULL default '0',
@@ -499,7 +500,7 @@ CREATE TABLE `ps_weapon` (
   `weaponid` smallint(5) unsigned NOT NULL default '0',
   `uniqueid` varchar(32) NOT NULL default '',
   `name` varchar(128) default NULL,
-  `skillweight` float(4,2) NOT NULL default '0.00',
+  `skillweight` float(4,2) default NULL,
   `class` varchar(32) default NULL,
   PRIMARY KEY  (`weaponid`),
   UNIQUE KEY `uniqueid` (`uniqueid`)
