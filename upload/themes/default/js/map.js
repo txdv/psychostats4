@@ -86,7 +86,10 @@ function makeInfo(o) {
 	$('.kills', dom).html(o.attr('kills') + ' <em>(Headshots: ' + o.attr('headshotkills') + ')</em>');
 	$('.onlinetime', dom).html(o.attr('onlinetime'));
 //	$('.activity', dom).html(o.attr('activity') + '%');
-	$('.activity_bar', dom).html(o.attr('activity_bar'));
+	var bar = $('.pct-bar', dom);
+	var pct = o.attr('activity');
+	bar.attr('title', "Activity " + pct + "%");
+	$('span', bar).css({ width: pct + '%', backgroundColor: '#' + $('#color-' + pct).text() });
 	return dom.html();
 }
 

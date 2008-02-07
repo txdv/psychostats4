@@ -1,6 +1,7 @@
 <?php
 define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
+include(PS_ROOTDIR . "/includes/class_Color.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
 
@@ -58,7 +59,7 @@ if (is_numeric($ip) and $ip > 0) {
 		$set = array_merge($set, $iplist[$ip]);
 		unset($set['ip'],$set['ipaddr']);
 		$set['onlinetime'] = compacttime($set['onlinetime']);
-		$set['activity_bar'] = pct_bar(array('pct' => $set['activity'], 'width' => 215, 'title' => "Activity: " . $set['activity'] . "%" ));
+//		$set['activity_bar'] = pct_bar(array('pct' => $set['activity'], 'width' => 215, 'title' => "Activity: " . $set['activity'] . "%" ));
 
 		$markers[ $ip ] = $set;
 	}
@@ -85,9 +86,22 @@ if (is_numeric($ip) and $ip > 0) {
 	exit;
 }
 
+// generate some colors for the activity bar
+$colors = '';
+if ($ps->conf['theme']['map']['google_key']) {
+	$c = new Image_Color();
+	$c->setColors('cc0000','00cc00');
+	$range = $c->getRange(100, 1);
+	foreach ($range as $i => $col) {
+		$colors .= sprintf("<span id='color-%s'>%s</span>\n", $i, $col);
+	}
+	$colors .= "<span id='color-100'>00CC00</span>\n";
+}
+
 // assign variables to the theme
 $cms->theme->assign(array(
-	'page'	=> basename($PHP_SELF,'.php'),
+	'page'			=> basename($PHP_SELF,'.php'),
+	'activity_colors' 	=> $colors,
 ));
 
 // display the output
