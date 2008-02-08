@@ -72,10 +72,10 @@ our $TYPES_PLRSESSIONS = {
 	sessionstart	=> '=',
 	sessionend	=> '=',
 	skill		=> '=',
+	prevskill	=> '=',
 	kills		=> '+',
 	deaths		=> '+', 
 	headshotkills	=> '+',
-#	headshotdeaths	=> '+',
 	ffkills		=> '+',
 	ffdeaths	=> '+',
 	damage		=> '+',
@@ -939,10 +939,10 @@ sub save {
 	if ($PLR_SESSIONS_MAX and $self->{basic}{lasttime}) {
 		my $session = { 'mapid' => $self->{game}->get_map()->{mapid} };
 		# get most recent player session
-		my ($sid, $start, $end) = $db->get_row_array(
-			"SELECT dataid,sessionstart,sessionend FROM $db->{t_plr_sessions} " .
+		my ($sid, $start, $end, $prevskill) = $db->get_row_array(
+			"SELECT dataid,sessionstart,sessionend,skill FROM $db->{t_plr_sessions} " .
 			"WHERE plrid=$plrid " . 
-			"ORDER BY sessionstart DESC "
+			"ORDER BY sessionstart DESC LIMIT 1"
 		);
 		# if there was no session or the last session was too old start a new one.
 		# the previous session is "too old" if more than X mins has gone by since the previous session ended.
@@ -950,6 +950,7 @@ sub save {
 		if (!$sid or ($self->{firsttime} - $end > 60*15)) {
 			$session->{dataid} = $sid = $db->next_id($db->{t_plr_sessions}, 'dataid');	# update $sid too
 			$session->{plrid} = $plrid;
+			$session->{prevskill} = defined $prevskill ? $prevskill : $self->skill;
 			$session->{sessionstart} = $start = $self->{firsttime};				# update $start too
 		}
 		$session->{sessionend} = $self->{basic}{lasttime};

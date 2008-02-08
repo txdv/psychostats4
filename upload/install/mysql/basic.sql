@@ -364,6 +364,7 @@ CREATE TABLE `ps_plr_sessions` (
   `sessionstart` int(10) unsigned NOT NULL default '0',
   `sessionend` int(10) unsigned NOT NULL default '0',
   `skill` float(8,2) NOT NULL default '0.00',
+  `prevskill` float(8,2) NOT NULL default '0.00',
   `kills` smallint(5) unsigned NOT NULL default '0',
   `deaths` smallint(5) unsigned NOT NULL default '0',
   `headshotkills` smallint(5) unsigned NOT NULL default '0',
