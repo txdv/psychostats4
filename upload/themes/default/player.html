@@ -47,6 +47,7 @@
 <div id="s-plr-rundown" class="ps-column-content">
 <p class="hl firstrow">
 	<label><#Rank#></label>
+	<em>{rankchange plr=$plr}</em>
 	<span>{if $plr.rank}{$plr.rank|commify}{else}-{/if}</span>
 </p>
 <p class="substat">
@@ -55,6 +56,7 @@
 </p>
 <p class="hl">
 	<label><#Skill#></label>
+	<em>{skillchange plr=$plr}</em>
 	<span>{$plr.skill}</span>
 </p>
 <p class="substat">

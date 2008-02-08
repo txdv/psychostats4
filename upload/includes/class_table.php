@@ -57,6 +57,7 @@ function header() {
 	$row = new PsychoRow($this->type);
 //	$row->attr($this->header_attr);	// wrong
 	foreach ($this->columns as $key => $cell) {
+		if (is_array($cell) and $cell['nolabel']) continue;
 		$label = is_array($cell) ? $cell['label'] : $cell;
 		$str = sprintf($this->header_format, $label);
 		$row->th($str, $this->header_attr[$key]);
@@ -69,6 +70,7 @@ function header_sort() {
 	$row = new PsychoRow($this->type);
 //	$row->attr($this->header_attr); // wrong
 	foreach ($this->columns as $key => $cell) {
+		if (is_array($cell) and $cell['nolabel']) continue;
 		$hdr_attr = $this->header_attr[$key];
 		$label = is_array($cell) ? $cell['label'] : $cell;
 		if ($cell['tooltip']) {

@@ -188,6 +188,118 @@ function dual_bar($args = array()) {
 	return $out;
 }
 // --------------------------------------------------------------------------------------------------------------------
+function rank_change($args = array()) {
+	global $cms, $ps;
+	if (!is_array($args)) $args['plr'] = array( 'plr' => $args );
+	$args += array(
+		'plr'		=> NULL,
+		'rank'		=> 0,
+		'prevrank'	=> 0,
+		'imgfmt'	=> "rank_%s.png",
+		'difffmt'	=> "%d",
+		'attr'		=> "",
+		'acronym'	=> true,
+		'textonly'	=> false,
+	);
+
+	$output = "";
+	$rank = $prevrank = 0;
+	if (is_array($args['plr'])) {
+		$rank = $args['plr']['rank'];
+		$prevrank = $args['plr']['prevrank'];
+	} else {
+		$rank = $args['rank'];
+		$prevrank = $args['prevrank'];
+	}
+
+	$alt = $cms->trans("no change");
+	$dir = "same";
+	$diff = sprintf($args['difffmt'], $prevrank - $rank);	# note: LESS is better. Opposite of 'skill'.
+
+	if ($prevrank == 0) {
+		# no change
+	} elseif ($diff > 0) {
+		$dir = "up";
+		$alt = $cms->trans("Diff") . ": +$diff";
+	} elseif ($diff < 0) {
+		$dir = "down";
+		$alt = $cms->trans("Diff") . ": $diff";
+	}
+
+	if ($args['textonly']) {
+		$output = sprintf("<span class='rankchange-$dir'>%s%s</span>",
+			$diff > 0 ? '+' : '',
+			$prevrank == 0 ? '' : $diff
+		);
+	} else {
+		$output = sprintf("<img src='%s' alt='%s' title='%s' %s/>", 
+			$cms->theme->url() . '/img/icons/' . sprintf($args['imgfmt'], $dir),
+			$alt, $alt, $args['attr']
+		);
+#		if ($args['acronym']) {
+#			$output = "<acronym title='$alt'>$output</acronym>";
+#		}
+		$output = "<span class='rankchange-$dir'>$output</span>";
+	}
+	return $output;
+}
+// --------------------------------------------------------------------------------------------------------------------
+function skill_change($args = array()) {
+	global $cms, $ps;
+	if (!is_array($args)) $args['plr'] = array( 'plr' => $args );
+	$args += array(
+		'plr'		=> NULL,
+		'skill'		=> 0,
+		'prevskill'	=> 0,
+		'imgfmt'	=> "skill_%s.png",
+		'difffmt'	=> "%.02f",
+		'attr'		=> "",
+		'acronym'	=> true,
+		'textonly'	=> false,
+	);
+
+	$output = "";
+	$skill = $prevskill = 0;
+	if (is_array($args['plr'])) {
+		$skill = $args['plr']['skill'];
+		$prevskill = $args['plr']['prevskill'];
+	} else {
+		$skill = $args['skill'];
+		$prevskill = $args['prevskill'];
+	}
+
+	$alt = $cms->trans("no change");
+	$dir = "same";
+	$diff = sprintf($args['difffmt'], $skill - $prevskill);
+
+	if ($prevskill == 0) {
+		# no change
+	} elseif ($diff > 0) {
+		$dir = "up";
+		$alt = $cms->trans("Diff") . ": +$diff";
+	} elseif ($diff < 0) {
+		$dir = "down";
+		$alt = $cms->trans("Diff") . ": $diff";
+	}
+
+	if ($args['textonly']) {
+		$output = sprintf("<span class='skillchange-$dir'>%s%s</span>",
+			$diff > 0 ? '+' : '',
+			$prevskill == 0 ? '' : $diff
+		);
+	} else {
+		$output = sprintf("<img src='%s' alt='%s' title='%s' %s/>", 
+			$cms->theme->url() . '/img/icons/' . sprintf($args['imgfmt'], $dir),
+			$alt, $alt, $args['attr']
+		);
+#		if ($args['acronym']) {
+#			$output = "<acronym title='$alt'>$output</acronym>";
+#		}
+		$output = "<span class='skillchange-$dir'>$output</span>";
+	}
+	return $output;
+}
+// --------------------------------------------------------------------------------------------------------------------
 // safer rename function (win/linux compatable)
 function rename_file($oldfile,$newfile) {
 	// first, try to rename since it's atomic (and faster)

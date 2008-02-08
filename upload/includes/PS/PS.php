@@ -147,6 +147,7 @@ var $PLR_SESSIONS_TYPES = array(
 	'sessionstart'		=> '=',
 	'sessionend'		=> '=',
 	'skill'			=> '=',
+	'prevskill'		=> '=',
 	'kills'			=> '+',
 	'deaths'		=> '+', 
 	'killsperdeath'		=> array( 'ratio', 'kills', 'deaths' ),

@@ -197,8 +197,9 @@ $stable->columns(array(
 	'headshotkills'		=> array( 'label' => $cms->trans("HS"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Headshot Kills") ),
 	'headshotkillspct'	=> array( 'label' => $cms->trans("HS%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Headshot Kills Percentage") ),
 	'accuracy'		=> array( 'label' => $cms->trans("Acc"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Accuracy") ),
-	'skill' 		=> array( 'label' => $cms->trans("Skill") ),
+	'skill' 		=> array( 'label' => $cms->trans("Skill"), 'callback' => 'session_skill' ),
 ));
+$stable->column_attr('skill','class','right');
 $ps->player_sessions_table_mod($stable);
 $cms->filter('player_session_table_object', $stable);
 
@@ -311,6 +312,14 @@ function dash_if_empty($val) {
 function dmg($dmg) {
 	return "<acronym title='" . commify($dmg) . "'>" . abbrnum0($dmg) . "</acronym>";
 }
+
+function session_skill($val, $sess) {
+	return $val . " " . skill_change(array(
+		'skill'		=> $val,
+		'prevskill'	=> $sess['prevskill'],
+	));
+}
+
 
 function return_ofc_data() {
 	global $cms, $ps;

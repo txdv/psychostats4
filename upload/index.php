@@ -55,6 +55,7 @@ $table->sort_baseurl(array( 'q' => $q ));
 $table->start_and_sort($start, $sort, $order);
 $table->columns(array(
 	'rank'			=> array( 'label' => $cms->trans("Rank"), 'callback' => 'dash_if_empty' ),
+	'prevrank'		=> array( 'nolabel' => true, 'callback' => 'rankchange' ),
 	'name'			=> array( 'label' => $cms->trans("Player"), 'callback' => 'ps_table_plr_link' ),
 	'kills'			=> array( 'label' => $cms->trans("Kills"), 'modifier' => 'commify' ),
 	'deaths'		=> array( 'label' => $cms->trans("Deaths"), 'modifier' => 'commify' ),
@@ -63,9 +64,12 @@ $table->columns(array(
 	'headshotkillspct'	=> array( 'label' => $cms->trans("HS%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Headshot Kills Percentage") ),
 	'onlinetime'		=> array( 'label' => $cms->trans("Online"), 'modifier' => 'compacttime' ),
 	'activity'		=> array( 'label' => $cms->trans("Activity"), 'modifier' => 'activity_bar' ),
-	'skill'			=> $cms->trans("Skill"),
+	'skill'			=> array( 'label' => $cms->trans("Skill"), 'callback' => 'plr_skill' ),
 ));
 $table->column_attr('name', 'class', 'left');
+$table->column_attr('skill', 'class', 'right');
+//$table->column_attr('rank', 'class', 'left');
+$table->header_attr('rank', 'colspan', '2');
 $ps->index_table_mod($table);
 $cms->filter('players_table_object', $table);
 
@@ -97,6 +101,22 @@ function activity_bar($pct) {
 
 function dash_if_empty($val) {
 	return !empty($val) ? $val : '-';
+}
+
+function rankchange($val, $plr) {
+	return rank_change($plr);
+}
+
+function skillchange($val, $plr) {
+	return skill_change($plr);
+}
+
+function plr_skill($val, $plr) {
+	return $val . " " . skill_change($plr);
+}
+
+function plr_rank($val, $plr) {
+	return rank_change($plr) . " " . $val;
 }
 
 ?>

@@ -420,6 +420,11 @@
 	margin-bottom: 1em;
 }
 
+.skillchange-up, .skillchange-down, .rankchange-up, .rankchange-down {
+	display: inline !important;
+	float: none;
+}
+
 /* --- weapon 'classes' ------------------- */
 /* not used at the moment 
 .ps-weapon-class-title {
