@@ -26,13 +26,14 @@ if (is_numeric($ip) and $ip > 0) {
 */
 	// return a list of IP's of the highest ranking players.
 	$list = $ps->db->fetch_rows(1,
-		"SELECT DISTINCT INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
+		"SELECT DISTINCT ip.plrid, INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
 		"FROM $ps->t_plr_ids_ipaddr ip, $ps->t_plr p, $ps->t_plr_profile pp, $ps->c_plr_data c " . 
 		"WHERE ip.plrid=p.plrid AND p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND p.allowrank=1 AND " . 
 		"(ipaddr NOT BETWEEN 167772160 AND 184549375) AND " .		// 10/8
 		"(ipaddr NOT BETWEEN 2886729728 AND 2887778303) AND " .		// 172.16/12
 		"(ipaddr NOT BETWEEN 3232235520 AND 3232301055) AND " .		// 192.168/16
 		"(NOT ipaddr IN (2130706433, 0)) " .				// 127.0.0.1, 0.0.0.0
+//		"GROUP BY ip.plrid " .
 		"ORDER BY p.rank,p.skill,c.kills DESC LIMIT $ip"
 	);
 	$iplist = array();
@@ -78,8 +79,9 @@ if (is_numeric($ip) and $ip > 0) {
 	header("Content-Type: text/xml");
 	print $xml;
 	exit;
-} elseif ($ofc) {	// collect hourly stats for OFC
+} elseif ($ofc) {
 	switch ($ofc) {
+		case 'day': return_ofc_day(); break;
 		case 'h24': return_ofc_24(); break;
 		case 'cc':  return_ofc_cc(); break;
 	}
@@ -313,6 +315,119 @@ function return_ofc_24() {
 //	$g->x_label_steps( 2 );
 
 	// display the data
+	print $g->render();
+}
+
+function return_ofc_day() {
+	global $cms, $ps;
+
+	$days = array();
+	$labels = array();
+	$data = array();
+	$data_avg = array();
+	$sum = 0;
+	$avg = 0;
+	$max = 31;
+	$maxlimit = 100;
+
+	// get the last 31 days of data
+	$list = $ps->db->fetch_rows(1,
+		"SELECT statdate,SUM(connections) connections " . 
+		"FROM $ps->t_map_data " . 
+		"GROUP BY statdate " . 
+		"ORDER BY statdate DESC LIMIT $max"
+	);
+
+	$now = $list ? ymd2time($list[0]['statdate']) : time();
+	while (count($days) < $max) {
+		$days[date('Y-m-d',$now)] = 'null';
+		$labels[] = date('M jS',$now);
+		$now -= 60*60*24;
+	}
+        $days = array_reverse($days);
+        $labels = array_reverse($labels);
+
+	// build our data and labels
+	$data = $days;
+	$maxdata = 0;
+	foreach ($list as $d) {
+		$sum += $d['connections'];
+		$data[ $d['statdate'] ] = $d['connections'];
+		$maxdata = max($maxdata, $d['connections']);
+	}
+
+	if ($data) {
+		$avg = $sum / count($data);
+		$data_avg[] = $avg;
+		$data_avg = array_pad($data_avg, count($data), 'null');
+		$data_avg[] = $avg;
+#		$data_avg = array_pad(array(), count($data), $avg);
+		$maxlimit  = ceil(ceil($maxdata / 10) * 10);
+	}
+
+	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
+	$g = new graph();
+
+	$g->title($cms->trans('Daily Connections'), '{font-size: 16px;}');
+	$g->bg_colour = '#C4C4C4';
+
+#	$g->set_data($data_avg);
+#	$g->line(1, '#9999ee', 'Average Connections', 9);
+
+#	$g->set_data($data);
+##	$g->line_hollow(1, 3, '#5555ff', 'Connections', 9);
+#	$g->bar(75, '#5555ff', 'Connections', 9);
+
+	$avg_line = new line(1, '#999EE');
+	$avg_line->key('Average Connections', 9);
+	$avg_line->data = $data_avg;
+
+	$conn_bar = new bar_3d(75, '#5555ff', '#3333DD');
+	$conn_bar->key('Connections', 9);
+	$conn_bar->data = $data;
+/*
+	$keys = array_keys($data);
+	for ($i=0; $i<count($data); $i++) {
+		$conn_bar->add_data_tip($data[$keys[$i]], 
+			sprintf($cms->trans("Connections: %d"), $data[$keys[$i]]) . "<br>" . 
+			sprintf($cms->trans("Average: %d"), $data_avg[0])
+		);
+	}
+/**/
+
+	$g->set_tool_tip('#x_label#<br>#key#: #val# (Avg: ' . round($data_avg[0]) . ')');
+//	$g->set_tool_tip('#x_label#<br>#tip#');
+
+	$g->data_sets[] = $avg_line;
+	$g->data_sets[] = $conn_bar;
+
+	$g->set_x_axis_3d(6);
+
+	// label each point with its value
+	$g->set_x_labels($labels);
+//	$g->set_x_axis_steps(count($labels) / 3 + 1);
+//	$g->set_x_tick_size(1);
+
+	$g->set_x_label_style( 10, '#000000', 0, 3, '#cccccc' );
+
+//	$g->set_x_label_style('none');
+#	$g->set_x_label_style( 8, '#000000', 2 );
+	$g->set_inner_background( '#E3F0FD', '#CBD7E6', 90 );
+	$g->x_axis_colour('#909090', '#ADB5C7');
+//	$g->x_axis_colour('#eeeeee', '#eeeeee');
+	$g->y_axis_colour('#5555ff', '#eeeeee');
+//	$g->set_x_offset( false );
+
+	// set the Y max
+//	$g->set_y_max($maxdata);
+	$g->set_y_min(0);
+	$g->set_y_max($maxlimit);
+/*
+	$g->set_y_min($minlimit);
+*/
+
+	$g->set_y_legend('Connections',12,'#5555ff');
+
 	print $g->render();
 }
 

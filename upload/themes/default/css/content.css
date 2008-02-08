@@ -396,7 +396,20 @@
 	height: 350px;
 	border: 1px solid gray;
 	width: 90%;
-	margin: 0 auto 1em auto;
+	margin: 0 auto;
+}
+.map-header, .map-footer {
+	width: 90%;
+	margin: 0 auto;
+}
+#ps-main .map-header h3 {
+	font-size: 130%;
+	color: black;
+}
+.map-footer p {
+	font-size: 80%;
+	color: #666;
+	text-align: left;
 }
 
 .ofc-left {
@@ -418,6 +431,10 @@
 	width: 74%;
 	float: left;
 	margin-bottom: 1em;
+}
+.ofc-full{
+	width: 90%;
+	margin: 0 auto 1em;
 }
 
 .skillchange-up, .skillchange-down, .rankchange-up, .rankchange-down {

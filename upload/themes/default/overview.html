@@ -25,9 +25,21 @@
 	<div class="ofc-least">{ofc data="cc" width='100%' height=200}</div>
 	<div class="ofc-most">{ofc data="h24" width='100%' height=200}</div>
 	<div style="clear: both"></div>
+	<div class="ofc-full">{ofc data="day" width='100%' height=200}</div>
 </div>
 
-{if $conf.theme.map.google_key}<div id="map"></div>{/if}
+{if $conf.theme.map.google_key}
+	<div class="map-header">
+		<h3><#Top 100 Highest Ranked Players#></h3>
+	</div>
+	<div id="map"></div>
+	<div class="map-footer">
+		<p>* <#Only the first player on a lat,lng location is displayed#></p>
+		<p>* <#Player locations are geocoded based on their connection IP and are approximate#></p>
+		<p>* <#A player can appear more than once if they have multiple IPs#><p>
+		<p>* <#100 Players are not always shown due to certain IP ranges not being geocoded#></p>
+	</div>
+{/if}
 
 </div> {* end ps-main-content *}
 

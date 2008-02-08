@@ -14,14 +14,24 @@
 	<link rel="stylesheet" type="text/css" media="screen,projection,print" href="{theme->url}/css/content.css" />
 {theme->css_links}
 
-	<script type="text/javascript">{* these variables are used in various js routines throughout the stats *}
+	<script type="text/javascript">
+{* these variables are used in various js routines throughout the stats *}
 		var themeurl = '{theme->url|escape:'javascript'}';
 		var iconsurl = '{$conf.theme.icons_url|escape:'javascript'}';
 {* setup some variables that will be accessed in the js/map.js code *}
 {if $conf.theme.map.google_key}
 		var mapconf = {ldelim}
-			center: '{$conf.theme.map.center|escape:'javascript'}',
-			zoom:	parseInt('{$conf.theme.map.zoom|escape:'javascript'}')
+			enable_custom_icons:	parseInt('{$conf.theme.map.enable_custom_icons|escape:'javascript'}'),
+			ctrl_maptype:		parseInt('{$conf.theme.map.ctrl_maptype|escape:'javascript'}'),
+			ctrl_overview:		parseInt('{$conf.theme.map.ctrl_overview|escape:'javascript'}'),
+			mousewheel:		parseInt('{$conf.theme.map.mousewheel|escape:'javascript'}'),
+			smoothzoom:		parseInt('{$conf.theme.map.smoothzoom|escape:'javascript'}'),
+			center: 		'{$conf.theme.map.center|escape:'javascript'}',
+			ctrl_map: 		'{$conf.theme.map.ctrl_map|escape:'javascript'}',
+			maptype:		'{$conf.theme.map.maptype|escape:'javascript'}',
+			zoom:			parseInt('{$conf.theme.map.zoom|escape:'javascript'}'),
+			standard_icon: 		'{$conf.theme.map.standard_icon|escape:'javascript'}',
+			standard_icon_shadow:	'{$conf.theme.map.standard_icon_shadow|escape:'javascript'}',
 		{rdelim};
 {/if}
 

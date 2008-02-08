@@ -1,3 +1,4 @@
+// http://code.google.com/apis/maps/documentation/
 var map;
 $(function(){
 	$('body').unload(function(){ if (window.GUnload) GUnload(); });
@@ -21,30 +22,38 @@ function init_google() {
 		// ...
 	});
 
+	// initialize map
 	var ll = mapconf.center ? mapconf.center.split(',') : [ 40.317232,-95.339355 ]; 	// Default is US
 	map.setCenter(new GLatLng(ll[0],ll[1]), mapconf.zoom ? mapconf.zoom : 4);		// 48.57479,11.425781 - Eurpoe
-
-	// initialize map
- 	var mapControl = new GMapTypeControl();
-	map.setMapType(G_SATELLITE_MAP);
 	map.addMapType(G_PHYSICAL_MAP);
-	map.addControl(mapControl);
-	map.addControl(new GLargeMapControl());
 
-	map.enableContinuousZoom();
-	map.enableScrollWheelZoom();
+	if (!mapconf.maptype) mapconf.maptype = 'G_SATELLITE_MAP';
+	eval("map.setMapType(" + mapconf.maptype + ")");
+
+	if (mapconf.ctrl_maptype) map.addControl(new GMapTypeControl());
+	if (mapconf.ctrl_overview) map.addControl(new GOverviewMapControl());
+	if (mapconf.ctrl_map) eval("map.addControl(new " + mapconf.ctrl_map + "())");
+	if (mapconf.smoothzoom) map.enableContinuousZoom();
+	if (mapconf.mousewheel) map.enableScrollWheelZoom();
+
+	// standard icon base
+	var stdIcon = new GIcon();
+	stdIcon.image = themeurl + '/img/icons/' + mapconf.standard_icon;
+	stdIcon.shadow = themeurl + '/img/icons/' + mapconf.standard_icon_shadow;
+	stdIcon.iconSize = new GSize(32,32);
+	stdIcon.shadowSize = new GSize(59,32);
+	stdIcon.iconAnchor = new GPoint(16,32);
+	stdIcon.infoWindowAnchor = new GPoint(16,16);
+
+	// custom icon base
+	var customIcon = new GIcon();
+	customIcon.iconSize = new GSize(16,16);
+	customIcon.iconAnchor = new GPoint(8,8);
+	customIcon.infoWindowAnchor = new GPoint(8,8);
 
 	// start adding markers to the map
 	var markers = {};
 	$.get('overview.php', { ip: 100 }, function(xml) {
-		var icon = new GIcon();
-		icon.image = themeurl + '/img/icons/man32.png';
-		icon.shadow = themeurl + '/img/icons/man32.shadow.png';
-		icon.iconSize = new GSize(32,32);
-		icon.shadowSize = new GSize(59,32);
-		icon.iconAnchor = new GPoint(16,32);
-		icon.infoWindowAnchor = new GPoint(16,16);
-
 		// add each ip marker to the map
 		$('marker', xml).each(function(i){
 			var t = $(this);
@@ -59,6 +68,11 @@ function init_google() {
 
 			// define the point, create the marker and add the icon and event listener for it...
 			var point = new GLatLng(t.attr('lat'), t.attr('lng'));
+			var icon = stdIcon;
+			if (mapconf.enable_custom_icons && t.attr('icon')) {
+				icon = new GIcon(customIcon);
+				icon.image = iconsurl + '/' + t.attr('icon');
+			}
 			var marker = new GMarker(point, {icon: icon});
 			marker.psinfo = null;
 			GEvent.addListener(marker, "click", function() {
