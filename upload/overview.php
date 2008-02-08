@@ -351,6 +351,7 @@ function return_ofc_day() {
 	$data = $days;
 	$maxdata = 0;
 	foreach ($list as $d) {
+		if (!array_key_exists($d['statdate'], $days)) continue;
 		$sum += $d['connections'];
 		$data[ $d['statdate'] ] = $d['connections'];
 		$maxdata = max($maxdata, $d['connections']);
@@ -362,7 +363,7 @@ function return_ofc_day() {
 		$data_avg = array_pad($data_avg, count($data), 'null');
 		$data_avg[] = $avg;
 #		$data_avg = array_pad(array(), count($data), $avg);
-		$maxlimit  = ceil(ceil($maxdata / 10) * 10);
+		$maxlimit  = ceil(ceil($maxdata / 100) * 100);
 	}
 
 	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
@@ -419,12 +420,8 @@ function return_ofc_day() {
 //	$g->set_x_offset( false );
 
 	// set the Y max
-//	$g->set_y_max($maxdata);
 	$g->set_y_min(0);
 	$g->set_y_max($maxlimit);
-/*
-	$g->set_y_min($minlimit);
-*/
 
 	$g->set_y_legend('Connections',12,'#5555ff');
 
