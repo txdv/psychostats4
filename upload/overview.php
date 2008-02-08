@@ -146,6 +146,7 @@ function return_ofc_cc() {
 	);
 	$data[] = $cctotal;
 	$labels[] = $cms->trans("Other");
+	$otheridx = count($data)-1;
 
 /**/
 	// get a count of players that have no CC defined
@@ -160,14 +161,24 @@ function return_ofc_cc() {
 
 	$total = array_sum($data);
 
+	// combine any values that are <= 1%
+	if ($otheridx) {
+		$extra = 0;
+		for ($i=0; $i<$otheridx; $i++) {
+			if ($data[$i] / $total * 100 <= 1.0) {
+				$data[$otheridx] += $data[$i];
+				unset($data[$i], $labels[$i]);
+			}
+		}
+	}
+
 	// calculate percentages for each value (the OFC pie function only accepts percentages, not absolute values.....)
 	$values = array();
-	for ($i = 0; $i < count($data); $i++) {
-		$values[$i] = sprintf("%0.1f", $data[$i] / $total * 100);
-		if (fmod($values[$i], 1) == 0) $values[$i] = round($values[$i]);
+	foreach ($data as $d) {
+		$v = sprintf("%0.1f", $d / $total * 100);
+		if (fmod($v, 1) == 0) $v = round($v);
+		$values[] = $v;
 	}
-#	print_r($values);
-#	print_r($labels);
 
 	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
 	$g = new graph();
@@ -230,7 +241,6 @@ function return_ofc_24() {
 		$conns[$hh] = $connections;
 		$maxdata = max($maxdata, $kills);
 		$maxconn = max($maxconn, $connections);
-		print "($statdate, $hour, $kills, $connections)<br>\n";
 	}
 	$labels = array_keys($hours);
 #	print_r($hours);
