@@ -548,8 +548,11 @@ function _sendquery($ipport, $cmd) {
 		if ($this->DEBUG) print "DEBUG: ($time latency) Received " . strlen($packet) . " bytes from $ip:$port:\n" . $this->hexdump($packet) . "\n";
 
 		$header = substr($packet, 0, 4);				// get the 4 byte header
-		$ack = @unpack("V1split", $header);
-		$split = $ack['split']; //sprintf("%d", $ack['split']);
+		// ugly 64bit hack. If the PHP_INT_SIZE is not 4 then we'll use "i" to unpack the header.
+		// "i" is machine dependent and I don't know what that will do for non-x86 systems, but at the moment 
+		// i can't get anything else to work since PHP is a bitch when it comes to large 32bit+ integers.
+		$ack = @unpack(PHP_INT_SIZE == 4 ? 'V' : 'i', $header);
+		$split = $ack[1];
 		if ($this->DEBUG) printf("DEBUG: ACK = 0x%X (%d)\n", $split, $split);
 		if ($split == -2) {						// we need to deal with multiple packets
 			if ($this->DEBUG) printf("DEBUG: Response is split!\n");
