@@ -140,18 +140,22 @@
 }
 
 /* override the label style for the player ID lists on player.php */
-#ps-id-plripaddr p.plr,
-#ps-id-plrname p.plr,
-#ps-id-plrworldid p.plr {
-	font-size: 80%;
-}
-#ps-id-plripaddr p.plr label,
-#ps-id-plrname p.plr label,
-#ps-id-plrworldid p.plr label {
+#ps-id-plripaddr p label,
+#ps-id-plrname p label,
+#ps-id-plrworldid p label {
 	width: 75%;
 	font-weight: normal;
 }
+#ps-id-plripaddr p.firstrow label,
+#ps-id-plrname p.firstrow label,
+#ps-id-plrworldid p.firstrow label {
+	font-weight: bold;
+	width: 50%;
+}
 
+.ps-column-content p.even {
+	background-color: #E7E7E7;
+}
 
 /* --- CLEAR FLOATS ------------ */
 #ps-main-column:after, 

@@ -200,7 +200,7 @@
 	<p><#Only the top#> {$max_plr_ids} <#player IDs are shown#></p>
 </div>
 
-<div class="ps-column-frame{if $shades.s_plrname} s-closed{/if}">
+<div id="ps-id-plrname" class="ps-column-frame{if $shades.s_plrname} s-closed{/if}">
 <div class="ps-column-header"><a href="" onclick="return false"><span><#Player Names#></span></a></div>
 <div id="s-plrname" class="ps-column-content">
 <p class="hl firstrow">
@@ -208,8 +208,8 @@
 	<span><b><#Used#></b></span>
 </p>
 {foreach from=$plr.ids_name item='i'}
-<p class="plr{cycle values=", even"}">
-	<label>{$i.id|escape}</label>
+<p{cycle values=", class='even'"}>
+	<label class="name">{$i.id|escape}</label>
 	<span>{$i.totaluses|commify}</span>
 </p>
 {/foreach}
@@ -217,7 +217,7 @@
 </div>
 
 {if $show_worldids}
-<div class="ps-column-frame{if $shades.s_plrworldid} s-closed{/if}">
+<div id="ps-id-plrworldid" class="ps-column-frame{if $shades.s_plrworldid} s-closed{/if}">
 <div class="ps-column-header"><a href="" onclick="return false"><span><#Player Steamid's#></span></a></div>
 <div id="s-plrworldid" class="ps-column-content">
 <p class="hl firstrow">
@@ -225,7 +225,7 @@
 	<span><b><#Used#></b></span>
 </p>
 {foreach from=$plr.ids_worldid item='i'}
-<p class="plr{cycle values=", even"}">
+<p{cycle values=", class='even'"}>
 	<label>{$i.id|escape}</label>
 	<span>{$i.totaluses|commify}</span>
 </p>
@@ -235,7 +235,7 @@
 {/if}
 
 {if $show_ips}
-<div class="ps-column-frame{if $shades.s_plripaddr} s-closed{/if}">
+<div id="ps-id-plripaddr" class="ps-column-frame{if $shades.s_plripaddr} s-closed{/if}">
 <div class="ps-column-header"><a href="" onclick="return false"><span><#Player IP Addresses#></span></a></div>
 <div id="s-plripaddr" class="ps-column-content">
 <p class="hl firstrow">
@@ -243,7 +243,7 @@
 	<span><b><#Used#></b></span>
 </p>
 {foreach from=$plr.ids_ipaddr item='i'}
-<p class="plr{cycle values=", even"}">
+<p{cycle values=", class='even'"}>
 	<label>{if $i.id}{$i.flagimg} {$i.id|int2ip}{else}<#unknown#>{/if}</label>
 	<span>{$i.totaluses|commify}</span>
 </p>

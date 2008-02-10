@@ -33,7 +33,7 @@ if (is_numeric($ip) and $ip > 0) {
 		"(ipaddr NOT BETWEEN 2886729728 AND 2887778303) AND " .		// 172.16/12
 		"(ipaddr NOT BETWEEN 3232235520 AND 3232301055) AND " .		// 192.168/16
 		"(NOT ipaddr IN (2130706433, 0)) " .				// 127.0.0.1, 0.0.0.0
-//		"GROUP BY ip.plrid " .
+		"GROUP BY ip.plrid " .
 		"ORDER BY p.rank,p.skill,c.kills DESC LIMIT $ip"
 	);
 	$iplist = array();
