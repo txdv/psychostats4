@@ -306,7 +306,7 @@ sub get_plr {
 		$p->timerstart($self->{timestamp});
 		$p->uid($uid);
 		$p->team($team);
-#		$p->plrids;
+		$p->plrids;
 
 		$self->addcache_all($p);
 		$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
@@ -616,8 +616,7 @@ sub event_changed_name {
 
 		my $p2 = new PS::Player($plrids, $self) || return undef;
 		$p2->active(1);
-#		printf("\"%s\"<%s><%s><%s>\n", $name, $p1->{uid}, $p1->{worldid}, uc $p1->{team});
-		$p2->signature(sprintf("\"%s\"<%s><%s><%s>", $name, $p1->{uid}, $p1->{worldid}, uc $p1->{team}));
+		$p2->signature(sprintf("%s<%s><%s><%s>", $name, $p1->{uid}, $p1->{worldid}, uc $p1->{team}));
 		$p2->timerstart($self->{timestamp});
 		$p2->team($p1->team);
 		$p2->plrids;		# changing name counts as a 'reconnect' for the plrids
@@ -625,20 +624,15 @@ sub event_changed_name {
 		$self->delcache_all($p1);
 		$p1->disconnect($self->{timestamp}, $self->get_map);
 		$p1->save;
+		undef $p1;
 
 		$self->addcache_all($p2);
 		$self->scan_for_clantag($p2) if $self->{clantag_detection} and !$p2->clanid;
-
-		undef $p1;
 	} else {
-		# save the new name to the player object
 		$p1->name($name);
+		$p1->plrids({ name => $name });		# changing name should be counted
 		$p1->{basic}{lasttime} = $timestamp;
 	}
-
-#	$p1->plrids({ name => $name, worldid => $p1->uniqueid, ipaddr => $p1->ipaddr });
-#	$p1->plrids({ name => encode('utf8',$name), worldid => $p1->uniqueid, ipaddr => $p1->ipaddr });
-
 }
 
 sub event_changed_role {

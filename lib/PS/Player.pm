@@ -386,14 +386,20 @@ sub load_day_stats {
 # If no plrids are provided then the current ID's will be incremented
 sub plrids {
 	my $self = shift;
-	my $newids = shift || { name => undef, ipaddr => undef, worldid => undef };
-
+	my $newids = shift || { name => $self->{name}, ipaddr => $self->{ipaddr}, worldid => $self->{worldid} };
 	my $inc = @_ ? shift : 1;
 
-	foreach my $id (keys %$newids) {
-		no warnings;
-		$self->{plrids}{$id} = $newids->{$id} if defined $newids->{$id};
-		$self->{_plrids}{$id} += $inc;
+	# update plr_ids_name plr_ids_ipaddr plr_ids_worldid
+	if ($self->{db}->type eq 'mysql') {
+		foreach my $var (keys %$newids) {
+			$self->{db}->do("INSERT INTO " . $self->{db}->{'t_plr_ids_' . $var} . " (plrid,$var,totaluses,firstseen) " . 
+				"VALUES ($self->{plrid}," . $self->{db}->quote($newids->{$var}) . ",1,FROM_UNIXTIME($self->{game}{timestamp})) " . 
+				"ON DUPLICATE KEY UPDATE totaluses=totaluses+1"
+			);
+		}
+	} else {
+		# abstract; this needs to be updated when SQLite starts to be used
+		die "Can not update plr_ids; I don't know how for DB::" . $self->{db}->type;
 	}
 }
 
@@ -1009,20 +1015,6 @@ sub save {
 	} else {
 		my ($prevskill) = $db->get_list("SELECT dayskill FROM $db->{t_plr_data} WHERE plrid=$id ORDER BY statdate DESC " . $db->limit(1,1));
 		$db->update($db->{t_plr}, { prevskill => $prevskill }, [ plrid => $plrid ]) if defined $prevskill;
-	}
-
-	# update plr_ids_name plr_ids_ipaddr plr_ids_worldid
-	if ($db->type eq 'mysql') {
-		foreach my $var (keys %{$self->{_plrids}}) {
-			$db->do("INSERT INTO " . $db->{'t_plr_ids_' . $var} . " (plrid,$var,totaluses,firstseen) " . 
-				"VALUES ($plrid," . $db->quote($self->{$var}) . ",$self->{_plrids}{$var},FROM_UNIXTIME($self->{firstseen})) " . 
-				"ON DUPLICATE KEY UPDATE totaluses=totaluses+$self->{_plrids}{$var}"
-			);
-#			print $db->lastcmd,"\n";
-		}
-	} else {
-		# abstract; this needs to be updated when SQLite starts to be used
-		die "Can not update plr_ids; I don't know how for DB::" . $db->type;
 	}
 
 	# update most/least used name if the name is not locked
