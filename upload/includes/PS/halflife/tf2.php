@@ -103,6 +103,21 @@ function maps_table_mod(&$table) {
 	);
 }
 
+// Add or remove columns from index.php listing
+function index_table_mod(&$table) {
+	global $cms;
+	$table->remove_columns(array( 'headshotkills', 'headshotkillspct' ));
+	$table->insert_columns(
+		array( 
+			'dominations' => array( 'label' => 'Dom', 'tooltip' => $cms->trans("Dominations") ), 
+			'assists' => array( 'label' => 'Assists', 'tooltip' => $cms->trans("Kill Assists") ), 
+			'flagscaptured' => array( 'label' => 'Flags', 'tooltip' => $cms->trans("Flags captured") ), 
+		),
+		'onlinetime',
+		false
+	);
+}
+
 // Add or remove columns from roles.php listing
 function roles_table_mod(&$table) { 
 	global $cms;

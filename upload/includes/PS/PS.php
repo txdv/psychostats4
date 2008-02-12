@@ -495,6 +495,8 @@ function get_player($args = array(), $minimal = false) {
 	}
 
 	// geocode IP addresses. Only does the first 10 IP's. Lets not overload my server with lookups.
+/*
+	// this is disabled until ip_lookup is recoded to allow a csv return result
 	if (!$args['minimal'] and $this->conf['theme']['map']['google_key'] and $args['loadipaddrs'] and $args['loadgeoinfo']) {
 		$list = array_slice($plr['ids_ipaddr'], 0, 10);
 		$ipstr = key_join(',', $list, 'ipstr');
@@ -512,7 +514,9 @@ function get_player($args = array(), $minimal = false) {
 			$plr['ids_ipaddr'][$i]['flagimg'] = $this->flagimg($plr['ids_ipaddr'][$i]['country_code']);
 			$i++;
 		}
+		print_r($plr['ids_ipaddr']);
 	}
+*/
 
 	return $plr;
 }
