@@ -653,7 +653,7 @@ sub get_plr_alias {
 sub get_team {
 	my ($self, $team, $all) = @_;
 	my (@list, @ids);
-	@ids = grep { $self->{c_plrid}{$_}->{team} eq $team and $self->{c_plrid}{$_}->active } keys %{$self->{c_plrid}};
+	@ids = grep { $self->{c_plrid}{$_}->active and $self->{c_plrid}{$_}->{team} eq $team } keys %{$self->{c_plrid}};
 	@ids = grep { !$self->{c_plrid}{$_}->{isdead} } @ids unless $all;
 	@list = map { $self->{c_plrid}{$_} } @ids;
 	return wantarray ? @list : \@list;

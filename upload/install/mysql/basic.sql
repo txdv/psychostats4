@@ -222,6 +222,21 @@ CREATE TABLE `ps_map_hourly` (
   UNIQUE KEY `mapid` (`mapid`,`statdate`,`hour`),
   KEY `global` (`statdate`,`hour`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_map_spatial` (
+  `mapid` int(10) unsigned NOT NULL,
+  `weaponid` int(10) unsigned NOT NULL,
+  `statdate` date NOT NULL,
+  `kid` int(10) unsigned NOT NULL,
+  `kx` smallint(6) NOT NULL,
+  `ky` smallint(6) NOT NULL,
+  `kz` smallint(6) NOT NULL,
+  `vid` int(10) unsigned NOT NULL,
+  `vx` smallint(6) NOT NULL,
+  `vy` smallint(6) NOT NULL,
+  `vz` smallint(6) NOT NULL,
+  KEY `mapid` (`mapid`),
+  KEY `kid` (`kid`,`mapid`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr` (
   `plrid` int(10) unsigned NOT NULL default '0',
   `uniqueid` varchar(128) NOT NULL default '',
@@ -334,6 +349,8 @@ CREATE TABLE `ps_plr_profile` (
   `website` varchar(128) default NULL,
   `icon` varchar(64) default NULL,
   `cc` varchar(2) default NULL,
+  `latitude` float default NULL,
+  `longitude` float default NULL,
   `logo` text,
   `namelocked` tinyint(1) unsigned NOT NULL default '0',
   PRIMARY KEY  (`uniqueid`),

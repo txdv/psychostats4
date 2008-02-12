@@ -248,7 +248,7 @@ sub get_plr {
 		$worldid = "BOT:" . lc substr($name, 0, 124);	# limit the total characters (128 - 4)
 	}
 
-	# complete ignore player events for players with STEAM_ID_PENDING, it just causes problems
+	# completely ignore player events for players with STEAM_ID_PENDING, it just causes problems
 	if ($worldid eq 'STEAM_ID_PENDING') {
 		return undef;
 	}
@@ -275,9 +275,7 @@ sub get_plr {
 
 	# based on their UID the player already existed (changed teams or name since the last event)
 	if ($p = $self->cached($uid, 'uid')) {
-#		print "UID CACHE: $plrstr\n";# if $plrstr =~ /:2677794/;
 		$p->team($team);						# keep team up to date
-#		$p->plrids($plrids);						# update new player ids
 		$self->delcache($p->signature($plrstr), 'signature');		# delete previous and set new sig
 		$self->addcache($p, $plrstr, 'signature');			# update sig cache
 
@@ -297,7 +295,6 @@ sub get_plr {
 		}
 
 	} else {
-#		print "* NEW: $plrstr\n" if $plrstr =~ /:2677794/;
 		$p = new PS::Player($plrids, $self) || return undef;
 		if (my $p1 = $self->cached($p->plrid, 'plrid')) {	# make sure this player isn't loaded already
 			undef $p;
@@ -450,6 +447,26 @@ sub event_kill {
 	$self->calcskill_kill_func($p1, $p2, $w);
 }
 
+
+sub event_spatial {
+	my ($self, $timestamp, $args) = @_;
+	my ($killer, $victim, $weapon, $propstr) = @$args;
+	my $p1 = $self->get_plr($killer) || return;
+	my $p2 = $self->get_plr($victim) || return;
+#	return unless $self->minconnected;
+	return if $self->isbanned($p1) or $self->isbanned($p2);
+
+	my $m = $self->get_map;
+	my $props = $self->parseprops($propstr);
+
+	$weapon = 'unknown' unless $weapon;
+	$weapon =~ tr/ /_/;				# convert spaces to '_'
+
+	my $w = $self->get_weapon($weapon);
+	$m->spatial($p1, $props->{attacker_position}, $p2, $props->{victim_position}, $w, $timestamp);
+
+}
+
 sub event_connected {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $ipstr, $props) = @$args;
@@ -589,12 +606,35 @@ sub event_changed_name {
 	my ($plrstr, $name) = @$args;
 	my $p1 = $self->get_plr($plrstr) || return;
 
-	# The get_plr() routine will detect that the player name was changed.
-	# so we don't need to do anything special here.
+	if ($self->{uniqueid} eq 'name') {
+		my $plrids = {
+			name	=> $name,
+			worldid => $p1->{worldid},
+			ipaddr	=> $p1->{ipaddr},
+			uid	=> $p1->{uid}
+		};
 
-	# save the new name to the player object
-	$p1->name($name);
-	$p1->{basic}{lasttime} = $timestamp;
+		my $p2 = new PS::Player($plrids, $self) || return undef;
+		$p2->active(1);
+#		printf("\"%s\"<%s><%s><%s>\n", $name, $p1->{uid}, $p1->{worldid}, uc $p1->{team});
+		$p2->signature(sprintf("\"%s\"<%s><%s><%s>", $name, $p1->{uid}, $p1->{worldid}, uc $p1->{team}));
+		$p2->timerstart($self->{timestamp});
+		$p2->team($p1->team);
+		$p2->plrids;		# changing name counts as a 'reconnect' for the plrids
+
+		$self->delcache_all($p1);
+		$p1->disconnect($self->{timestamp}, $self->get_map);
+		$p1->save;
+
+		$self->addcache_all($p2);
+		$self->scan_for_clantag($p2) if $self->{clantag_detection} and !$p2->clanid;
+
+		undef $p1;
+	} else {
+		# save the new name to the player object
+		$p1->name($name);
+		$p1->{basic}{lasttime} = $timestamp;
+	}
 
 #	$p1->plrids({ name => $name, worldid => $p1->uniqueid, ipaddr => $p1->ipaddr });
 #	$p1->plrids({ name => encode('utf8',$name), worldid => $p1->uniqueid, ipaddr => $p1->ipaddr });

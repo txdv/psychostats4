@@ -58,6 +58,7 @@ sub new {
 	$self->{t_map} 			= $self->{dbtblprefix} . 'map';
 	$self->{t_map_data} 		= $self->{dbtblprefix} . 'map_data';
 	$self->{t_map_hourly} 		= $self->{dbtblprefix} . 'map_hourly';
+	$self->{t_map_spatial} 		= $self->{dbtblprefix} . 'map_spatial';
 	$self->{t_plr} 			= $self->{dbtblprefix} . 'plr';
 	$self->{t_plr_aliases} 		= $self->{dbtblprefix} . 'plr_aliases';
 	$self->{t_plr_bans} 		= $self->{dbtblprefix} . 'plr_bans';
@@ -70,6 +71,7 @@ sub new {
 	$self->{t_plr_profile} 		= $self->{dbtblprefix} . 'plr_profile';
 	$self->{t_plr_roles} 		= $self->{dbtblprefix} . 'plr_roles';
 	$self->{t_plr_sessions} 	= $self->{dbtblprefix} . 'plr_sessions';
+	$self->{t_plr_spatial} 		= $self->{dbtblprefix} . 'plr_spatial';
 	$self->{t_plr_victims} 		= $self->{dbtblprefix} . 'plr_victims';
 	$self->{t_plr_weapons} 		= $self->{dbtblprefix} . 'plr_weapons';
 	$self->{t_plugins} 		= $self->{dbtblprefix} . 'plugins';

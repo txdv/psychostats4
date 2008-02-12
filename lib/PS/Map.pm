@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use base qw( PS::Debug );
 use POSIX qw( strftime );
-use util qw( :date );
+use util qw( :date print_r );
 
 our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
 our $BASECLASS = undef;
@@ -38,6 +38,20 @@ our $TYPES_HOURLY = {
 	kills		=> '+',
 	connections	=> '+',
 };
+
+#our $TYPES_SPATIAL = {
+#	mapid		=> '=',
+#	weaponid	=> '=',
+#	statdate	=> '=',
+#	kid		=> '=',		# killer
+#	kx		=> '=',
+#	ky		=> '=',
+#	kz		=> '=',
+#	vid		=> '=',		# victim
+#	vx		=> '=',
+#	vy		=> '=',
+#	vz		=> '=',
+#};
 
 sub new {
 	my ($proto, $mapname, $conf, $db) = @_;
@@ -133,6 +147,8 @@ sub _init {
 
 	$self->{basic} = {};
 	$self->{mod} = {};
+	$self->{hourly} = {};
+	$self->{spatial} = {};
 
 	$self->{conf_maxdays} = $self->{conf}->get_main('maxdays');
 
@@ -192,6 +208,7 @@ sub timer {
 
 sub get_types { $TYPES }
 sub get_types_hourly { $TYPES_HOURLY }
+#sub get_types_spatial { $TYPES_SPATIAL }
 
 sub save {
 	my $self = shift;
@@ -218,14 +235,55 @@ sub save {
 	if (defined $self->{hourly}) {
 		foreach my $date (keys %{$self->{hourly}}) {
 			foreach my $hour (keys %{$self->{hourly}{$date}}) {
-				$db->save_stats($db->{t_map_hourly}, $self->{hourly}{$date}{$hour}, $TYPES_HOURLY, 
+				$db->save_stats($db->{t_map_hourly}, $self->{hourly}{$date}{$hour}, $self->get_types_hourly, 
 					[ mapid => $self->{mapid}, statdate => $date, hour => $hour ]
 				);
 			}
 		}
+		$self->{hourly} = {};
 	}
 
+	# save spatial stats
+	if (defined $self->{spatial}) {
+		foreach my $date (keys %{$self->{spatial}}) {
+			# save an entire day all at once
+			$self->save_spatial($self->{spatial}{$date});
+		}
+		$self->{spatial} = {};
+	}
+
+
 	return $dataid;
+}
+
+# spatial stat inserts are optimized to reduce the total inserts that need to be performed.
+sub save_spatial {
+	my ($self, $data) = @_;
+	my ($cmd,$fields,@keys,$hdr);
+	my $db = $self->{db};
+	my $MAX = 1000*1024;		# a little less than 1MB
+	if (ref $data eq 'HASH') {
+		$data = [ { %$data } ];
+	}
+
+	@keys = keys %{$data->[0]};
+	$fields = join(', ', map { $db->qi($_) } @keys);
+
+	$hdr = "INSERT INTO $db->{t_map_spatial} ($fields) VALUES ";
+	$cmd = '';
+	foreach my $d (@$data) {
+		if (length($cmd) < $MAX) {
+			$cmd .= "(" . join(', ', map { $db->quote($d->{$_}) } @keys) . "),";
+		} else {
+			# run the query; the max length of $cmd will usually overrun $MAX just a tad, this is ok.
+			$self->{db}->query($hdr.substr($cmd,0,-1));
+			$cmd = '';
+		}
+	}
+	# finish up and run the last query
+	if ($cmd) {
+		$self->{db}->query($hdr.substr($cmd,0,-1));
+	}
 }
 
 # adds an hourly stat to the current hour
@@ -238,6 +296,22 @@ sub hourly {
 	} else {
 		$self->{hourly}{$date}{$hour}{$var} += $inc;
 	}
+}
+
+# adds a spatial stat to the current date
+sub spatial {
+	my ($self, $p1, $k, $p2, $v, $w, $timestamp) = @_;
+	my ($date) = strftime("%Y-%m-%d", localtime($timestamp));
+	my $set = {
+		statdate	=> $date,
+		mapid		=> $self->{mapid},
+		weaponid	=> $w->{weaponid},
+		kid		=> $p1->{plrid},
+		vid		=> $p2->{plrid},
+	}; 
+	@$set{qw( kx ky kz )} = ref $k ? @$k : split(' ', $k);
+	@$set{qw( vx vy vz )} = ref $v ? @$v : split(' ', $v);
+	push(@{$self->{spatial}{$date}}, $set);
 }
 
 sub has_mod_tables { 0 }

@@ -113,6 +113,9 @@ sub event_plrtrigger {
 
 	# extra statsme / amx triggers
 	} elsif ($trigger =~ /^(time|latency|amx_|game_idle_kick)/) {
+		# The time trigger might be usefull...
+	} elsif ($trigger eq 'camped') {
+		# I'm not sure what plugin provides this trigger...
 
 	} else {
 		if ($self->{report_unknown}) {
