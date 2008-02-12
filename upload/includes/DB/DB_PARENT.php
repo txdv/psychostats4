@@ -234,8 +234,8 @@ function insert($tbl, $set) {
 function sortorder($args, $prefix='') {
 	$str = "";
 	if ($args[$prefix . 'sort'] != '') {
-		$fieldprefix = $args['fieldprefix'] ? $args['fieldprefix'] . '.' : '';
-		$str .= " ORDER BY $fieldprefix" . $args[$prefix . 'sort'];
+		$fieldprefix = $args['fieldprefix'] ? $this->qi($args['fieldprefix']) . '.' : '';
+		$str .= " ORDER BY $fieldprefix" . $this->qi($args[$prefix . 'sort']);
 		if ($args[$prefix . 'order']) $str .= " " . $args[$prefix . 'order'];
 	}
 	$str .= $this->limit($args, $prefix);
