@@ -392,6 +392,12 @@
 	color: black;
 }
 
+#smallmap {
+	position: absolute;
+	width: 225px;
+	height: 165px;
+	border: 1px solid gray;
+}
 #map {
 	height: 350px;
 	border: 1px solid gray;

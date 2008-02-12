@@ -79,6 +79,8 @@ $form->field('website');
 $form->field('icon');
 $form->field('cc');
 $form->field('logo');
+$form->field('latitude','numeric');
+$form->field('longitude','numeric');
 $form->field('namelocked');
 if (!$plr_user->userid() or $cms->user->is_admin() or ($plr_user->userid() and $ps->conf['main']['allow_username_change'])) {
 	$form->field('username');
@@ -253,6 +255,9 @@ $cms->theme->assign(array(
 $basename = basename(__FILE__, '.php');
 $cms->theme->add_css('css/forms.css');
 $cms->theme->add_js('js/forms.js');
+if ($ps->conf['theme']['map']['google_key']) {
+	$cms->theme->add_js('http://maps.google.com/maps?file=api&amp;v=2&amp;key=' . $ps->conf['theme']['map']['google_key']);
+}
 $cms->theme->add_js('js/editplr.js');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer', '');
 

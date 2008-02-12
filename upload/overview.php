@@ -11,30 +11,31 @@ $cms->theme->assign_request_vars($validfields, true);
 
 // return a list of geocoded IP's using the most active IPs in the database
 if (is_numeric($ip) and $ip > 0) {
-	if ($ip > 100) $ip = 100;
-/*
-	$list = $ps->db->fetch_rows(1,
-		"SELECT DISTINCT INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
-		"FROM $ps->t_plr_ids_ipaddr ip, $ps->t_plr p, $ps->t_plr_profile pp, $ps->c_plr_data c " . 
-		"WHERE ip.plrid=p.plrid AND p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND " . 
-		"(ipaddr NOT BETWEEN 167772160 AND 184549375) AND " .		// 10/8
-		"(ipaddr NOT BETWEEN 2886729728 AND 2887778303) AND " .		// 172.16/12
-		"(ipaddr NOT BETWEEN 3232235520 AND 3232301055) AND " .		// 192.168/16
-		"(NOT ipaddr IN (2130706433, 0)) " .				// 127.0.0.1, 0.0.0.0
-		"ORDER BY totaluses DESC LIMIT $ip"
+	$limit = min($ip, 100);
+	$fields = 'p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime';
+
+	// return a list of highest ranked players that have lat,lng values set
+	$profiles = $ps->db->fetch_rows(1,
+		"SELECT $fields,pp.latitude lat,pp.longitude lng " .
+		"FROM $ps->t_plr_profile pp, $ps->t_plr p, $ps->c_plr_data c " . 
+		"WHERE p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND p.allowrank=1 AND " . 
+		"pp.latitude IS NOT NULL AND pp.longitude IS NOT NULL " . 
+		"ORDER BY p.rank,p.skill DESC,c.kills DESC LIMIT $limit"
 	);
-*/
+	if ($profiles) $limit -= count($profiles);
+
 	// return a list of IP's of the highest ranking players.
 	$list = $ps->db->fetch_rows(1,
 		"SELECT DISTINCT ip.plrid, INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
 		"FROM $ps->t_plr_ids_ipaddr ip, $ps->t_plr p, $ps->t_plr_profile pp, $ps->c_plr_data c " . 
 		"WHERE ip.plrid=p.plrid AND p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND p.allowrank=1 AND " . 
+		"pp.latitude IS NULL AND pp.longitude IS NULL AND " . 
 		"(ipaddr NOT BETWEEN 167772160 AND 184549375) AND " .		// 10/8
 		"(ipaddr NOT BETWEEN 2886729728 AND 2887778303) AND " .		// 172.16/12
 		"(ipaddr NOT BETWEEN 3232235520 AND 3232301055) AND " .		// 192.168/16
 		"(NOT ipaddr IN (2130706433, 0)) " .				// 127.0.0.1, 0.0.0.0
 		"GROUP BY ip.plrid " .
-		"ORDER BY p.rank,p.skill,c.kills DESC LIMIT $ip"
+		"ORDER BY p.rank,p.skill DESC,c.kills DESC LIMIT $limit"
 	);
 	$iplist = array();
 	foreach ($list as $p) {
@@ -67,6 +68,7 @@ if (is_numeric($ip) and $ip > 0) {
 
 	// now, spew out the markers XML
 	$xml = "<markers>\n";
+	$markers = array_merge($profiles, $markers);
 	foreach ($markers as $m) {
 		$node = "  <marker ";
 		foreach ($m as $key => $val) {

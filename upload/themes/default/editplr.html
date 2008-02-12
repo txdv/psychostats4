@@ -96,6 +96,26 @@ flags_url = "{$conf.theme.flags_url}";
 	<input name="msn" value="{$form.msn|escape}" type="text" class="field" />
 </div>
 
+{if $conf.theme.map.google_key}
+<div class="notes">
+	<h4>Google Map</h4>
+	<p>Entering the Lat,Lng will override the automatic geocoding of the players IP address</p>
+</div>
+
+<div{if $errors.latitude} class="err"{/if}>
+	<p class="err" id="err-latitude">{$errors.latitude|escape}</p>
+	<label><#Latitude#>:</label>
+	<input name="latitude" value="{$form.latitude|escape}" type="text" class="field" />
+	<a class="openmap" href="javascript:void(0)" title="Open Map"><img src="{theme->url}/img/icons/map.png"/ alt="map"></a>
+</div>
+
+<div{if $errors.longitude} class="err"{/if}>
+	<p class="err" id="err-longitude">{$errors.longitude|escape}</p>
+	<label><#Longitude#>:</label>
+	<input name="longitude" value="{$form.longitude|escape}" type="text" class="field" />
+</div>
+{/if}
+
 </fieldset>
 <fieldset>
 {if $plr_user.username}
@@ -168,6 +188,8 @@ flags_url = "{$conf.theme.flags_url}";
 </form>
 </div>
 </div>
+
+<div id="smallmap" style="display: none"></div>
 
 
 </div> {* end ps-main-content *}
