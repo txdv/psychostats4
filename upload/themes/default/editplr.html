@@ -19,7 +19,7 @@ flags_url = "{$conf.theme.flags_url}";
 <div class="ps-form">
 <form method="post" action="{$SELF}">
 <fieldset>
-<legend>{if $id}<#Edit#>{else}<#New#>{/if} <#Player#> <small>( {$plr.uniqueid|escape} )</small></legend>
+<legend>{if $id}<#Edit#>{else}<#New#>{/if} <#Player#> <small>( {$plr_uniqueid|escape} )</small></legend>
 {if $errors.fatal}<div class="err fatal"><h4><#Fatal Error#></h4><p>{$errors.fatal}</p></div>{/if}
 
 <div{if $errors.plrname} class="err"{/if}>

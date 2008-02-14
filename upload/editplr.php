@@ -238,12 +238,18 @@ if ($submit) {
 // this will also be put into a 'hidden' field in the form
 if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
 
+$uid = $plr['uniqueid'];
+if ($ps->conf['main']['uniqueid'] == 'ipaddr') {
+	$uid = long2ip($uid);
+}
+
 $allowed_html_tags = str_replace(',', ', ', $ps->conf['theme']['format']['allowed_html_tags']);
 if ($allowed_html_tags == '') $allowed_html_tags = '<em>' . $cms->translate("none") . '</em>';
 $cms->theme->assign(array(
 	'errors'	=> $form->errors(),
 	'plr'		=> $plr,
 	'plr_user'	=> $plr_user->to_form_input(),
+	'plr_uniqueid'	=> $uid,
 	'allowed_html_tags' => $allowed_html_tags,
 	'accesslevels'	=> $plr_user->accesslevels(),
 	'form'		=> $form->values(),

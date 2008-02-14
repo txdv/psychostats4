@@ -37,6 +37,7 @@ delete_message = "<#Are you sure you want to delete the selected players?#>\n<#D
 		<table class='ps-table ps-player-table'>
 		<tr>
 			<th class="active"><p><span class="asc"><#Player Name#></span></p></th>
+			<th><p><span class="asc"><#Stats#></span></p></th>
 			<th><p><span class="asc"><#User#></span></p></th>
 			<th><p><span class="asc"><#Skill#></span></p></th>
 			<th><p><span class="asc"><#Ranked#></span></p></th>
@@ -45,6 +46,7 @@ delete_message = "<#Are you sure you want to delete the selected players?#>\n<#D
 {foreach name="plr" from=$players item='p'}
 		<tr{cycle values=", class='even'"} id="row-{$smarty.foreach.plr.index}">
 			<td class="item"><a href="{url _base='players_edit.php' _ref=1 id=$p.plrid}">{$p.name|escape}</a></td>
+			<td>[ <a href="{url _base='../player.php' id=$p.plrid}"><#stats#></a> ]</td>
 			<td>{if $p.userid}<a href="{url _base='users_edit.php' _ref=1 id=$p.userid}">{$p.username|escape}</a>{else}-{/if}</td>
 			<td>{$p.skill|escape}</td>
 			<td><img src="{theme->url}/img/icons/{if $p.allowrank}tick{else}cross{/if}.png"/></td>

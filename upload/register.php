@@ -37,18 +37,22 @@ if ($submit) {
 
 	$u =& $cms->new_user();
 
+	$id = $input['uniqueid'];
 	$plr = array();
 	// lookup the worldid/uniqueid ... 
 	if ($input['uniqueid'] != '') {
-		$plr = $ps->get_player_profile($input['uniqueid'], 'uniqueid');
+		if ($ps->conf['main']['uniqueid'] == 'ipaddr') {
+			$id = sprintf("%u", ip2long($id));
+		}
+		$plr = $ps->get_player_profile($id, 'uniqueid');
 		if (!$plr) {
 			$form->error('uniqueid', sprintf($cms->trans("The %s does not exist!"), $uniqueid_label));
 		} elseif ($plr['userid']) {
 			$form->error('uniqueid', $cms->trans("This player is already registered!"));
-		} else {
-			if ($u->username_exists($input['username'])) {
-				$form->error('username', $cms->trans("Username already exists!"));
-			}
+		}
+
+		if ($u->username_exists($input['username'])) {
+			$form->error('username', $cms->trans("Username already exists!"));
 		}
 	}
 
@@ -68,7 +72,7 @@ if ($submit) {
 		if ($ok) {
 			$ok = $ps->db->update($ps->t_plr_profile, 
 				array( 'userid' => $userinfo['userid'], 'email' => $input['email'] ? $input['email'] : null), 
-				'uniqueid', $input['uniqueid']
+				'uniqueid', $id
 			);
 			if (!$ok) $form->error('fatal', $cms->trans("Error updating player profile: " . $ps->db->errstr));
 		} else {
