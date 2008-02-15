@@ -38,6 +38,7 @@ sub load {
 
 	$cmd = "SELECT $vars FROM $db->{t_config} WHERE conftype ";
 	$cmd .= (@conftypes == 1) ? "= $where " : "IN ($where) ";
+	$cmd .= "AND var IS NOT NULL ";
 	$cmd .= "ORDER BY id ";
 #	$cmd .= "ORDER BY section,var,idx ";
 

@@ -50,7 +50,7 @@ CREATE TABLE `ps_config` (
   `id` int(10) unsigned NOT NULL default '0',
   `conftype` varchar(32) NOT NULL default 'main',
   `section` varchar(128) default NULL,
-  `var` varchar(128) NOT NULL default '',
+  `var` varchar(128) default NULL,
   `value` text NOT NULL,
   `label` varchar(128) default NULL,
   `type` enum('none','text','textarea','checkbox','select','boolean') NOT NULL default 'text',
