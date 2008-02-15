@@ -13,7 +13,7 @@ $cms->theme->assign_request_vars($validfields, true);
 if (!is_numeric($start) or $start < 0) $start = 0;
 if (!is_numeric($limit) or $limit < 0) $limit = 50;
 if (!in_array($order, array('asc','desc'))) $order = 'asc';
-$sort = 'idx,name';
+$sort = 'idx';
 
 $_order = array(
 	'start'	=> $start,

@@ -234,8 +234,15 @@ function insert($tbl, $set) {
 function sortorder($args, $prefix='') {
 	$str = "";
 	if ($args[$prefix . 'sort'] != '') {
-		$fieldprefix = $args['fieldprefix'] ? $this->qi($args['fieldprefix']) . '.' : '';
-		$str .= " ORDER BY $fieldprefix" . $this->qi($args[$prefix . 'sort']);
+		$sort = '';
+		if ($args['no_quote']) {
+			if ($args['fieldprefix']) $sort = $args['fieldprefix'] . '.';
+			$sort .= $args[$prefix . 'sort'];
+		} else {
+			if ($args['fieldprefix']) $sort = $this->qi($args['fieldprefix']) . '.';
+			$sort .= $this->qi($args[$prefix . 'sort']);
+		}
+		$str .= " ORDER BY $sort";
 		if ($args[$prefix . 'order']) $str .= " " . $args[$prefix . 'order'];
 	}
 	$str .= $this->limit($args, $prefix);

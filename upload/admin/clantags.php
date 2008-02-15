@@ -16,7 +16,8 @@ $_order = array(
 	'start'	=> $start,
 	'limit'	=> $limit,
 	'order' => $order, 
-	'sort'	=> $sort
+	'sort'	=> $sort,
+	'no_quote'=> true
 );
 
 // re-order tags
