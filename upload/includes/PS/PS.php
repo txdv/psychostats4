@@ -1371,7 +1371,7 @@ ORDER BY sorted DESC
 function load_config($type) {
 	$conflist = !is_array($type) ? $conflist = array($type) : $type;
 	$c = array();
-	$cmd = "SELECT conftype,section,var,value FROM $this->t_config WHERE conftype IN (";
+	$cmd = "SELECT conftype,section,var,value FROM $this->t_config WHERE var IS NOT NULL AND conftype IN (";
 	foreach ($conflist as $conftype) {
 		$this->conf[$conftype] = array();
 		$c[] = $this->db->escape($conftype, true);
@@ -1391,7 +1391,7 @@ function load_config($type) {
 function load_config_layout($type, $where = "") {
 	$conflist = !is_array($type) ? $conflist = array($type) : $type;
 	$c = array();
-	$cmd = "SELECT * FROM $this->t_config WHERE conftype IN (";
+	$cmd = "SELECT * FROM $this->t_config WHERE var IS NOT NULL AND conftype IN (";
 	foreach ($conflist as $conftype) {
 		$this->conf_layout[$conftype] = array();
 		$c[] = $this->db->escape($conftype, true);

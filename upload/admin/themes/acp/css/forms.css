@@ -232,6 +232,14 @@ div.submit input.reset {
 	background-image: url(../img/icons/cog.png);
 }
 
+#ps-conf-form div.section-desc {
+	padding: 1em;
+	text-align: left;
+	font-size: 110%;
+	background-color: #E0E8EE;
+	border: 1px solid #747881;
+	clear: none;
+}
 #ps-conf-form p.var-help {
 	clear: both;
 	float: none;

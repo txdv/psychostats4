@@ -33,7 +33,7 @@ if ($q != '') {
 $list = $ps->db->fetch_rows(1,
 	"SELECT conftype,section " .
 	"FROM $ps->t_config " .
-	"WHERE conftype <> 'info' AND locked <> 1 " . 
+	"WHERE conftype <> 'info' AND locked <> 1 AND var IS NOT NULL " . 
 	($where ? "AND $where " : "") . 
 	"GROUP BY conftype,section " . 
 	"HAVING COUNT(*) > 0 " .
@@ -56,6 +56,16 @@ if (!array_key_exists($ct, $sections)) {
 }
 unset($sec_keys);
 
+// get a list of section labels
+$list = $ps->db->fetch_rows(1, "SELECT conftype,section,label,value FROM $ps->t_config WHERE var IS NULL");
+$section_labels = array();
+foreach ($list as $l) {
+	$section_labels[ $l['conftype'] ][ $l['section'] ? $l['section'] : 'general' ] = array(
+		'label'	=> $cms->trans($l['label']),
+		'value'	=> $l['value'],
+	);
+}
+
 // load the full config for the current conftype.
 // but we need to massage it into a slightly different format for easier use.
 $list = $ps->load_config_layout($ct, $where);
@@ -72,7 +82,6 @@ if ($list[$ct]) {
 	unset($config_layout['general']);
 }
 unset($list);
-
 
 //print "<pre>"; print_r($config_layout); print "</pre>";
 // make sure the section is valid
@@ -183,6 +192,7 @@ $cms->theme->assign(array(
 	'conftypes'		=> array_keys($sections),
 	'ct'			=> $ct,
 	'sections'		=> $sections,
+	'section_labels'	=> $section_labels,
 	'section'		=> $sections[$ct],
 	's'			=> $s,
 	'conf'			=> $config_layout,

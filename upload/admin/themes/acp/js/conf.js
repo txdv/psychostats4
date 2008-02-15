@@ -77,12 +77,13 @@ function menu_click(e) {
 	var menu = $(this);
 	var id = menu.attr('id');
 	if (!id) return true;	// no id, return true; allow the link to work
-	return tab_click(e,$('#tab-' + id.split('-')[1]));
+	var tab = $('#tab-' + id.split('-')[1]);
+	return tab ? tab_click(e,tab) : false;
 }
 
 function tab_click(e,t) {
 	var tab = t ? t : $(this);
-	var id = tab.attr('id').split('-')[1];
+	var id = tab.attr('id') ? tab.attr('id').split('-')[1] : null;
 	var cl = tab.attr('class');
 	// ignore the currently selected tab
 	if (cl && cl.search(/\bsel\b/) != -1) return false;
