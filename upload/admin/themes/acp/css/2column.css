@@ -210,6 +210,15 @@ dd.award-gold a, dd.awards a {
 dd.ranking a {
 	background: url(../img/icons/medal_gold_1.png) 2px 50% no-repeat;
 }
+dd.security a {
+	background: url(../img/icons/shield.png) 2px 50% no-repeat;
+}
+dd.map a {
+	background: url(../img/icons/map.png) 2px 50% no-repeat;
+}
+dd.permissions a {
+	background: url(../img/icons/eye.png) 2px 50% no-repeat;
+}
 dd.images a, dd.icons a {
 	background: url(../img/icons/images.png) 2px 50% no-repeat;
 }
