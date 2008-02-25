@@ -276,7 +276,7 @@ sub compacttime {
   return $str;
 }
 
-# A veru simple version of an interpolating routine to do very simple variable substitution on a string.
+# A very simple version of an interpolating routine to do very simple variable substitution on a string.
 # This allows for 2 levels of hash variables ONLY. ie: $key, or $key.var (but not $key.var.subvar) .. this is only meant to be 
 # a SIMPLE interpolator :-) ... If a code ref is found in a $token, it will be called and it's return value used.
 sub simple_interpolate {
