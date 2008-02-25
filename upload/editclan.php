@@ -114,7 +114,7 @@ if ($add) {
 	} else {
 		$message = $cms->message('success', array(
 			'message_title'	=> $cms->trans("Member Added!"),
-			'message'	=> sprintf($cms->trans("%s (%s) was added to the clan."), $plr['name'], $plr['uniqueid'])
+			'message'	=> $cms->trans("%s (%s) was added to the clan.", $plr['name'], $plr['uniqueid'])
 		));
 	}
 
@@ -132,7 +132,7 @@ if ($add) {
 	} else {
 		$message = $cms->message('success', array(
 			'message_title'	=> $cms->trans("Member Removed!"),
-			'message'	=> sprintf($cms->trans("%s (%s) was removed from the clan."), $plr['name'], $plr['uniqueid'])
+			'message'	=> $cms->trans("%s (%s) was removed from the clan.", $plr['name'], $plr['uniqueid'])
 		));
 	}
 }
@@ -227,7 +227,7 @@ if ($submit) {
 if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
 
 $allowed_html_tags = str_replace(',', ', ', $ps->conf['theme']['format']['allowed_html_tags']);
-if ($allowed_html_tags == '') $allowed_html_tags = '<em>' . $cms->translate("none") . '</em>';
+if ($allowed_html_tags == '') $allowed_html_tags = '<em>' . $cms->trans("none") . '</em>';
 $cms->theme->assign(array(
 	'errors'	=> $form->errors(),
 	'clan'		=> $clan,

@@ -37,7 +37,7 @@ if (is_array($del) and count($del)) {
 	}	
 	$message = $cms->message('success', array(
 		'message_title'	=> $cms->trans("Players Deleted!"),
-		'message'	=> sprintf($cms->trans("%d players were deleted successfully"), $total_deleted),
+		'message'	=> $cms->trans("%d players were deleted successfully", $total_deleted),
 	));
 }
 

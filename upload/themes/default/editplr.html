@@ -60,10 +60,7 @@ flags_url = "{$conf.theme.flags_url}";
 
 <div class="inline-notes">
 	<h4><#Informational Fields#></h4>
-	<p>
-		<#All informational fields are optional and used solely for display purposes.#>
-		<#Your information is never sold or given away to third parties.#>
-	</p>
+	<p><#All informational fields are optional and used solely for display purposes.#></p>
 </div>
 
 <div{if $errors.website} class="err"{/if}>
@@ -98,8 +95,8 @@ flags_url = "{$conf.theme.flags_url}";
 
 {if $conf.theme.map.google_key}
 <div class="notes">
-	<h4>Google Map</h4>
-	<p>Entering the Lat,Lng will override the automatic geocoding of the players IP address</p>
+	<h4><#Google Map#></h4>
+	<p><#Entering the Lat,Lng will override the automatic geocoding of the players IP address#></p>
 </div>
 
 <div{if $errors.latitude} class="err"{/if}>
@@ -124,8 +121,11 @@ flags_url = "{$conf.theme.flags_url}";
 <legend><#Create user for this player#></legend>
 <div class="inline-notes">
 	<h4><#Register new user#></h4>
-	<p><#Register a user for this player by entering a username and password below.#>
-		<#This will allow the user to login and modify their profile.#>
+	<p>
+		<!--<#REGISTER_NEW_USER#>-->
+		Register a user for this player by entering a username and password below.
+		This will allow the user to login and modify their profile.
+		<!---->
 	</p>
 </div>
 {/if}

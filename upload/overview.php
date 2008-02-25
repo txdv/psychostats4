@@ -392,8 +392,8 @@ function return_ofc_day() {
 	$keys = array_keys($data);
 	for ($i=0; $i<count($data); $i++) {
 		$conn_bar->add_data_tip($data[$keys[$i]], 
-			sprintf($cms->trans("Connections: %d"), $data[$keys[$i]]) . "<br>" . 
-			sprintf($cms->trans("Average: %d"), $data_avg[0])
+			$cms->trans("Connections: %d", $data[$keys[$i]]) . "<br>" . 
+			$cms->trans("Average: %d", $data_avg[0])
 		);
 	}
 /**/

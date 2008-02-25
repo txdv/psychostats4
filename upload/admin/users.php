@@ -46,12 +46,12 @@ if (($delete or $confirm) and is_array($sel) and count($sel)) {
 	if ($delete) {
 		$message = $cms->message('success', array(
 			'message_title'	=> $cms->trans("Users Deleted!"),
-			'message'	=> sprintf($cms->trans("%d users were deleted successfully"), $total_processed),
+			'message'	=> $cms->trans("%d users were deleted successfully", $total_processed),
 		));
 	} else {
 		$message = $cms->message('success', array(
 			'message_title'	=> $cms->trans("Users Confirmed!"),
-			'message'	=> sprintf($cms->trans("%d users were confirmed successfully"), $total_processed),
+			'message'	=> $cms->trans("%d users were confirmed successfully", $total_processed),
 		));
 	}
 }

@@ -12,7 +12,6 @@ $DEFAULT_LIMIT = 100;
 $validfields = array('sort','order','start','limit','q');
 $cms->theme->assign_request_vars($validfields, true);
 
-
 $sort = trim(strtolower($sort));
 $order = trim(strtolower($order));
 if (!preg_match('/^\w+$/', $sort)) $sort = $DEFAULT_SORT;
@@ -77,13 +76,16 @@ $cms->filter('players_table_object', $table);
 // assign variables to the theme
 $cms->theme->assign(array(
 	'q'		=> $q,
-	'search_blurb'	=> sprintf($cms->trans('Search criteria "<em>%s</em>" matched %d ranked players out of %d total'), ps_escape_html($q),$totalplayers,$totalranked),
+	'search_blurb'	=> $cms->trans('Search criteria "<em>%s</em>" matched %d ranked players out of %d total', ps_escape_html($q),$totalplayers,$totalranked),
 	'players'	=> $players,
 	'players_table'	=> $table->render(),
 	'overalltotal'	=> $overalltotal,
 	'totalplayers'	=> $totalplayers,
 	'totalranked' 	=> $totalranked,
 	'pager'		=> $pager,
+	'languages'	=> $cms->theme->get_language_list(),
+
+
 ));
 
 // display the output

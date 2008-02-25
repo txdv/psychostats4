@@ -139,6 +139,7 @@ function init_user() {
 function init_theme($theme, $opts = array()) {
 	ob_start();
 	require_once(dirname(__FILE__) . '/class_theme.php');
+	require_once(dirname(__FILE__) . '/class_lang.php');
 	$conf = array( 'theme' => $theme );
 	if (is_array($opts)) {
 		$conf = array_merge($conf, $opts);
@@ -149,7 +150,8 @@ function init_theme($theme, $opts = array()) {
 		'theme_opt'		=> 'theme',	// option name of the cookie
 		'theme_default'		=> 'default',
 		'in_db'			=> true,
-		'language'		=> 'en',
+		'language'		=> 'en_US',
+		'language_opt'		=> 'language',
 		'compile_id'		=> '',
 		'allow_user_change'	=> true,
 		'fetch_compile'		=> true,
@@ -180,6 +182,12 @@ function init_theme($theme, $opts = array()) {
 		// use theme cookie if it's set
 		$opt = $this->session->opt($conf['theme_opt']);
 		if ($opt) $conf['theme'] = $opt;
+	}
+
+	if ($this->session) {
+		// use language cookie if it's set
+		$opt = $this->session->opt($conf['language_opt']);
+		if ($opt) $conf['language'] = $opt;
 	}
 
 	$this->theme =& new PsychoTheme($this, $conf);
@@ -582,10 +590,7 @@ function message($msgname, $data = array()) {
 function trans() {
 	$args = func_get_args();
 	$str = array_shift($args);
-	if (count($args)) {
-		$str = vsprintf($str, $args);
-	} 
-	return $this->theme->trans($str);
+	return $this->theme->trans($str, $args);
 }
 
 // returns a new user object 

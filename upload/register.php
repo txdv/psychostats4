@@ -46,7 +46,7 @@ if ($submit) {
 		}
 		$plr = $ps->get_player_profile($id, 'uniqueid');
 		if (!$plr) {
-			$form->error('uniqueid', sprintf($cms->trans("The %s does not exist!"), $uniqueid_label));
+			$form->error('uniqueid', $cms->trans("The %s does not exist!", $uniqueid_label));
 		} elseif ($plr['userid']) {
 			$form->error('uniqueid', $cms->trans("This player is already registered!"));
 		}

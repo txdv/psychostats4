@@ -43,7 +43,7 @@ if ($id and in_array($action, array('default','disable','enable','uninstall'))) 
 				$ps->db->escape($t['name'], true)
 			));
 			if ($ok) {
-				$msg = sprintf($cms->trans("Theme '%s' is now the default theme"), $t['name']);
+				$msg = $cms->trans("Theme '%s' is now the default theme", $t['name']);
 				$ps->conf['main']['theme'] = $t['name'];
 				// always make sure the new default theme is enabled
 				if (!$t['enabled']) {
@@ -65,7 +65,7 @@ if ($id and in_array($action, array('default','disable','enable','uninstall'))) 
 				$res = 'failure';
 				$msg = $cms->trans("Error writting to database: ") . $ps->db->errstr;
 			} else {
-				$msg = sprintf($cms->trans("Theme '%s' was uninstalled successfully. It was not deleted and can be re-installed later."), $t['title']);
+				$msg = $cms->trans("Theme '%s' was uninstalled successfully. It was not deleted and can be re-installed later.", $t['title']);
 			}
 		}
 	} else {
@@ -77,9 +77,8 @@ if ($id and in_array($action, array('default','disable','enable','uninstall'))) 
 		} else if ($t['enabled'] != $enabled) {
 			$ok = $ps->db->update($ps->t_themes, array( 'enabled' => $enabled ), 'name', $t['name']);
 			if ($ok) {
-				$msg = sprintf($enabled ? $cms->trans("Theme '%s' was enabled") : $cms->trans("Theme '%s' was disabled"), 
-					$t['name']
-				);
+				$msg = $enabled ? $cms->trans("Theme '%s' was enabled", $t['name']) 
+						: $cms->trans("Theme '%s' was disabled", $t['name']);
 			} else {
 				$res = 'failure';
 				$msg = $cms->trans("Error writting to database: ") . $ps->db->errstr;

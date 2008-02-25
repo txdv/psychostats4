@@ -33,12 +33,7 @@ class PsychoTheme extends Smarty {
 var $buffer 		= '';
 var $theme_url		= null;
 var $theme 		= '';
-var $language 		= 'en';
-var $language_list	= null;		// holds a list of languages
-var $language_table	= array();
-var $pending_table 	= array();
-var $lang_table 	= array();
-var $language_dir	= null;
+var $language 		= 'en_US';
 var $template_dir	= null;
 var $css_links		= array();
 var $js_sources		= array();
@@ -56,16 +51,14 @@ function PsychoTheme(&$cms, $args = array()) {
 	$args += array(
 //		'theme'		=> '',
 		'in_db' 	=> true,
-		'language'	=> 'en',
+		'language'	=> 'en_US',
 		'fetch_compile'	=> true,
 		'template_dir'	=> null,
-		'language_dir'	=> '',
 		'theme_url'	=> null,
 		'compile_dir'	=> '.',
 		'compile_id'	=> ''
 	);
 	$this->template_dir($args['template_dir']);
-	$this->language_dir($args['language_dir']);
 	$this->language($args['language']);
 	$this->theme_url = $args['theme_url'];
 	$this->fetch_compile = ($args['fetch_compile']);
@@ -232,15 +225,6 @@ function template_dir($dir = null) {
 	}
 }
 
-function language_dir($dir) {
-	if ($this->language_dir and !is_array($this->language_dir)) {
-		$this->language_dir = array( $this->tempate_dir );
-		array_unshift($this->language_dir, $dir);
-	} else {
-		$this->language_dir = $dir;
-	}
-}
-
 // remove a template directory from the search list.
 // if only 1 directory is defined it can not be removed.
 function remove_template_dir($dir) {
@@ -261,32 +245,15 @@ function remove_template_dir($dir) {
 	}
 }
 
-function remove_language_dir($dir) {
-	if (is_array($this->language_dir)) {
-		$newlist = array();
-		for ($i=0; $i < count($this->language_dir); $i++) {
-			if ($this->language_dir[$i] != $dir) {
-				$newlist[] = $this->language_dir[$i];
-			}
-		}
-		if (!count($newlist)) {			// convert it back to a string
-			$this->language_dir = $this->language_dir[0];
-		} elseif (count($newlist) == 1) {
-			$this->language_dir = $newlist[0];
-		} else {
-			$this->language_dir = $newlist;
-		}
-	}
-}
-
 // get/set the current theme
 function theme($new = null, $in_db = true) {
-//	if ($new === null) {
 	if (empty($new)) {
 		return $this->theme;
 	} elseif ($this->is_theme($new)) {
+		$loaded = false;
 		// load the theme from the database
 		if (!$this->loaded_themes[$new] and $in_db) {
+			$loaded = true;
 			$t = $this->cms->db->fetch_row(1, sprintf("SELECT * FROM %s WHERE name=%s and enabled <> 0", 
 				$this->cms->db->table('themes'),
 				$this->cms->db->escape($new, true)
@@ -312,6 +279,7 @@ function theme($new = null, $in_db = true) {
 
 		// if we're not loading a theme from the DB then fudge a loaded record ...
 		if (!$this->loaded_themes[$new] and !$in_db) {
+			$loaded = true;
 			$this->loaded_themes[$new] = array(
 				'name' => $new,
 				'parent' => null,
@@ -319,6 +287,24 @@ function theme($new = null, $in_db = true) {
 				'title' => $new,
 				'description' => ''
 			);
+		}
+
+		// load the language for the theme
+		if ($loaded) {
+			$class = "PsychoLanguage_" . $new . "_" . $this->language;
+			$file = catfile($this->language_dir($new), $this->language . '.php');
+			ob_start();
+			$ok = (include_once $file);
+			$err = ob_get_clean();
+			if ($ok and !$err) {
+				$this->lang = new $class();
+			} else {
+				if (defined("PS_THEME_DEV") and PS_THEME_DEV == true) {
+					trigger_error("Error loading language class $class. <strong>Using default instead.</strong> See the errors and/or warnings below for more information", E_USER_WARNING);
+					print $err;
+				}
+				$this->lang = new PsychoLanguage();
+			}
 		}
 
 		$old = $this->theme;
@@ -356,94 +342,29 @@ function language($new = null) {
 	}
 }
 
-// returns TRUE if the language specified is available in the current theme
-function is_language($language) {
-	return in_array($language, $this->get_language_list());
+// returns the path to the language dir of the theme
+function language_dir($theme = null) {
+	if (empty($theme)) $theme = $this->theme();
+	return catfile($this->template_dir, $theme, 'language');
 }
 
-function is_css($css) {
-	return in_array($css, $this->css_list);
+// Translate a string phrase, or return the original string if no translation is available.
+function trans($str, $args = array()) {
+	return $this->lang->gettext($str, $args);
 }
 
-function load_lang($filename, $delay=1) {
-	if ($delay) {
-		$this->pending_table[$this->language][] = $filename;
-		return 1;
-	}
-
-	if (strpos($filename, '.lng') === FALSE) $filename .= ".lng";
-
-	$language = $this->language;
-	$path = catfile($this->language_dir, $language, $filename);
-//	print "load_lang: ($language) $path<bR>";
-
-	if (file_exists($path)) {
-		$lines = file($path);
-		$lastkey = '';
-		foreach ($lines as $line) {
-			$line = trim($line);						// strip off leading and trailing whitespace
-			if ($lastkey == '') {						// only if we are NOT in a multi-line block ...
-				if (substr($line,0,2) == '//') continue;		// ignore comments
-				if ($line == '') continue;				// ignore blank lines
-			}
-
-			$token = substr($line,0,2);					// get current token (==)
-			$value = substr($line,2);					// get remainder of the line
-
-			if ($lastkey != '') {						// ALREADY INSIDE MULTI LINE KEY
-				if ($token != '==') {					// The key has hot ended yet
-					$this->lang_table[ $lastkey ] .= $line . "\n";
-				} else { 						// the key ENDED
-					$lastkey = trim($value);			// might be empty
-				}
-			} else {							// SINGLE LINE KEY
-				if ($token != '==') {
-					list($key,$def) = explode('=', $line, 2);
-					$key = trim($key);
-					$def = trim($def);
-					$this->lang_table[$key] = $def != '' ? $def : $key;
-				} else {
-					$lastkey = trim($value) != '' ? trim($value) : $key;
-				}
-			}
-		}
-//		print "<pre>"; print_r($this->lang_table); print "</pre>";			// DEBUG
-		return true;
-	} else {
-		// don't die, instead, nothing will be translated...
-//		die ("Could not load language file: $filename<br>");
-	}
-	return false;
-}
-
-// get_translation
-function trans($key) {
-	// load language files that are waiting to be loaded first ...
-	if (isset($this->pending_table[ $this->language ])) {
-		foreach ($this->pending_table[ $this->language ] as $file) {
-			$this->load_lang($file, 0);			// 0 = do not delay the loading
-		}
-		unset($this->pending_table[ $this->language ]);
-	}
-	$result = (array_key_exists($key, $this->lang_table)) ? $this->lang_table[$key] : $key;
-	return $result;
-}
-
-// returns a list of all languages physically found on the HD for the theme
-// if $force is true then the theme directory is checked again regardless if it was already.
-function get_lang_list($path = null, $force = false) {
-	if ($this->language_list !== null and !$force) return $this->language_list;
-	if ($path === null) $path = $this->language_dir;
+// returns a list of all languages found in the language directory of the theme.
+function get_language_list($theme = null) {
+	$path = $this->language_dir($theme);
 	$langs = array();
 	$dh = @opendir($path);
 	if ($dh) {
 		while (($file = readdir($dh)) !== false) {
-			if (!is_dir(catfile($path,$file)) or substr($file,0,1) == '.') continue;
+			if (!is_file(catfile($path,$file)) or substr($file,0,1) == '.') continue;
 			$langs[] = $file;
 		}
 	}
 	sort($langs);
-	$this->language_list = $langs;
 	return $langs;
 }
 
@@ -460,22 +381,6 @@ function get_theme_list($path=NULL) {
 	}
 	sort($themes);
 	return $themes;
-}
-
-// returns a list of all stylesheets physically found on the HD for the theme
-function get_css_list($path=NULL, $suffix='css') {
-	if ($path===NULL) $path = $this->template_dir;
-	$css = array();
-	$dh = @opendir($path);
-	if ($dh) {
-		while (($file = readdir($dh)) !== FALSE) {
-			if (!@is_file(catfile($path,$file)) or $file{0} == '.') continue;
-			if (substr($file, -strlen($suffix)) != $suffix) continue;
-			$css[] = $file;
-		}
-	}
-	sort($css);
-	return $css;
 }
 
 // override Smarty function so {include} continues to work with our directories
@@ -640,11 +545,18 @@ function showpage($output = null, $showtimer = true) {
 
 function prefilter_language($tpl_source, &$smarty) {
 	// Now replace the matched language strings with the entry in the file
-	return preg_replace_callback('/<#(.+?)#>/', array(&$this, "_compile_lang"), $tpl_source);
+	return preg_replace_callback('/(?:<!--)?<#(.+?)#>(?:-->(.+?)<!---->)?/ms', array(&$this, "_compile_lang"), $tpl_source);
 }
 
 function _compile_lang($key) {
-	return $this->trans($key[1]);
+	if ($key[2]) {	// <!--<#KEYWORD#>-->english phrase here<!---->
+		$text = $this->trans($key[1]);
+		// if the translated text equals the key, then there is no translation 
+		// and we should use the english phrase as-is.
+		return $text == $key[1] ? $key[2] : $text;
+	} else {	// <#english phrase here#>
+		return $this->trans($key[1]);
+	}
 }
 
 /**

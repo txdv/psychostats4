@@ -27,7 +27,7 @@ function smarty_function_confvarlabel($args, &$smarty)
 	$var = $args['var'];
 	$name = $var['id'];
 	$value = $form->value($name);
-	$label = !empty($var['label']) ? $var['label'] : $var['var'];
+	$label = !empty($var['label']) ? $cms->trans($var['label']) : $var['var'];
 
 /*
 	if ($cms->session->opt('advconfig') and $args['edit']) {

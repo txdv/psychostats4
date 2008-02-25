@@ -8,7 +8,5 @@
 	<website>http://www.psychostats.com/</website>
 	<source install='false'>http://www.psychostats.com/updates/acp.xml</source>
 	<file>http://www.psychostats.com/updates/acp.zip</file>
-	<description><![CDATA[ 
-		This is the PsychoStats Administrator Control Panel (ACP) Theme.
-	]]</description>
+	<description>This is the PsychoStats Administrator Control Panel (ACP) Theme.</description>
 </theme>

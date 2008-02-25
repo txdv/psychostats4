@@ -43,7 +43,7 @@ if ($del and $log['id'] == $id) {
 /*
 	$message = $cms->message('success', array(
 		'message_title'	=> $cms->trans("Log Source Deleted"),
-		'message'	=> sprintf($cms->trans("Log source '%s' deleted"), $ps->parse_logsource($log))
+		'message'	=> $cms->trans("Log source '%s' deleted", $ps->parse_logsource($log))
 	));
 */
 }
@@ -86,14 +86,14 @@ if ($test and $log['id'] == $id) { 	// test the log source, if asked to
 		if (!function_exists('ftp_connect')) {
 			$result = 'failure';
 			$msg = $cms->trans("FTP support not available in this installation of PHP") . "<br/>\n" . 
-				sprintf($cms->trans("See %s for more information"), "<a href='http://php.net/ftp'>http://php.net/ftp</a>");
+				$cms->trans("See %s for more information", "<a href='http://php.net/ftp'>http://php.net/ftp</a>");
 		} else {
 			if (empty($test['password'])) $test['password'] = $log['password'];
 			$ftp = @ftp_connect($test['host'], $test['port'] ? $test['port'] : 21);
 			$res = @ftp_login($ftp, $test['username'], $test['password']);
 			$result = 'failure';
 			if (!$res) {
-				$msg = sprintf($cms->trans("Unable to connect to ftp://%s@%s<br/>\n"), $test['username'], $test['host']);
+				$msg = $cms->trans("Unable to connect to ftp://%s@%s<br/>\n", $test['username'], $test['host']);
 				$msg .= !$ftp ? $cms->trans("Verify the host and port are correct") : $cms->trans("Authentication Failed");
 			} else {
 				@ftp_set_option($ftp, FTP_TIMEOUT_SEC, 10);
@@ -121,7 +121,7 @@ if ($test and $log['id'] == $id) { 	// test the log source, if asked to
 		if (!function_exists('ssh2_connect')) {
 			$result = 'failure';
 			$msg = $cms->trans("SFTP support not available in this installation of PHP") . "<br/>\n" . 
-				sprintf($cms->trans("See %s for more information"), "<a href='http://php.net/sftp'>http://php.net/sftp</a>");
+				$cms->trans("See %s for more information", "<a href='http://php.net/sftp'>http://php.net/sftp</a>");
 		} else {
 			if (empty($test['password'])) $test['password'] = $log['password'];
 			$ssh = @ssh2_connect($test['host'], $test['port'] ? $test['port'] : 22);
@@ -131,7 +131,7 @@ if ($test and $log['id'] == $id) { 	// test the log source, if asked to
 			$res = @ssh2_auth_password($ssh, $test['username'], $test['password']);
 			$result = 'failure';
 			if (!$res) {
-				$msg = sprintf($cms->trans("Unable to connect to ssh://%s@%s") . "<br/>\n", $test['username'], $test['host']);
+				$msg = $cms->trans("Unable to connect to ssh://%s@%s" . "<br/>\n", $test['username'], $test['host']);
 				$msg .= !$ssh 
 					? $cms->trans("Verify the host and port are correct") 
 					: $cms->trans("Authentication Failed! Note: the remote server must have PasswordAuthentication set to 'yes' in the sshd_config file.");

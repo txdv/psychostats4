@@ -23,7 +23,7 @@ if ($delete) {
 			$res = !is_writable($file) ? $cms->trans("Permission denied") : $cms->trans("Unknown error while deleting file");
 		}
 	} else {
-		$res = sprintf($cms->trans("Icon '%s' does not exist"), basename($file));
+		$res = $cms->trans("Icon '%s' does not exist", basename($file));
 	}
 
 	// if $ajax is true this was an AJAX request.
@@ -31,7 +31,7 @@ if ($delete) {
 		print $res;
 		exit();
 	} else {
-		$action_result = $res == 'success' ? sprintf($cms->trans("Icon '%s' deleted successfully"), basename($file)) : $res;
+		$action_result = $res == 'success' ? $cms->trans("Icon '%s' deleted successfully", basename($file)) : $res;
 	}
 }
 

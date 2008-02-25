@@ -9,7 +9,5 @@
 	<source>http://www.psychostats.com/updates/themes/default.xml</source>
 	<image>http://www.psychostats.com/updates/themes/default.png</image>
 	<file>http://www.psychostats.com/updates/themes/default-1.0.zip</file>
-	<description><![CDATA[
-		This is the default PsychoStats theme.
-	]]></description>
+	<description>This is the default PsychoStats theme.</description>
 </theme>

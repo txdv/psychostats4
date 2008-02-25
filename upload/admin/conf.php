@@ -157,7 +157,7 @@ if ($submit) {
 			if (count($updated)) {
 				$message = $cms->message('success', array(
 					'message_title'	=> $cms->trans("Configuration Updated Successfully"),
-					'message'	=> sprintf($cms->trans("%d options updated: %s"), count($updated), implode(', ', $updated))
+					'message'	=> $cms->trans("%d options updated: %s", count($updated), implode(', ', $updated))
 				));
 			} else {
 				$message = $cms->message('success', array(

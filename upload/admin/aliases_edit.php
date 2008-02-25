@@ -86,7 +86,7 @@ if ($submit) {
 			$ps->db->escape($a, true)
 		));
 		if ($exists) { 
-			$form->error('aliases', sprintf($cms->trans("'%s' is already defined to another unique ID"), $a));
+			$form->error('aliases', $cms->trans("'%s' is already defined to another unique ID", $a));
 			$valid = false;
 			break;
 		}
