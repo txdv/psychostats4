@@ -1,4 +1,4 @@
-sub calcskill_kill_default {
+sub calcskill_kill_elo {
 	my ($self,$k,$v,$w) = @_;
 
 	my $kskill = $k->skill || $self->{baseskill};
@@ -45,7 +45,7 @@ sub calcskill_kill_default {
 	$v->skill($vskill);
 }
 
-sub calcskill_kill_default_init {
+sub calcskill_kill_elo_init {
 	my ($self) = @_;
 
 	# initialize the adjustment levels for the ELO calculations
