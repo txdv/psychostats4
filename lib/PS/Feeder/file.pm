@@ -147,21 +147,15 @@ sub readnextdir {
 	}
 	closedir(D);
 
-	pop(@{$self->{_logs}}) if $self->{logsource}{skiplast};		# skip the last log in the directory
-
-	$::ERR->verbose(scalar(@{$self->{_logs}}) . " logs found in $self->{_curdir}");
-	$::ERR->debug2(scalar(@{$self->{_logs}}) . " logs found in $self->{_curdir}");
-
-	# If no logs were found in the directory, automatically try the next (if there are still dirs to scan)
-#	if (!scalar @{$self->{_logs}} and scalar @{$self->{_dirs}}) {
-#		return $self->readnextdir;
-#	}
-
 	# sort the logs we have ...
 	if (scalar @{$self->{_logs}}) {
 		$self->{_logs} = $self->{game}->logsort($self->{_logs});
 	}
-#	print "------------\n$dir\n" . join("\n", @{$self->{_logs}}) . "\n------------\n";
+
+	pop(@{$self->{_logs}}) if $self->{logsource}{skiplast};		# skip the last log in the directory
+
+	$::ERR->verbose(scalar(@{$self->{_logs}}) . " logs found in $self->{_curdir}");
+	$::ERR->debug2(scalar(@{$self->{_logs}}) . " logs found in $self->{_curdir}");
 
 	return scalar @{$self->{_logs}};
 }
