@@ -149,6 +149,7 @@ sub event {
 			return;
 		}
 		$timestamp = timelocal_nocheck($6, $5, $4, $2, $1-1, $3-1900);
+		
 		$self->{last_timestamp} = $timestamp;
 		$self->{last_prefix} = $prefix;
 		$self->{last_min} = $self->{min};
@@ -156,7 +157,7 @@ sub event {
 		$self->{last_day} = $self->{day};
 		$self->{min} = $5;
 		$self->{hour} = $4;
-		$self->{day}  = $1;
+		$self->{day} = $2;
 	}
 	$self->{timestamp} = $timestamp;
 	substr($event, 0, PREFIX_LENGTH, '');					# remove prefix from the event

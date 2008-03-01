@@ -483,8 +483,10 @@ sub process_feed {
 	my $abs_logs  = $self->{conf}->get_opt('maxlogs');	# ...
 	my $max_seconds = $self->{conf}->get_main('daily.maxminutes') * 60;	# if these are reached, updates are performed
 	my $max_lines = $self->{conf}->get_main('daily.maxlines');		# ...
-	
+	my $per_day_ranks = $self->{conf}->get_main('daily.per_day_ranks');
 
+	$self->{last_ranked} = $self->{day} || 0;
+	$self->{last_ranked_line} = 0;
 	$self->{curmap} = $feeder->defaultmap;
 	$self->init_events;
 
@@ -510,11 +512,22 @@ sub process_feed {
 			$start = time;
 			# perform all daily updates (except awards)
 			foreach my $d (@PS::Game::DAILY) {
-				next if $d eq 'awards';		# we don't do awards (they take too long)
+				next if $d eq 'awards';				# we don't do awards (they take too long)
+				next if $per_day_ranks and $d eq 'ranks';	# don't do ranks if per_day_ranks is enabled
 				my $f = 'daily_' . $d;
 				$self->$f if $self->can($f);
 			}
 		}
+
+		# If the day changes re-calculate player ranks, only if configured
+		if ($per_day_ranks and defined $self->{last_day} and $self->{last_day} != $self->{day} and $self->{last_ranked} != $self->{day} and $lines - $self->{last_ranked_line} >= 1000) {
+#			print "$self->{day} == $self->{last_day}\n";
+			print "$self->{last_prefix}\n";
+			$self->daily_ranks;
+			$self->{last_ranked} = $self->{day};
+			$self->{last_ranked_line} = $lines;
+		}
+
 		last if defined $abs_lines and $lines >= $abs_lines;
 	}
 	return wantarray ? ($logs, $lines) : $logs;
