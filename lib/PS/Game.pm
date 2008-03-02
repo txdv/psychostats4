@@ -1960,7 +1960,7 @@ sub reset {
 		t_awards t_awards_plrs
 		t_clan
 		t_errlog
-		t_map t_map_data t_map_hourly
+		t_map t_map_data t_map_hourly t_map_spatial
 		t_plr t_plr_data t_plr_ids_ipaddr t_plr_ids_name t_plr_ids_worldid 
 		t_plr_maps t_plr_roles t_plr_sessions t_plr_victims t_plr_weapons
 		t_role t_role_data

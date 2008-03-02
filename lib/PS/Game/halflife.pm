@@ -464,7 +464,13 @@ sub event_spatial {
 	$weapon =~ tr/ /_/;				# convert spaces to '_'
 
 	my $w = $self->get_weapon($weapon);
-	$m->spatial($p1, $props->{attacker_position}, $p2, $props->{victim_position}, $w, $timestamp);
+	$m->spatial(
+		$p1, $props->{attacker_position}, 
+		$p2, $props->{victim_position}, 
+		$w, $props->{headshot}, 
+		$self->{hour}, 
+		$timestamp
+	);
 
 }
 

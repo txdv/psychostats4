@@ -300,14 +300,17 @@ sub hourly {
 
 # adds a spatial stat to the current date
 sub spatial {
-	my ($self, $p1, $k, $p2, $v, $w, $timestamp) = @_;
+	my ($self, $p1, $k, $p2, $v, $w, $headshot, $hour, $timestamp) = @_;
 	my ($date) = strftime("%Y-%m-%d", localtime($timestamp));
+	return unless defined $k && defined $v;
 	my $set = {
 		statdate	=> $date,
 		mapid		=> $self->{mapid},
 		weaponid	=> $w->{weaponid},
 		kid		=> $p1->{plrid},
 		vid		=> $p2->{plrid},
+		headshot	=> $headshot ? 1 : 0,
+		hour		=> $hour
 	}; 
 	@$set{qw( kx ky kz )} = ref $k ? @$k : split(' ', $k);
 	@$set{qw( vx vy vz )} = ref $v ? @$v : split(' ', $v);
