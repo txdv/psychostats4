@@ -15,9 +15,7 @@
 	Example of a valve player profile page: http://steamcommunity.com/profiles/123
 
 	This class requires the BCMath routines to be enabled in PHP. http://php.net/bc
-	PHP5 is required for this class. Currently, the features in this class would be easy to support
-	in PHP4, but I plan for more features that will end up requiring PHP5 in the long run. And PHP4 
-	is outdated, it's time for everyone to UPGRADE! slackers!
+	PHP4 is required, but will eventually be moved to PHP5 only as more features are added.
 
 **/
 
@@ -25,10 +23,11 @@ class Valve_AuthId {
 
 /**
 * @var string $steam_community_url	Specifies the base URL to the steam community website.
+* @access protected
 */
-protected $steam_community_url = "http://steamcommunity.com/profiles/";
+var $steam_community_url = "http://steamcommunity.com/profiles/";
 
-public function __construct() {
+function Valve_AuthId() {
 	// nothing to do
 }
 
@@ -37,7 +36,7 @@ public function __construct() {
 *
 * @param string $steamid	A Steam ID.
 */
-public function get_friend_id($steamid) {
+function get_friend_id($steamid) {
 
 	$parts = explode(':', $steamid);
 	if (!$parts or strtoupper(substr($parts[0], 0, 5)) != 'STEAM') {
