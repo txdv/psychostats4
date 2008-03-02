@@ -240,7 +240,7 @@ div.submit input.reset {
 	border: 1px solid #747881;
 	clear: none;
 }
-#ps-conf-form p.var-help {
+#ps-conf-form div.var-help {
 	clear: both;
 	float: none;
 	margin: 0 2em;

@@ -1,7 +1,19 @@
-
 <div id="ps-overall-footer">
 <div id="ps-footer-middle">
 <p>
+{**}
+{if $language_list}
+	<div class="language">
+		<form action="{url _base='index.php' _ref=1}" method="post">
+		<select name="language" class="language" title="<#Select a Language#>">
+			{foreach from=$language_list item='lang'}
+			<option{if $lang == $language} selected='selected' class='sel'{/if}>{$lang|escape}</option>
+			{/foreach}
+		</select>
+		</form>
+	</div>
+{/if}
+{**}
 Powered by <a href="http://www.psychostats.com/">PsychoStats {ps->version}</a>
 {if $show_benchmark}
 -- Page loaded in <!--PAGE_BENCHMARK--> seconds with {db->totalqueries} SQL queries

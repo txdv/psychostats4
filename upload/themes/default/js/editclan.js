@@ -68,7 +68,7 @@ function member_add(){
 	if (!selected.length) return false;
 	var params = $('#member-form').serialize() + '&ajax=1';
 	$.post('editclan.php', params, function(data){
-		if (data != 'error') {
+		if ($.trim(data) != 'error') {
 			$('#member-table').append(data);
 			$('#member-table a[@id^=mem]').click(member_remove);
 			member_zebra();
@@ -96,7 +96,7 @@ function member_post() {
 function member_remove(){
 	var id = this.id.substr(4);
 	$.post('editclan.php', { id: clanid, del: id, ajax: 1 }, function(data){
-		if (data == 'success') {
+		if ($.trim(data) == 'success') {
 			$('#mem-' + id).parent().parent().remove();
 			member_zebra();
 			$('#member').focus();

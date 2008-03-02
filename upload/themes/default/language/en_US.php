@@ -18,7 +18,7 @@ if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FIL
 // If the language translation extends another translation set then you should include
 // that class file once here. This is useful for updating a translation set w/o having to define 
 // every single language map if some translations are no different from the extended language.
-//include_once('./en_US.php');
+//include_once($this->language_dir('en_US') . '/en_US.php');
 
 class PsychoLanguage_default_en_US extends PsychoLanguage {
 
@@ -61,6 +61,8 @@ function PsychoLanguage_default_en_US() {
 	'Admin' =>
 		'',
 	'AIM' =>
+		'',
+	'AIM Name' =>
 		'',
 	'All informational fields are optional and used solely for display purposes.' =>
 		'',
@@ -174,6 +176,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Email' =>
 		'',
+	'Email Address' =>
+		'',
 	'Entering the Lat,Lng will override the automatic geocoding of the players IP address' =>
 		'',
 	'Error creating user: ' =>
@@ -245,6 +249,8 @@ function PsychoLanguage_default_en_US() {
 	'HTML Logo' =>
 		'',
 	'ICQ' =>
+		'',
+	'ICQ Number' =>
 		'',
 	'in damage' =>
 		'',
@@ -384,6 +390,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'MSN' =>
 		'',
+	'MSN Messenger' =>
+		'',
 	'Name' =>
 		'',
 	'New' =>
@@ -437,6 +445,8 @@ function PsychoLanguage_default_en_US() {
 	'none' =>
 		'',
 	'Not registered?' =>
+		'',
+	'Not Set' =>
 		'',
 	'Not VAC secured' =>
 		'',
@@ -588,6 +598,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Secure' =>
 		'',
+	'Select a Language' =>
+		'',
 	'Select Members' =>
 		'',
 	'Server' =>
@@ -611,6 +623,8 @@ function PsychoLanguage_default_en_US() {
 	'Start Time' =>
 		'',
 	'Steam ID' =>
+		'',
+	'Steam Profile' =>
 		'',
 	'Steamid' =>
 		'',

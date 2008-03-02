@@ -20,6 +20,19 @@ if (!is_numeric($start) || $start < 0) $start = 0;
 if (!is_numeric($limit) || $limit < 0 || $limit > 500) $limit = $DEFAULT_LIMIT;
 $q = trim($q);
 
+// If a language is passed from GET/POST update the user's cookie. 
+if (isset($cms->input['language'])) {
+	if ($cms->theme->is_language($cms->input['language'])) {
+		$cms->session->opt('language', $cms->input['language']);
+		$cms->session->save_session_options();
+	} else {
+		// report an error?
+		// na... just silently ignore the language
+//		trigger_error("Invalid theme specified!", E_USER_WARNING);
+	}
+	previouspage($PHP_SELF);
+}
+
 // fetch stats, etc...
 $totalplayers = $ps->get_total_players(array('allowall' => 1, 'filter' => $q));
 $overalltotal = $q == '' ? $totalplayers : $ps->get_total_players(array('allowall' => 1));
@@ -83,9 +96,8 @@ $cms->theme->assign(array(
 	'totalplayers'	=> $totalplayers,
 	'totalranked' 	=> $totalranked,
 	'pager'		=> $pager,
-	'languages'	=> $cms->theme->get_language_list(),
-
-
+	'language_list'	=> $cms->theme->get_language_list(),
+	'language'	=> $cms->theme->language,
 ));
 
 // display the output

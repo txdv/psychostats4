@@ -5,32 +5,35 @@
 <div id="ps-main">
 
 	<div id="ps-page-title">
-		<div>
-		<span>[ 
-			<a href="{url _base='plrhist.php' id=$plr.plrid}"><#View History#></a> 
-{if ps_user_can_edit_player($plr)}
-			| <a href="{url _base='editplr.php' _ref=1  id=$plr.plrid}"><#Edit Player#></a>
-{/if}
-		]</span>
-		<h1><#Player Profile#> :: {$plr.name|escape}</h1>
-{if $plr.rank}
-		<h2>{$plr.name|escape} <#is ranked#> <strong>#{$plr.rank}</strong> <#out of#> <strong>{$totalranked|commify}</strong>{if $top1percentile} (top 1 percentile){/if}</h2>
-{else}
-		<h2>{$plr.name|escape} <#is not ranked#></h2>
-{/if}
-{if $plr.clanid}
-		<span><#Clan member#> [ 
-			<a href="{url _base='clan.php' id=$plr.clanid}">{$plr.clan.clantag|escape}</a> 
-{if ps_user_can_edit_clan($plr.clanid, $plr)}
-			| <a href="{url _base='editclan.php' _ref=1 id=$plr.clanid}"><#Edit Clan#></a>
+		<div class="inner">
+			<span>[ 
+				<a href="{url _base='plrhist.php' id=$plr.plrid}"><#View History#></a> 
+				{if ps_user_can_edit_player($plr)}
+				| <a href="{url _base='editplr.php' _ref=1  id=$plr.plrid}"><#Edit Player#></a>
+				{/if}
+			]</span>
+			<h1><#Player Profile#> :: {$plr.name|escape}</h1>
+			{if $plr.clanid}
+			<span><#Clan member#> [ 
+				<a href="{url _base='clan.php' id=$plr.clanid}">{$plr.clan.clantag|escape}</a> 
+				{if ps_user_can_edit_clan($plr.clanid, $plr)}
+				| <a href="{url _base='editclan.php' _ref=1 id=$plr.clanid}"><#Edit Clan#></a>
+				{/if}
+			]</span>
+			{/if}
 
-{/if}
-		]</span>
-{/if}
+			{if $plr.rank}
+			<h2>{flagimg cc=$plr.cc} {iconimg icon=$plr.icon} {$plr.name|escape} <#is ranked#> <strong>#{$plr.rank}</strong> <#out of#> <strong>{$totalranked|commify}</strong>{if $top1percentile} (top 1 percentile){/if}</h2>
+			{else}
+			<h2>{flagimg cc=$plr.cc} {iconimg icon=$plr.icon} {$plr.name|escape} <#is not ranked#></h2>
+			{/if}
 		</div>
+		{if $conf.theme.permissions.show_plr_profile}
+			{include file="player_profile.html"}
+		{/if}
 	</div>
 
-{include file="player_profile.html"}
+{if $plr.logo}<div class="ps-plr-logo">{$plr.logo}</div>{/if}
 
 <!--left column block -->
 <div id="ps-main-column">

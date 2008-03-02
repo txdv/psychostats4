@@ -49,8 +49,7 @@ function help_click(e, click) {
 	var help = $('#help-' + id);
 	var row = $('#row-' + id);
 	help.animate({
-		height: 'toggle',
-		opacity: 'toggle'
+		height: 'toggle'//, opacity: 'toggle' // opacity is causing IE6 to be funky with the text
 	}, 'slow');
 	if (help_open[id]) {
 		help_open[id] = undefined;

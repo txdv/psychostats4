@@ -39,6 +39,7 @@ var $css_links		= array();
 var $js_sources		= array();
 var $meta_tags		= array();
 var $loaded_themes	= array();
+var $parent_themes	= array();
 var $fetch_compile	= true;	
 
 //function __construct($cms, $args = array()) { $this->PsychoTheme($cms, $args); }
@@ -182,8 +183,9 @@ function js_sources() {
 }
 
 // returns the absolute URL for the current theme. mainly used within smarty templates
-function url() {
-	return $this->theme_url ? $this->theme_url . '/' . $this->theme() : $this->theme();
+function url($theme = null) {
+	if (!isset($theme)) $theme = $this->theme();
+	return $this->theme_url ? $this->theme_url . '/' . $theme : $theme;
 }
 
 // this is called by Smarty if a template file was not found.
@@ -273,7 +275,11 @@ function theme($new = null, $in_db = true) {
 					$this->cms->db->table('themes'),
 					$this->cms->db->escape($t['parent'], true)
 				));
-				if ($p) $this->loaded_themes[$t['parent']] = $p;
+				if ($p) {
+					$this->loaded_themes[$t['parent']] = $p;
+					$this->parent_themes[$new] = $t['parent'];
+//					$this->child_themes[$t['parent']] = $new;
+				}
 			}	
 		}
 
@@ -291,8 +297,13 @@ function theme($new = null, $in_db = true) {
 
 		// load the language for the theme
 		if ($loaded) {
-			$class = "PsychoLanguage_" . $new . "_" . $this->language;
-			$file = catfile($this->language_dir($new), $this->language . '.php');
+			$class = "PsychoLanguage_" . $new . "_" . $this->language();
+			$file = catfile($this->language_dir($new), $this->language() . '.php');
+			// if the language file doesn't exist in the current theme and there is a parent, check it instead.
+			if (!file_exists($file) and isset($this->parent_themes[$new])) {
+				$class = "PsychoLanguage_" . $this->parent_themes[$new] . "_" . $this->language();
+				$file = catfile($this->language_dir($this->parent_themes[$new]), $this->language() . '.php');
+			}
 			ob_start();
 			$ok = (include_once $file);
 			$err = ob_get_clean();
@@ -320,6 +331,11 @@ function theme($new = null, $in_db = true) {
 	}
 }
 
+function is_child($theme = null) {
+	if (!isset($theme)) $theme = $this->theme();
+	return isset($this->parent_themes[$theme]) ? $this->parent_themes[$theme] : false;
+}
+
 // returns the full path to the theme(=true) if the theme name specified is a valid directory within our template_dir
 function is_theme($theme) {
 	if (empty($theme)) return false;
@@ -335,7 +351,7 @@ function is_theme($theme) {
 function language($new = null) {
 	if ($new === null) {
 		return $this->language;
-	} else {
+	} else { //if ($this->is_language($new)) {
 		$old = $this->language;
 		$this->language = $new;
 		return $old;
@@ -353,21 +369,44 @@ function trans($str, $args = array()) {
 	return $this->lang->gettext($str, $args);
 }
 
+// Returns true if the specified language is actually available in the current theme.
+// This does not check languages from parent themes if the current theme is a child of another.
+function is_language($language, $force = false) {
+	static $list = array();
+	if (!$this->loaded_themes) {
+		return false;
+	}
+	foreach (array_keys($this->loaded_themes) as $theme) {
+		if (!isset($list[$theme])) {
+			$list[$theme] = $this->get_language_list($theme);
+		}
+		if (in_array($language, $list[$theme])) {
+			return true;
+		}
+	}
+	return false;
+}
+
 // returns a list of all languages found in the language directory of the theme.
 function get_language_list($theme = null) {
-	$path = $this->language_dir($theme);
+	$theme_list = (array)($theme ? $theme : array_keys($this->loaded_themes));
 	$langs = array();
-	$dh = @opendir($path);
-	if ($dh) {
-		while (($file = readdir($dh)) !== false) {
-			if (!is_file(catfile($path,$file)) or substr($file,0,1) == '.') continue;
-			$langs[] = $file;
+	foreach ($theme_list as $t) {
+		$path = $this->language_dir($t);
+		$dh = @opendir($path);
+		if ($dh) {
+			while (($file = readdir($dh)) !== false) {
+				if (!is_file(catfile($path,$file)) or substr($file,0,1) == '.') continue;
+				if (substr($file, -3) != 'php') continue;
+				$langs[] = basename($file, '.php');
+			}
 		}
 	}
 	sort($langs);
-	return $langs;
+	return array_unique($langs);
 }
 
+// NOT USED; AND WILL NOT WORK; NEEDS TO BE RECODED.
 function get_theme_list($path=NULL) {
 	if ($path===NULL) $path = dirname($this->template_dir);
 	$themes = array();
@@ -474,7 +513,6 @@ function _compile_resource($resource_name, $compile_path) {
 	}
 }
 
-
 // returns the relative template filename if the template file is found within a loaded theme 
 function template_found($tpl_file, $update_theme = true, $get_source = false) {
 	if (strpos($tpl_file, '.html') === false and strpos($tpl_file, '.xml') === false) $tpl_file .= ".html";
@@ -495,7 +533,7 @@ function template_found($tpl_file, $update_theme = true, $get_source = false) {
 function fetch($tpl_file, $cache_id = null, $compile_id = null, $display = false) {
 #	print "fetch($tpl_file)\n";
 	$res = $this->template_found($tpl_file);
-	$compile_id = $this->language . '-' . $this->compile_id; 
+	$compile_id = $this->language() . '-' . $this->compile_id; 
 	if ($res) {
 		$tpl_file = $res['resource_name'];
 		$compile_id = $this->theme . '-' . $compile_id;

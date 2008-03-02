@@ -10,6 +10,6 @@ function smarty_function_iconimg($args, &$smarty)
 	global $ps;
 	$i = $args['icon'];
 	unset($args['icon']);
-	return $ps->iconimg(iw, $args);
+	return $ps->iconimg($i, $args);
 }
 ?>

@@ -210,3 +210,19 @@ input.search { /* generic search class */
 .gmapinfo span {
 	clear: right;
 }
+
+#ps-overall-footer div.language {
+	float: left;
+	margin-left: 0.5em;
+}
+
+#ps-overall-footer select.language {
+	background-color: #CCC;
+	border: 1px solid gray;
+	padding: 2px;
+	margin: 0;
+	font-size: 90%;
+}
+#ps-overall-footer select.language option {
+	padding-right: 1em;
+}

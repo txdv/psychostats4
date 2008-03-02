@@ -30,7 +30,7 @@ $player = $ps->get_player(array(
 	'loadmaps'	=> 0,
 	'loadvictims'	=> 0,
 	'loadsessions'	=> 1,
-	'loadids'	=> 0,
+	'loadids'	=> 1,
 ));
 
 $history = $ps->get_player_days(array(
@@ -95,8 +95,8 @@ $sessionpager = pagination(array(
 	'prev'          => $cms->trans("Previous"),
 ));
 
+$cms->theme->assign_by_ref('plr', $player);
 $cms->theme->assign(array(
-	'plr'			=> $player,
 	'history'		=> $history,
 	'history_table'		=> $htable->render(),
 	'sessions_table'	=> $stable->render(),
@@ -113,7 +113,19 @@ if ($player['plrid']) {
 	// allow mods to have their own section on the left side bar
 	$ps->player_left_column_mod($player, $cms->theme);
 
+	if ($ps->conf['main']['uniqueid'] == 'worldid') {
+		if (isset($player['ids_worldid'][0]['worldid'])) {
+			include_once(PS_ROOTDIR . "/includes/class_valve.php");
+			$v = new Valve_AuthId();
+			$player['steam_community_url'] = $v->steam_community_url($player['ids_worldid'][0]['worldid']);
+		}
+	}
+
 	$cms->theme->add_css('css/2column.css');	// this page has a left column
+	if ($ps->conf['theme']['map']['google_key'] and $player['latitude'] and $player['longitude']) {
+		$cms->theme->add_js('http://maps.google.com/maps?file=api&amp;v=2&amp;key=' . $ps->conf['theme']['map']['google_key']);
+		$cms->theme->add_js('js/player.js');
+	}
 	$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 } else {
 	$cms->full_page_err($basename, array(

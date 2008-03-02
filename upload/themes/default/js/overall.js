@@ -25,6 +25,11 @@ $(document).ready(function() {
 
 	// automatically add an mouseover/out for table rows ...
 	$(".ps-table tr:gt(0)").mouseover(function() {$(this).addClass("over");}).mouseout(function() {$(this).removeClass("over");});
+
+	// language handler
+	$('select.language').change(function(){ 
+		this.form.submit();
+	});
 });
 
 // popup variables

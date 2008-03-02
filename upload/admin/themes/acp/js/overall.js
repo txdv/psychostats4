@@ -72,7 +72,7 @@ function move_row(e) {
 		cache: false, 
 		type: 'GET',
 		success: function(data){
-			if (data != 'success') {
+			if ($.trim(data) != 'success') {
 				// force the browser to reload, because if the request errors it means
 				// the user session timedout and is no longer logged in (most likely).
 				window.location = window.location;
