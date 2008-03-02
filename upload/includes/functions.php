@@ -190,7 +190,6 @@ function dual_bar($args = array()) {
 // --------------------------------------------------------------------------------------------------------------------
 function rank_change($args = array()) {
 	global $cms, $ps;
-	static $img = null;
 	if (!is_array($args)) $args['plr'] = array( 'plr' => $args );
 	$args += array(
 		'plr'		=> NULL,
@@ -233,13 +232,12 @@ function rank_change($args = array()) {
 			$prevrank == 0 ? '' : $diff
 		);
 	} else {
-		if (!isset($img)) {
-			$img = $cms->theme->url() . '/img/icons/' . sprintf($args['imgfmt'], $dir);
-			$parent = $cms->theme->is_child();
-			if (!file_exists($img) and $parent) {
-				$img = $cms->theme->url($parent) . '/img/icons/' . sprintf($args['imgfmt'], $dir);
-			}
+		$img = $cms->theme->url() . '/img/icons/' . sprintf($args['imgfmt'], $dir);
+		$parent = $cms->theme->is_child();
+		if (!file_exists($img) and $parent) {
+			$img = $cms->theme->url($parent) . '/img/icons/' . sprintf($args['imgfmt'], $dir);
 		}
+
 		$output = sprintf("<img src='%s' alt='%s' title='%s' %s/>", $img, $alt, $alt, $args['attr']);
 #		if ($args['acronym']) {
 #			$output = "<acronym title='$alt'>$output</acronym>";
@@ -251,7 +249,6 @@ function rank_change($args = array()) {
 // --------------------------------------------------------------------------------------------------------------------
 function skill_change($args = array()) {
 	global $cms, $ps;
-	static $img = null;
 	if (!is_array($args)) $args['plr'] = array( 'plr' => $args );
 	$args += array(
 		'plr'		=> NULL,
@@ -294,13 +291,12 @@ function skill_change($args = array()) {
 			$prevskill == 0 ? '' : $diff
 		);
 	} else {
-		if (!isset($img)) {
-			$img = $cms->theme->url() . '/img/icons/' . sprintf($args['imgfmt'], $dir);
-			$parent = $cms->theme->is_child();
-			if (!file_exists($img) and $parent) {
-				$img = $cms->theme->url($parent) . '/img/icons/' . sprintf($args['imgfmt'], $dir);
-			}
+		$img = $cms->theme->url() . '/img/icons/' . sprintf($args['imgfmt'], $dir);
+		$parent = $cms->theme->is_child();
+		if (!file_exists($img) and $parent) {
+			$img = $cms->theme->url($parent) . '/img/icons/' . sprintf($args['imgfmt'], $dir);
 		}
+
 		$output = sprintf("<img src='%s' alt='%s' title='%s' %s/>", $img, $alt, $alt, $args['attr']);
 #		if ($args['acronym']) {
 #			$output = "<acronym title='$alt'>$output</acronym>";
