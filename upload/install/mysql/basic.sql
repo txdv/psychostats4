@@ -226,6 +226,7 @@ CREATE TABLE `ps_map_spatial` (
   `mapid` int(10) unsigned NOT NULL,
   `weaponid` int(10) unsigned NOT NULL,
   `statdate` date NOT NULL,
+  `hour` tinyint(2) unsigned NOT NULL default '0',
   `kid` int(10) unsigned NOT NULL,
   `kx` smallint(6) NOT NULL,
   `ky` smallint(6) NOT NULL,
@@ -234,6 +235,7 @@ CREATE TABLE `ps_map_spatial` (
   `vx` smallint(6) NOT NULL,
   `vy` smallint(6) NOT NULL,
   `vz` smallint(6) NOT NULL,
+  `headshot` tinyint(1) unsigned default NULL,
   KEY `mapid` (`mapid`),
   KEY `kid` (`kid`,`mapid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;

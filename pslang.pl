@@ -143,6 +143,7 @@ my $code = join('', <DATA>);
 my $tokens = {
 	'theme'		=> $args->{theme},
 	'language'	=> $args->{language},
+	'baselang'	=> $args->{baselang},
 	'class'		=> 'PsychoLanguage_' . $args->{theme} . '_' . $args->{language},
 	'parent_class'	=> 'PsychoLanguage' . ($args->{baselang} and $args->{baselang} ne $args->{language} ? "_$args->{theme}_$args->{baselang}" : "" ),
 	'map'		=> '',
@@ -273,7 +274,7 @@ if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FIL
 // If the language translation extends another translation set then you should include
 // that class file once here. This is useful for updating a translation set w/o having to define 
 // every single language map if some translations are no different from the extended language.
-//include_once('./{language}.php');
+//include_once($this->language_dir('{baselang}') . '/{language}.php');
 
 class {class} extends {parent_class} {
 

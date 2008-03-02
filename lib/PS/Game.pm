@@ -521,8 +521,6 @@ sub process_feed {
 
 		# If the day changes re-calculate player ranks, only if configured
 		if ($per_day_ranks and defined $self->{last_day} and $self->{last_day} != $self->{day} and $self->{last_ranked} != $self->{day} and $lines - $self->{last_ranked_line} >= 1000) {
-#			print "$self->{day} == $self->{last_day}\n";
-			print "$self->{last_prefix}\n";
 			$self->daily_ranks;
 			$self->{last_ranked} = $self->{day};
 			$self->{last_ranked_line} = $lines;
@@ -911,7 +909,7 @@ sub plrbonus {
 	while (@_) {
 		my $type = shift;
 		my $entity = shift || next;
-		my $val = $self->{bonuses}{$trigger}{$type};
+		my $val = $self->{bonuses}{$trigger}{$type} || next;
 		my $list = (ref $entity eq 'ARRAY') ? $entity : [ $entity ];
 #		print "plrbonus: $type\n";
 
