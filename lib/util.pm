@@ -20,7 +20,7 @@ our %EXPORT_TAGS = (
 		&abbrnum &commify
 		&date &diffdays_ymd &ymd2time &time2ymd &daysinmonth &isleapyear &dayofyear
 		&compacttime
-		&simple_interpolate
+		&simple_interpolate &expandlist
 		&iswindows
 		&bench &print_r
 	) ],
@@ -36,7 +36,7 @@ our %EXPORT_TAGS = (
 
 	# :strings exports functions dealing with strings
 	'strings' => [ qw(
-		&simple_interpolate
+		&simple_interpolate &expandlist
 	) ],
 
 	# :numbers exports functions dealing with numbers
@@ -317,6 +317,34 @@ sub iswindows {
 
 sub print_r { # mimic PHP.. sorta
 	print Dumper(@_);
+}
+
+# expands a range of numbers in a list, ie: 1,5,10-20,50-100,123,140
+sub expandlist {
+	my ($str) = @_;
+	$str =~ s/[^,\d-]//g;	# strip everything except numbers, dashes and commas
+	$str =~ s/-{2,}/-/g;	# reduce duplicate dashes
+	$str =~ s/,{2,}/,/g;	# reduce duplicate commas
+	$str =~ s/,-|-,//g;	# remove combinations of ",-" or "-,"
+	my @parts = split(/,/,$str);
+	my @range = ();
+	while (defined(my $part = shift @parts)) {
+		my ($low, $high) = split(/-/, $part);
+		if (defined $high) {
+			$high = $low if $high eq '';
+			if ($high > $low) {
+				push(@range, $low..$high);
+			} else {
+				push(@range, $high..$low);
+			}
+		} else {
+			push(@range, $low);
+		}
+	}
+
+	my %uniq;
+	@range = grep(!$uniq{$_}++, @range);
+	return wantarray ? @range : [ @range ];
 }
 
 {

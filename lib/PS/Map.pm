@@ -244,6 +244,13 @@ sub save {
 	}
 
 	# save spatial stats
+	$self->save_all_spatial;
+
+	return $dataid;
+}
+
+sub save_all_spatial {
+	my ($self) = @_;
 	if (defined $self->{spatial}) {
 		foreach my $date (keys %{$self->{spatial}}) {
 			# save an entire day all at once
@@ -251,9 +258,6 @@ sub save {
 		}
 		$self->{spatial} = {};
 	}
-
-
-	return $dataid;
 }
 
 # spatial stat inserts are optimized to reduce the total inserts that need to be performed.
@@ -300,21 +304,23 @@ sub hourly {
 
 # adds a spatial stat to the current date
 sub spatial {
-	my ($self, $p1, $k, $p2, $v, $w, $headshot, $hour, $timestamp) = @_;
-	my ($date) = strftime("%Y-%m-%d", localtime($timestamp));
-	return unless defined $k && defined $v;
+	my ($self, $game, $p1, $ap, $p2, $vp, $w, $headshot) = @_;
+	return unless defined $ap && defined $vp;
 	my $set = {
-		statdate	=> $date,
 		mapid		=> $self->{mapid},
 		weaponid	=> $w->{weaponid},
+		statdate	=> strftime("%Y-%m-%d", localtime($game->{timestamp})),
+		hour		=> $game->{hour},
+		roundtime	=> $game->{roundstart} ? $game->{timestamp} - $game->{roundstart} : 0,
 		kid		=> $p1->{plrid},
+		kteam		=> $p1->{team} || undef,
 		vid		=> $p2->{plrid},
-		headshot	=> $headshot ? 1 : 0,
-		hour		=> $hour
+		vteam		=> $p2->{team} || undef,
+		headshot	=> $headshot ? 1 : 0
 	}; 
-	@$set{qw( kx ky kz )} = ref $k ? @$k : split(' ', $k);
-	@$set{qw( vx vy vz )} = ref $v ? @$v : split(' ', $v);
-	push(@{$self->{spatial}{$date}}, $set);
+	@$set{qw( kx ky kz )} = ref $ap ? @$ap : split(' ', $ap);
+	@$set{qw( vx vy vz )} = ref $vp ? @$vp : split(' ', $vp);
+	push(@{$self->{spatial}{ $set->{statdate} }}, $set);
 }
 
 sub has_mod_tables { 0 }

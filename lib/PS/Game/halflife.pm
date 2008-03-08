@@ -38,6 +38,9 @@ sub _init {
 	$self->{hour} = undef;
 	$self->{day} = undef;
 
+	# keep track of when a round started.
+	$self->{roundstart} = 0;
+
 #	$self->{bans}{ipaddr} = {};	# Current 'permanent' bans from the current log by IP ADDR
 #	$self->{bans}{worldid} = {};	# ... by worldid / steamid
 
@@ -51,7 +54,8 @@ sub _init {
 
 	$self->{auto_plr_bans} = $self->{conf}->get_main('auto_plr_bans');
 
-	$self->{curmap} = $self->{conf}->get_main('defaultmap') || 'unknown';
+	# default map will be determined from the log source, since each log source can have a different default.
+	$self->{curmap} = 'unknown';
 
 	return $self;
 }
@@ -406,9 +410,9 @@ sub event_kill {
 	$p2->{maps}{ $m->{mapid} }{deaths}++;
 	$p2->{roles}{ $r2->{roleid} }{deaths}++ if $r2;
 	$p2->{victims}{ $p1->{plrid} }{deaths}++;
+#	$p2->{roundtime} = $self->{roundstart} ? $timestamp - $self->{roundstart} : undef;
 
 	# most mods have a headshot property
-	# we only record this on the victim because the 'weaponstats' plugin will track the headshots separately.
 	if ($props->{headshot}) {
 		$p1->{victims}{ $p2->{plrid} }{headshotkills}++;
 		$p2->{victims}{ $p1->{plrid} }{headshotdeaths}++;
@@ -441,6 +445,16 @@ sub event_kill {
 		$self->plrbonus('ffkill', 'enactor', $p1);
 	}
 
+	# check for spatial stats on this event
+	if ($props->{attacker_position}) {
+		$m->spatial(
+			$self, 
+			$p1, $props->{attacker_position}, 
+			$p2, $props->{victim_position}, 
+			$w, $props->{headshot}
+		);
+	}
+
 	# allow mods to add their own stats for kills
 	$self->mod_event_kill($p1, $p2, $w, $m, $r1, $r2, $props) if $self->can('mod_event_kill');
 
@@ -465,11 +479,10 @@ sub event_spatial {
 
 	my $w = $self->get_weapon($weapon);
 	$m->spatial(
+		$self, 
 		$p1, $props->{attacker_position}, 
 		$p2, $props->{victim_position}, 
 		$w, $props->{headshot}, 
-		$self->{hour}, 
-		$timestamp
 	);
 
 }
@@ -691,6 +704,7 @@ sub event_round {
 	$trigger = lc $trigger;
 	# mini_round_start is a TF2 trigger, but its more efficient to put it here instead of halflife/tf2.pm
 	if ($trigger eq 'round_start' or $trigger eq 'mini_round_start') {
+		$self->{roundstart} = $timestamp;
 		$m->{basic}{rounds}++;
 		$m->hourly('rounds', $timestamp);
 		# make sure a game is recorded. Logs that do not start with a 'map started' event

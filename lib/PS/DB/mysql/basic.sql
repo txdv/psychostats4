@@ -223,21 +223,23 @@ CREATE TABLE `ps_map_hourly` (
   KEY `global` (`statdate`,`hour`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_map_spatial` (
-  `mapid` int(10) unsigned NOT NULL,
-  `weaponid` int(10) unsigned NOT NULL,
+  `mapid` smallint(5) unsigned NOT NULL,
+  `weaponid` smallint(5) unsigned NOT NULL,
   `statdate` date NOT NULL,
-  `hour` tinyint(2) unsigned NOT NULL default '0',
+  `hour` tinyint(2) unsigned NOT NULL,
+  `roundtime` smallint(5) unsigned NOT NULL,
   `kid` int(10) unsigned NOT NULL,
   `kx` smallint(6) NOT NULL,
   `ky` smallint(6) NOT NULL,
   `kz` smallint(6) NOT NULL,
+  `kteam` enum('CT','TERRORIST','BLUE','RED','ALLIES','AXIS','MARINES','ALIENS') default NULL,
   `vid` int(10) unsigned NOT NULL,
   `vx` smallint(6) NOT NULL,
   `vy` smallint(6) NOT NULL,
   `vz` smallint(6) NOT NULL,
-  `headshot` tinyint(1) unsigned default NULL,
-  KEY `mapid` (`mapid`),
-  KEY `kid` (`kid`,`mapid`)
+  `vteam` enum('CT','TERRORIST','BLUE','RED','ALLIES','AXIS','MARINES','ALIENS') default NULL,
+  `headshot` tinyint(1) unsigned NOT NULL,
+  KEY `mapid` (`mapid`,`hour`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr` (
   `plrid` int(10) unsigned NOT NULL default '0',

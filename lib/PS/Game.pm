@@ -1486,6 +1486,29 @@ sub _delete_stale_hourly {
 	return $total;
 }
 
+sub _delete_stale_spatial {
+	my $self = shift;
+	my $oldest = shift || return;
+	my $db = $self->{db};
+	my $conf = $self->{conf};
+	my $sql_oldest = $db->quote($oldest);
+	my @delete;
+
+	return 0 unless $db->table_exists($db->{t_map_spatial});
+
+	$db->begin;
+
+	# keep track of what stats are being deleted 
+	my $total = $db->count($db->{t_map_spatial}, "statdate <= $sql_oldest");
+
+	# delete basic data
+	$db->do("DELETE FROM $db->{t_map_spatial} WHERE statdate <= $sql_oldest");
+
+	$db->commit;
+
+	return $total;
+}
+
 sub _update_player_stats {
 	my $self = shift;
 	my $oldest = shift || return;
@@ -1852,6 +1875,11 @@ sub daily_maxdays {
 
 	$t{hourly} = $total = $self->_delete_stale_hourly($oldest);
 	$::ERR->info(sprintf("%s stale hourly stats deleted!", commify($total))) if $total;
+	$alltotal += $total;
+	return if $::GRACEFUL_EXIT > 0;
+
+	$t{hourly} = $total = $self->_delete_stale_spatial($oldest);
+	$::ERR->info(sprintf("%s stale spatial stats deleted!", commify($total))) if $total;
 	$alltotal += $total;
 	return if $::GRACEFUL_EXIT > 0;
 

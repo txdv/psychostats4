@@ -1,0 +1,155 @@
+<maps>
+ <map name='cs_italy'>
+  <minx>-1530</minx>
+  <miny>-2100</miny>
+  <maxx>1090</maxx>
+  <maxy>2560</maxy>
+  <res>284x500</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph> 
+ </map>
+ <map name='de_aztec'>
+  <minx>-3130</minx>
+  <miny>-1770</miny> 
+  <maxx>2980</maxx> 
+  <maxy>1500</maxy> 
+  <res>917x500</res> 
+  <flipv>1</flipv> 
+  <fliph>0</fliph>
+ </map>
+ <map name='de_chateau'>
+  <minx>-500</minx> 
+  <miny>-1450</miny>
+  <maxx>3110</maxx>
+  <maxy>2910</maxy>
+  <res>417x500</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_tides'>
+  <minx>-1750</minx>
+  <miny>-2000</miny>
+  <maxx>1300</maxx>
+  <maxy>1280</maxy>
+  <res>485x500</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_dust2'>
+  <minx>-2240</minx>
+  <miny>-1080</miny> 
+  <maxx>1800</maxx>
+  <maxy>3320</maxy> 
+  <res>470x500</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_dust'>
+  <minx>-2100</minx>
+  <miny>-1850</miny> 
+  <maxx>2600</maxx> 
+  <maxy>3800</maxy> 
+  <res>409x500</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cs_assault'>
+  <minx>-4250</minx> 
+  <miny>3400</miny> 
+  <maxx>7530</maxx> 
+  <maxy>7250</maxy> 
+  <res>485x500</res>
+  <flipv>1</flipv>
+  <fliph>1</fliph>
+ </map>
+ <map name='de_train'>
+  <minx>-2000</minx> 
+  <miny>-1800</miny> 
+  <maxx>2050</maxx> 
+  <maxy>1900</maxy>
+  <res>560x500</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_prodigy'>
+  <minx>-220</minx> 
+  <miny>-1640</miny> 
+  <maxx>3350</maxx> 
+  <maxy>1050</maxy> 
+  <res>662x500</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cs_havana'>
+  <minx>-1520</minx> 
+  <miny>-1220</miny> 
+  <maxx>1700</maxx> 
+  <maxy>2300</maxy> 
+  <res>497x500</res>
+  <flipv>1</flipv> 
+  <fliph>0</fliph>
+ </map>
+ <map name='cs_compound'>
+  <minx>290</minx> 
+  <miny>-2400</miny> 
+  <maxx>5500</maxx> 
+  <maxy>3750</maxy> 
+  <res>373x500</res> 
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cs_office'>
+  <minx>-1820</minx> 
+  <miny>-2200</miny> 
+  <maxx>2350</maxx> 
+  <maxy>1300</maxy> 
+  <res>598x500</res> 
+  <flipv>0</flipv>
+  <fliph>1</fliph>
+ </map>
+ <map name='de_cbble'>
+  <minx>-3450</minx> 
+  <miny>-2300</miny> 
+  <maxx>1530</maxx> 
+  <maxy>2950</maxy> 
+  <res>475x500</res> 
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_interno'>
+  <minx>-2000</minx> 
+  <miny>-800</miny> 
+  <maxx>2800</maxx> 
+  <maxy>3640</maxy> 
+  <res>535x500</res> 
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_piranesi'>
+  <minx>-2900</minx> 
+  <miny>-930</miny> 
+  <maxx>2560</maxx> 
+  <maxy>2720</maxy> 
+  <res>759x500</res> 
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_nuke'>
+  <minx>-3000</minx> 
+  <miny>-2530</miny> 
+  <maxx>3690</maxx> 
+  <maxy>960</maxy> 
+  <res>964x500</res> 
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_seasideresort'>
+  <minx>-1820</minx> 
+  <miny>-2150</miny> 
+  <maxx>2100</maxx>
+  <maxy>4190</maxy>
+  <res>308x500</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+</maps>
