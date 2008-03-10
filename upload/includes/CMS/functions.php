@@ -136,7 +136,7 @@ if (!function_exists('ps_table_map_link')) {
 	function ps_table_map_link($name, $map) {
 		global $ps;
 		$url = ps_url_wrapper(array( '_base' => 'map.php', 'id' => $map['mapid'] ));
-		$img = $ps->mapimg($map);
+		$img = $ps->mapimg($map, array( 'width' => 32, 'noimg' => '' ));
 		return "<a class='map' href='$url'>$img</a>";
 	}
 }
@@ -149,8 +149,8 @@ if (!function_exists('ps_table_map_text_link')) {
 	function ps_table_map_text_link($name, $map) {
 		global $ps;
 		$url = ps_url_wrapper(array( '_base' => 'map.php', 'id' => $map['mapid'] ));
-		$img = $ps->mapimg($map, array( 'width' => 32, 'height' => 24, 'noimg' => ''));
-		return "<a class='map' href='$url'>$img " . ps_escape_html($name) . "</a>";
+//		$img = $ps->mapimg($map, array( 'width' => 32, 'height' => 24, 'noimg' => ''));
+		return "<a class='map' href='$url'>" . ps_escape_html($name) . "</a>";
 	}
 }
 

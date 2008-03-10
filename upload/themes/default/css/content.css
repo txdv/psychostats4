@@ -465,6 +465,14 @@ div.ps-plr-profile #map {
 	float: none;
 }
 
+em.add-friend {
+	font-size: 90%;
+	font-style: normal;
+}
+em.add-friend a {
+	color: gray;
+}
+
 /* --- weapon 'classes' ------------------- */
 /* not used at the moment 
 .ps-weapon-class-title {

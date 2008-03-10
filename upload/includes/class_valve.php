@@ -37,6 +37,10 @@ function Valve_AuthId() {
 * @param string $steamid	A Steam ID.
 */
 function get_friend_id($steamid) {
+	if (!function_exists('bcmul')) {
+//		trigger_error("BCMath extension is not available. Unable to create friend ID.", E_USER_WARNING);
+		return false;
+	}
 
 	$parts = explode(':', $steamid);
 	if (!$parts or strtoupper(substr($parts[0], 0, 5)) != 'STEAM') {
@@ -64,8 +68,11 @@ function get_friend_id($steamid) {
 *
 * @param string $friendid	A Friend ID.
 */
-function get_steam_id($friendid)
-{
+function get_steam_id($friendid) {
+	if (!function_exists('bcmod')) {
+//		trigger_error("BCMath extension is not available. Unable to create friend ID.", E_USER_WARNING);
+		return false;
+	}
 	$server = bcmod($friendid, "2") == "0" ? "0" : "1";
 	$friendid = bcsub($friendid, $server);
 	if (bccomp("76561197960265728",$friendid) == -1) {
@@ -73,6 +80,22 @@ function get_steam_id($friendid)
 	}
 	$authid = bcdiv($friendid, "2");
 	return "STEAM_0:" . $server . ":" . $authid;
+}
+
+/**
+* Returns an fully qualified URL to the steamcommunity.com website for adding a friend
+* to you profile.
+*
+* @param string $id	A Steam ID, or Friend ID. The type of ID is auto-discovered.
+*/
+function steam_add_friend_url($id) {
+	if (!is_numeric($id)) {
+		$id = @$this->get_friend_id($id);
+		if (!$id) {
+			return false;
+		}
+	}
+	return "steam://friends/add/$id";
 }
 
 /**

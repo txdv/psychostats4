@@ -46,6 +46,7 @@ $table->sortable(true);
 $table->start_and_sort($start, $sort, $order);
 $table->columns(array(
 	'+'		=> '#',
+	'_mapimg'	=> array( 'nolabel' => true, 'callback' => 'ps_table_map_link' ),
 	'uniqueid'	=> array( 'label' => $cms->trans("Map"), 'callback' => 'ps_table_map_text_link' ),
 	'kills'		=> array( 'label' => $cms->trans("Kills"), 'modifier' => 'commify' ), 
 	'ffkills'	=> array( 'label' => $cms->trans("FF Kills"), 'tooltip' => $cms->trans('Friendly Fire Kills') ),
@@ -56,6 +57,8 @@ $table->columns(array(
 	'lasttime'	=> array( 'label' => $cms->trans("Last"), 'modifier' => 'ps_date_stamp' ),
 ));
 $table->column_attr('uniqueid', 'class', 'left');
+$table->header_attr('uniqueid', 'colspan', '2');
+$table->column_attr('_mapimg', 'width', '40');
 $ps->maps_table_mod($table);
 $cms->filter('maps_table_object', $table);
 
@@ -70,9 +73,5 @@ $cms->theme->assign(array(
 // display the output
 $basename = basename(__FILE__, '.php');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
-
-function ps_table_map_link2($name, $map) {
-	
-}
 
 ?>

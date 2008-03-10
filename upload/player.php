@@ -210,6 +210,7 @@ $mtable->sort_baseurl(array( 'id' => $id, '_anchor' => 'maps' ));
 $mtable->start_and_sort($mstart, $msort, $morder, 'm');
 $mtable->columns(array(
 //	'+'		=> '#',
+	'_mapimg'	=> array( 'nolabel' => true, 'callback' => 'ps_table_map_link' ),
 	'uniqueid'	=> array( 'label' => $cms->trans("Map"), 'callback' => 'ps_table_map_text_link' ),
 	'kills'		=> array( 'label' => $cms->trans("K"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Kills") ), 
 	'ffkills'	=> array( 'label' => $cms->trans("FF"), 'modifier' => 'commify', 'tooltip' => $cms->trans('Friendly Fire Kills') ),
@@ -221,6 +222,8 @@ $mtable->columns(array(
 	'lasttime'	=> array( 'label' => $cms->trans("Last"), 'modifier' => 'ps_date_stamp' ),
 ));
 $mtable->column_attr('uniqueid','class','first left');
+$mtable->header_attr('uniqueid', 'colspan', '2');
+$mtable->column_attr('_mapimg', 'width', '40');
 $ps->player_maps_table_mod($mtable);
 $cms->filter('player_map_table_object', $mtable);
 
@@ -298,7 +301,10 @@ if ($player['plrid']) {
 		if (isset($player['ids_worldid'][0]['worldid'])) {
 			include_once(PS_ROOTDIR . "/includes/class_valve.php");
 			$v = new Valve_AuthId();
-			$player['steam_community_url'] = $v->steam_community_url($player['ids_worldid'][0]['worldid']);
+			$friendid = $v->get_friend_id($player['ids_worldid'][0]['worldid']);
+			$player['friend_id'] = $friendid;
+			$player['steam_community_url'] = $v->steam_community_url($friendid);
+			$player['steam_add_friend_url'] = $v->steam_add_friend_url($friendid);
 		}
 	}
 

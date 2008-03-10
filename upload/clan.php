@@ -179,6 +179,7 @@ $mtable->sort_baseurl(array( 'id' => $id, '_anchor' => 'maps' ));
 $mtable->start_and_sort($mstart, $msort, $morder, 'm');
 $mtable->columns(array(
 //	'+'		=> '#',
+	'_mapimg'	=> array( 'nolabel' => true, 'callback' => 'ps_table_map_link' ),
 	'uniqueid'	=> array( 'label' => $cms->trans("Map"), 'callback' => 'ps_table_map_text_link' ),
 	'kills'		=> array( 'label' => $cms->trans("K"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Kills") ), 
 	'deaths'	=> array( 'label' => $cms->trans("D"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Deaths") ), 
@@ -191,6 +192,8 @@ $mtable->columns(array(
 	'lasttime'	=> array( 'label' => $cms->trans("Last"), 'modifier' => 'ps_date_stamp' ),
 ));
 $mtable->column_attr('uniqueid','class','left');
+$mtable->header_attr('uniqueid', 'colspan', '2');
+$mtable->column_attr('_mapimg', 'width', '40');
 $ps->clan_maps_table_mod($mtable);
 $cms->filter('clan_maps_table_object', $mtable);
 
