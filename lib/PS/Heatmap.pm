@@ -211,9 +211,9 @@ sub render {
 	my $dimy = $self->height;
 
 	# scale the heatmap dimensions
-	if ((my $s = $self->scale) > 0) {
-		$dimx = ceil($dimx / $s);
-		$dimy = ceil($dimy / $s);
+	if ((my $s = $self->scale) != 1.0) {
+		$dimx = ceil($dimx * $s);
+		$dimy = ceil($dimy * $s);
 	}
 
 	# initialize the canvas to all zeros

@@ -188,9 +188,8 @@ sub event_teamtrigger {
 		my $team1 = $self->get_team($team, 1);
 		my $team2 = $self->get_team($team eq 'red' ? 'blue' : 'red', 1);
 		$self->plrbonus($trigger, 'enactor', $players, 'enactor_team', $team1, 'victim_team', $team2);
-	} elseif ($trigger eq 'intermission_win_limit') {
+	} elsif ($trigger eq 'intermission_win_limit') {
 		# uhm.... what?
-	}
 	} else {
 		print "Unknown team trigger: $trigger from src $self->{_src} line $self->{_line}: $self->{_event}\n";
 	}

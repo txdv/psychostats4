@@ -242,6 +242,9 @@ TARGET_BOMBED:
 		$enactor_team = $ct;
 		$victim_team = $terr;
 
+	} elsif ($trigger eq 'intermission_win_limit') {
+		# uhm.... what?
+		return;
 	} else {
 		if ($self->{report_unknown}) {
 			$self->warn("Unknown team trigger '$trigger' from src $self->{_src} line $self->{_line}: $self->{_event}");

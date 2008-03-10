@@ -28,7 +28,7 @@ sub _getOptions {
 		'mapinfo|xml=s'		=> \$self->{param}{mapinfo},
 		'nohourly'		=> \$self->{param}{nohourly},
 		'overlay|img|bg=s'	=> \$self->{param}{overlay},
-		'scale=i'		=> \$self->{param}{scale},
+		'scale=f'		=> \$self->{param}{scale},
 		'sql'			=> \$self->{param}{sql},
 
 		# WHERE CLAUSE SETTINGS
@@ -96,8 +96,8 @@ sub _sanitize {
 		die "Mapinfo file '$p->{mapinfo}' does not exist!\n";
 	}
 
-	if (defined $p->{scale} and ($p->{scale} < 1 or $p->{scale} > 20)) {
-		die "Invalid scale specified. Must be 1 - 20.\n";
+	if (defined $p->{scale} and ($p->{scale} < 0.1 or $p->{scale} > 20)) {
+		die "Invalid scale specified. Must be 0.1 - 20.\n";
 	}
 
 	$p->{brush} = lc $p->{brush} if defined $p->{brush};
