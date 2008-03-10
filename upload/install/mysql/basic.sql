@@ -166,6 +166,27 @@ CREATE TABLE `ps_config_servers` (
   PRIMARY KEY  (`id`),
   UNIQUE KEY `hostport` (`host`,`port`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_heatmaps` (
+  `heatkey` char(40) NOT NULL default '',
+  `statdate` date NOT NULL,
+  `hour` tinyint(2) unsigned default NULL,
+  `who` enum('killer','victim') NOT NULL default 'victim',
+  `mapid` smallint(5) unsigned NOT NULL,
+  `weaponid` smallint(5) unsigned default NULL,
+  `pid` int(10) unsigned default NULL,
+  `kid` int(10) unsigned default NULL,
+  `team` enum('CT','TERRORIST','BLUE','RED','ALLIES','AXIS','MARINES','ALIENS') default NULL,
+  `kteam` enum('CT','TERRORIST','BLUE','RED','ALLIES','AXIS','MARINES','ALIENS') default NULL,
+  `vid` int(10) unsigned default NULL,
+  `vteam` enum('CT','TERRORIST','BLUE','RED','ALLIES','AXIS','MARINES','ALIENS') default NULL,
+  `headshot` tinyint(1) unsigned default NULL,
+  `datatype` enum('blob','file') NOT NULL default 'blob',
+  `datafile` varchar(255) default NULL,
+  `datablob` mediumblob,
+  `lastupdate` timestamp NOT NULL default CURRENT_TIMESTAMP,
+  UNIQUE KEY `heatkey` (`heatkey`,`statdate`,`hour`),
+  KEY `mapid` (`statdate`,`hour`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_errlog` (
   `id` int(10) unsigned NOT NULL default '0',
   `timestamp` int(10) unsigned NOT NULL default '0',
@@ -227,7 +248,7 @@ CREATE TABLE `ps_map_spatial` (
   `weaponid` smallint(5) unsigned NOT NULL,
   `statdate` date NOT NULL,
   `hour` tinyint(2) unsigned NOT NULL,
-  `roundtime` smallint(5) unsigned NOT NULL,
+  `roundtime` smallint(5) unsigned NOT NULL default '0',
   `kid` int(10) unsigned NOT NULL,
   `kx` smallint(6) NOT NULL,
   `ky` smallint(6) NOT NULL,
@@ -239,7 +260,7 @@ CREATE TABLE `ps_map_spatial` (
   `vz` smallint(6) NOT NULL,
   `vteam` enum('CT','TERRORIST','BLUE','RED','ALLIES','AXIS','MARINES','ALIENS') default NULL,
   `headshot` tinyint(1) unsigned NOT NULL,
-  KEY `mapid` (`mapid`,`hour`)
+  KEY `mapid` (`mapid`,`statdate`,`hour`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr` (
   `plrid` int(10) unsigned NOT NULL default '0',

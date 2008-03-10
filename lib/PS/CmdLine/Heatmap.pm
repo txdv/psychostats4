@@ -32,8 +32,11 @@ sub _getOptions {
 		'sql'			=> \$self->{param}{sql},
 
 		# WHERE CLAUSE SETTINGS
-		'headshot'		=> \$self->{param}{headshot}, 
+		'headshot:s'		=> \$self->{param}{headshot}, 
 		'statdate|date=s'	=> \$self->{param}{statdate},
+		'killer|k=s'		=> \$self->{param}{killer},
+		'victim|v=s'		=> \$self->{param}{victim},
+		'player||plr|p=s'	=> \$self->{param}{player},
 		'kteam=s'		=> \$self->{param}{kteam},
 		'vteam=s'		=> \$self->{param}{vteam},
 		'team=s'		=> \$self->{param}{team},
@@ -111,7 +114,7 @@ sub _sanitize {
 		$p->{hourly} = '0-23';
 	}
 
-	if ($p->{hourly}) {
+	if (defined $p->{hourly}) {
 		$p->{hourly} = join(', ', grep { $_ >= 0 && $_ <= 23 } expandlist($p->{hourly}));
 	}
 
@@ -129,6 +132,10 @@ sub _sanitize {
 		die "Overlay background image '$p->{overlay}' does not exist or is not a file.\n";
 	}
 
+	# force headshot to a numeric 0 or 1
+	if (defined $p->{headshot} and $p->{headshot} !~ /^\d+$/) {
+		$p->{headshot} = 1;
+	}
 }
 
 1;

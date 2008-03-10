@@ -53,6 +53,7 @@ sub new {
 	$self->{t_config_plrbans} 	= $self->{dbtblprefix} . 'config_plrbans';
 	$self->{t_config_plrbonuses} 	= $self->{dbtblprefix} . 'config_plrbonuses';
 	$self->{t_errlog} 		= $self->{dbtblprefix} . 'errlog';
+	$self->{t_heatmaps} 		= $self->{dbtblprefix} . 'heatmaps';
 	$self->{t_geoip_cc}		= $self->{dbtblprefix} . 'geoip_cc';
 	$self->{t_geoip_ip}		= $self->{dbtblprefix} . 'geoip_ip';
 	$self->{t_map} 			= $self->{dbtblprefix} . 'map';
