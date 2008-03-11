@@ -33,7 +33,8 @@ sub _getOptions {
 
 		# WHERE CLAUSE SETTINGS
 		'headshot:s'		=> \$self->{param}{headshot}, 
-		'statdate|date=s'	=> \$self->{param}{statdate},
+		'statdate|start=s'	=> \$self->{param}{statdate},
+		'enddate|end=s'		=> \$self->{param}{enddate},
 		'killer|k=s'		=> \$self->{param}{killer},
 		'victim|v=s'		=> \$self->{param}{victim},
 		'player||plr|p=s'	=> \$self->{param}{player},
@@ -125,7 +126,10 @@ sub _sanitize {
 	}
 
 	if (defined $p->{statdate} and $p->{statdate} !~ /^\d\d\d\d-\d\d-\d\d$/) {
-		die "Invalid -date specified. Must be in the form of 'YYYY-mm-dd'\n";
+		die "Invalid -statdate specified. Must be in the form of 'YYYY-mm-dd'\n";
+	}
+	if (defined $p->{enddate} and $p->{enddate} !~ /^\d\d\d\d-\d\d-\d\d$/) {
+		die "Invalid -enddate specified. Must be in the form of 'YYYY-mm-dd'\n";
 	}
 
 	if (defined $p->{overlay} and !-f $p->{overlay}) {

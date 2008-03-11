@@ -169,6 +169,7 @@ CREATE TABLE `ps_config_servers` (
 CREATE TABLE `ps_heatmaps` (
   `heatkey` char(40) NOT NULL default '',
   `statdate` date NOT NULL,
+  `enddate` date default NULL,
   `hour` tinyint(2) unsigned default NULL,
   `who` enum('killer','victim') NOT NULL default 'victim',
   `mapid` smallint(5) unsigned NOT NULL,
@@ -184,8 +185,7 @@ CREATE TABLE `ps_heatmaps` (
   `datafile` varchar(255) default NULL,
   `datablob` mediumblob,
   `lastupdate` timestamp NOT NULL default CURRENT_TIMESTAMP,
-  UNIQUE KEY `heatkey` (`heatkey`,`statdate`,`hour`),
-  KEY `mapid` (`statdate`,`hour`)
+  UNIQUE KEY `heatkey` (`heatkey`,`statdate`,`enddate`,`hour`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_errlog` (
   `id` int(10) unsigned NOT NULL default '0',

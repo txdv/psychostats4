@@ -144,6 +144,18 @@ if (!defined $opt->statdate) {
 	die "No spatial stats are available! Aborting!\n" if !$date;
 }
 
+# if enddate is not specified default to statdate
+if (!defined $opt->enddate) {
+	$opt->enddate($opt->statdate);
+}
+
+# if enddate is < statdate reverse them
+if ($opt->enddate lt $opt->statdate) {
+	my $tmp = $opt->statdate;
+	$opt->statdate($opt->enddate);
+	$opt->enddate($tmp);
+}
+
 # if a weapon is specified, find its ID value
 if ($opt->weapon and $opt->weapon !~ /^\d+$/) {
 	my $weaponid = $db->select($db->{t_weapon}, 'weaponid', "uniqueid=" . $db->quote($opt->weapon));
@@ -194,6 +206,7 @@ $hc->{scale} 	= $opt->scale if $opt->exists('scale');
 $hc->{format} 	= $opt->format if $opt->exists('format');
 $hc->{overlay} 	= $opt->overlay if $opt->exists('overlay');
 $hc->{statdate}	= $opt->statdate if $opt->exists('statdate');
+$hc->{enddate}	= $opt->enddate if $opt->exists('enddate');
 $hc->{weaponid} = $opt->weapon if $opt->exists('weapon');
 $hc->{pid} 	= $opt->player if $opt->exists('player');
 $hc->{kid} 	= $opt->killer if $opt->exists('killer');
@@ -202,11 +215,14 @@ $hc->{team} 	= $opt->team if $opt->exists('team');
 $hc->{kteam} 	= $opt->kteam if $opt->exists('kteam');
 $hc->{vteam} 	= $opt->vteam if $opt->exists('vteam');
 $hc->{headshot} = defined $opt->headshot ? $opt->headshot : undef;	# allow for undef, 0, 1
-$hc->{hourly} 	= 0 if $opt->exists('nohourly');
+$hc->{hourly} 	= (defined $opt->hourly and !$opt->nohourly);
 
 # if hourly is enabled, change this option to the hours to generate (all 24 hours by default)
 if ($hc->{hourly}) {
-	$hc->{hourly} = $opt->hourly || '0-23';
+	$hc->{hourly} = defined $opt->hourly ? $opt->hourly : '0-23';
+} else {
+	# since hourly can be '0' we need to determine if its defined ...
+	$hc->{hourly} = undef;
 }
 
 # if no format is specified default it to something useful (depending if hourly heatmaps are being created)
@@ -229,7 +245,11 @@ if (substr($hc->{who},0,1) eq 'v') {
 my $where = '';
 
 # build a specific where clause if extra parameters are given
-$where .= "AND statdate=" . $db->quote($hc->{statdate}) . " " if $hc->{statdate};
+if (($hc->{statdate} and $hc->{enddate}) and $hc->{statdate} ne $hc->{enddate}) {
+	$where .= "AND (statdate BETWEEN " . $db->quote($hc->{statdate}) . " AND " . $db->quote($hc->{enddate}) . ") ";
+} else {
+	$where .= "AND statdate=" . $db->quote($hc->{statdate}) . " " if $hc->{statdate};
+}
 $where .= "AND (kid=$hc->{pid} OR vid=$hc->{pid}) " if $hc->{pid};
 $where .= "AND kid=$hc->{kid} " if $hc->{kid};
 $where .= "AND vid=$hc->{vid} " if $hc->{vid};
@@ -260,18 +280,15 @@ while (my ($mapname, $mapid) = each(%$maplist)) {
 	$hc->{mapname} = $mapname;
 	$hc->{mapid} = $mapid;
 
-	if ($opt->hourly) {
-		my @hours = expandlist($opt->hourly);
+	if (defined $hc->{hourly}) {
+		my @hours = expandlist($hc->{hourly});
 		my $w;
-#		my $path = $opt->file || catfile('.','');
-#		die "Option -o must point to a directory when creating hourly heatmaps.\n" unless $path and -d $path;
 		foreach my $hour (@hours) {
 			$hc->{idx} = ++$idx;
 			$hc->{hour} = sprintf('%02d', $hour);
 			$w = "AND hour=$hour $where";
 			get_data($hc, $datax, $datay, $w);
 			$heat->data($datax, $datay);
-#			my $file = catfile($path, file_format($hc->{format}, $hc));
 			warn "Creating heatmap for $mapname (hour $hc->{hour}) ...\n" unless $opt->quiet;
 			$png = $heat->render();
 			save_png($png, $hc);
@@ -291,8 +308,9 @@ while (my ($mapname, $mapid) = each(%$maplist)) {
 sub save_png {
 	my ($data, $hc) = @_;
 	my $out = $opt->file || 'DB';
-	my @vars = qw(mapid weaponid statdate hour headshot who pid kid vid team kteam vteam);	
+	my @vars = qw(mapid weaponid statdate enddate hour headshot who pid kid vid team kteam vteam);	
 	my $set = { map {$_ => $hc->{$_}} @vars };
+	$set->{enddate} = undef if $set->{enddate} eq $set->{statdate};
 	if (uc $out eq 'DB') {
 		$set->{datatype} = 'blob';
 		$set->{datablob} = $data;
@@ -317,9 +335,10 @@ sub save_png {
 	# delete any heatmap already matching the current criteria
 	my $key = heatmap_key($hc);
 	warn "$hc->{mapname} heatkey='$key'\n" unless $opt->quiet;
-	$db->do(sprintf("DELETE FROM $db->{t_heatmaps} WHERE heatkey=%s AND statdate=%s AND hour%s", 
+	$db->do(sprintf("DELETE FROM $db->{t_heatmaps} WHERE heatkey=%s AND statdate=%s AND enddate%s AND hour%s", 
 		$db->quote($key),
 		$db->quote($set->{statdate}),
+		$hc->{enddate} ne $hc->{statdate} ? '='.$db->quote($set->{enddate}) : ' IS NULL',
 		defined $set->{hour} ? '='.$set->{hour} : ' IS NULL'
 	));
 	warn $db->lastcmd . "\n" if $opt->sql;
@@ -329,7 +348,6 @@ sub save_png {
 	my @keys = keys %$set;
 	my $cmd = "INSERT INTO $db->{t_heatmaps} (" . join(',',@keys) . ") VALUES (". substr('?,' x @keys,0,-1) .")";
 	my $st = $db->{dbh}->prepare($cmd);
-#	warn $cmd . "\n" if $opt->sql and !$opt->quiet;
 
 	if (!$st->execute(map($set->{$_}, @keys))) {
 		warn "Error saving heatmap to database: " . $st->errstr . "\n";
@@ -377,10 +395,14 @@ sub file_format {
 	$str =~ s/%%/%z/g;
 	$str =~ s/%m/$hc->{mapname}/ge;
 	$str =~ s/%i/$hc->{idx}/ge;
+	$str =~ s/%d/$hc->{statdate}/ge;
+	$str =~ s/%e/$hc->{enddate}/ge;
 	$str =~ s/%h/defined $hc->{hour} ? $hc->{hour} : ''/ge;
 	$str =~ s/%z/%/g;
 	return $str;
 }
+
+sub main::exit { CORE::exit(@_) }
 
 __DATA__
 
