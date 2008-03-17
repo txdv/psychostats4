@@ -95,10 +95,10 @@ function ps_header_handler(header, frame, display, speed) {
 	// update the icon in the header based on the new display state
 	// the image filename must end in 'minus' or 'plus'.
 	var img = span.css('backgroundImage');
-	if (img.indexOf('minus.') != -1) {
-		img = img.replace(/minus\./, 'plus.');
-	} else if (img.indexOf('plus.') != -1) {
-		img = img.replace(/plus\./, 'minus.');
+	if (img.indexOf('minus') != -1) {
+		img = img.replace(/minus/, 'plus');
+	} else if (img.indexOf('plus') != -1) {
+		img = img.replace(/plus/, 'minus');
 	}
 	span.css('backgroundImage', img);
 

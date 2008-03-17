@@ -1,3 +1,14 @@
+<script type="text/javascript">
+$(function(){ldelim}
+	var imgs = [
+{section name='hour' loop=24}
+		'/heatmaps/{$map.uniqueid|escape:'javascript'}_{$smarty.section.hour.index|string_format:'%02d'}.png'{if !$smarty.section.hour.last},{/if}
+
+{/section}
+	];
+	init_heatmap(imgs, '{$map.overlay|escape:'javascript'}');
+{rdelim});
+</script>
 <!--outermost page container for all content-->
 <div id="ps-page-container">
 
@@ -6,7 +17,7 @@
 
 	<div id="ps-page-title">
 		<div class="inner">
-		<h1><#Map Profile#> :: {$map.uniqueid|escape}</h1>
+		<h1><#Heatmaps#> :: {$map.uniqueid|escape}</h1>
 		<h2>&nbsp;</h2>
 		</div>
 	</div>
@@ -84,28 +95,25 @@
 <!--content block-->
 <div id="ps-main-content" class="ps-page-map">
 
-{foreach name='stats' from=$topten item='stats'}
-	<!--#STATS#-->
-	<div class="ps-table-frame{if $shades[$stats.key]} s-closed{/if}">
-	<div class="ps-frame-header"><a href="" onclick="return false"><span>{$stats.label|escape}</span></a></div>
-	<div id='{$stats.id}' class="ps-table-inner">
-	{$stats.table}
+	<div class="heatmap-ctrl">
+		<form action="{url}" method="post">
+			<select name="date">
+				<option>Select Date</option>
+			</select>
+		</form>
 	</div>
+	<div class="heatmap">
+		{* heatmap content *}
+		<div class="hour"></div>
 	</div>
-	<!---->
+	<div class="heatmap-ctrl">
+		<div class="heatmap-slider ui-slider-1">
+			<div class="ui-slider-handle"></div>
+		</div>
+	</div>
+	<div id="debug" style="text-align: left">... debug ...</div>
+	<div class="heatmap-progress">{pctbar width=200 pct=70}</div>
 
-{foreachelse}
-	<div class="ps-table-frame no-ani">
-	<div class="ps-frame-header"><a href="" onclick="return false"><span><#No Stats Available#></span></a></div>
-	<div class="ps-table-inner">
-	<table class="ps-table ps-player-table">
-	<tr><th><p><span>&nbsp;</span></p></th></tr>
-	<tr><td class="no-data"><#No Stats Available#></td></tr>
-	<tr><td><#Please try another map#></td></tr>
-	</table>
-	</div>
-	</div>
-{/foreach}
 
 </div> {* end ps-main-content *}
 

@@ -1,0 +1,70 @@
+/*
+	Default theme 'blue' scheme. This overrides styles from the main overall.css and content.css files.
+*/
+
+/* overall.css */
+a,a:link,a:visited,a:hover,a:active {	/* LVHA */
+	color: #0066cc;
+}
+a:hover {
+	color: #003355;
+}
+
+#ps-overall-header {
+	background: url(../img/header-bg.png) repeat-x;
+}
+
+#ps-overall-logo {
+	background: url(../img/header-logo.png) no-repeat;
+}
+
+#ps-overall-footer {
+	background: url(../img/footer-bg.png);
+}
+
+/* content.css */
+
+#ps-page-title, .ps-section-title {
+ 	background: #edeeff url(../img/page-title-bg.jpg) repeat-x;
+}
+
+#ps-page-title div.ps-plr-profile {
+	background: #edeeff url(../img/page-title-bg-reverse.jpg) repeat-x top left;
+}
+
+.ps-frame-header { 
+	background: #edeeff url(../img/frame-header-bg.jpg) repeat-y top left;
+}
+
+.ps-table th {
+	background: #edeeff url(../img/table-header-bg.jpg) repeat-x top left;
+}
+
+.ps-table th.active span {
+
+}
+
+.ps-table th.active p {
+	background: url(../img/table-header-active-l-bg.png) no-repeat;
+}
+
+.ps-table tr th.active span.asc {
+	background: url(../img/table-header-asc-r-bg.png) no-repeat 100% 0;
+}
+
+.ps-table tr th.active span.desc {
+	background: url(../img/table-header-desc-r-bg.png) no-repeat 100% 0;
+}
+
+.ps-table-footer {
+	background: url(../img/table-footer-bg.png) repeat-x 0 bottom;
+}
+
+/* 2column.css */
+.ps-column-header {
+	background: url(../img/table-header-bg.jpg) repeat-x;
+}
+
+.ps-column-content p.hl {
+	background-color: #c5d5fa;
+}

@@ -27,7 +27,7 @@
 #ps-page-title, .ps-section-title {
 	text-align: center;
 	margin: 0 1em 1em 1em;
- 	background: url(../img/page-title-bg.png) repeat-x;
+ 	background: #CCCCCC url(../img/page-title-bg.png) repeat-x;
 	border: 1px solid gray;
 }
 #ps-page-title div.inner, .ps-section-title div.inner {
@@ -89,17 +89,16 @@ div.ps-plr-profile #map {
 	text-align: left;
 	padding: 0.3em;
 	padding-left: 1em;
-	margin-bottom: 2px;
-	background: #e7e7e7;
+	background: #f1f1f1 url(../img/frame-header-bg.jpg) repeat-y top left;
 	border:  1px solid gray;
 }
 .ps-frame-header span { 
 	display: block;
 	width: 100%;
-	background: url(../img/exp_minus.gif) no-repeat 100% 50%;
+	background: url(../img/exp_minus_arrow.png) no-repeat 100% 50%;
 }
 .s-closed .ps-frame-header span {
-	background: url(../img/exp_plus.gif) no-repeat 100% 50%;
+	background: url(../img/exp_plus_arrow.png) no-repeat 100% 50%;
 }
 .s-closed .ps-table-inner {
 	display: none;
@@ -142,9 +141,9 @@ div.ps-plr-profile #map {
 .ps-table tr.even { background-color: #E0E0E0; }
 .ps-table td.noborder { border: none; }
 .ps-table tr.over {
-/*	apply mouseover styles for table rows here
-	background-color: lightyellow;
-*/
+/*	apply mouseover styles for table rows here /**
+	background-color: #ffffff;
+/**/
 }
 /* 
 .ps-table th.first { }
@@ -471,6 +470,70 @@ em.add-friend {
 }
 em.add-friend a {
 	color: gray;
+}
+
+/* Slider styles */
+.ui-slider-1 .ui-slider-handle, 
+.ui-slider-2 .ui-slider-handle { position: absolute; z-index: 1; height: 23px; width: 12px; top: 0px; left: 0px; background-image: url(../img/slider-handle.gif);  }
+/* .ui-slider-1 .ui-slider-handle-active, .ui-slider-2 .ui-slider-handle-active { border: 1px dotted black;  } */
+.ui-slider-disabled .ui-slider-handle { opacity: 0.5; filter: alpha(opacity=50); }
+.ui-slider-range { position: absolute; background: #50A029; opacity: 0.3; filter: alpha(opacity=30); width: 100%; height: 100%; }
+
+/* Default slider backgrounds */
+.ui-slider-1 { width: 200px; height: 23px; position: relative; background-image: url(../img/slider-bg-1.png); background-repeat: no-repeat; background-position: center center; }
+.ui-slider-2 { width: 200px; height: 23px; position: relative; background-image: url(../img/slider-bg-2.png); background-repeat: no-repeat; background-position: center center; }
+
+/* Heatmap styles */
+.heatmap {
+	margin: 0 1em 0 0;
+	border-left: 1px solid gray;
+	border-right: 1px solid gray;
+	background-color: #000;
+	overflow: hidden;
+	position: relative;
+}
+
+.heatmap img.overlay {
+/*
+	position: relative;
+*/
+}
+
+.heatmap img.heat {
+	position: absolute;
+	top: auto;
+	left: auto;
+}
+
+.heatmap .hour {
+	position: absolute;
+	top: 0;
+	right: 10px;
+	color: #cc0000;
+	font-size: 3em;
+	font-family: impact;
+}
+
+.heatmap-ctrl {
+	line-height: 1.75em;
+	margin: 0 1em 0 0;
+	padding: 0.25em 0;
+	border: 1px solid gray;
+	background-color: #ccc;
+	background: #ccc url(../img/page-title-bg.png) repeat-x top left;
+}
+
+.heatmap-slider {
+	margin: 0 auto;
+}
+
+.heatmap-ctrl select option {
+	padding-right: 10px;
+}
+
+.heatmap-progress {
+	position: absolute;
+	display: none;
 }
 
 /* --- weapon 'classes' ------------------- */

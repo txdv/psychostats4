@@ -1,7 +1,5 @@
 <div id="ps-overall-footer">
 <div id="ps-footer-middle">
-<p>
-{**}
 {if $language_list}
 	<div class="language">
 		<form action="{url _base='index.php' _ref=1}" method="post">
@@ -13,16 +11,27 @@
 		</form>
 	</div>
 {/if}
-{**}
-Powered by <a href="http://www.psychostats.com/">PsychoStats {ps->version}</a>
-{if $show_benchmark}
--- Page loaded in <!--PAGE_BENCHMARK--> seconds with {db->totalqueries} SQL queries
+{if $theme_list}
+	<div class="theme">
+		<form action="{url _base='index.php' _ref=1}" method="post">
+		<select name="theme" class="theme" title="<#Select a Theme#>">
+			{foreach from=$theme_list item='t'}
+			<option{if $t == $theme} selected='selected' class='sel'{/if}>{$t|escape}</option>
+			{/foreach}
+		</select>
+		</form>
+	</div>
 {/if}
-{if ps_user_is_admin()}
-<br/><strong>[ <a href="{url _base='admin/index.php'}">Login to admin control panel</a> ]</strong>
-{/if}
-<br/><a href="http://validator.w3.org/check?uri=referer">W3C XHTML 1.0</a>
-</p>
+	<div class="poweredby">
+		Powered by <a href="http://www.psychostats.com/">PsychoStats {ps->version}</a>
+		{if $show_benchmark}
+		-- Page loaded in <!--PAGE_BENCHMARK--> seconds with {db->totalqueries} SQL queries
+		{/if}
+		{if ps_user_is_admin()}
+		<br/><strong>[ <a href="{url _base='admin/index.php'}">Login to admin control panel</a> ]</strong>
+		{/if}
+		<br/><a href="http://validator.w3.org/check?uri=referer">W3C XHTML 1.0</a>
+	</div>
 </div>
 </div>
 

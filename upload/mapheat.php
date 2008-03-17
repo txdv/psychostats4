@@ -1,15 +1,16 @@
 <?php
 define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
+include_once(PS_ROOTDIR . "/includes/PS/Heatmap.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
-$cms->theme->page_title = 'PsychoStats - Map Stats';
-
-// how many players per stat
-$MAX_PLAYERS = 10;
+$cms->theme->page_title = 'PsychoStats - Heatmap';
 
 $validfields = array('id', 'sort', 'order', 'start', 'limit');
 $cms->theme->assign_request_vars($validfields, true);
+
+$heat = new PS_Heatmap($ps);
+print_r($heat->get_map_heatmaps($id));
 
 $sort = strtolower($sort);
 $order = strtolower($order);
@@ -18,7 +19,6 @@ if (!in_array($order, array('asc','desc'))) $order = 'desc';
 if (!is_numeric($start) || $start < 0) $start = 0;
 if (!is_numeric($limit) || $limit < 0) $limit = 10;
 
-$topten = array();
 $totalmaps = $ps->get_total_maps();
 $maps = $ps->get_map_list(array(
 	'sort'		=> 'kills',
@@ -39,29 +39,7 @@ $map = $ps->get_map(array(
 $cms->theme->page_title .= ' for ' . $map['uniqueid'];
 
 if ($map['mapid']) {
-
-	$setup = array(
-		'mapid' 	=> $id,
-		'order'		=> 'desc',
-		'limit'		=> $limit,
-	);
-
-	$ps->reset_map_stats();
-
-	// generic stats that will work for any game/mod
-	$ps->add_map_player_list('kills', 	$setup + array('label' => $cms->trans("Most Kills")) );
-	$ps->add_map_player_list('ffkills', 	$setup + array('label' => $cms->trans("Most FF Kills")) );
-	$ps->add_map_player_list('ffdeaths', 	$setup + array('label' => $cms->trans("Most FF Deaths")) );
-	$ps->add_map_player_list('onlinetime', 	$setup + array('label' => $cms->trans("Most Online Time"), 'modifier' => 'compacttime') );
-
-	// each mod will add their own stats to the output
-	$ps->add_map_player_list_mod($map, $setup);
-
-	// allow plugins to add their own stats to the map details
-	$cms->action('add_map_player_list');
-
-	// build all topten stats
-	$topten = $ps->build_map_stats();
+	$map['overlay'] = '/overlays/' . $map['uniqueid'] . '_overlay.jpg';
 }
 
 
@@ -70,8 +48,6 @@ $cms->theme->assign(array(
 	'map'		=> $map,
 	'mapimg'	=> $ps->mapimg($map, array( 'noimg' => '' )),
 	'totalmaps'	=> $totalmaps,
-	'topten'	=> $topten,
-	'totaltopten'	=> count($topten),
 ));
 
 $basename = basename(__FILE__, '.php');
@@ -80,6 +56,7 @@ if ($map['mapid']) {
 	$ps->map_left_column_mod($map, $cms->theme);
 
 	$cms->theme->add_css('css/2column.css');	// this page has a left column
+	$cms->theme->add_js('js/heatmap.js');
 	$cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 } else {
 	$cms->full_page_err($basename, array(

@@ -20,11 +20,11 @@ body {
 }
 
 a,a:link,a:visited,a:hover,a:active {	/* LVHA */
-	color: DarkRed; /* #6A5ACD; */
+	color: DarkRed;
 	text-decoration: none;
 }
 a:hover {
-	color: black; /* #483D8B; */
+	color: #330000;
 }
 
 img {
@@ -41,7 +41,6 @@ acronym {
 	height: 110px;
 	background: url(../img/header-bg.png) repeat-x;
 	overflow: hidden;
-	display: block; /* !!!!!!!!!!!!!!!!!!!!! */
 }
 
 #ps-overall-logo {
@@ -90,9 +89,9 @@ acronym {
 /* --- OVERALL FOOTER ------------------------------------- */
 #ps-overall-footer {
 	font-size: 80%;
-	background: url(../img/footer-bg.png) gray;
+	background: gray url(../img/footer-bg.png) repeat-x;
 	margin-top: 2em;
-	height: 41px;
+/*	height: 41px;*/
 	overflow: hidden;
 	position: relative;
 	width: 100%;
@@ -101,6 +100,25 @@ acronym {
 }
 #ps-footer-middle {
 	margin-top: 5px;
+}
+
+#ps-overall-footer div.language, 
+#ps-overall-footer div.theme
+{
+	float: left;
+	margin-left: 0.5em;
+	height: 3em;
+	line-height: 3em;
+}
+#ps-overall-footer select {
+	background-color: #CCC;
+	border: 1px solid gray;
+	padding: 2px;
+	margin: 0;
+	font-size: 90%;
+}
+#ps-overall-footer select option {
+	padding-right: 1em;
 }
 
 /* --- OVERALL LOGIN POPUP --------------------------------------------- */
@@ -211,18 +229,3 @@ input.search { /* generic search class */
 	clear: right;
 }
 
-#ps-overall-footer div.language {
-	float: left;
-	margin-left: 0.5em;
-}
-
-#ps-overall-footer select.language {
-	background-color: #CCC;
-	border: 1px solid gray;
-	padding: 2px;
-	margin: 0;
-	font-size: 90%;
-}
-#ps-overall-footer select.language option {
-	padding-right: 1em;
-}

@@ -3,6 +3,7 @@ define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
+$cms->theme->page_title = 'PsychoStats - Weapon Usage';
 
 // change this if you want the default sort of the player listing to be something else like 'kills'
 $DEFAULT_SORT = 'kills';

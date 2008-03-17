@@ -3,6 +3,7 @@ define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
+$cms->theme->page_title = 'PsychoStats - Player Stats';
 
 // maximum player ID's to load for ipaddr, name, and worldid
 $MAX_PLR_IDS = 10;
@@ -80,6 +81,8 @@ $player = $ps->get_player(array(
 	'idsort'	=> 'totaluses',
 	'idorder'	=> 'desc',
 ));
+
+$cms->theme->page_title .= ' for ' . $player['name'];
 
 $x = substr($xml,0,1);
 if ($x == 'p') {	// player

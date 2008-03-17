@@ -769,29 +769,29 @@ function PsychoLanguage_default_en_US() {
 function MANAGE_CLAN_MEMBERS() {
 	$text  = '';
 	$text .= 'If you manually edit the member list you should check the "lock" button.' . "\n";
-	$text .= '		Otherwise there is no guarantee the listing will remain the way you set it.' . "\n";
+	$text .= 'Otherwise there is no guarantee the listing will remain the way you set it.' . "\n";
 	return $text;
 }
 
 function REGISTER_NEW_USER() {
 	$text  = '';
 	$text .= 'Register a user for this player by entering a username and password below.' . "\n";
-	$text .= '		This will allow the user to login and modify their profile.' . "\n";
+	$text .= 'This will allow the user to login and modify their profile.' . "\n";
 	return $text;
 }
 
 function REGISTRATION_COMPLETE() {
 	$text  = '';
 	$text .= 'In the future, to <a href="{url _base=\'login.php\'}">login</a> please use your username ' . "\n";
-	$text .= '	\'<b><a href="{url _base=\'edituser.php\' id=$reg.userid}">{$reg.username|escape}</a></b>\' with the password you supplied ' . "\n";
-	$text .= '	in your registration.' . "\n";
+	$text .= '\'<b><a href="{url _base=\'edituser.php\' id=$reg.userid}">{$reg.username|escape}</a></b>\' with the password you supplied ' . "\n";
+	$text .= 'in your registration.' . "\n";
 	return $text;
 }
 
 function REGISTRATION_CONFIRM() {
 	$text  = '';
 	$text .= 'You will not be able to login and access your profile until an administrator confirms your account. ' . "\n";
-	$text .= '	If you entered an email address in your registration you will be notified when the account is confirmed.' . "\n";
+	$text .= 'If you entered an email address in your registration you will be notified when the account is confirmed.' . "\n";
 	return $text;
 }
 

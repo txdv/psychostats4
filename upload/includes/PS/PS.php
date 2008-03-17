@@ -195,9 +195,11 @@ function PS(&$db) {
 	$this->t_errlog 		= $this->tblprefix . 'errlog';
 	$this->t_geoip_cc		= $this->tblprefix . 'geoip_cc';
 	$this->t_geoip_ip		= $this->tblprefix . 'geoip_ip';
+	$this->t_heatmaps 		= $this->tblprefix . 'heatmaps';
 	$this->t_map 			= $this->tblprefix . 'map';
 	$this->t_map_data 		= $this->tblprefix . 'map_data';
 	$this->t_map_hourly 		= $this->tblprefix . 'map_hourly';
+	$this->t_map_spatial 		= $this->tblprefix . 'map_spatial';
 	$this->t_plr 			= $this->tblprefix . 'plr';
 	$this->t_plr_aliases 		= $this->tblprefix . 'plr_aliases';
 	$this->t_plr_bans 		= $this->tblprefix . 'plr_bans';

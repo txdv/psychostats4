@@ -3,6 +3,7 @@ define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
+$cms->theme->page_title = 'PsychoStats - Player History';
 
 $validfields = array(
 	'id',
@@ -32,6 +33,8 @@ $player = $ps->get_player(array(
 	'loadsessions'	=> 1,
 	'loadids'	=> 1,
 ));
+
+$cms->theme->page_title .= ' for ' . $player['name'];
 
 $history = $ps->get_player_days(array(
 	'plrid'		=> $id,

@@ -40,7 +40,8 @@ var $js_sources		= array();
 var $meta_tags		= array();
 var $loaded_themes	= array();
 var $parent_themes	= array();
-var $fetch_compile	= true;	
+var $fetch_compile	= true;
+var $page_title		= '';
 
 //function __construct($cms, $args = array()) { $this->PsychoTheme($cms, $args); }
 function PsychoTheme(&$cms, $args = array()) {
@@ -96,6 +97,7 @@ function PsychoTheme(&$cms, $args = array()) {
 	}
 
 	// Define some common globals for all templates
+	$this->assign_by_ref('title', $this->page_title);
 	$this->assign_by_ref('theme_name', $this->theme);
 	$this->assign_by_ref('language', $this->language);
 	$this->assign(array(
@@ -158,24 +160,26 @@ function meta_tags() {
 }
 
 // SMARTY: template routine to print out the CSS links in the overall_header
-function css_links() {
+function css_links($theme = null) {
 	if (!is_array($this->css_links)) return '';
+	if (empty($theme)) $theme = $this->theme();
 	$out = '';
 	foreach ($this->css_links as $css) {
 		$out .= sprintf("\t<link rel='stylesheet' type='text/css' media='%s' href='%s' />\n", 
-			$css['media'], $this->url() . '/' . $css['url']
+			$css['media'], $this->url($theme) . '/' . $css['url']
 		);
 	}
 	return $out;
 }
 
 // SMARTY: template routine to print out the JS sources in the overall_header
-function js_sources() {
+function js_sources($theme = null) {
 	if (!is_array($this->js_sources)) return '';
+	if (empty($theme)) $theme = $this->theme();
 	$out = '';
 	foreach ($this->js_sources as $js) {
 		$out .= sprintf("\t<script src='%s%s' type='text/javascript'></script>\n", 
-			substr($js['url'], 0, 4) == 'http' ? '' : $this->url() . '/',
+			substr($js['url'], 0, 4) == 'http' ? '' : $this->url($theme) . '/',
 			$js['url']
 		);
 	}
@@ -184,7 +188,7 @@ function js_sources() {
 
 // returns the absolute URL for the current theme. mainly used within smarty templates
 function url($theme = null) {
-	if (!isset($theme)) $theme = $this->theme();
+	if (empty($theme)) $theme = $this->theme();
 	return $this->theme_url ? $this->theme_url . '/' . $theme : $theme;
 }
 
@@ -407,19 +411,8 @@ function get_language_list($theme = null) {
 }
 
 // NOT USED; AND WILL NOT WORK; NEEDS TO BE RECODED.
-function get_theme_list($path=NULL) {
-	if ($path===NULL) $path = dirname($this->template_dir);
-	$themes = array();
-	$dh = @opendir($path);
-	if ($dh) {
-		while (($file = readdir($dh)) !== FALSE) {
-			if (!@is_dir(catfile($path,$file)) or $file{0} == '.') continue;
-			if (!@file_exists(catfile($path,$file,'theme.txt'))) continue;
-			$themes[] = $file;
-		}
-	}
-	sort($themes);
-	return $themes;
+function get_theme_list() {
+	return array();
 }
 
 // override Smarty function so {include} continues to work with our directories
