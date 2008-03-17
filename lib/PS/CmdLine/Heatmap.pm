@@ -20,6 +20,7 @@ sub _getOptions {
 	my $optok = GetOptions(
 		# HEATMAP SETTINGS
 		'brush=s'		=> \$self->{param}{brush},
+		'debug'			=> \$self->{param}{debug},
 		'file|o=s'		=> \$self->{param}{file},
 		'format=s'		=> \$self->{param}{format},
 		'hourly:s'		=> \$self->{param}{hourly},
@@ -42,6 +43,7 @@ sub _getOptions {
 		'vteam=s'		=> \$self->{param}{vteam},
 		'team=s'		=> \$self->{param}{team},
 		'who=s'			=> \$self->{param}{who},
+		'who2=s'		=> \$self->{param}{who2},
 		'weapon=s'		=> \$self->{param}{weapon},
 
 		# BASIC SETTINGS
@@ -123,6 +125,13 @@ sub _sanitize {
 	$p->{who} = lc $p->{who};
 	if ($p->{who} !~ /^(killer|victim)$/) {
 		die "Invalid -who specified. Must be 'killer' or 'victim'\n";
+	}
+
+	if (defined $p->{who2}) {
+		$p->{who2} = lc $p->{who2};
+		if ($p->{who2} !~ /^(killer|victim)$/) {
+			die "Invalid -who2 specified. Must be 'killer' or 'victim'\n";
+		}
 	}
 
 	if (defined $p->{statdate} and $p->{statdate} !~ /^\d\d\d\d-\d\d-\d\d$/) {

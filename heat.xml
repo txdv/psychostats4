@@ -104,8 +104,8 @@
   <maxx>2350</maxx> 
   <maxy>1300</maxy> 
   <res>598x500</res> 
-  <flipv>0</flipv>
-  <fliph>1</fliph>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
  </map>
  <map name='de_cbble'>
   <minx>-3450</minx> 

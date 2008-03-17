@@ -167,11 +167,12 @@ CREATE TABLE `ps_config_servers` (
   UNIQUE KEY `hostport` (`host`,`port`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_heatmaps` (
-  `heatkey` char(40) NOT NULL default '',
+  `heatid` int(10) unsigned NOT NULL,
+  `heatkey` char(40) character set ascii NOT NULL,
   `statdate` date NOT NULL,
   `enddate` date default NULL,
   `hour` tinyint(2) unsigned default NULL,
-  `who` enum('killer','victim') NOT NULL default 'victim',
+  `who` enum('killer','victim','both') NOT NULL default 'victim',
   `mapid` smallint(5) unsigned NOT NULL,
   `weaponid` smallint(5) unsigned default NULL,
   `pid` int(10) unsigned default NULL,
@@ -185,7 +186,9 @@ CREATE TABLE `ps_heatmaps` (
   `datafile` varchar(255) default NULL,
   `datablob` mediumblob,
   `lastupdate` timestamp NOT NULL default CURRENT_TIMESTAMP,
-  UNIQUE KEY `heatkey` (`heatkey`,`statdate`,`enddate`,`hour`)
+  PRIMARY KEY  (`heatid`),
+  UNIQUE KEY `heatkey` (`heatkey`,`statdate`,`enddate`,`hour`),
+  KEY `mapid` (`mapid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_errlog` (
   `id` int(10) unsigned NOT NULL default '0',
@@ -524,7 +527,7 @@ CREATE TABLE `ps_themes` (
   `author` varchar(128) default NULL,
   `website` varchar(128) default NULL,
   `source` varchar(255) default NULL,
-  `description` text NOT NULL,
+  `description` text,
   PRIMARY KEY  (`name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_user` (

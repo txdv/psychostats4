@@ -450,6 +450,28 @@ sub max {
 	return $max;
 }
 
+# returns the MIN() value of a variable in a table
+# $var defaults to 'id'
+# ->min(table, var, where)
+sub min {
+	my $self = shift;
+	my $tbl = shift;
+	my $var = shift || 'id';
+	my $where = shift;
+	my $min;
+	my $cmd;
+
+	$cmd = "SELECT MIN($var) FROM $tbl ";
+	$cmd .= "WHERE " . $self->where($where) if defined $where;
+	$self->query($cmd);
+	if ($self->{sth}) {
+		$self->{sth}->bind_columns(\$min);
+		$self->{sth}->fetch;
+	}
+#	$self->querydone;
+	return $min;
+}
+
 # deletes a row from the table based on the WHERE clause. 
 # An ORDER clause can be given as well (however, this is mysql specific and should be avoided or overridden in sub classes)
 # ->delete(table, where, order)

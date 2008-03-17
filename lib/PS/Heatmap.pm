@@ -23,13 +23,15 @@ sub new {
 	my $class = ref($proto) || $proto;
 	my $self = { 
 		class 		=> $class,
-		_data		=> undef,		# dataset to build heatmap from
+		_debug		=> undef,
+		_im		=> undef,		# GD::Image object
+		_canvas		=> [],			# canvas of heat data
 		_width		=> 200,			# width of map overlay
 		_height		=> 200,			# height of map overlay
-		_scale		=> 1,			# scale to use for heatmap (based on map overlay resolution)
+		_scale		=> 1,			# scale to use for heatmap (based on width x height)
 		_brush		=> 'medium',		# brush to use ('small', 'medium', 'large' or an array ref for custom)
-		_flip_horizontal=> 0,
-		_flip_vertical	=> 0,
+		_flip_horizontal=> 0,			# flip the canvas left->right?
+		_flip_vertical	=> 0,			# flip the canvas top->bottom?
 	};
 	bless($self, $class);
 
@@ -50,29 +52,40 @@ sub new {
 	return $self;
 }
 
-# burn the heatmap data onto our canvas array
+sub debug { $_[0]->_get('debug') }
+
+# burn the heatmap data onto our canvas array.
+# this can take a long time depending on the size and scale of the heatmap.
+# ->burn
 sub burn {
-	my ($self, $dimx, $dimy, $canvas) = @_;
+	my ($self, $datax, $datay, $is_cold, $canvas) = @_;
+	$datax 	||= $self->datax;
+	$datay 	||= $self->datay;
 	$canvas ||= $self->canvas;
-	croak("Canvas was not initialized before calling Heatmap::burn") unless ref $canvas;
+	croak("Canvas was not initialized before calling PS::Heatmap::burn") unless ref $canvas;
+
+	my $dimx = $self->dimx;
+	my $dimy = $self->dimy;
 
 	# setup some variables to avoid calling 'getter' functions over and over
 	my $minx = $self->minx || 0;
 	my $miny = $self->miny || 0;
 	my $maxx = $self->maxx || $dimx;
 	my $maxy = $self->maxy || $dimy;
-	my $brush = $self->get_brush( $self->brush || 'medium' );
+	my $brush = [ $self->get_brush( $self->brush || 'medium' ) ];	# get a copy of the brush, not original ref
 	my $brushsize = $self->get_brush_size($brush);
 
 	# calculate the cell size from our defined boundary
 	my $cellwidth  = abs($minx - $maxx) / $dimx;
 	my $cellheight = abs($miny - $maxy) / $dimy;
 
-	# our spatial data arrays
-	my $datax = $self->datax;
-	my $datay = $self->datay;
+	# if the data is 'cold' then negate the brush
+	if ($is_cold) {
+		@$brush = map { -$_ } @$brush;
+	}
 
 	# burn the canvas with the spatial data
+	warn ">> Burning canvas (" . ($is_cold ? "COLD" : "WARM") . ") ...\n" if $self->debug;
 	for (my $i=0; $i < @$datax; $i++) {
 		my $x = floor(($datax->[$i] - $minx) / $cellwidth);
 		my $y = floor(($datay->[$i] - $miny) / $cellheight);
@@ -80,6 +93,7 @@ sub burn {
 		# each brush stroke adds a bit of heat to the canvas
 		$self->stroke($x, $y, $dimx, $dimy, $canvas, $brush, $brushsize);
 	}
+#	warn ">> Canvas is now burnt.\n" if $self->debug;
 }
 
 # add a brush stroke (more like a brush dot) onto the canvas at the X/Y co-ords, 
@@ -108,88 +122,116 @@ sub stroke {
 	}
 }
 
-# normalize and colorize our burn data
+# colorize our burn data
 # $im is a GD::Image object
 # returns an array ref of colors generated, keyed on the canvas values
 sub colorize {
-	my ($self, $im, $canvas) = @_;
-	$canvas ||= $self->canvas;
-	return unless $canvas;
+	my ($self, $im) = @_;
+	$im ||= $self->im || new GD::Image(100,100,1);
 
-	# calculate the maximum value of the burned canvas
-	my $max = $self->get_max_burn($canvas);
-
-	# normalize the burn values. $canvas values will be between 0 .. 255
-	$self->normalize_burn($max, $canvas);
-
-	my $colors = [];	# array of 256 color values (some may be undef)
-
-	# colorize the burn; This creates the image pallete in $im.
-	for (my $i = 0; $i < @$canvas; $i++) {
-		my $col = $canvas->[$i];
-		if (!defined $colors->[$col]) {
-			my ($r,$g,$b,$a) = $self->create_burn_color($canvas->[$i]);
-			$colors->[$col] = $im->colorAllocateAlpha($r, $g, $b, $a);
+	# create COLD intensity range
+	unless ($self->cold) {
+		warn ">> Creating COLD colors ... \n" if $self->debug;
+		my $cold = [];
+		for (my $i = 0; $i <= 255; $i++) {
+			$cold->[255-$i] = $im->colorAllocateAlpha( $self->create_burn_color($i-255) );
 		}
+		$self->cold($cold);
 	}
 
-	$im->alphaBlending(0);
-	$im->saveAlpha(1);
-
-	$self->colors($colors);
-	return $colors;
+	# create WARM intensity range
+	unless ($self->warm) {
+		warn ">> Creating WARM colors ... \n" if $self->debug;
+		my $warm = [];
+		for (my $i = 0; $i < 256; $i++) {
+			$warm->[$i] = $im->colorAllocateAlpha( $self->create_burn_color($i) );
+		}
+		$self->warm($warm);
+	}
+#	warn ">> Done creating colors.\n" if $self->debug;
 }
 
-# return an RGB color based on how high $p is (a canvas plot)
-# blue -> yellow -> red
+# To understand this function look at color wheel at the same time
+# Heat values are normalized between [0,120] (warm) and [120,225] (cold)
 sub create_burn_color {
-	my ($self, $p) = @_;
-	my ($r, $g, $b, $a) = (0,0,0,0);
+	my ($self, $hIntensity) = @_;		# intensity [-255, 255]
 
-	$p /= 255;		# normalize: 0 .. 1 (float)
+	my $coldMax = 170; 			# Maximum cold hue
+	my $neutral = 100; 			# Neutral heat
+	my $temp = 0.47; 			# Neutral heat hue
 
-	# blue
-	if ($p >= 0.33 && $p < 0.66) {
-		$b = int((1 - (($p - 0.33)/0.33)) * 255);
-#                       43    21         1     23      4
-	}
-
-	# green
-	if ($p < 0.33) {
-		$g = int($p / 0.33 * 255);
-	} elsif ($p >= 0.33 && $p < 0.66) {
-		$g = 255;
+	if ($hIntensity >= 0) {
+		$temp = ($neutral-($hIntensity/255*$neutral)) / 255;
 	} else {
-		$g = int((1 - (($p - 0.66)/0.34)) * 255);
-#                       43    21         1     23      4
+		$temp = ($neutral+(abs($hIntensity)/255*($coldMax/255)*$neutral)) / 255;
 	}
 
-	# red
-	if ($p < 0.33) {
-		$r = 0;
-	} elsif ($p >= 0.33 && $p < 0.66) {
-		$r = int((($p - 0.33) / 0.33) * 255);
-#                       321         1       2      3
-	} else {
-		$r = 255;
-	}
+	# Warm colors hue: 120 (neutral) -> 0 (warmest)
+	# Cold colors hue: 120 (neutral) -> 225 (coldest)
+	# In HSV wheel floating value 0 represents hue value 0 or 255 (warm, red)
+	# In HSV wheel floating value 0.33 represents hue value 85 (green)
+	# In HSV wheel floating value 0.47 represents hue value 120 (neutral greenish / blueish)
+	# In HSV wheel floating value 0.66 represents hue value 170 (semi-cold, blue)
+	# In HSV wheel floating value 0.88 represents hue value 225 (cold, magenta)
 
-	# alpha
-	$a = int(127 * (1-$p));
+	my ($r, $g, $b) = $self->hsv_rgb($temp, 1, 1);
+	my $a = int(127*(1-abs($hIntensity)/255)); 	# 127 transparent, 0 opaque
 
-	return ($r,$g,$b,$a);
+	return ($r, $g, $b, $a);
 }
 
-# normalize the burn values on the canvas so everything is between 0 .. 255.
-# this prevents the 'everything is red' problem when a large data set is used.
+
+# The procedure below converts an HSB value to RGB.  It takes hue, saturation,
+# and value components (floating-point, 0-1.0) as arguments, and returns a
+# list containing RGB components (integers, 0-65535) as result.  The code
+# here is a copy of the code on page 616 of "Fundamentals of Interactive
+# Computer Graphics" by Foley and Van Dam. (modified to work with perl 5.8)
+# http://wiki.tcl.tk/12201
+sub hsv_rgb { #hsvToRgb {
+	my ($self, $hue, $sat, $value) = @_;
+	my $v = 255*$value;
+	if ($sat == 0) {
+		return ($v, $v, $v)
+	} else {
+		$hue = $hue*6;
+		$hue = 0 if $hue >= 6.0;
+		my $i = floor($hue);
+		my $f = $hue-$i;
+		my $p = 255*$value*(1 - $sat);
+		my $q = 255*$value*(1 - ($sat*$f));
+		my $t = 255*$value*(1 - ($sat*(1 - $f)));
+		if ($i == 0) {
+			return ($v, $t, $p);
+		} elsif ($i == 1) {
+			return ($q, $v, $p);
+		} elsif ($i == 2) {
+			return ($p, $v, $t);
+		} elsif ($i == 3) {
+			return ($p, $q, $v);
+		} elsif ($i == 4) {
+			return ($t, $p, $v);
+		} elsif ($i == 5) {
+			return ($v, $p, $q);
+		} else {
+			warn "i value $i is out of range";
+			return (0xFFFF,0xFFFF,0xFFFF);
+		}
+        }
+}
+
+# normalize the burn values on the canvas so everything is between -255 .. 255.
+# this prevents the 'everything is red' or 'flat peak' problem when a large data set is used.
 sub normalize_burn {
 	my ($self, $max, $canvas) = @_;
+	$max ||= $self->get_max_burn;
 	$canvas ||= $self->canvas;
 	return unless $max > 0 and $canvas;
 
+	warn ">> Normalizing canvas burn (max=$max) ... \n" if $self->debug;
 	for (my $i = 0; $i < @$canvas; $i++) {
 		$canvas->[$i] = int(255 * $canvas->[$i] / $max);
 	}
+#	warn ">> Canvas is normal.\n" if $self->debug;
 }
 
 # return the maximum burn value on the canvas
@@ -198,15 +240,22 @@ sub get_max_burn {
 	$canvas ||= $self->canvas;
 	return 0 unless $canvas;
 	my $max = 0;
+	# since COLD colors are negative we need an absolute max value
 	for (my $i=0; $i < @$canvas; $i++) {
-		$max = $canvas->[$i] if $canvas->[$i] > $max;
+		my $abs = abs($canvas->[$i]);
+		$max = $abs if $abs > $max;
 	}
 	return $max;
 }
 
-# primary render method. Creates the heatmap.
+# Primary render method. Creates the heatmap.
+# By default the datax,datay variables are used to burn the canvas.
+# Altneratively a list of array refs can be passed in, ref=[datax,datay,is_cold]
+# ->render([file], [ ref, ref, ... ]);
 sub render {
-	my ($self, $fh) = @_;
+	my $self = shift;
+	my $fh = shift;
+
 	my $dimx = $self->width;
 	my $dimy = $self->height;
 
@@ -215,35 +264,43 @@ sub render {
 		$dimx = ceil($dimx * $s);
 		$dimy = ceil($dimy * $s);
 	}
+	$self->dimx($dimx);
+	$self->dimy($dimy);
 
 	# initialize the canvas to all zeros
-	my $canvas = [];
-	for(my $i=0; $i < $dimx*$dimy; $i++) {
-		$canvas->[$i] = 0;
+	if (!$self->canvas or @{$self->canvas} == 0) {
+		my $canvas = [];
+		warn ">> Initializing canvas ... \n" if $self->debug;
+		for(my $i=0; $i < $dimx*$dimy; $i++) {
+			$canvas->[$i] = 0;
+		}
+		warn ">> Canvas created: " . @$canvas . " (${dimx}x$dimy)\n" if $self->debug;
+		$self->canvas($canvas);
 	}
-#	warn "CANVAS SIZE: " . @$canvas . "\n";
-	$self->canvas($canvas);
 
 	# heat it up!
-	$self->burn($dimx, $dimy, $canvas);
+	if (@_) {	# use each set of data and burn the canvas
+		# each element in @_ is an array ref of [datax,datay,is_cold]
+		foreach my $data (@_) {
+			my ($datax,$datay,$is_cold) = @$data;
+#			$self->burn(@$data) if ref $data eq 'ARRAY' and @{$data->[0]};
+			$self->burn($datax,$datay,$is_cold);
+		}
+	} else {	# use current datax,datay (hot)
+		$self->burn;
+	}
 
-	# create GD instance
-	my $im;
-#	if ($self->background) {
-#		$im = new GD::Image($self->background) || croak("Error creating image: $!");
-#		$im->trueColor(1);
-#	} else {
-		$im = new GD::Image($dimx, $dimy, 1) || croak("Error creating image: $!");
-#	}
-
-	# colorize the heat map and get a list of RGB colors
-	my $colors = $self->colorize($im, $canvas);
+	# normalize the burn values. $canvas values will be between -255 .. 255
+	$self->normalize_burn;
 
 	# rotate and flip the canvas ...
+	my $canvas = $self->canvas;
 	if ($self->flip_vertical and $self->flip_horizontal) {
+		warn ">> Rotating canvas V/H ... \n" if $self->debug;
 		# easy peasy ... 
 		@$canvas = reverse @$canvas;
 	} elsif ($self->flip_vertical) {
+		warn ">> Rotating canvas vertically ... \n" if $self->debug;
 		my @tmp = ();
 		my $y = -1;
 		for (my $i=0; $i < @$canvas; $i++) {
@@ -253,6 +310,7 @@ sub render {
 		}		
 		@$canvas = @tmp;
 	} elsif ($self->flip_horizontal) {
+		warn ">> Rotating canvas horizontaly ... \n" if $self->debug;
 		my @tmp = ();
 		for (my $i=0; $i < @$canvas; $i++) {
 			# each row is reversed (left to right)
@@ -261,28 +319,57 @@ sub render {
 		@$canvas = @tmp;
 	}
 
+	# create GD instance
+	if (!$self->im) {
+		warn ">> Creating GD::Image instance ...\n" if $self->debug;
+#		if ($self->background) {
+#			$self->im(new GD::Image($self->background) || croak("Error creating image: $!"));
+#			$self->im->trueColor(1);
+#		} else {
+			$self->im(new GD::Image($dimx, $dimy, 1) || croak("Error creating image: $!"));
+#		}
+		$self->im->alphaBlending(0);
+		$self->im->saveAlpha(1);
+	}
+
+	# generate cold and warn color intensities for the heatmap.
+	$self->colorize;
+
 	# plot the heatmap data
-	$self->draw($im, $dimx, $colors, $canvas);
+	$self->draw;
 
 	# return the heatmap data, or print it directly to a filehandle given
+	warn ">> Writting PNG output ... \n" if $self->debug;
 	if (ref $fh) {
-		print $fh $im->png;
+		print $fh $self->im->png;
 	} elsif (defined $fh) {
 		open(PNG, ">$fh") or die "Error opening file '$fh' for output: $!\n";
-		print PNG $im->png;
+		print PNG $self->im->png;
 		close(PNG);
 	} else {
-		return $im->png;
+		return $self->im->png;
 	}
 	return '';		# return an empty string if we get to this point
+}
+
+sub clear {
+	my ($self) = @_;
+	$self->im(undef);
+	$self->canvas(undef);
+	$self->data(undef,undef);
 }
 
 # draw the burn data using our calculated colors.
 # dimx is needed so we know the length of a row.
 sub draw {
-	my ($self, $im, $dimx, $colors, $canvas) = @_;
-	$colors ||= $self->colors;
+	my ($self, $dimx, $im, $canvas, $cold, $warm) = @_;
+	$dimx	||= $self->dimx;
+	$im	||= $self->im;
 	$canvas ||= $self->canvas;
+	$cold 	||= $self->cold;
+	$warm 	||= $self->warm;
+
+	warn ">> Drawing canvas ... \n" if $self->debug;
 
 	my $x = 0;
 	my $y = -1;	# will be 0 on the first iteration of the loop below
@@ -291,7 +378,11 @@ sub draw {
 		$y++ if $i % $dimx == 0;
 
 		if (defined $canvas->[$i]) {
-			$im->setPixel($x,$y, $colors->[ $canvas->[$i] ]);
+			if ($canvas->[$i] >= 0) { # || $canvas->[$i] == -255) {
+				$im->setPixel($x,$y, $warm->[ $canvas->[$i] ]);
+			} else {
+				$im->setPixel($x,$y, $cold->[ abs($canvas->[$i]) ]);
+			}
 		}
 	}
 }

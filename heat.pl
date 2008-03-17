@@ -21,7 +21,7 @@ use PS::Config;					# use'd here only for the loadfile() function
 use PS::ConfigHandler;
 use PS::ErrLog;
 use PS::Heatmap;
-use util qw( expandlist print_r );
+use util qw( expandlist print_r abbrnum );
 
 our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/) || '000')[0];
 
@@ -34,7 +34,7 @@ our $GRACEFUL_EXIT = 0; #-1;			# (used in CATCH_CONTROL_C)
 my ($opt, $dbconf, $db, $conf);
 
 $opt = new PS::CmdLine::Heatmap;		# Initialize command line paramaters
-$DEBUG = $opt->get('debug') || 0;		# sets global debugging for ALL CLASSES
+#$DEBUG = $opt->get('debug') || 0;		# sets global debugging for ALL CLASSES
 
 # display our version and exit
 if ($opt->get('version')) {
@@ -136,21 +136,27 @@ if ($opt->quiet and $opt->sql) {
 	$opt->del('sql');
 }
 
-# STATDATE ALWAYS HAS TO BE SET TO SOMETHING 
-# default the date to the newest date in the database
+# default to oldest date ...
 if (!defined $opt->statdate) {
-	my $date = $db->max($db->{t_map_spatial}, 'statdate');
+	my $date = $db->min($db->{t_map_spatial}, 'statdate');
 	$opt->statdate($date) if $date;
 	die "No spatial stats are available! Aborting!\n" if !$date;
 }
 
-# if enddate is not specified default to statdate
+# default to newest date ...
 if (!defined $opt->enddate) {
+	my $date = $db->max($db->{t_map_spatial}, 'statdate');
+	$opt->enddate($date) if $date;
+	die "No spatial stats are available! Aborting!\n" if !$date;
+}
+
+# if enddate is not specified default to statdate
+if (!defined $opt->enddate and defined $opt->statdate) {
 	$opt->enddate($opt->statdate);
 }
 
 # if enddate is < statdate reverse them
-if ($opt->enddate lt $opt->statdate) {
+if (defined($opt->startdate && $opt->enddate) and $opt->enddate lt $opt->statdate) {
 	my $tmp = $opt->statdate;
 	$opt->statdate($opt->enddate);
 	$opt->enddate($tmp);
@@ -231,6 +237,7 @@ if (!$hc->{format}) {
 }
 
 # 'who' defines what set of coordinates will be plotted on the heatmap (killer or victim)
+$hc->{wkey} = 'who';	# map to a key name to use later in get_data (used when who2 is needed)
 $hc->{who} = $opt->who || 'victim';
 if (substr($hc->{who},0,1) eq 'v') {
 	$hc->{who} = 'victim';
@@ -240,6 +247,20 @@ if (substr($hc->{who},0,1) eq 'v') {
 	$hc->{who} = 'killer';
 	$hc->{who_x} = 'kx';
 	$hc->{who_y} = 'ky';
+}
+
+# second set of plots based on killer or victim (for combo heatmaps)
+if ($opt->who2) {
+	$hc->{who2} = $opt->who2;
+	if (substr($hc->{who2},0,1) eq 'v') {
+		$hc->{who2} = 'victim';
+		$hc->{who2_x} = 'vx';
+		$hc->{who2_y} = 'vy';
+	} else {
+		$hc->{who2} = 'killer';
+		$hc->{who2_x} = 'kx';
+		$hc->{who2_y} = 'ky';
+	}
 }
 
 my $where = '';
@@ -259,23 +280,40 @@ $where .= "AND kteam=" . $db->quote($hc->{kteam}) . " " if $hc->{kteam};
 $where .= "AND weaponid=$hc->{weaponid} " if $hc->{weaponid};
 $where .= "AND headshot=$hc->{headshot} " if defined $hc->{headshot};
 
+=pod
+my ($warm, $cold);
+{	# create some colors so we can reuse them
+	my $heat = new PS::Heatmap();
+	$heat->colorize;
+	$warm = $heat->warm;
+	$cold = $heat->cold;
+}
+=cut
+
 # loop through our map list and process each map
 while (my ($mapname, $mapid) = each(%$maplist)) {
 	my $idx = 0;
 	my $info = $mapinfo->{$mapname};
 	my $datax = [];
 	my $datay = [];
+	my $datax2;
+	my $datay2;
 	my $png;
 	my @res = split(/x/, $info->{res});
-	my $heat = new PS::Heatmap( 
-		width	=> $res[0] || 100,
-		height	=> $res[1] || 100,
-		scale	=> $hc->{scale} || 2,
-		brush	=> $hc->{brush} || 'medium',
-		background => $hc->{overlay}, 
-	);
-	$heat->boundary($info->{minx}, $info->{miny}, $info->{maxx}, $info->{maxy});
-	$heat->flip($info->{flipv}, $info->{fliph});
+	my $heatmap_opts = {
+		debug		=> $opt->get('debug'),
+		width		=> $res[0] || 200,
+		height		=> $res[1] || 200,
+		scale		=> $hc->{scale} || 0.5,
+		brush		=> $hc->{brush} || 'medium',
+		minx		=> $info->{minx},
+		miny		=> $info->{miny},
+		maxx		=> $info->{maxx},
+		maxy		=> $info->{maxy},
+		flip_vertical 	=> $info->{flipv},
+		flip_horizontal => $info->{fliph}
+	};
+	my $heat = new PS::Heatmap($heatmap_opts);
 
 	$hc->{mapname} = $mapname;
 	$hc->{mapid} = $mapid;
@@ -287,19 +325,43 @@ while (my ($mapname, $mapid) = each(%$maplist)) {
 			$hc->{idx} = ++$idx;
 			$hc->{hour} = sprintf('%02d', $hour);
 			$w = "AND hour=$hour $where";
-			get_data($hc, $datax, $datay, $w);
-			$heat->data($datax, $datay);
-			warn "Creating heatmap for $mapname (hour $hc->{hour}) ...\n" unless $opt->quiet;
-			$png = $heat->render();
+			if (!$hc->{who2}) {	# single heatmap (warm)
+				$hc->{wkey} = 'who';
+				get_data($hc, $datax, $datay, $w);
+				warn "Creating heatmap for $mapname (hour $hc->{hour}) ...\n" unless $opt->quiet;
+				$png = $heat->render(undef, [$datax,$datay,$opt->cold]);
+				$heat->clear;
+			} else {
+				my $datax2 = [];
+				my $datay2 = [];
+				$hc->{wkey} = 'who';
+				get_data($hc, $datax, $datay, $w);
+				$hc->{wkey} = 'who2';
+				get_data($hc, $datax2, $datay2, $w);
+				warn "Creating heatmap for $mapname (hour $hc->{hour}) ...\n" unless $opt->quiet;
+				$png = $heat->render(undef, [$datax,$datay,$opt->cold], [$datax2,$datay2,!$opt->cold]);
+				$heat->clear;
+			}
 			save_png($png, $hc);
 		}
 	} else {
 		$hc->{hour} = undef;
 		$hc->{idx} = ++$idx;
-		get_data($hc, $datax, $datay, $where);
-		$heat->data($datax, $datay);
-		warn "Creating heatmap for $mapname ...\n" unless $opt->quiet;
-		$png = $heat->render();
+		if (!$hc->{who2}) {	# single heatmap (warm)
+			$hc->{wkey} = 'who';
+			get_data($hc, $datax, $datay, $where);
+			warn "Creating heatmap for $mapname ...\n" unless $opt->quiet;
+			$png = $heat->render(undef, [$datax,$datay,$opt->cold]);
+		} else {		# combo heatmap (warm / cold)
+			my $datax2 = [];
+			my $datay2 = [];
+			$hc->{wkey} = 'who';
+			get_data($hc, $datax, $datay, $where);
+			$hc->{wkey} = 'who2';
+			get_data($hc, $datax2, $datay2, $where);
+			warn "Creating heatmap for $mapname ...\n" unless $opt->quiet;
+			$png = $heat->render(undef, [$datax,$datay,$opt->cold], [$datax2,$datay2,!$opt->cold]);
+		}
 		save_png($png, $hc);
 	}
 }
@@ -314,13 +376,13 @@ sub save_png {
 	if (uc $out eq 'DB') {
 		$set->{datatype} = 'blob';
 		$set->{datablob} = $data;
-		warn "Saving heatmap for $hc->{mapname} directly to database\n";
+		warn "Saving heatmap for $hc->{mapname} directly to database (" . abbrnum(length($data)) . ")\n";
 	} else {
-		my $file = $opt->file || file_format($hc->{format}, $hc);
+		my $file = file_format($opt->file, $hc) || file_format($hc->{format}, $hc);
 		if (-d $file) {
 			$file = catfile($file, file_format($hc->{format}, $hc));
 		}
-		warn "Saving heatmap for $hc->{mapname} to $file\n";
+		warn "Saving heatmap for $hc->{mapname} to $file (" . abbrnum(length($data)) . ")\n";
 		if (open(OUT, ">$file")) {
 			print OUT $data;
 			close(OUT);
@@ -341,9 +403,10 @@ sub save_png {
 		$hc->{enddate} ne $hc->{statdate} ? '='.$db->quote($set->{enddate}) : ' IS NULL',
 		defined $set->{hour} ? '='.$set->{hour} : ' IS NULL'
 	));
-	warn $db->lastcmd . "\n" if $opt->sql;
+	warn ">> [SQL] " . $db->lastcmd . "\n" if $opt->sql;
 
 	# insert the new heatmap, since we're inserting binary data I have to roll my own insert here
+	$set->{heatid} = $db->next_id($db->{t_heatmaps}, 'heatid');
 	$set->{heatkey} = $key;
 	my @keys = keys %$set;
 	my $cmd = "INSERT INTO $db->{t_heatmaps} (" . join(',',@keys) . ") VALUES (". substr('?,' x @keys,0,-1) .")";
@@ -371,16 +434,14 @@ sub heatmap_key {
 sub get_data {
 	my ($hc, $datax, $datay, $where) = @_;
 	$where ||= '';
-	@$datax = ();
+	@$datax = ();	# clear the data arrays
 	@$datay = ();
 	my $limit = $hc->{limit} || 5500;
-	my $cmd = "SELECT $hc->{who_x},$hc->{who_y} FROM $db->{t_map_spatial} WHERE mapid=$hc->{mapid} ";
-
+	my $cmd = "SELECT " . $hc->{$hc->{wkey}.'_x'} . "," . $hc->{$hc->{wkey}.'_y'} . " FROM $db->{t_map_spatial} WHERE mapid=$hc->{mapid} ";
 	$cmd .= $where if $where;
-
 	$cmd .= "LIMIT $limit";
 
-	warn "$cmd\n" if $opt->sql;
+	warn ">> [SQL] $cmd\n" if $opt->sql;
 	my $st = $db->query($cmd);
 	while (my ($x1,$y1) = $st->fetchrow_array) {
 		push(@$datax, $x1);
