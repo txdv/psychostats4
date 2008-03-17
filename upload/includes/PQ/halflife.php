@@ -1,7 +1,27 @@
 <?php
 /**
-	$Id$
+ *	This file is part of PsychoStats.
+ *
+ *	Written by Jason Morriss <stormtrooper@psychostats.com>
+ *	Copyright 2008 Jason Morriss
+ *
+ *	PsychoStats is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	PsychoStats is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+ *
+ *	You should have received a copy of the GNU General Public License
+ *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *	Version: $Id$
+ */
 
+/**
 	This PsychoQuery::HALFLIFE class will automatically determine if the server being queried is HL1 or HL2.
 	The query codes below are for your reference, incase you're interested. It should be noted that 
 	the recent versions of HL1 use the same query codes as HL2 (response codes are slightly different).
