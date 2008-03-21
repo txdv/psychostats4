@@ -390,6 +390,7 @@ sub save_png {
 	my $out = $opt->file || 'DB';
 	my @vars = qw(mapid weaponid statdate enddate hour headshot who pid kid vid team kteam vteam);	
 	my $set = { map {$_ => $hc->{$_}} @vars };
+	$set->{who} = 'both' if exists $hc->{who2} and $hc->{who2} ne $hc->{who};
 	$set->{enddate} = undef if $set->{enddate} eq $set->{statdate};
 	if (uc $out eq 'DB') {
 		$set->{datatype} = 'blob';
@@ -415,11 +416,12 @@ sub save_png {
 	# delete any heatmap already matching the current criteria
 	my $key = heatmap_key($hc);
 	warn "$hc->{mapname} heatkey='$key'\n" unless $opt->quiet;
-	$db->do(sprintf("DELETE FROM $db->{t_heatmaps} WHERE heatkey=%s AND statdate=%s AND enddate%s AND hour%s", 
+	$db->do(sprintf("DELETE FROM $db->{t_heatmaps} WHERE heatkey=%s AND statdate=%s AND enddate%s AND hour%s AND who=%s", 
 		$db->quote($key),
 		$db->quote($set->{statdate}),
 		$hc->{enddate} ne $hc->{statdate} ? '='.$db->quote($set->{enddate}) : ' IS NULL',
-		defined $set->{hour} ? '='.$set->{hour} : ' IS NULL'
+		defined $set->{hour} ? '='.$set->{hour} : ' IS NULL',
+		$db->quote($set->{who}),
 	));
 	warn ">> [SQL] " . $db->lastcmd . "\n" if $opt->sql;
 
@@ -440,11 +442,14 @@ sub save_png {
 # a SHA1 key is used and should be sufficient
 sub heatmap_key {
 	my ($hc) = @_;
+	my $hc2 = { %$hc };
+	$hc2->{who} = 'both' if exists $hc->{who2} and $hc->{who2} ne $hc->{who};
 	my $key = join('-', map { defined $_ ? $_ : 'NULL' } 
 		# this order must be maintained! (its the same order as the DB fields, so its easy to remember)
-		# note: statdate and hour are not included
-		@$hc{qw(mapid weaponid who pid kid team kteam vid vteam headshot)}
+		# note: 'statdate', 'enddate', 'hour' and 'who' are not included
+		@$hc2{qw(mapid weaponid pid kid team kteam vid vteam headshot)}
 	);
+	$key .= '-hourly' if defined $hc2->{hourly};
 	$key = sha1_hex($key);
 	return $key;
 }
@@ -465,6 +470,7 @@ sub get_data {
 		push(@$datax, $x1);
 		push(@$datay, $y1);
 	}
+	warn @$datax . " events fetched.\n" if $opt->sql;
 	undef $st;
 }
 
