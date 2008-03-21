@@ -187,8 +187,8 @@ CREATE TABLE `ps_heatmaps` (
   `datablob` mediumblob,
   `lastupdate` timestamp NOT NULL default CURRENT_TIMESTAMP,
   PRIMARY KEY  (`heatid`),
-  UNIQUE KEY `heatkey` (`heatkey`,`statdate`,`enddate`,`hour`),
-  KEY `mapid` (`mapid`)
+  UNIQUE KEY `heatkey` (`heatkey`,`statdate`,`enddate`,`hour`,`who`),
+  KEY `mapid` (`mapid`,`heatkey`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_errlog` (
   `id` int(10) unsigned NOT NULL default '0',
