@@ -39,6 +39,7 @@ sub _getOptions {
 	my $optok = GetOptions(
 		# HEATMAP SETTINGS
 		'brush=s'		=> \$self->{param}{brush},
+		'cold'			=> \$self->{param}{cold},
 		'debug'			=> \$self->{param}{debug},
 		'file|o=s'		=> \$self->{param}{file},
 		'format=s'		=> \$self->{param}{format},
