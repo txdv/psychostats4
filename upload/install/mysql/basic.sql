@@ -166,6 +166,18 @@ CREATE TABLE `ps_config_servers` (
   PRIMARY KEY  (`id`),
   UNIQUE KEY `hostport` (`host`,`port`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_config_themes` (
+  `name` varchar(128) NOT NULL,
+  `parent` varchar(128) default NULL,
+  `enabled` tinyint(1) unsigned NOT NULL,
+  `version` varchar(32) NOT NULL default '1.0',
+  `title` varchar(128) NOT NULL,
+  `author` varchar(128) default NULL,
+  `website` varchar(128) default NULL,
+  `source` varchar(255) default NULL,
+  `description` text,
+  PRIMARY KEY  (`name`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_heatmaps` (
   `heatid` int(10) unsigned NOT NULL,
   `heatkey` char(40) character set ascii NOT NULL,
@@ -517,18 +529,6 @@ CREATE TABLE `ps_state` (
   `ipaddrs` text NOT NULL,
   PRIMARY KEY  (`id`),
   UNIQUE KEY `logsource` (`logsource`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-CREATE TABLE `ps_themes` (
-  `name` varchar(128) NOT NULL,
-  `parent` varchar(128) default NULL,
-  `enabled` tinyint(1) unsigned NOT NULL,
-  `version` varchar(32) NOT NULL default '1.0',
-  `title` varchar(128) NOT NULL,
-  `author` varchar(128) default NULL,
-  `website` varchar(128) default NULL,
-  `source` varchar(255) default NULL,
-  `description` text,
-  PRIMARY KEY  (`name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_user` (
   `userid` int(10) unsigned NOT NULL default '0',
