@@ -213,6 +213,7 @@ function PS(&$db) {
 	$this->t_config_plrbans 	= $this->tblprefix . 'config_plrbans';
 	$this->t_config_plrbonuses 	= $this->tblprefix . 'config_plrbonuses';
 	$this->t_config_servers 	= $this->tblprefix . 'config_servers';
+	$this->t_config_themes 		= $this->tblprefix . 'config_themes';
 	$this->t_errlog 		= $this->tblprefix . 'errlog';
 	$this->t_geoip_cc		= $this->tblprefix . 'geoip_cc';
 	$this->t_geoip_ip		= $this->tblprefix . 'geoip_ip';
@@ -239,7 +240,6 @@ function PS(&$db) {
 	$this->t_role_data		= $this->tblprefix . 'role_data';
 	$this->t_sessions 		= $this->tblprefix . 'sessions';
 	$this->t_state 			= $this->tblprefix . 'state';
-	$this->t_themes 		= $this->tblprefix . 'themes';
 	$this->t_user 			= $this->tblprefix . 'user';
 	$this->t_weapon 		= $this->tblprefix . 'weapon';
 	$this->t_weapon_data 		= $this->tblprefix . 'weapon_data';
@@ -2024,6 +2024,15 @@ function roleimg($w, $args = array()) {
 	return $img;
 }
 
+function overlayimg($m, $args = array()) {
+	$args += array(
+		'urlonly'	=> true,
+		'_dir'		=> $this->conf['theme']['overlays_dir'],
+		'_url'		=> $this->conf['theme']['overlays_url']
+	);
+	return $this->mapimg($m, $args);
+}
+
 function mapimg($m, $args = array()) {
 	$args += array(
 		'pq'		=> NULL,
@@ -2038,12 +2047,16 @@ function mapimg($m, $args = array()) {
 		'id'		=> '',		// ID for the image
 		'noid'		=> false,	// if true the ID will not be auto assigned
 		'extra'		=> '',		// extra paramaters
+
+		'urlonly'	=> false,	// if true, only the URL is returned
+		'_dir'		=> $this->conf['theme']['maps_dir'],
+		'_url'		=> $this->conf['theme']['maps_url']
 	);
 	$path = !empty($args['path']) ? $args['path'] : '';
 	$gametype = is_object($args['pq']) ? $args['pq']->gametype() : $this->conf['main']['gametype'];
 	$modtype = is_object($args['pq']) ? $args['pq']->modtype() : $this->conf['main']['modtype'];
-	$basedir = catfile($this->conf['theme']['maps_dir'], $gametype, $modtype, $path);
-	$baseurl = catfile($this->conf['theme']['maps_url'], $gametype, $modtype, $path);
+	$basedir = catfile($args['_dir'], $gametype, $modtype, $path);
+	$baseurl = catfile($args['_url'], $gametype, $modtype, $path);
 
 	if (!is_array($m)) $m = array( 'uniqueid' => !empty($m) ? $m : 'unknown' );
 	$name = !empty($m['uniqueid']) ? $m['uniqueid'] : 'unknown';
@@ -2071,6 +2084,10 @@ function mapimg($m, $args = array()) {
 			// we're done... 
 			$img = $args['noimg'] !== NULL ? $args['noimg'] : $label;
 			break;
+		}
+
+		if ($args['urlonly']) {
+			return $url;
 		}
 
 		// auto assign an ID to the image
@@ -2294,7 +2311,8 @@ function reset_stats($keep = array()) {
 		't_clan',
 //		't_clan_profle', 
 		't_errlog',
-		't_map', 't_map_data', 't_map_hourly',
+		't_heatmaps',
+		't_map', 't_map_data', 't_map_hourly', 't_map_spatial',
 		't_plr', 
 //		't_plr_aliases', 't_plr_bans',
 		't_plr_data', 
@@ -2306,7 +2324,6 @@ function reset_stats($keep = array()) {
 //		't_role', 
 		't_role_data', 
 		't_state', 
-//		't_themes',
 //		't_user',
 //		't_weapon',
 		't_weapon_data'

@@ -282,7 +282,7 @@ function theme($new = null, $in_db = true) {
 		if (!$this->loaded_themes[$new] and $in_db) {
 			$loaded = true;
 			$t = $this->cms->db->fetch_row(1, sprintf("SELECT * FROM %s WHERE name=%s and enabled <> 0", 
-				$this->cms->db->table('themes'),
+				$this->cms->db->table('config_themes'),
 				$this->cms->db->escape($new, true)
 			));
 			if (!$t) {
@@ -297,7 +297,7 @@ function theme($new = null, $in_db = true) {
 				// load the parent theme ...
 				// the parent theme doesn't have to be enabled
 				$p = $this->cms->db->fetch_row(1, sprintf("SELECT * FROM %s WHERE name=%s", 
-					$this->cms->db->table('themes'),
+					$this->cms->db->table('config_themes'),
 					$this->cms->db->escape($t['parent'], true)
 				));
 				if ($p) {

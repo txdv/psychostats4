@@ -46,7 +46,7 @@ $_order = array(
 // do something with an installed theme
 if (!empty($action)) $action = strtolower($action);
 if ($id and in_array($action, array('default','disable','enable','uninstall'))) {
-	$t = $ps->db->fetch_row(1, "SELECT * FROM $ps->t_themes WHERE name=" . $ps->db->escape($id, true));
+	$t = $ps->db->fetch_row(1, "SELECT * FROM $ps->t_config_themes WHERE name=" . $ps->db->escape($id, true));
 	if (!$t['name']) {
 		$data = array(
 			'message' => $cms->trans("Invalid Theme Specified"),
@@ -68,7 +68,7 @@ if ($id and in_array($action, array('default','disable','enable','uninstall'))) 
 				$ps->conf['main']['theme'] = $t['name'];
 				// always make sure the new default theme is enabled
 				if (!$t['enabled']) {
-					$ps->db->update($ps->t_themes, array( 'enabled' => 1 ), 'name', $t['name']);
+					$ps->db->update($ps->t_config_themes, array( 'enabled' => 1 ), 'name', $t['name']);
 				}
 			} else {
 				$res = 'failure';
@@ -81,7 +81,7 @@ if ($id and in_array($action, array('default','disable','enable','uninstall'))) 
 			$res = 'failure';
 			$msg = $cms->trans("You can not uninstall the default theme!");
 		} else {
-			$ok = $ps->db->delete($ps->t_themes, 'name', $t['name']);
+			$ok = $ps->db->delete($ps->t_config_themes, 'name', $t['name']);
 			if (!$ok) {
 				$res = 'failure';
 				$msg = $cms->trans("Error writting to database: ") . $ps->db->errstr;
@@ -96,7 +96,7 @@ if ($id and in_array($action, array('default','disable','enable','uninstall'))) 
 			$title = $cms->trans("Operation Failed!");
 			$msg = $cms->trans('You can not disable the default theme');
 		} else if ($t['enabled'] != $enabled) {
-			$ok = $ps->db->update($ps->t_themes, array( 'enabled' => $enabled ), 'name', $t['name']);
+			$ok = $ps->db->update($ps->t_config_themes, array( 'enabled' => $enabled ), 'name', $t['name']);
 			if ($ok) {
 				$msg = $enabled ? $cms->trans("Theme '%s' was enabled", $t['name']) 
 						: $cms->trans("Theme '%s' was disabled", $t['name']);
@@ -114,8 +114,8 @@ if ($id and in_array($action, array('default','disable','enable','uninstall'))) 
 }
 
 // load the themes
-$list = $ps->db->fetch_rows(1, "SELECT * FROM $ps->t_themes " . $ps->getsortorder($_order));
-$total = $ps->db->count($ps->t_themes);
+$list = $ps->db->fetch_rows(1, "SELECT * FROM $ps->t_config_themes " . $ps->getsortorder($_order));
+$total = $ps->db->count($ps->t_config_themes);
 $themes = array();
 foreach ($list as $t) {
 	if ($t['parent']) {

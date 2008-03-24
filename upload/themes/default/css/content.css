@@ -505,13 +505,24 @@ em.add-friend a {
 	left: auto;
 }
 
-.heatmap .hour {
+.heatmap div.ontop {
 	position: absolute;
+	color: #cccccc;
+}
+.heatmap div.hour {
 	top: 0;
 	right: 10px;
-	color: #cc0000;
+	width: 3.5em;
+	display: none;
+}
+.heatmap div.hour .hour {
 	font-size: 3em;
 	font-family: impact;
+	line-height: 1em;
+	display: block;
+}
+.heatmap div.hour .desc {
+	font-size: 90%;
 }
 
 .heatmap-ctrl {

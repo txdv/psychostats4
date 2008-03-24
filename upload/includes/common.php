@@ -110,6 +110,8 @@ if (empty($t['script_url'])) {
 }
 if (empty($t['root_img_dir'])) $t['root_img_dir'] = catfile(PS_ROOTDIR, 'img');
 if (empty($t['root_img_url'])) $t['root_img_url'] = catfile(rtrim($t['script_url'], '/\\'), 'img');
+if (empty($t['overlays_dir'])) $t['overlays_dir'] = catfile($t['root_img_dir'], 'overlays');
+if (empty($t['overlays_url'])) $t['overlays_url'] = catfile($t['root_img_url'], 'overlays');
 if (empty($t['weapons_dir'])) $t['weapons_dir'] = catfile($t['root_img_dir'], 'weapons');
 if (empty($t['weapons_url'])) $t['weapons_url'] = catfile($t['root_img_url'], 'weapons');
 if (empty($t['roles_dir'])) $t['roles_dir'] = catfile($t['root_img_dir'], 'roles');

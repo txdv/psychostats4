@@ -1,11 +1,11 @@
+{* javascript to initialize the heatmap images *}
 <script type="text/javascript">
 $(function(){ldelim}
-	var imgs = [
-{section name='hour' loop=24}
-		'/heatmaps/{$map.uniqueid|escape:'javascript'}_{$smarty.section.hour.index|string_format:'%02d'}.png'{if !$smarty.section.hour.last},{/if}
-
-{/section}
-	];
+	var imgs = [{strip}
+{foreach name='heatmaps' from=$map.heatmap_images item='i'}
+		{$i}{if !$smarty.foreach.heatmaps.last},{/if}
+{/foreach}
+	{/strip}];
 	init_heatmap(imgs, '{$map.overlay|escape:'javascript'}');
 {rdelim});
 </script>
@@ -17,8 +17,11 @@ $(function(){ldelim}
 
 	<div id="ps-page-title">
 		<div class="inner">
-		<h1><#Heatmaps#> :: {$map.uniqueid|escape}</h1>
-		<h2>&nbsp;</h2>
+			<span>[ 
+				<a href="{url _base='map.php' id=$map.mapid}"><#View Profile#></a> 
+			]</span>
+			<h1><#Heatmaps#> :: {$map.uniqueid|escape}</h1>
+			<h2>{$map.uniqueid|escape} <#has been played for#> {$map.onlinetime|elapsedtime}</h2>
 		</div>
 	</div>
 
@@ -96,22 +99,26 @@ $(function(){ldelim}
 <div id="ps-main-content" class="ps-page-map">
 
 	<div class="heatmap-ctrl">
-		<form action="{url}" method="post">
-			<select name="date">
-				<option>Select Date</option>
+		<form action="{url}" method="get">
+			<input name="id" value="{$map.mapid}" type="hidden" />
+			<select name="heatid">
+				<option>Select Heatmap</option>
+{foreach from=$heatmap_list item='m'}
+				<option value='{$m.heatid}'{if $heatid == $m.heatid} selected='selected'{/if}>{$m.label|escape}</option>
+{/foreach}
 			</select>
 		</form>
 	</div>
 	<div class="heatmap">
 		{* heatmap content *}
-		<div class="hour"></div>
+		<div class="ontop hour"><span class="hour">00</span><span class="desc">hour</span></div>
 	</div>
 	<div class="heatmap-ctrl">
 		<div class="heatmap-slider ui-slider-1">
 			<div class="ui-slider-handle"></div>
 		</div>
 	</div>
-	<div id="debug" style="text-align: left">... debug ...</div>
+	<div id="debug" style="text-align: left"></div>
 	<div class="heatmap-progress">{pctbar width=200 pct=70}</div>
 
 

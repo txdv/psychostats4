@@ -935,6 +935,7 @@ function abbrnum0($string, $tail = 0) {
 	}
 }
 // --------------------------------------------------------------------------------------------------------------------
+// the timing routines in this function should be updated to the use the same in the elapsedtime() function
 function compacttime($seconds, $format="hh:mm:ss") {
   $d = $h = $m = $s = "00";
   if (!isset($seconds)) $seconds = 0;
@@ -949,6 +950,63 @@ function compacttime($seconds, $format="hh:mm:ss") {
   $str = str_replace('mm', sprintf('%02d',$m), $str);
   $str = str_replace('ss', sprintf('%02d',$s), $str);
   return $str;
+}
+// --------------------------------------------------------------------------------------------------------------------
+// Returns the total time elapsed from the seconds given. 
+// Returns a string or an array of variables representing: "1 year, 2 weeks, 5 days, 4 hours, 34 minutes, 20 seconds".
+// This uses 'leap seconds' to calculate the time passed, which will partially compensates for leap years and DST (i think).
+// This is not 100% accurate, but is actually pretty close. This is good enough for our purposes.
+// $seconds is the total seconds elapsed.
+// $start is a number between 0..5. 0=years, 5=minutes and represents which timing value will start the calculations.
+// ie: $start=2 means the values for weeks on down will be returned. The examples below all use the same elapsed time.
+// EG: 	$start=0 == 1 year, 2 months, 2 weeks, 3 days, 8 hours, 47 minutes, 27 seconds
+// 	$start=1 == 14 months, 2 weeks, 3 days, 8 hours, 47 minutes, 27 seconds
+//	$start=2 == 63 weeks, 1 day, 37 minutes, 54 seconds
+// etc...
+function elapsedtime($seconds, $start = 0, $wantarray = false) {
+	// total 'leap seconds' in a single year. This is no truly static and changes slightly every few years.
+	static $oneyear = 31556925.9936;
+	$years = $months = $weeks = $days = $hours = $minutes = 0;
+	if ($start <= 0) {
+		$years 	= floor($seconds / $oneyear);
+		if ($years) $seconds -= $oneyear * $years;
+	}
+	if ($start <= 1) {
+		$months	= floor($seconds / ($oneyear / 12));
+		if ($months) $seconds -= $oneyear / 12 * $months;
+	}
+	if ($start <= 2) {
+		$weeks 	= floor($seconds / ($oneyear / 52));
+		if ($weeks) $seconds -= $oneyear / 52 * $weeks;
+	}
+	if ($start <= 3) {
+		$days 	= floor($seconds / ($oneyear / 365));
+		if ($days) $seconds -= $oneyear / 365 * $days;
+	}
+	if ($start <= 4) {
+		$hours	= floor($seconds / 3600);
+		if ($hours) $seconds -= 3600 * $hours;
+	}
+	if ($start <= 5) {
+		$minutes= floor($seconds / 60);
+		$seconds = $seconds % 60;
+	}
+
+	if ($wantarray) {
+		return array($years,$months,$weeks,$days,$hours,$minutes,$seconds);
+	} else {
+		$vars = array('years','months','weeks','days','hours','minutes','seconds');
+		$str = '';
+		for ($i = 0, $j = count($vars)-1; $i <= $j; $i++) {
+			$var = ${$vars[$i]};
+			if ($var == 0) continue;			// ignore values of 0
+			$word = $vars[$i];
+			if ($var == 1) $word = substr($word,0,-1);	// remove the 's' if its 1
+			$str .= "$var $word";
+			if ($i != $j) $str .= ", ";
+		}
+		return $str;
+	}
 }
 // --------------------------------------------------------------------------------------------------------------------
 // Concatenate file path parts together always using / as the directory separator.

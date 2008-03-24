@@ -27,11 +27,8 @@ $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
 $cms->theme->page_title = 'PsychoStats - Heatmap';
 
-$validfields = array('id', 'sort', 'order', 'start', 'limit');
+$validfields = array('id', 'heatid');
 $cms->theme->assign_request_vars($validfields, true);
-
-$heat = new PS_Heatmap($ps);
-print_r($heat->get_map_heatmaps($id));
 
 $sort = strtolower($sort);
 $order = strtolower($order);
@@ -59,16 +56,32 @@ $map = $ps->get_map(array(
 
 $cms->theme->page_title .= ' for ' . $map['uniqueid'];
 
+$heatmap_list = array();
 if ($map['mapid']) {
-	$map['overlay'] = '/overlays/' . $map['uniqueid'] . '_overlay.jpg';
+	$heat = new PS_Heatmap($ps);
+	$heatmap_list = $heat->get_map_heatmaps($id);
+	uasort($heatmap_list,'sort_heatmaps');
+
+	if ($heatmap_list) {
+		// default to the first heatmap type available
+		if (!$heatid or !isset($heatmap_list[$heatid])) {
+			reset($heatmap_list);
+			$m = current($heatmap_list);
+			$heatid = $m['heatid'];
+		}
+//		print_r($heatmap_list[$heatid]);
+		$map['overlay'] = $ps->overlayimg($map['uniqueid']);
+		$map['heatmap_images'] = $heat->get_heatmap_images($map['mapid'], $heatmap_list[$heatid]);
+	}
 }
 
-
 $cms->theme->assign(array(
+	'heatid'	=> $heatid,
 	'maps'		=> $maps,
 	'map'		=> $map,
 	'mapimg'	=> $ps->mapimg($map, array( 'noimg' => '' )),
 	'totalmaps'	=> $totalmaps,
+	'heatmap_list'	=> $heatmap_list,
 ));
 
 $basename = basename(__FILE__, '.php');
@@ -84,6 +97,10 @@ if ($map['mapid']) {
 		'message_title'	=> $cms->trans("No Map Found!"),
 		'message'	=> $cms->trans("Invalid map ID specified.") . " " . $cms->trans("Please go back and try again.")
 	));
+}
+
+function sort_heatmaps($a,$b) {
+	return strcasecmp($a['label'], $b['label']);
 }
 
 ?>

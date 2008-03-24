@@ -24,6 +24,14 @@ a:hover {
 
 /* content.css */
 
+body {
+	background-color: #c5cedc;
+}
+
+#ps-main {
+	background: #c5cedc url(../img/content-bg.png) repeat-x;
+}
+
 #ps-page-title, .ps-section-title {
  	background: #edeeff url(../img/page-title-bg.jpg) repeat-x;
 }

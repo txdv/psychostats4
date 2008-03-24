@@ -42,7 +42,19 @@ $(function(){
 	// adjust the image size if the window changes
 	$(window).resize(resize_all);
 
-	$('div.heatmap .hour').css('opacity', 0.50);
+	$('div.heatmap .ontop').css('opacity', 0.50);
+
+	// handler for <select> element to change the heatmap type
+	$('select[@name=heatid]').change(function(){
+		if (this.options[this.selectedIndex].value) {
+			this.form.submit();
+		}
+	});
+
+	// small tweak for IE (if I ever get the alpha maps working for it
+	if ($.browser.msie) {
+		$('div.heatmap div.hour').css('right', '20px');
+	}
 
 //	start_slider_loop();
 });
@@ -68,7 +80,7 @@ function init_heatmap(imgs, overlay) {
 				for (var i=0; i < imgs.length; i++) {
 					heatmaps[i] = new Image();
 					heatmaps[i].onload = heatmap_loaded;
-					heatmaps[i].src = imgs[i];
+					heatmaps[i].src = 'heatimg.php?id=' + imgs[i];
 				}
 			}
 		};
@@ -89,7 +101,12 @@ function heatmap_loaded() {
 			img.width(heatmap_overlay.width()).height(heatmap_overlay.height());
 			heatmaps[i] = img;	// change heatmap image pointer to the DOM element
 		}
-		slider.slider('enable');
+		if (loaded_heatmaps > 1) {
+			slider.slider('enable');
+			$('div.heatmap .hour').show();
+		} else {
+			$('div.heatmap .hour').hide();
+		}
 		slider.slider('moveTo', 0);
 //		start_slider_loop();
 	}
@@ -165,11 +182,12 @@ function stop_slider_loop(e) {
 }
 
 function toggle_slider_loop(e) {
-//	console.log(e.type);
-	if (looping) {
-		stop_slider_loop();
-	} else {
-		start_slider_loop();
+	if (!$('div.heatmap-slider').hasClass('ui-slider-disabled')) {
+		if (looping) {
+			stop_slider_loop();
+		} else {
+			start_slider_loop();
+		}
 	}
 	// don't bubble event, or dblclick will trigger twice
 	e.stopPropagation();
@@ -201,7 +219,7 @@ function move_slider(e, ui) {
 	var high = Math.ceil(ui.value);
 	var low_alpha = Math.round(100 - (ui.value - low) * 100) / 100;		// alpha for the heatmap
 	var high_alpha = Math.round(100 - (high - ui.value) * 100) / 100;
-	debug('hours: ' + low + '..' + high + ' || alpha: ' + low_alpha + ', ' + high_alpha);
+//	debug('hours: ' + low + '..' + high + ' || alpha: ' + low_alpha + ', ' + high_alpha);
 
 	var low_img = heatmaps[low];
 	var high_img = heatmaps[high];
@@ -216,7 +234,9 @@ function move_slider(e, ui) {
 		high_img.css('opacity', high_alpha);
 	}
 
-	$('div.heatmap div.hour').html(String(low).length < 2 ? '0' + low : low);
+	if (loaded_heatmaps > 1) {
+		$('div.heatmap div.hour span.hour').html(String(low).length < 2 ? '0' + low : low);
+	}
 
 	if (last_low != low && last_low != high) {
 		heatmaps[last_low].hide();

@@ -6,8 +6,13 @@
 
 	<div id="ps-page-title">
 		<div class="inner">
-		<h1><#Map Profile#> :: {$map.uniqueid|escape}</h1>
-		<h2>&nbsp;</h2>
+{if $map.total_heatmaps}
+			<span>[ 
+				<a href="{url _base='mapheat.php' id=$map.mapid}"><#View Heatmap#></a> 
+			]</span>
+{/if}
+			<h1><#Map Profile#> :: {$map.uniqueid|escape}</h1>
+			<h2>{$map.uniqueid|escape} <#has been played for#> {$map.onlinetime|elapsedtime}</h2>
 		</div>
 	</div>
 

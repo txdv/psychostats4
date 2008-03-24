@@ -22,6 +22,7 @@
  */
 define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
+include_once(PS_ROOTDIR . "/includes/PS/Heatmap.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
 $cms->theme->page_title = 'PsychoStats - Map Stats';
@@ -60,6 +61,9 @@ $map = $ps->get_map(array(
 $cms->theme->page_title .= ' for ' . $map['uniqueid'];
 
 if ($map['mapid']) {
+
+	$heat = new PS_Heatmap($ps);
+	$map['total_heatmaps'] = $heat->total_heatmap_images($map['mapid']);
 
 	$setup = array(
 		'mapid' 	=> $id,
