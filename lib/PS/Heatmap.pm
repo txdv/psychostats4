@@ -363,6 +363,7 @@ sub render {
 		print $fh $self->im->png;
 	} elsif (defined $fh) {
 		open(PNG, ">$fh") or die "Error opening file '$fh' for output: $!\n";
+		binmode(PNG);
 		print PNG $self->im->png;
 		close(PNG);
 	} else {
