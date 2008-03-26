@@ -103,7 +103,7 @@ $ERR = new PS::ErrLog($conf, $db);			# Now all error messages will be logged to 
 
 # read in our map info XML file that defines heatmap dimensions, etc...
 my $mapxml  = $opt->mapinfo || catfile($FindBin::RealBin, 'heat.xml');
-my $mapinfo = XMLin($mapxml)->{map};
+my $mapinfo = XMLin($mapxml, NormaliseSpace => 2, SuppressEmpty => undef)->{map};
 #use Data::Dumper; print Dumper($mapinfo); exit;
 
 # Create a list of maps to generate heat images for. If no map is specified we assume 'all'
@@ -317,11 +317,11 @@ while (my ($mapname, $mapid) = each(%$maplist)) {
 	my $datax2;
 	my $datay2;
 	my $png;
-	my @res = split(/x/, $info->{res});
+	my $res = get_resolution($mapname, $info->{res});
 	my $heatmap_opts = {
 		debug		=> $opt->get('debug'),
-		width		=> $res[0] || 200,
-		height		=> $res[1] || 200,
+		width		=> $res->{width} || 200,
+		height		=> $res->{height} || 200,
 		scale		=> $hc->{scale} || 0.5,
 		brush		=> $hc->{brush} || 'medium',
 		minx		=> $info->{minx},
@@ -384,6 +384,18 @@ while (my ($mapname, $mapid) = each(%$maplist)) {
 	}
 }
 
+sub get_resolution {
+	my ($map, $info) = @_;
+	my $res = { width => 200, height => 200};
+	if (defined $info) {
+		($res->{width}, $res->{height}) = split(/x/, $info);
+	} else {
+		# if we know where the overlay images are then use Image::Size to determine the size
+		die "Unable to determine resolution for map $map.\n";
+	}
+	return $res;
+}
+
 # save the PNG data into the DB or as a file
 sub save_png {
 	my ($data, $hc) = @_;
@@ -403,6 +415,7 @@ sub save_png {
 		}
 		warn "Saving heatmap for $hc->{mapname} to $file (" . abbrnum(length($data)) . ")\n";
 		if (open(OUT, ">$file")) {
+			binmode(OUT);
 			print OUT $data;
 			close(OUT);
 		} else {

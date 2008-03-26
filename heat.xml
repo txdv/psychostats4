@@ -152,4 +152,123 @@
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map>
+
+
+ <map name='cp_badlands'>
+  <minx>-2504</minx> 
+  <miny>-4840</miny> 
+  <maxx>2504</maxx>
+  <maxy>4840</maxy>
+  <res>861x903</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_dustbowl'>
+  <minx>-3520</minx> 
+  <miny>-2912</miny> 
+  <maxx>2856</maxx>
+  <maxy>3137</maxy>
+  <res>928x915</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_granary'>
+  <minx>-4224</minx> 
+  <miny>-6868</miny> 
+  <maxx>1153</maxx>
+  <maxy>6868</maxy>
+  <res>429x1140</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_gravelpit'>
+  <minx>-5348</minx> 
+  <miny>-296</miny> 
+  <maxx>1728</maxx>
+  <maxy>5562</maxy>
+  <res>756x663</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='ctf_2fort'>
+  <minx>-1512</minx> 
+  <miny>-4748</miny> 
+  <maxx>1512</maxx>
+  <maxy>4748</maxy>
+  <res>396x907</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_well'>
+  <minx>-4608</minx> 
+  <miny>-6696</miny> 
+  <maxx>1534</maxx>
+  <maxy>7464</maxy>
+  <res>480x1109</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='ctf_well'>
+  <minx>-4608</minx> 
+  <miny>-5800</miny> 
+  <maxx>1534</maxx>
+  <maxy>6568</maxy>
+  <res>500x1017</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='tc_hydro'>
+  <minx>-5928</minx> 
+  <miny>-1752</miny> 
+  <maxx>6600</maxx>
+  <maxy>2952</maxy>
+  <res>1146x615</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_silo_b3'>
+  <minx>-872</minx> 
+  <miny>-4120</miny> 
+  <maxx>2016</maxx>
+  <maxy>6360</maxy>
+  <res>240x1124</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_four_trees_v2'>
+  <minx>-1348</minx> 
+  <miny>-4693</miny> 
+  <maxx>1874</maxx>
+  <maxy>4250</maxy>
+  <res>443x1172</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_castle3'>
+  <minx>-2736</minx> 
+  <miny>-2640</miny> 
+  <maxx>8328</maxx>
+  <maxy>6896</maxy>
+  <res>1304x1126</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_corporation_b1'>
+  <minx>-2952</minx> 
+  <miny>-3272</miny> 
+  <maxx>2980</maxx>
+  <maxy>2015</maxy>
+  <res>1009x898</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_lazytown'>
+  <minx>-3560</minx> 
+  <miny>-2856</miny> 
+  <maxx>1768</maxx>
+  <maxy>6696</maxy>
+  <res>629x1125</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
 </maps>
