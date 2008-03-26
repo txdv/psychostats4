@@ -62,7 +62,7 @@ var $meta_tags		= array();
 var $loaded_themes	= array();
 var $parent_themes	= array();
 var $fetch_compile	= true;
-var $page_title		= '';
+var $_page_title	= '';
 
 //function __construct($cms, $args = array()) { $this->PsychoTheme($cms, $args); }
 function PsychoTheme(&$cms, $args = array()) {
@@ -118,7 +118,7 @@ function PsychoTheme(&$cms, $args = array()) {
 	}
 
 	// Define some common globals for all templates
-	$this->assign_by_ref('title', $this->page_title);
+	$this->assign_by_ref('title', $this->_page_title);
 	$this->assign_by_ref('theme_name', $this->theme);
 	$this->assign_by_ref('language', $this->language);
 	$this->assign(array(
@@ -681,6 +681,15 @@ function output_filter($output, &$smarty) {
 	return $output;
 }
 
+// sets the current page title. If $append is true, the $str provided will be appended to the current value.
+// this can be enhanced later to provide interpolation of {$token} variables inside the string
+function page_title($str, $append = false) {
+	if ($append) {
+		$this->_page_title .= $str;
+	} else {
+		$this->_page_title = $str;
+	}
+}
 
 } // end of PsychoTheme
 

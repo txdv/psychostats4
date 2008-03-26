@@ -24,7 +24,7 @@ define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
-$cms->theme->page_title = 'PsychoStats - Role Stats';
+$cms->theme->page_title('PsychoStats - Role Stats');
 
 // default sort for the roles listing
 $DEFAULT_SORT = 'kills';
@@ -55,7 +55,7 @@ $role = $ps->get_role(array(
 	'roleid' 	=> $id
 ));
 
-$cms->theme->page_title .= ' for ' . $role['label'];
+$cms->theme->page_title(' for ' . $role['label'], true);
 
 // calculate the hitbox zone percentages
 /*

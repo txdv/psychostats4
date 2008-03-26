@@ -24,7 +24,7 @@ define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
-$cms->theme->page_title = 'PsychoStats - Clan Stats';
+$cms->theme->page_title('PsychoStats - Clan Stats');
 
 $validfields = array(
 	'id', 'v', 'xml',
@@ -85,7 +85,7 @@ $clan = $ps->get_clan(array(
 	'victimfields'	=> '',
 ));
 
-$cms->theme->page_title .= ' for ' . ($clan['name'] != '' ? $clan['name'] : $clan['clantag']);
+$cms->theme->page_title(' for ' . ($clan['name'] != '' ? $clan['name'] : $clan['clantag']), true);
 
 $x = substr($xml,0,1);
 if ($x == 'c') {		// clan

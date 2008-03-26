@@ -24,7 +24,7 @@ define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
-$cms->theme->page_title = 'PsychoStats - Live Server Views';
+$cms->theme->page_title('PsychoStats - Live Server Views');
 
 // collect url parameters ...
 $validfields = array('s');

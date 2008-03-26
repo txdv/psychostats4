@@ -24,7 +24,7 @@ define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
-$cms->theme->page_title = 'PsychoStats - Clan Stats';
+$cms->theme->page_title('PsychoStats - Clan Stats');
 
 // change this if you want the default sort of the clan listing to be something else like 'kills'
 $DEFAULT_SORT = 'skill';

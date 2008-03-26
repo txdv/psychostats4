@@ -25,7 +25,7 @@ include(dirname(__FILE__) . "/includes/common.php");
 include(PS_ROOTDIR . "/includes/class_calendar.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
-$cms->theme->page_title = 'PsychoStats - Player Awards';
+$cms->theme->page_title('PsychoStats - Player Awards');
 
 // collect url parameters ...
 $validfields = array('v','d','time','p');

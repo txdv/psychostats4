@@ -24,7 +24,7 @@ define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
-$cms->theme->page_title = 'PsychoStats - Weapon Stats';
+$cms->theme->page_title('PsychoStats - Weapon Stats');
 
 // default sort for the weapons listing
 $DEFAULT_SORT = 'kills';
@@ -55,7 +55,7 @@ $weapon = $ps->get_weapon(array(
 	'weaponid' 	=> $id
 ));
 
-$cms->theme->page_title .= ' for ' . $weapon['label'];
+$cms->theme->page_title(' for ' . $weapon['label'], true);
 
 // calculate the hitbox zone percentages
 $zone = array('head','chest','leftarm','rightarm','stomach','leftleg','rightleg');

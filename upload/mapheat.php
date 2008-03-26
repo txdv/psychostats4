@@ -25,7 +25,7 @@ include(dirname(__FILE__) . "/includes/common.php");
 include_once(PS_ROOTDIR . "/includes/PS/Heatmap.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
-$cms->theme->page_title = 'PsychoStats - Heatmap';
+$cms->theme->page_title('PsychoStats - Heatmap');
 
 $validfields = array('id', 'heatid');
 $cms->theme->assign_request_vars($validfields, true);
@@ -54,7 +54,7 @@ $map = $ps->get_map(array(
 	'mapid' => $id 
 ));
 
-$cms->theme->page_title .= ' for ' . $map['uniqueid'];
+$cms->theme->page_title(' for ' . $map['uniqueid'], true);
 
 $heatmap_list = array();
 if ($map['mapid']) {
