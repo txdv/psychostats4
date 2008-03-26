@@ -11,7 +11,7 @@
 				<a href="{url _base='mapheat.php' id=$map.mapid}"><#View Heatmap#></a> 
 			]</span>
 {/if}
-			<h1><#Map Profile#> :: {$map.uniqueid|escape}</h1>
+			<h1><#Map Statistics#> :: {$map.uniqueid|escape}</h1>
 			<h2>{$map.uniqueid|escape} <#has been played for#> {$map.onlinetime|elapsedtime}</h2>
 		</div>
 	</div>
@@ -22,7 +22,7 @@
 {if $mapimg}<div class="mapimg">{$mapimg}</div>{/if}
 
 <div class="ps-column-frame{if $shades.s_mapprofile} s-closed{/if}">
-<div class="ps-column-header"><a href="" onclick="return false"><span><#Map Profile#></span></a></div>
+<div class="ps-column-header"><a href="" onclick="return false"><span><#Map Statistics#></span></a></div>
 <div id="s-mapprofile" class="ps-column-content">
 <p class="firstrow hl">
 	<label><#Total Kills#></label>

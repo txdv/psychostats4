@@ -158,12 +158,14 @@ function resize_image(img,maxwidth,maxheight) {
 		if (w > maxwidth) {
 			img.width(maxwidth);
 			img.height(Math.round(maxwidth * h / w));
-		}
-		if (h > maxheight) {
+		} else if (h > maxheight) {
 			img.height(maxheight);
 			img.width(Math.round(maxheight * w / h));
 		}
 	}
+	// For FF: Resize the parent to the same height, otherwise when we shrink down, the height of the parent
+	// will remain at it's original pre-shrunk size until the window is resized again. annoying.
+	img.parent().height(img.height());
 }
 
 // makes the slider move automatically

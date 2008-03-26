@@ -12,7 +12,7 @@
 				| <a href="{url _base='editplr.php' _ref=1  id=$plr.plrid}"><#Edit Player#></a>
 				{/if}
 			]</span>
-			<h1><#Player Profile#> :: {$plr.name|escape}</h1>
+			<h1><#Player Statistics#> :: {$plr.name|escape}</h1>
 			{if $plr.clanid}
 			<span><#Clan member#> [ 
 				<a href="{url _base='clan.php' id=$plr.clanid}">{$plr.clan.clantag|escape}</a> 

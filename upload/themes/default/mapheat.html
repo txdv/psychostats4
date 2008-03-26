@@ -18,7 +18,7 @@ $(function(){ldelim}
 	<div id="ps-page-title">
 		<div class="inner">
 			<span>[ 
-				<a href="{url _base='map.php' id=$map.mapid}"><#View Profile#></a> 
+				<a href="{url _base='map.php' id=$map.mapid}"><#View Statistics#></a> 
 			]</span>
 			<h1><#Heatmaps#> :: {$map.uniqueid|escape}</h1>
 			<h2>{$map.uniqueid|escape} <#has been played for#> {$map.onlinetime|elapsedtime}</h2>
@@ -31,7 +31,7 @@ $(function(){ldelim}
 {if $mapimg}<div class="mapimg">{$mapimg}</div>{/if}
 
 <div class="ps-column-frame{if $shades.s_mapprofile} s-closed{/if}">
-<div class="ps-column-header"><a href="" onclick="return false"><span><#Map Profile#></span></a></div>
+<div class="ps-column-header"><a href="" onclick="return false"><span><#Map Statistics#></span></a></div>
 <div id="s-mapprofile" class="ps-column-content">
 <p class="firstrow hl">
 	<label><#Total Kills#></label>

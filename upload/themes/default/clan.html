@@ -11,7 +11,7 @@
 			<a href="{url _base='editclan.php' _ref=1 id=$clan.clanid}"><#Edit Clan#></a>
 		]</span>
 {/if}
-		<h1><#Clan Profile for Tag#> :: {$clan.clantag|escape}</h1>
+		<h1><#Clan Statistics for Tag#> :: {$clan.clantag|escape}</h1>
 		<h2>{if $clan.name}{$clan.name|escape}{else}{$clan.clantag|escape}{/if} <#has#> <strong>{$clan.totalmembers}</strong> <#members with an average skill of#> <strong>{$clan.skill}</strong></h2>
 		</div>
 	</div>

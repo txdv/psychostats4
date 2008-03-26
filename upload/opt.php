@@ -55,7 +55,7 @@ if ($shade) {
 	}
 	$opt['shades'] = $current;
 	$cms->session->save_session_options($opt);
-	print_r($opt);
+//	print_r($opt);
 }
 
 ?>
