@@ -124,7 +124,8 @@ if ($test and $log['id'] == $id) { 	// test the log source, if asked to
 				if (!$isdir) {
 					$msg = $cms->trans("Connected to FTP server, however the path entered does not exist");
 				} else {
-					$list = ftp_nlist($ftp, ".");
+					// Use empty string instead of "." due to some Windows FTP servers (e.g.: TCAdmin)
+					$list = ftp_nlist($ftp, "");
 					if (!$list) {
 						$msg = $cms->trans("No files exist! Please verify the path entered");
 						if (!$pasv) $msg .= "<br/>\n" . $cms->trans("If you know logs exist then try enabling 'Passive Mode' and test again");
@@ -142,7 +143,7 @@ if ($test and $log['id'] == $id) { 	// test the log source, if asked to
 		if (!function_exists('ssh2_connect')) {
 			$result = 'failure';
 			$msg = $cms->trans("SFTP support not available in this installation of PHP") . "<br/>\n" . 
-				$cms->trans("See %s for more information", "<a href='http://php.net/sftp'>http://php.net/sftp</a>");
+				$cms->trans("See %s for more information", "<a href='http://php.net/manual/en/ref.ssh2.php'>http://php.net/manual/en/ref.ssh2.php</a>");
 		} else {
 			if (empty($test['password'])) $test['password'] = $log['password'];
 			$ssh = @ssh2_connect($test['host'], $test['port'] ? $test['port'] : 22);
