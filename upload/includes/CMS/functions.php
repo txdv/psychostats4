@@ -113,6 +113,36 @@ if (!function_exists('ps_url_wrapper')) {
 	}
 }
 
+if (!function_exists('ps_date')) {
+	/** 
+	Returns a formatted date using the timestamp given. 
+	The date will be offset by the configuration setting $theme.format.time_offset;
+	*/
+	function ps_date($fmt, $epoch = null) {
+		global $ps;
+		static $ofs = null;
+		// calculate the offset once...
+		if (is_null($ofs)) {
+			$ofs = $ps->conf['theme']['format']['time_offset'];
+			if ($ofs) {
+				$sign = substr($ofs,0,1);
+				$neg = (bool)($sign == '-');
+				if ($neg || $sign == '+') $ofs = substr($ofs,1);
+	
+				list($h,$m) = explode(':', $ofs);
+				$h = (int)$h;
+				$m = (int)$m;
+				$ofs = 60*60*$h + 60*$m;
+				if ($neg) $ofs *= -1;
+			} else {
+				$ofs = 0;	// make sure it's not null if time_offset is empty
+			}
+		}
+		if (is_null($epoch)) $epoch = time();
+		return date($fmt, $epoch + $ofs);
+	}
+}
+
 if (!function_exists('ps_datetime_stamp')) {
 	/** 
 	Used to return a quick date and time stamp. Used from certain theme routines.
@@ -121,7 +151,7 @@ if (!function_exists('ps_datetime_stamp')) {
 		global $ps;
 		if (!$fmt) $fmt = $ps->conf['theme']['format']['datetime'];
 		if (empty($fmt)) $fmt = "Y-m-d H:i:s";
-		return date($fmt, $epoch);
+		return ps_date($fmt, $epoch);
 	}
 }
 
@@ -133,7 +163,7 @@ if (!function_exists('ps_date_stamp')) {
 		global $ps;
 		if (!$fmt) $fmt = $ps->conf['theme']['format']['date'];
 		if (empty($fmt)) $fmt = "Y-m-d";
-		return date($fmt, $epoch);
+		return ps_date($fmt, $epoch);
 	}
 }
 
@@ -145,7 +175,7 @@ if (!function_exists('ps_time_stamp')) {
 		global $ps;
 		if (!$fmt) $fmt = $ps->conf['theme']['format']['time'];
 		if (empty($fmt)) $fmt = "H:i:s";
-		return date($fmt, $epoch);
+		return ps_date($fmt, $epoch);
 	}
 }
 
