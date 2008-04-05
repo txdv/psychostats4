@@ -80,7 +80,7 @@ function move_row(e) {
 			}
 
 			var is_dn = a.hasClass('dn');
-			var cur_row = a.parent().parent();			// get the TR of the current row
+			var cur_row = a.parents('tr');				// get the TR of the current row
 			var adj_row = is_dn ? cur_row.next() : cur_row.prev();	// get the row we're moving to
 			var new_row = cur_row.clone(true);			// make a copy since we're removing the original
 			cur_row.remove();
