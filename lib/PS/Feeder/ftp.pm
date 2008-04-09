@@ -115,7 +115,7 @@ sub _readdir {
 	if (scalar @{$self->{_logs}}) {
 		$self->{_logs} = $self->{game}->logsort($self->{_logs});
 	}
-	pop(@{$self->{_logs}}) if $self->{skiplast};	# skip the last log in the directory
+	pop(@{$self->{_logs}}) if $self->{logsource}{skiplast};	# skip the last log in the directory
 	$::ERR->verbose(scalar(@{$self->{_logs}}) . " logs found in $self->{_dir}");
 	return scalar @{$self->{_logs}};
 }
