@@ -164,10 +164,10 @@
   <fliph>0</fliph>
  </map>
  <map name='cp_dustbowl'>
-  <minx>-3520</minx> 
-  <miny>-2912</miny> 
+  <minx>-3716</minx>
+  <miny>-2912</miny>
   <maxx>2856</maxx>
-  <maxy>3137</maxy>
+  <maxy>3422</maxy>
   <res>928x915</res>
   <flipv>1</flipv>
   <fliph>0</fliph>
@@ -182,22 +182,22 @@
   <fliph>0</fliph>
  </map>
  <map name='cp_gravelpit'>
-  <minx>-5348</minx> 
-  <miny>-296</miny> 
-  <maxx>1728</maxx>
-  <maxy>5562</maxy>
-  <res>756x663</res>
+  <minx>-5376</minx>
+  <miny>-1024</miny>
+  <maxx>2248</maxx>
+  <maxy>5636</maxy>
+  <res>848x741</res>
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map>
  <map name='ctf_2fort'>
-  <minx>-1512</minx> 
-  <miny>-4748</miny> 
-  <maxx>1512</maxx>
-  <maxy>4748</maxy>
-  <res>396x907</res>
-  <flipv>1</flipv>
-  <fliph>0</fliph>
+  <minx>-1960</minx>
+  <miny>-4248</miny>
+  <maxx>1960</maxx>
+  <maxy>4248</maxy>
+  <res>398x855</res>
+  <flipv>0</flipv>
+  <fliph>1</fliph>
  </map>
  <map name='cp_well'>
   <minx>-4608</minx> 
@@ -219,10 +219,10 @@
  </map>
  <map name='tc_hydro'>
   <minx>-5928</minx> 
-  <miny>-1752</miny> 
+  <miny>-3152</miny> 
   <maxx>6600</maxx>
   <maxy>2952</maxy>
-  <res>1146x615</res>
+  <res>1146x564</res>
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map>
@@ -268,6 +268,150 @@
   <maxx>1768</maxx>
   <maxy>6696</maxy>
   <res>629x1125</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_jailbreak_b3'>
+  <minx>-4200</minx>
+  <miny>-9615</miny>
+  <maxx>495</maxx>
+  <maxy>-1168</maxy>
+  <res>625x1119</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_japan_v2'>
+  <minx>3092</minx>
+  <miny>-3617</miny>
+  <maxx>11784</maxx>
+  <maxy>-1140</maxy>
+  <res>1598x430</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_junction_v2'>
+  <minx>-3329</minx>
+  <miny>-1018</miny>
+  <maxx>2528</maxx>
+  <maxy>5080</maxy>
+  <res>831x898</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='ctf_turbine_v3'>
+  <minx>-3856</minx>
+  <miny>-1752</miny>
+  <maxx>3856</maxx>
+  <maxy>1752</maxy>
+  <res>1506x684</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_warpath2_1b'>
+  <minx>-3761</minx>
+  <miny>-2962</miny>
+  <maxx>3983</maxx>
+  <maxy>2962</maxy>
+  <res>1200x915</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='ctf_mach4'>
+  <minx>-969</minx>
+  <miny>-2129</miny>
+  <maxx>1672</maxx>
+  <maxy>3620</maxy>
+  <res>515x1113</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='ctf_chaos'>
+  <minx>-1656</minx>
+  <miny>-660</miny>
+  <maxx>1656</maxx>
+  <maxy>3108</maxy>
+  <res>657x746</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_dogblu_b3'>
+  <minx>-1048</minx>
+  <miny>-2392</miny>
+  <maxx>3816</maxx>
+  <maxy>10968</maxy>
+  <res>378x1049</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='ctf_impact2'>
+  <minx>-768</minx>
+  <miny>-3128</miny>
+  <maxx>2454</maxx>
+  <maxy>3968</maxy>
+  <res>427x934</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_desertfortress'>
+  <minx>-2794</minx>
+  <miny>-2388</miny>
+  <maxx>2494</maxx>
+  <maxy>2892</maxy>
+  <res>886x884</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_roswell_b2'>
+  <minx>-840</minx>
+  <miny>-1695</miny>
+  <maxx>3391</maxx>
+  <maxy>4121</maxy>
+  <res>720x987</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_switchback_b5'>
+  <minx>-1624</minx>
+  <miny>-3488</miny>
+  <maxx>2000</maxx>
+  <maxy>9104</maxy>
+  <res>328x1135</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_redstone_b1'>
+  <minx>-2026</minx>
+  <miny>-7008</miny>
+  <maxx>2977</maxx>
+  <maxy>6340</maxy>
+  <res>429x1118</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_labor'>
+  <minx>-1602</minx>
+  <miny>-4862</miny>
+  <maxx>1444</maxx>
+  <maxy>3096</maxy>
+  <res>453x1175</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cp_vertigo_beta3'>
+  <minx>-1208</minx>
+  <miny>-2766</miny>
+  <maxx>2792</maxx>
+  <maxy>2860</maxy>
+  <res>804x1102</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dm_duel_v2'>
+  <minx>-770</minx>
+  <miny>-1209</miny>
+  <maxx>1614</maxx>
+  <maxy>1232</maxy>
+  <res>1002x972</res>
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map>
