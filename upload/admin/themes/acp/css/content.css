@@ -180,6 +180,11 @@
 	text-align: left;
 	border-bottom: 1px solid #BBB;
 }
+.ps-table td.preview {
+	text-align: center;
+	width: 50px;
+	border-bottom: 1px solid #BBB;
+}
 .ps-table tr td.child {
 	padding-left: 3em;
 }
@@ -229,6 +234,9 @@ div.warning h4 {
 	border-bottom: 1px solid black;
 	font-size: 120%;
 	color: #000;
+}
+div.warning ul, div.warning ul li {
+	margin-left: 1em;
 }
 
 #error {
@@ -311,11 +319,98 @@ div.failure h4 {
 div.failure p {
 	color: darkred;
 }
+div.failure a {
+	text-decoration: underline;
+}
+div.failure ul {
+	margin-left: 30px;
+}
+div.failure ul li {
+	color: darkred;
+	margin-left: 2em;
+}
+div.wide {
+	width: 90%;
+	margin: 0 auto 1em;
+}
 
 span.mini-avatar {
 	width: 30px;
 	display: block;
 	float: left;
+}
+
+div.preview {
+	text-align: center;
+	border: none;
+}
+
+div.ps-theme-install {
+	border: 1px outset black;
+	background-color: #DDDDFF;
+	text-align: left;
+	padding: 0.5em;
+	width: 90%;
+	margin: 0 auto 1em; 
+}
+div.ps-theme-install p.small {
+	font-size: 0.8em;
+	color: gray;
+}
+div.ps-theme-install .field {
+	width: 50%;
+}
+#ps-main div.ps-theme-install h2 {
+	font-weight: bold;
+	border-bottom: 1px solid gray;
+	margin-bottom: 0.5em;
+}
+div.theme-warn {
+	background-color: lightyellow;
+	border: 1px solid red;
+	padding: 0.5em;
+	margin: 0.5em auto 0;
+	width: 90%;
+}
+div.theme-desc {
+	margin: 0.5em;
+	padding: 0.25em;
+	font-size: 90%;
+/*
+	border: 1px inset black;
+	background-color: #DDDDFF;
+*/
+}
+div.theme-info {
+	width: 90%;
+	margin: 0 auto;
+	border: 1px inset black;
+	background-color: #CCCCFF;
+	padding: 0.5em;
+}
+div.theme-info label {
+	display: inline;
+	float: left;
+	line-height: 1.5em;
+	font-weight: bold;
+	width: 100px;
+}
+div.theme-info span {
+	line-height: 1.5em;
+	font-weight: normal;
+	display: inline;
+	position: relative;
+}
+div.theme-info .image {
+	float: right;
+	padding: 3px;
+	margin-left: 3px;
+	border: 1px outset black;
+	background-color: #DDDDFF;
+}
+div.theme-info .image img {
+	max-width: 250px;					/* FF */
+	width: expression(this.width > 250 ? 250 : true);	/* IE6 */
 }
 
 /* --- weapon 'classes' ------------------- */

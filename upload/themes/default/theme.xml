@@ -3,11 +3,11 @@
 	<name>default</name>
 	<parent></parent>
 	<version>1.0</version>
-	<title>Default PsychoStats Theme</title>
+	<title>Default PsychoStats Theme (Metallic)</title>
 	<author>Stormtrooper</author>
 	<website>http://www.psychostats.com/</website>
-	<source>http://www.psychostats.com/updates/themes/default.xml</source>
-	<image>http://www.psychostats.com/updates/themes/default.png</image>
-	<file>http://www.psychostats.com/updates/themes/default-1.0.zip</file>
+	<source>http://updates.psychostats.com/themes/default.xml</source>
+	<image>http://updates.psychostats.com/themes/default.png</image>
+	<file>http://updates.psychostats.com/themes/default.zip</file>
 	<description>This is the default PsychoStats theme.</description>
 </theme>

@@ -108,7 +108,7 @@ if (!function_exists('ps_url_wrapper')) {
 	$url is an array of key=>value pairs for parameters. 
 	See the url() function for more details.
 	*/
-	function ps_url_wrapper($url) {
+	function ps_url_wrapper($url = array()) {
 		return url($url);
 	}
 }

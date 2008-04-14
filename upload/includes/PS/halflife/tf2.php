@@ -34,6 +34,7 @@ var $CLAN_MODTYPES = array(
 	'blueassists'		=> '+',
 
 	'flagscaptured'		=> '+',
+	'pointcaptured'		=> '+',
 
 	'redcaptureblocked'	=> '+',
 	'redcaptureblockedpct'	=> array( 'percent', 'redcaptureblocked', 'captureblocked' ),
@@ -112,6 +113,7 @@ function index_table_mod(&$table) {
 			'dominations' => array( 'label' => 'Dom', 'tooltip' => $cms->trans("Dominations") ), 
 			'assists' => array( 'label' => 'Assists', 'tooltip' => $cms->trans("Kill Assists") ), 
 			'flagscaptured' => array( 'label' => 'Flags', 'tooltip' => $cms->trans("Flags captured") ), 
+			'pointcaptured' => array( 'label' => 'CP', 'tooltip' => $cms->trans("Points captured") ), 
 		),
 		'onlinetime',
 		false

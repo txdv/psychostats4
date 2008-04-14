@@ -108,6 +108,11 @@ if (empty($t['script_url'])) {
 		$t['script_url'] = dirname($t['script_url']);
 	}
 }
+// template directory is figured out here now, instead of leaving it null for theme class so that the admin
+// pages can properly detect the main theme directory.
+if (empty($t['template_dir'])) {
+	$t['template_dir'] = catfile(PS_ROOTDIR, 'themes');
+}
 if (empty($t['root_img_dir'])) $t['root_img_dir'] = catfile(PS_ROOTDIR, 'img');
 if (empty($t['root_img_url'])) $t['root_img_url'] = catfile(rtrim($t['script_url'], '/\\'), 'img');
 if (empty($t['overlays_dir'])) $t['overlays_dir'] = catfile($t['root_img_dir'], 'overlays');

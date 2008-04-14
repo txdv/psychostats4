@@ -1184,4 +1184,13 @@ function array_values_by_key(&$ary, $key) {
 	return $list;
 }
 
+function mkdir_recursive($path, $mode = 0777) {
+	if (version_compare(PHP_VERSION, '5.0.0', '>=')) {
+		return mkdir($path, $mode, true);
+	} else {
+		is_dir(dirname($path)) || mkdir_recursive(dirname($path), $mode);
+		return is_dir($path) || @mkdir($path, $mode);
+	}
+}
+
 ?>

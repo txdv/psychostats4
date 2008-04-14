@@ -321,7 +321,7 @@ if ($player['plrid']) {
 	// allow mods to have their own section on the left side bar
 	$ps->player_left_column_mod($player, $cms->theme);
 
-	if ($ps->conf['main']['uniqueid'] == 'worldid') {
+	if ($ps->conf['main']['gametype'] == 'halflife' and $ps->conf['main']['uniqueid'] == 'worldid') {
 		if (isset($player['ids_worldid'][0]['worldid'])) {
 			include_once(PS_ROOTDIR . "/includes/class_valve.php");
 			$v = new Valve_AuthId();
