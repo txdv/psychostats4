@@ -322,10 +322,11 @@ if ($player['plrid']) {
 	$ps->player_left_column_mod($player, $cms->theme);
 
 	if ($ps->conf['main']['gametype'] == 'halflife' and $ps->conf['main']['uniqueid'] == 'worldid') {
-		if (isset($player['ids_worldid'][0]['worldid'])) {
+		$steamid = $player['ids_worldid'][0]['worldid'];
+		if ($steamid and strtoupper(substr($steamid, 0, 5)) == 'STEAM') {
 			include_once(PS_ROOTDIR . "/includes/class_valve.php");
 			$v = new Valve_AuthId();
-			$friendid = $v->get_friend_id($player['ids_worldid'][0]['worldid']);
+			$friendid = $v->get_friend_id($steamid);
 			$player['friend_id'] = $friendid;
 			$player['steam_community_url'] = $v->steam_community_url($friendid);
 			$player['steam_add_friend_url'] = $v->steam_add_friend_url($friendid);
