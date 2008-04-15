@@ -76,7 +76,21 @@ sub event_teamtrigger {
 		$m->{basic}{rounds}++;
 
 	} elsif ($trigger eq 'dod_capture_area') {
-	} elsif ($trigger eq 'captured_loc') {
+	} elsif ($trigger eq 'captured_loc') {		# is now the main way for dod to record flag captures (plr trigger isn't used anymore)
+		my $props = $self->parseprops($props);
+		my $plrs = ref $props->{player} ? $props->{player} : [ $props->{player} ];
+		if (@$plrs) {
+			foreach my $plrstr (@$plrs) {
+				my $p1 = $self->get_plr($plrstr) || next;
+				$p1->{mod_maps}{ $m->{mapid} }{$p1->{team} . 'flagscaptured'}++;
+				$p1->{mod_maps}{ $m->{mapid} }{'flagscaptured'}++;
+				$p1->{mod}{$p1->{team} . 'flagscaptured'}++;
+				$p1->{mod}{'flagscaptured'}++;
+			}
+			$m->{mod}{'flagscaptured'}++;
+			$m->{mod}{$self->team_normal($team) . 'flagscaptured'}++;
+		}
+
 	} elsif ($trigger eq 'team_scores') {
 	} else {
 		if ($self->{report_unknown}) {
@@ -139,10 +153,12 @@ sub event_plrtrigger {
 	} elsif ($trigger eq 'dod_blocked_point') {
 		@vars = ( $p1->{team} . 'flagsblocked', 'flagsblocked' );
 
+	} elsif ($trigger eq 'capblock') {
+		@vars = ( $p1->{team} . 'flagsblocked', 'flagsblocked' );
+
 # ignore the following triggers, they're detected using other triggers above
 	} elsif ($trigger eq 'axis_capture_flag') {
 	} elsif ($trigger eq 'allies_capture_flag') {
-	} elsif ($trigger eq 'capblock') {
 	} elsif ($trigger eq 'allies_blocked_capture') {
 	} elsif ($trigger eq 'axis_blocked_capture') {
 # ---------

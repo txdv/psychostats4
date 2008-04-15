@@ -1992,10 +1992,10 @@ sub delete_clans {
 # resets all stats in the database. USE WITH CAUTION!
 # reset(1) resets stats and all profiles
 # reset(0 or undef) resets stats and NO profiles
-# reset(player => 1, clans => 0, weapons => 0) resets stats and only the profiles specified
+# reset(player => 1, clans => 0, weapons => 0, heatmaps => 0) resets stats and only the profiles specified
 sub reset {
 	my $self = shift;
-	my $del = @_ == 1 ? { players => $_[0], clans => $_[0], weapons => $_[0] } : { @_ };
+	my $del = @_ == 1 ? { players => $_[0], clans => $_[0], weapons => $_[0], heatmaps => $_[0] } : { @_ };
 	my $db = $self->{db};
 	my $gametype = $self->{conf}->get_main('gametype');
 	my $modtype  = $self->{conf}->get_main('modtype');
@@ -2019,6 +2019,7 @@ sub reset {
 	push(@empty, 't_plr_profile') if $del->{players};
 	push(@empty, 't_clan_profile') if $del->{clans};
 	push(@empty, 't_weapon') if $del->{weapons};
+	push(@empty, 't_heatmaps') if $del->{heatmaps};
 
 	# DROP compiled data (will be recreated the next time stats.pl is run)
 	foreach my $t (@empty_c) {

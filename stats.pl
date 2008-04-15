@@ -201,9 +201,10 @@ if (defined $opt->get('reset')) {
 	my $res = $opt->get('reset');
 	my $all = (index($opt->get('reset'),'all') >= 0);
 	my %del = (
-		players => ($all || (index($res,'pl') >= 0)),
-		clans   => ($all || (index($res,'cl') >= 0)),
-		weapons => ($all || (index($res,'we') >= 0)),
+		players 	=> ($all || (index($res,'player') >= 0)),
+		clans   	=> ($all || (index($res,'clan') >= 0)),
+		weapons 	=> ($all || (index($res,'weapon') >= 0)),
+		heatmaps	=> ($all || (index($res,'heat') >= 0)),
 	);
 	$game->reset(%del);
 	&main::exit;
