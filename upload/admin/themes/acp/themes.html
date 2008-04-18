@@ -74,12 +74,6 @@
 			<label><#File Type#>:</label>
 			<span>{if $newtheme._file.type}{$newtheme._file.type|upper|escape}{else}<em><#Unknown#></em>{/if}</span>
 		</div>
-{*
-		<div>
-			<label><#Description#>:</label>
-			<span>{$newtheme.description|escape}</span>
-		</div>
-*}
 		<div class="theme-desc">{$newtheme.description|escape}</div>
 		<div class="clear"></div>
 	</div>
@@ -92,6 +86,26 @@
 	<div>
 		<p class="small"><#Enter the URL location of the theme.xml for the theme you want to install.#> <#For more information see the #> <a href="http://www.psychostats.com/doc/Themes">Theme Documentation</a></p>
 	</div>
+{if $theme_dirs}
+	<div class="row-sep">
+		<p>
+		<#You can also reinstall a local theme in the list below.#> 
+		</p>
+		<p>
+		<#These themes are already in your themes directory but are not installed in your database.#>
+		</p>
+	</div>
+	<div class="row">
+		<label><#Select Theme#>:</label>
+		<select name="dir">
+			<option value=""><#Select theme to reinstall#>&nbsp;&nbsp;</option>
+	{foreach from=$theme_dirs item="d"}
+			<option value="{$d.directory|escape}">{$d.title|escape}</option>
+	{/foreach}
+		</select>
+		<input name="reinstall" value="<#Reinstall#>" type="submit" class="btn" />
+	</div>
+{/if}
 	{/if}
 </form>
 </div>

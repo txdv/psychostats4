@@ -3,11 +3,11 @@
 	<name>default-blue</name>
 	<parent>default</parent>
 	<version>1.0</version>
-	<title>Default - Blue skin</title>
-	<author>Stormtrooper</author>
+	<title>Default - blue skin</title>
+	<author email="stormtrooper@psychostats.com">Stormtrooper</author>
 	<website>http://www.psychostats.com/</website>
-	<source>http://updates.psychostats.com/themes/default-blue.xml</source>
-	<image>http://updates.psychostats.com/themes/default-blue.png</image>
-	<file>http://updates.psychostats.com/themes/default-blue.zip</file>
-	<description>Blue skin for default theme.</description>
+	<source>http://updates.psychostats.com/themes/{$name}.xml</source>
+	<image>http://updates.psychostats.com/themes/{$name}.png</image>
+	<file>http://updates.psychostats.com/themes/{$name}.zip</file>
+	<description>blue skin for {$parent} theme.</description>
 </theme>

@@ -77,11 +77,10 @@ function xml_response($data = array(), $root = 'response', $indent = 0) {
 // $tokens is a hash array containing variables and can be nested 1 level deep (ie $tok1 or $tok2.value)
 // if $fill is true than any tokens in the string that do not have a matching variable in $tokens is not removed.
 function simple_interpolate($str, $tokens, $fill = false) {
-	$return = "";
 	$ofs = 0;
 	$idx = 0;
 	$i = 0;
-	while (preg_match('/\$([a-z][a-z\d_]+)(?:\.([a-z][a-z\d_]+))?/', $str, $m, PREG_OFFSET_CAPTURE, $ofs)) {
+	while (preg_match('/\{\$([a-z][a-z\d_]+)(?:\.([a-z][a-z\d_]+))?\}/', $str, $m, PREG_OFFSET_CAPTURE, $ofs)) {
 		if ($i++ > 1000)  {
 			die("ENDLESS LOOP in simple_interpolate (line " . __LINE__ . ") with string '$str'");
 		}
@@ -90,10 +89,10 @@ function simple_interpolate($str, $tokens, $fill = false) {
 		$idx	= $m[0][1];	// get position of where match begins
 		if (array_key_exists($var1, $tokens)) {
 			if (!empty($var2)) {
-				if (array_key_exists($var2, $tokens[$var1])) {
+				if (is_array($tokens[$var1]) and array_key_exists($var2, $tokens[$var1])) {
 					$rep = $tokens[$var1][$var2];
 				} else {
-					$rep = $fill ? "$var1.$var2" : '';
+					$rep = $fill ? "{\$$var1.$var2}" : '';
 				}
 			} else {
 				$rep = $tokens[$var1];
@@ -105,7 +104,7 @@ function simple_interpolate($str, $tokens, $fill = false) {
 		// We replace each token 1 by 1 even if $token1 matches more than once.
 		// this will prevent possible $tokens inside replacement strings from being interpolated.
 		$varstr = $var2 ? "$var1.$var2" : $var1;
-		$str = substr_replace($str, $rep, $idx, strlen($varstr)+1);
+		$str = substr_replace($str, $rep, $idx, strlen($varstr)+3);	// +3 for chars ${}
 		$ofs = $idx + strlen($rep);
 	}
 	return $str;

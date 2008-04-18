@@ -73,7 +73,7 @@ $cms->theme->assign_by_ref('can_write', $can_write);
 // no form was submitted, default to whatever is in the configuration
 if (!$dosubmit) {
 	$compiledir = $orig_compiledir;
-	list($nosave) = $db->fetch_row(0,"SELECT value FROM " . $db->table('config') . " WHERE conftype='theme' AND var='fetch_compile' LIMIT 1");
+	list($nosave) = $db->fetch_list("SELECT value FROM " . $db->table('config') . " WHERE conftype='theme' AND var='fetch_compile' LIMIT 1");
 	$nosave = !$nosave;
 	$allow_next = $nosave;
 }

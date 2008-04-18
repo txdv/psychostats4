@@ -180,13 +180,20 @@
 	text-align: left;
 	border-bottom: 1px solid #BBB;
 }
-.ps-table td.preview {
+
+.ps-theme-table td.preview {
 	text-align: center;
-	width: 50px;
+	width: 60px;
 	border-bottom: 1px solid #BBB;
 }
-.ps-table tr td.child {
-	padding-left: 3em;
+.ps-theme-table td.child {
+	padding-left: 2em;
+}
+.ps-theme-table td.ctrl {
+	width: 100px;
+	text-align: left;
+	border-bottom: 1px solid #BBB;
+	
 }
 
 /* --- Player table specific styles */
@@ -413,120 +420,21 @@ div.theme-info .image img {
 	width: expression(this.width > 250 ? 250 : true);	/* IE6 */
 }
 
-/* --- weapon 'classes' ------------------- */
-/* not used at the moment 
-.ps-weapon-class-title {
-	text-align: left;
-	padding-left: 1em;
-	margin-bottom: 0.5em;
-	margin-top: 1em;
-	background: url(../img/h1-bg.png) repeat-x left top;
-	border: 1px solid #778899;
-}
-
-.ps-weapon-classes {
-	text-align: center;
-	font-weight: bold;
-}
-.ps-weapon-classes ul {
-}
-.ps-weapon-classes ul li {
+div.row label { 
+	float: left;
 	display: inline;
-	margin-left: 0.5em;
-}
-.ps-weapon-classes a {
-	text-decoration: underline;
-}
-
-*/
-
-/* --- stat tile blocks */
-/* not used at the moment
-.ps-tile-container {
-	margin: 1em;
-}
-
-.ps-tile {
-	margin: 0 0.5em 0.5em 0;
-	float: left;
-	padding: 0em;
-	width: 200px;
-	border: 1px solid gray;
-}
-
-.ps-tile img.tile-img {
-	width: 200px;
-	height: 80px;
-}
-
-.ps-tile h2 {
-	font-size: 120%;
-	font-weight: bold;
-}
-
-.ps-tile p {
-	height: 1.5em;
-	padding: 0.1em 0.3em 0 0.3em;
-	clear: both;
-	background: url(../img/pct-red.png) no-repeat 200px 50%;
-}
-.ps-tile p.green {
-	background-image: url(../img/pct-green.png);
-}
-.ps-tile p.blue {
-	background-image: url(../img/pct-blue.png);
-}
-
-.ps-tile p label {
-	float: left;
-	text-align: left;
-	font-weight: bold;
-	width: 40%;
-}
-.ps-tile em {
-	float: left;
-	text-align: right;
 	line-height: 1.5em;
-	width: 3em;
-	font-size: 90%;
-	font-style: normal;
-}
-.ps-tile p span {
-	float: right;
-	text-align: right;
-}
-
-.ps-tile-clear { 
-	clear: left; 
-	margin: 1em 0;
-}
-*/
-
-/* weapon image popup styles --- */
-/* not used at the moment
-.weapon-popup {
-	position: absolute;
-/*	width: 200px;
-	height: 100px; */
-/*
-	overflow: hidden;
-	border: 2px solid gray;
-	text-align: center;
-	background: white;
-	z-index: 65535;
-}
-.weapon-popup img { }
-.weapon-popup p { 
-	color: white;
-	background: black;
-	padding: 0.1em;
-	font-size: 90%;
 	font-weight: bold;
-	text-align: center;
+	width: 150px;
 }
-*/
-
-
+div.row-sep {
+	margin: 1em;
+	padding: 0.25em;
+	text-align: center;
+	border-top: 1px solid gray;
+	border-bottom: 1px solid gray;
+	color: gray;
+}
 
 /* --- clear floats ------------ */
 .ps-stat-container:after, 

@@ -26,7 +26,7 @@ include("../includes/common.php");
 include("./common.php");
 include_once(PS_ROOTDIR . "/includes/class_themeManager.php");
 
-$validfields = array('id','start','limit','action','submit','confirm','url','cancel');
+$validfields = array('id','start','limit','action','submit','confirm','url','reinstall','dir','cancel');
 $cms->theme->assign_request_vars($validfields, true);
 
 $message = '';
@@ -54,14 +54,34 @@ $allow['write'] = is_writable($theme_dir);
 $allow['install'] = ($allow['url'] && $allow['write']);
 
 ini_set('user_agent', "PsychoStats Theme Installer");
-$newtheme = new PsychoThemeManager( $ps->db, $ps->conf['theme']['template_dir'] );
+$newtheme = new PsychoThemeManager($ps);
 
 if ($cancel) {
 	$submit = false;
 }
 
-// attempt to install new theme if one is submitted
-if ($submit and $url and $allow['install']) {
+if ($reinstall and $dir) {			// reinstall a local theme already on the hard drive
+	$dir = basename($dir);			// remove any potentially malicous paths
+	if (file_exists(catfile($newtheme->template_dir, $dir))) {
+		$t = $newtheme->reinstall($dir);
+		if ($t) {
+			$message = $cms->message('success', array( 
+				'message_title'	=> "Theme reinstalled successfully!",
+				'message'	=> "Theme \"" . $t->xml_title() . "\" was installed successfully and is now available for use."
+			));
+		} else {
+			$message = $cms->message('theme-failure', array( 
+				'message_title'	=> "Error reinstalling theme",
+				'message'	=> $newtheme->error()
+			));
+		}
+	} else {
+		$message = $cms->message('theme-failure', array( 
+			'message_title'	=> "Error installing theme",
+			'message'	=> "Theme not found!"
+		));
+	}
+} elseif ($submit and $url and $allow['install']) {	// attempt to install new theme if one is submitted
 	$newtheme->load_theme($url);
 	if ($newtheme->error()) {
 		$submit = false;
@@ -76,52 +96,15 @@ if ($submit and $url and $allow['install']) {
 				'invalid' => $newtheme->invalid_list()
 			));
 		}
-	} elseif ($newtheme->xml_parent()) {
-		list($exists) = $ps->db->fetch_list("SELECT 1 FROM $ps->t_config_themes WHERE name LIKE " . $ps->db->escape($newtheme->xml_parent(), true));
-		if (!$exists) {
-			$submit = false;
-			$message = $cms->message('theme-failure', array( 
-				'message_title'	=> "Error installing theme",
-				'message'	=> "The selected theme requires a parent theme '" . $newtheme->xml_parent() . "' which you do not have installed."
-			));
-		}
 	}
-
 
 	// if there are no errors and 'confirm' was specified then install the theme
 	if ($submit and $confirm) {
 		if ($newtheme->install()) {
-			// insert a record for this theme in the database
-			$exists = $ps->db->fetch_row(1, "SELECT * FROM $ps->t_config_themes WHERE name LIKE " . $ps->db->escape($newtheme->xml_name(), true));
-			$set = array();
-			$set['name']		= $newtheme->xml_name();
-			$set['parent']		= $newtheme->xml_parent() ? $newtheme->xml_parent() : null;
-			$set['enabled'] 	= $exists ? ($exists['enabled']?1:0) : 1;
-			$set['version']		= $newtheme->xml_version();
-			$set['title']		= $newtheme->xml_title();
-			$set['author']		= $newtheme->xml_author();
-			$set['website']		= $newtheme->xml_website();
-			$set['source']		= $newtheme->xml_source();
-			$set['image']		= $newtheme->xml_image();
-			$set['description']	= $newtheme->xml_description();
-
-			if ($exists) {
-				$ok = $ps->db->update($ps->t_config_themes, $set, 'name', $set['name']);
-			} else {
-				$ok = $ps->db->insert($ps->t_config_themes, $set);
-			}
-			if ($ok) {
-				$message = $cms->message('success', array( 
-					'message_title'	=> "Theme installed successfully!",
-					'message'	=> "Theme \"" . $set['title'] . "\" was installed successfully and is now available for use."
-				));
-			} else {
-				$message = $cms->message('failure', array( 
-					'message_title'	=> "Error installing theme",
-					'message'	=> "Unable to add theme to configuration: " . $ps->db->errstr
-				));
-			}
-
+			$message = $cms->message('success', array( 
+				'message_title'	=> "Theme installed successfully!",
+				'message'	=> "Theme \"" . $newtheme->xml_title() . "\" was installed successfully and is now available for use."
+			));
 		} else { // theme did not install properly
 			$message = $cms->message('failure', array( 
 				'message_title'	=> "Error installing theme",
@@ -136,12 +119,9 @@ if ($submit and $url and $allow['install']) {
 // do something with an installed theme
 if (!empty($action)) $action = strtolower($action);
 if ($id and in_array($action, array('default','disable','enable','uninstall'))) {
-	$t = $ps->db->fetch_row(1, "SELECT * FROM $ps->t_config_themes WHERE name=" . $ps->db->escape($id, true));
-	if (!$t['name']) {
-		$data = array(
-			'message' => $cms->trans("Invalid Theme Specified"),
-		);
-		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	$t = new PsychoThemeManager($ps);
+	if (!$t->load_theme_db($id)) {
+		$cms->full_page_err(basename(__FILE__, '.php'), array( 'message' => $cms->trans("Invalid Theme Specified") ));
 		exit();		
 	}
 
@@ -149,50 +129,47 @@ if ($id and in_array($action, array('default','disable','enable','uninstall'))) 
 	$msg = '';
 	$title = $cms->trans("Operation was successful!");
 	if ($action == 'default')  {
-		if ($ps->conf['main']['theme'] != $t['name']) {
-			$ok = $ps->db->query(sprintf("UPDATE $ps->t_config SET value=%s WHERE conftype='main' AND (section='' OR ISNULL(section)) AND var='theme'", 
-				$ps->db->escape($t['name'], true)
-			));
+		if ($ps->conf['main']['theme'] != $t->xml_name()) {	// don't do it if the current default matches the name
+			$ok = $ps->db->query("UPDATE $ps->t_config SET value=" . $ps->db->escape($t->xml_name(), true) . " WHERE conftype='main' AND (section='' OR ISNULL(section)) AND var='theme'");
 			if ($ok) {
-				$msg = $cms->trans("Theme '%s' is now the default theme", $t['name']);
-				$ps->conf['main']['theme'] = $t['name'];
+				$msg = $cms->trans("Theme '%s' is now the default theme", $t->xml_name());
+				$ps->conf['main']['theme'] = $t->xml_name();
 				// always make sure the new default theme is enabled
-				if (!$t['enabled']) {
-					$ps->db->update($ps->t_config_themes, array( 'enabled' => 1 ), 'name', $t['name']);
+				if (!$t->enabled()) {
+					$ps->db->update($ps->t_config_themes, array( 'enabled' => 1 ), 'name', $t->xml_name());
 				}
 			} else {
 				$res = 'failure';
-				$msg = $cms->trans("Error writting to database: ") . $ps->db->errstr;
+				$msg = $cms->trans("Error writting to database: %s", $ps->db->errstr);
 			}
 		}
 
 	} elseif ($action == 'uninstall') {
-		if ($ps->conf['main']['theme'] == $t['name'] or $t['name'] == 'default') {
+		// do not uninstall the current theme, or any theme named 'default'
+		if ($ps->conf['main']['theme'] == $t->xml_name() or $t->xml_name() == 'default') {
 			$res = 'failure';
-			$msg = $cms->trans("You can not uninstall the default theme!");
+			$msg = $cms->trans("You can not uninstall the default or currently active theme!");
 		} else {
-			$ok = $ps->db->delete($ps->t_config_themes, 'name', $t['name']);
-			if (!$ok) {
+			if (!$t->uninstall()) {
 				$res = 'failure';
-				$msg = $cms->trans("Error writting to database: ") . $ps->db->errstr;
+				$msg = $cms->trans("Error writting to database: %s", $ps->db->errstr);
 			} else {
-				$msg = $cms->trans("Theme '%s' was uninstalled successfully. It was not deleted from the server.", $t['title']);
+				$msg = $cms->trans("Theme '%s' was uninstalled successfully (note: directory was not deleted)", $t->xml_title());
 			}
 		}
 	} else {
 		$enabled = ($action == 'enable') ? 1 : 0;
-		if ($ps->conf['main']['theme'] == $t['name'] and !$enabled) {
+		if ($ps->conf['main']['theme'] == $t->xml_name() and !$enabled) {
 			$res = 'failure';
 			$title = $cms->trans("Operation Failed!");
-			$msg = $cms->trans('You can not disable the default theme');
-		} else if ($t['enabled'] != $enabled) {
-			$ok = $ps->db->update($ps->t_config_themes, array( 'enabled' => $enabled ), 'name', $t['name']);
-			if ($ok) {
-				$msg = $enabled ? $cms->trans("Theme '%s' was enabled", $t['name']) 
-						: $cms->trans("Theme '%s' was disabled", $t['name']);
+			$msg = $cms->trans('You can not disable the active theme');
+		} elseif ($t->enabled() != $enabled) {
+			if ($t->toggle($enabled)) {
+				$msg = $enabled ? $cms->trans("Theme '%s' was enabled", $t->xml_name()) 
+						: $cms->trans("Theme '%s' was disabled", $t->xml_name());
 			} else {
 				$res = 'failure';
-				$msg = $cms->trans("Error writting to database: ") . $ps->db->errstr;
+				$msg = $cms->trans("Error writting to database: %s", $ps->db->errstr);
 			}
 		}
 	}
@@ -235,6 +212,7 @@ $cms->theme->assign(array(
 	'url'		=> $url,
 	'allow'		=> $allow,
 	'newtheme'	=> $newtheme->theme_xml(),
+	'theme_dirs'	=> $newtheme->theme_dirs(),
 	'themes'	=> $themes,
 	'total_themes'	=> $total,
 	'submit'	=> $submit,
