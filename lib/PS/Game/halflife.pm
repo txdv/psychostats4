@@ -150,7 +150,7 @@ sub event {
 	my ($src, $event, $line) = @_;
 	my ($prefix, $timestamp);
 	my ($a, $b, $c);
-	$event = decode_utf8($event);
+	$event = Encode::decode('utf8',$event);
 	chomp($event);
 	return if length($event) < PREFIX_LENGTH;	#			"123456789*123456789*12345"
 	$prefix = substr($event, 0, PREFIX_LENGTH);	# PREFIX (25 chars): 	"L MM/DD/YYYY - hh:mm:ss: "

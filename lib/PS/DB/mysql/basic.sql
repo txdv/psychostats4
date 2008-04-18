@@ -175,6 +175,7 @@ CREATE TABLE `ps_config_themes` (
   `author` varchar(128) default NULL,
   `website` varchar(128) default NULL,
   `source` varchar(255) default NULL,
+  `image` varchar(255) default NULL,
   `description` text,
   PRIMARY KEY  (`name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -292,7 +293,8 @@ CREATE TABLE `ps_plr` (
   `allowrank` tinyint(1) unsigned NOT NULL default '1',
   PRIMARY KEY  (`plrid`),
   UNIQUE KEY `uniqueid` (`uniqueid`),
-  KEY `allowrank` (`allowrank`,`clanid`)
+  KEY `allowrank` (`allowrank`,`clanid`),
+  KEY `skill` (`skill`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_aliases` (
   `id` int(10) unsigned NOT NULL default '0',
