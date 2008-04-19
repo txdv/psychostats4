@@ -52,7 +52,7 @@ function PsychoThemeManager(&$ps, $dir = null) {
 function load_theme($url, $skip_file = false) {
 	$this->error(false);
 	ob_start();
-	$xml = file_get_contents($url, false, null, 0, 4*1024);
+	$xml = file_get_contents($url); //, false, null, 0, 4*1024); // 5 paramater format only works in PHP5
 	$err = ob_get_contents();
 	if (!empty($err)) {	// cleanup the error a little bit so it's a little easier to tell what happened
 		$err = str_replace(' [function.file-get-contents]', '', strip_tags($err));
@@ -206,6 +206,7 @@ function install() {
 			if ($xml) {
 				$this->xml = $xml;
 			} else {
+				$ok = false;
 				$this->error("Error adding theme to database: " . $this->db->errstr);
 			}
 		}
@@ -247,6 +248,9 @@ function delete_db($name = null) {
 	}
 	if (!$name) return false;
 	$ok = $this->db->delete($this->ps->t_config_themes, 'name', $name);
+	if (!$ok) {
+		$this->error($this->db->errstr);
+	}
 	return $ok;
 }
 
@@ -270,6 +274,9 @@ function save_db() {
 		$ok = $this->db->update($this->ps->t_config_themes, $set, 'name', $set['name']);
 	} else {
 		$ok = $this->db->insert($this->ps->t_config_themes, $set);
+	}
+	if (!$ok) {
+		$this->error($this->db->errstr);
 	}
 	return $ok ? $set : false;
 }
