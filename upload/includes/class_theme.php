@@ -127,7 +127,7 @@ function PsychoTheme(&$cms, $args = array()) {
 	));
 
 	// allow theme access to a couple methods of our objects
-	$this->register_object('theme', $this, array( 'css_links', 'js_sources', 'meta_tags', 'url' ), false);
+	$this->register_object('theme', $this, array( 'css_links', 'js_sources', 'meta_tags', 'url', 'parent_url' ), false);
 	$this->register_object('db', $this->cms->db, array( 'totalqueries' ), false);
 }  // end of constructor
 
@@ -210,6 +210,13 @@ function js_sources($theme = null) {
 // returns the absolute URL for the current theme. mainly used within smarty templates
 function url($theme = null) {
 	if (empty($theme)) $theme = $this->theme();
+	return $this->theme_url ? $this->theme_url . '/' . $theme : $theme;
+}
+
+// returns the absolute URL for the PARENT of the current theme. mainly used within smarty templates
+function parent_url($theme = null) {
+	if (empty($theme)) $theme = $this->theme();
+	if ($this->loaded_themes[$theme]['parent']) $theme = $this->loaded_themes[$theme]['parent'];
 	return $this->theme_url ? $this->theme_url . '/' . $theme : $theme;
 }
 

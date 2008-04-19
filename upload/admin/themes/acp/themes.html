@@ -100,7 +100,7 @@
 		<select name="dir">
 			<option value=""><#Select theme to reinstall#>&nbsp;&nbsp;</option>
 	{foreach from=$theme_dirs item="d"}
-			<option value="{$d.directory|escape}">{$d.title|escape}</option>
+			<option value="{$d.directory|escape}">{$d.title|escape} ({$d.directory|escape})</option>
 	{/foreach}
 		</select>
 		<input name="reinstall" value="<#Reinstall#>" type="submit" class="btn" />
