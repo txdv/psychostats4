@@ -165,6 +165,12 @@ function install() {
 				$ok = false;
 				break;
 			}
+			// do not allow script files! these can (and will most likely) be malicous!!
+			if (preg_match('/\.(php\d?|inc|pl|cgi)$/', $name)) {
+				$this->error("Invalid script file found in theme archive: $name. ABORTING INSTALLATION");
+				$ok = false;
+				break;
+			}
 			if (substr($name, -1) == '/') {			// directory
 				$dir = catfile($this->template_dir, substr($name,0,-1));
 				if (!file_exists($dir)) {
