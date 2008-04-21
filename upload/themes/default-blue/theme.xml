@@ -3,7 +3,7 @@
 	<name>default-blue</name>
 	<parent>default</parent>
 	<version>1.0</version>
-	<title>Default - blue skin</title>
+	<title>Default Theme - blue skin</title>
 	<author email="stormtrooper@psychostats.com">Stormtrooper</author>
 	<website>http://www.psychostats.com/</website>
 	<source>http://updates.psychostats.com/themes/{$name}.xml</source>

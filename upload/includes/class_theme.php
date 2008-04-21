@@ -369,10 +369,15 @@ function is_child($theme = null) {
 }
 
 // returns the full path to the theme(=true) if the theme name specified is a valid directory within our template_dir
-function is_theme($theme) {
+// if $enabled is true then it must also be enabled in the database
+function is_theme($theme, $is_enabled = false) {
 	if (empty($theme)) return false;
 	foreach ((array)$this->template_dir as $path) {
 		if (is_dir($path . DIRECTORY_SEPARATOR . $theme)) {
+			if ($is_enabled) {
+				list($ok) = $this->cms->db->fetch_list("SELECT 1 FROM " . $this->cms->db->table("config_themes") . " WHERE name LIKE " . $this->cms->db->escape($theme, true) . " AND enabled <> 0");
+				if (!$ok) return false;
+			}
 			return $path . DIRECTORY_SEPARATOR . $theme;
 		}
 	}
@@ -438,9 +443,9 @@ function get_language_list($theme = null) {
 	return array_unique($langs);
 }
 
-// NOT USED; AND WILL NOT WORK; NEEDS TO BE RECODED.
 function get_theme_list() {
-	return array();
+	$list = $this->cms->db->fetch_rows(1, "SELECT * FROM " . $this->cms->db->table('config_themes') . " WHERE enabled <> 0 ORDER BY title,name");
+	return $list;
 }
 
 // override Smarty function so {include} continues to work with our directories

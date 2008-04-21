@@ -547,6 +547,59 @@ em.add-friend a {
 	display: none;
 }
 
+#gallery div.theme {
+	width: 80%;
+	margin: 0 auto 1em;
+	background-color: #EEE;
+	border: 1px outset black;
+	text-align: left;
+	padding: 0.5em;
+}
+#gallery div.theme h3 {
+	font-size: 150%;
+	font-weight: normal;
+	background: url(../img/page-title-bg-reverse.png) repeat-x left bottom;
+	padding: 3px;
+	border: 1px outset gray;
+	border-bottom: 2px solid gray;
+	margin-bottom: 0.25em;
+}
+#gallery div.theme h3 a {
+	display: block;
+}
+#gallery div.theme p {
+	line-height: 1.5em;
+	overflow: hidden;
+}
+#gallery div.theme p label {
+	font-weight: bold;
+	display: table-cell;	/* Doesn't work in IE6, owell ... better than using floats */
+	width: 75px;
+}
+#gallery div.theme p span {
+	display: table-cell;
+}
+#gallery div.theme p.description {
+	margin: 0.5em;
+	color: #666;
+}
+#gallery div.theme .preview {
+	float: right;
+	border: 1px inset black;
+	padding: 3px;
+	background-color: #FFF;
+	margin-left: 3px;
+}
+#gallery div.theme .preview img {
+	max-width: 300px;					/* FF  */
+	width: expression(this.width > 300 ? '300px' : true);	/* IE6 */
+}
+#gallery div.theme .website a 	{ padding-left: 20px; background: url(../img/icons/house.png) no-repeat 0 50%; }
+#gallery div.theme .author  	{ padding-left: 20px; background: url(../img/icons/user_green.png) no-repeat 0 50%; }
+#gallery div.theme .version  	{ padding-left: 20px; background: url(../img/icons/note.png) no-repeat 0 50%; }
+#gallery div.theme .source  	{ padding-left: 20px; background: url(../img/icons/package.png) no-repeat 0 50%; }
+#gallery div.theme p.description { text-indent: 20px; background: url(../img/icons/information.png) no-repeat top left; }
+
 /* --- weapon 'classes' ------------------- */
 /* not used at the moment 
 .ps-weapon-class-title {
@@ -663,6 +716,7 @@ em.add-friend a {
 
 
 /* --- clear floats ------------ */
+.clear { clear: both; }
 .ps-stat-container:after, 
 .ps-stat-content p:after 
 {

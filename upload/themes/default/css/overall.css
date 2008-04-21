@@ -91,7 +91,8 @@ acronym {
 	font-size: 80%;
 	background: gray url(../img/footer-bg.png) repeat-x;
 	margin-top: 2em;
-/*	height: 41px;*/
+	min-height: 41px;					/* FF  */
+	height: expression(this.height = 41 + 'px');		/* IE6 */
 	overflow: hidden;
 	position: relative;
 	width: 100%;
@@ -102,13 +103,14 @@ acronym {
 	margin-top: 5px;
 }
 
-#ps-overall-footer div.language, 
+#ps-overall-footer div.language,
 #ps-overall-footer div.theme
 {
 	float: left;
 	margin-left: 0.5em;
-	height: 3em;
-	line-height: 3em;
+	line-height: 3em !important;		/* FF */
+	line-height: 1.5em;			/* IE */
+	font-weight: bold;
 }
 #ps-overall-footer select {
 	background-color: #CCC;

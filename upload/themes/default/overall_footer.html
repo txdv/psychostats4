@@ -11,15 +11,9 @@
 		</form>
 	</div>
 {/if}
-{if $theme_list}
+{if $theme_list and count($theme_list) > 1}
 	<div class="theme">
-		<form action="{url _base='index.php' _ref=1}" method="post">
-		<select name="theme" class="theme" title="<#Select a Theme#>">
-			{foreach from=$theme_list item='t'}
-			<option{if $t == $theme} selected='selected' class='sel'{/if}>{$t|escape}</option>
-			{/foreach}
-		</select>
-		</form>
+		[ <a href="{url _base='themes.php'}"><#Change Theme#></a> ]
 	</div>
 {/if}
 	<div class="poweredby">

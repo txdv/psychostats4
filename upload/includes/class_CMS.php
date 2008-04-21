@@ -212,7 +212,7 @@ function init_theme($theme, $opts = array()) {
 	}
 
 	$this->theme =& new PsychoTheme($this, $conf);
-	if ($this->theme->is_theme($conf['theme'])) {
+	if ($this->theme->is_theme($conf['theme'], true)) {
 		$this->theme->theme($conf['theme'], $conf['in_db']);
 	} else {
 		$this->theme->theme($conf['theme_default'], $conf['in_db']);

@@ -417,7 +417,7 @@ div.theme-info .image {
 }
 div.theme-info .image img {
 	max-width: 250px;					/* FF */
-	width: expression(this.width > 250 ? 250 : true);	/* IE6 */
+	width: expression(this.width > 250 ? '250px' : true);	/* IE6 */
 }
 
 div.row label { 
