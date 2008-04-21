@@ -298,15 +298,16 @@ sub compacttime {
 # A very simple version of an interpolating routine to do very simple variable substitution on a string.
 # This allows for 2 levels of hash variables ONLY. ie: $key, or $key.var (but not $key.var.subvar) .. this is only meant to be 
 # a SIMPLE interpolator :-) ... If a code ref is found in a $token, it will be called and it's return value used.
+# This function was updated to use tokens like {$var.value} instead of $var.value
 sub simple_interpolate {
 	my ($str, $data, $fill) = @_;
 	my ($var1,$var2, $rep, $rightpos, $leftpos, $varlen);
 	$fill ||= 0;
 
-	while ($str =~ /\$([a-z][a-z\d_]+)(?:\.([a-z][a-z\d_]+))?/gsi) {	# match $token or $key.token (but not $123token) 
+	while ($str =~ /\{\$([a-z][a-z\d_]+)(?:\.([a-z][a-z\d_]+))?\}/gsi) {	# match $token or $key.token (but not $123token) 
 		$var1 = lc $1;
 		$var2 = lc($2 || '');
-		$varlen = length($var1 . $var2);
+		$varlen = length($var1 . $var2) + 2;
 		if (exists $data->{$var1}) {
 			if ($var2 ne '') {
 				$rep = exists $data->{$var1}{$var2} ? $data->{$var1}{$var2} : ($fill) ? "$var1.$var2" : '';
