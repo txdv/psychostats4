@@ -45,12 +45,13 @@ if ($t) {
 		// na... just silently ignore the language
 //		trigger_error("Invalid theme specified!", E_USER_WARNING);
 	}
-	previouspage($PHP_SELF);
+	previouspage($PHP_SELF . "#" . ps_escape_html($t));
 }
 
 // assign variables to the theme
 $cms->theme->assign(array(
 	'themes'	=> $themes,
+	'theme'		=> $cms->theme->theme,
 ));
 
 // display the output

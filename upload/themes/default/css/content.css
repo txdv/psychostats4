@@ -598,7 +598,15 @@ em.add-friend a {
 #gallery div.theme .author  	{ padding-left: 20px; background: url(../img/icons/user_green.png) no-repeat 0 50%; }
 #gallery div.theme .version  	{ padding-left: 20px; background: url(../img/icons/note.png) no-repeat 0 50%; }
 #gallery div.theme .source  	{ padding-left: 20px; background: url(../img/icons/package.png) no-repeat 0 50%; }
+#gallery div.theme .inuse  	{ padding-left: 20px; background: url(../img/icons/accept.png) no-repeat 0 50%; }
 #gallery div.theme p.description { text-indent: 20px; background: url(../img/icons/information.png) no-repeat top left; }
+
+#gallery div.theme p.inuse {
+	color: green;
+	font-weight: bold;
+	background: none;
+	padding: 0;
+}
 
 /* --- weapon 'classes' ------------------- */
 /* not used at the moment 
