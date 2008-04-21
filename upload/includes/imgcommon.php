@@ -30,11 +30,8 @@ if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FIL
 if (defined("PSFILE_IMGCOMMON_PHP")) return 1;
 define("PSFILE_IMGCOMMON_PHP", 1);
 
-// some routines (PEAR::XML) are coded with relative paths so I need to explicitly update the include_path
-ini_set('include_path', ini_get('include_path') . PATH_SEPARATOR . dirname(__FILE__));
-
 require_once(dirname(__FILE__) . "/common.php");
-require_once(dirname(__FILE__) . "/XML/Unserializer.php");
+require_once(dirname(__FILE__) . "/class_XML.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
 
@@ -97,16 +94,16 @@ function isImgCached($file) {
 function stdImgFooter(&$graph,$left=true,$right=true) {
 	global $ps, $imgconf;
 	$i =& $imgconf;
-	if ($left and imgdef($i['common']['footer']['show'],1)) {
+	if ($left and imgdef($i['common']['@footer']['show'],1)) {
 		$graph->footer->left->Set(sprintf(imgdef($i['common']['footer']['left'], 'PsychoStats v%s'), $ps->version(true)));
-		$graph->footer->left->SetColor(imgdef($i['common']['footer']['color'], 'black@0.5'));
-		$graph->footer->left->SetFont(constant(imgdef($i['common']['footer']['font'],'FF_FONT0')),FS_NORMAL);
+		$graph->footer->left->SetColor(imgdef($i['common']['@footer']['color'], 'black@0.5'));
+		$graph->footer->left->SetFont(constant(imgdef($i['common']['@footer']['font'],'FF_FONT0')),FS_NORMAL);
 	}
 
-	if ($right and imgdef($i['common']['footer']['show'],1)) {
+	if ($right and imgdef($i['common']['@footer']['show'],1)) {
 		$graph->footer->right->Set(date(imgdef($i['common']['footer']['right'], 'Y-m-d @ H:i:s')));
-		$graph->footer->right->SetColor(imgdef($i['common']['footer']['color'], 'black@0.5'));
-		$graph->footer->right->SetFont(constant(imgdef($i['common']['footer']['font'],'FF_FONT0')),FS_NORMAL);
+		$graph->footer->right->SetColor(imgdef($i['common']['@footer']['color'], 'black@0.5'));
+		$graph->footer->right->SetFont(constant(imgdef($i['common']['@footer']['font'],'FF_FONT0')),FS_NORMAL);
 	}
 }
 
@@ -118,19 +115,10 @@ function imgdef($var, $def = '') {
 }
 
 function load_img_conf() {
-	global $ps, $cms;
-	$xml = &new XML_Unserializer(array(
-		XML_UNSERIALIZER_OPTION_ATTRIBUTES_PARSE    => true,
-		XML_UNSERIALIZER_OPTION_ATTRIBUTES_ARRAYKEY => false
-	));
-	$status = $xml->unserialize($cms->theme->parse('images.xml'));
-	if (PEAR::isError($status)) {
-		die("Error reading $file: " . $status->getMessage());
-	} else {
-		$conf = $xml->getUnserializedData();
-		if (!is_array($conf)) $conf = array();
-		return $conf;
-	}
+	global $cms;
+	$xml = $cms->theme->parse('images.xml');
+	$conf = XML_unserialize($xml);
+	return $conf['images'] ? $conf['images'] : array();
 }
 
 

@@ -47,7 +47,7 @@ $max = 14;
 if (!isImgCached($imgfilename)) {
 	$imgconf = load_img_conf();
 	$s =& $imgconf['sessimg'];
-	$showempty = (bool)imgdef($s['frame']['bar']['showempty'], false);
+	$showempty = (bool)imgdef($s['frame']['@bar']['showempty'], false);
 
 	if (!$noname) {
 		$plrname = $ps->db->fetch_item("SELECT name FROM $ps->t_plr p, $ps->t_plr_profile pp WHERE p.uniqueid=pp.uniqueid AND p.plrid='" . $ps->db->escape($plrid) . "'");
@@ -111,24 +111,24 @@ if ($noname) {
 }
 
 //$graph->SetBackgroundGradient('gray','whitesmoke',GRAD_LEFT_REFLECTION,BGRAD_MARGIN); 
-$graph->SetMarginColor(imgdef($s['frame']['margin'], '#C4C4C4')); 
-$graph->SetFrame(true,imgdef($s['frame']['color'], 'gray'), imgdef($s['frame']['width'], 1)); 
+$graph->SetMarginColor(imgdef($s['@frame']['margin'], '#C4C4C4')); 
+$graph->SetFrame(true,imgdef($s['@frame']['color'], 'gray'), imgdef($s['@frame']['width'], 1)); 
 
 $graph->ShowHeaders(GANTT_HHOUR);
 
 if (!$noname) $graph->title->Set($plrname);
 //$graph->title->SetColor('blue');
-//$graph->subtitle->Set(imgdef($s['frame']['title']['_content'], 'Player Sessions'));
-//$graph->subtitle->SetFont(constant(imgdef($s['frame']['font'], 'FF_FONT0')));
+//$graph->subtitle->Set(imgdef($s['frame']['title'], 'Player Sessions'));
+//$graph->subtitle->SetFont(constant(imgdef($s['@frame']['font'], 'FF_FONT0')));
 
 // must override the weekend settings ...
 $graph->scale->UseWeekendBackground(false);
-$graph->scale->day->SetWeekendColor(imgdef($s['frame']['header']['bgcolor'], 'lightyellow:1.5'));
-$graph->scale->day->SetSundayFontColor(imgdef($s['frame']['header']['color'], 'black'));
+$graph->scale->day->SetWeekendColor(imgdef($s['frame']['@header']['bgcolor'], 'lightyellow:1.5'));
+$graph->scale->day->SetSundayFontColor(imgdef($s['frame']['@header']['color'], 'black'));
 
 // match the weekend settings ...
-$graph->scale->hour->SetFontColor(imgdef($s['frame']['header']['color'], 'black')); 
-$graph->scale->hour->SetBackgroundColor(imgdef($s['frame']['header']['bgcolor'], 'lightyellow:1.5'));
+$graph->scale->hour->SetFontColor(imgdef($s['frame']['@header']['color'], 'black')); 
+$graph->scale->hour->SetBackgroundColor(imgdef($s['frame']['@header']['bgcolor'], 'lightyellow:1.5'));
 
 $graph->scale->hour->SetFont(FF_FONT1);
 $graph->scale->hour->SetIntervall(2);
@@ -141,22 +141,22 @@ $graph->scale->actinfo->SetFont(FF_FONT1);
 $graph->scale->actinfo->SetColTitles(array("Day"));
 /**/
 
-$graph->hgrid->Show((bool)imgdef($s['frame']['hgrid']['show'], true));
-if ((bool)imgdef($s['frame']['hgrid']['show'], true)) {
+$graph->hgrid->Show((bool)imgdef($s['frame']['@hgrid']['show'], true));
+if ((bool)imgdef($s['frame']['@hgrid']['show'], true)) {
 	$graph->hgrid->SetRowFillColor(
-		imgdef($s['frame']['hgrid']['color1'],'whitesmoke@0.9'),
-		imgdef($s['frame']['hgrid']['color2'],'darkblue@0.9')
+		imgdef($s['frame']['@hgrid']['color1'],'whitesmoke@0.9'),
+		imgdef($s['frame']['@hgrid']['color2'],'darkblue@0.9')
 	);
 }
 
 for($i=0; $i<count($data); ++$i) {
 	$bar = new GanttBar($data[$i][0],$data[$i][1],$data[$i][2],$data[$i][3]);
 	$bar->SetPattern(
-		constant(imgdef($s['frame']['bar']['pattern'], 'BAND_RDIAG')),
-		imgdef($s['frame']['bar']['patternfill'], 'lightblue')
+		constant(imgdef($s['frame']['@bar']['pattern'], 'BAND_RDIAG')),
+		imgdef($s['frame']['@bar']['patternfill'], 'lightblue')
 	);
-	if (imgdef($s['frame']['bar']['fill'], 'darkblue') != 'BAND_SOLID') {
-		$bar->SetFillColor(imgdef($s['frame']['bar']['fill'], 'darkblue'));
+	if (imgdef($s['frame']['@bar']['fill'], 'darkblue') != 'BAND_SOLID') {
+		$bar->SetFillColor(imgdef($s['frame']['@bar']['fill'], 'darkblue'));
 	}
 #	$bar->SetShadow(true, 'black@0.5');
 	$graph->Add($bar);
