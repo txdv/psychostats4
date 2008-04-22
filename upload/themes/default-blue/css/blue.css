@@ -68,6 +68,10 @@ body {
 	background: url(../img/table-footer-bg.png) repeat-x 0 bottom;
 }
 
+.ps-award-ctrl, .ps-award-ctrl-bottom {
+	background: url(../img/table-header-bg.jpg) repeat-x;
+}
+
 /* 2column.css */
 .ps-column-header {
 	background: url(../img/table-header-bg.jpg) repeat-x;
@@ -75,4 +79,9 @@ body {
 
 .ps-column-content p.hl {
 	background-color: #c5d5fa;
+}
+
+/* query.css */
+.ps-server-main .hdr {
+	background: url(../img/table-header-bg.jpg) repeat-x;
 }
