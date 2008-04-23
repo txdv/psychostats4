@@ -40,7 +40,13 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'100 Players are not always shown due to certain IP ranges not being geocoded' =>
 		'',
+	'A file location must be defined to download the theme from' =>
+		'',
+	'A name must be defined' =>
+		'',
 	'A password must be entered for new users' =>
+		'',
+	'A source location must be defined to download the theme from' =>
 		'',
 	'A user can only be associated with a single player.' =>
 		'',
@@ -53,6 +59,8 @@ function PsychoLanguage_default_en_US() {
 	'Activity' =>
 		'',
 	'Activity Level' =>
+		'',
+	'Add Friend' =>
 		'',
 	'Add New Member' =>
 		'',
@@ -92,6 +100,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Change Password?' =>
 		'',
+	'Change Theme' =>
+		'',
 	'Chest' =>
 		'',
 	'Clan' =>
@@ -104,11 +114,11 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Clan Name' =>
 		'',
-	'Clan Profile for Tag' =>
-		'',
-	'Clan Rankings' =>
-		'',
 	'Clan Rundown' =>
+		'',
+	'Clan Statistics' =>
+		'',
+	'Clan Statistics for Tag' =>
 		'',
 	'Clan Tag' =>
 		'',
@@ -125,6 +135,8 @@ function PsychoLanguage_default_en_US() {
 	'Click here to refresh' =>
 		'',
 	'Click on an avatar to select it.' =>
+		'',
+	'Click to select theme' =>
 		'',
 	'Connections' =>
 		'',
@@ -228,11 +240,15 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'has' =>
 		'',
+	'has been played for' =>
+		'',
 	'Head' =>
 		'',
 	'Headshot Kills' =>
 		'',
 	'Headshot Kills Percentage' =>
+		'',
+	'Heatmaps' =>
 		'',
 	'Historical Days' =>
 		'',
@@ -252,6 +268,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'ICQ Number' =>
 		'',
+	'Image must start with http:// or https://' =>
+		'',
 	'in damage' =>
 		'',
 	'Informational Fields' =>
@@ -262,11 +280,21 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Invalid access level specified' =>
 		'',
+	'Invalid characters found in name' =>
+		'',
+	'Invalid characters found in parent' =>
+		'',
 	'Invalid clan ID Specified' =>
 		'',
 	'Invalid clan ID specified.' =>
 		'',
+	'Invalid image defined' =>
+		'',
 	'Invalid map ID specified.' =>
+		'',
+	'Invalid name defined' =>
+		'',
+	'Invalid parent defined' =>
 		'',
 	'Invalid player ID Specified' =>
 		'',
@@ -279,6 +307,8 @@ function PsychoLanguage_default_en_US() {
 	'Invalid username or password' =>
 		'',
 	'Invalid weapon ID specified.' =>
+		'',
+	'Invalid website defined' =>
 		'',
 	'IP' =>
 		'',
@@ -356,7 +386,7 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Map' =>
 		'',
-	'Map Profile' =>
+	'Map Statistics' =>
 		'',
 	'Maps' =>
 		'',
@@ -412,6 +442,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'No clans to display' =>
 		'',
+	'No file defined' =>
+		'',
 	'No Historical Stats Found' =>
 		'',
 	'No Map Found!' =>
@@ -419,6 +451,8 @@ function PsychoLanguage_default_en_US() {
 	'No Maps Found' =>
 		'',
 	'No Members Found!' =>
+		'',
+	'No name defined' =>
 		'',
 	'No player awards on this date' =>
 		'',
@@ -431,6 +465,8 @@ function PsychoLanguage_default_en_US() {
 	'No Roles Found' =>
 		'',
 	'No Sessions Found' =>
+		'',
+	'No source defined' =>
 		'',
 	'No Stats Available' =>
 		'',
@@ -488,6 +524,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Player History' =>
 		'',
+	'Player Hitbox' =>
+		'',
 	'player IDs are shown' =>
 		'',
 	'Player IP Addresses' =>
@@ -498,10 +536,6 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Player Names' =>
 		'',
-	'Player Profile' =>
-		'',
-	'Player Rankings' =>
-		'',
 	'Player Registration Completed!' =>
 		'',
 	'Player registration is currently disabled!' =>
@@ -511,6 +545,8 @@ function PsychoLanguage_default_en_US() {
 	'Player Roles / Classes' =>
 		'',
 	'Player Rundown' =>
+		'',
+	'Player Statistics' =>
 		'',
 	'Player Steamid\'s' =>
 		'',
@@ -580,7 +616,7 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Role' =>
 		'',
-	'Role Profile' =>
+	'Role Statistics' =>
 		'',
 	'Roles' =>
 		'',
@@ -599,6 +635,8 @@ function PsychoLanguage_default_en_US() {
 	'Secure' =>
 		'',
 	'Select a Language' =>
+		'',
+	'Select a theme from this gallery.' =>
 		'',
 	'Select Members' =>
 		'',
@@ -639,6 +677,12 @@ function PsychoLanguage_default_en_US() {
 	'The %s does not exist!' =>
 		'',
 	'The unique ID ({$conf.main.uniqueid}) given for your player must already exist or registration will fail.' =>
+		'',
+	'Theme download file not found or invalid type (' =>
+		'',
+	'Theme Gallery' =>
+		'',
+	'Themes will be applied to your session even if you\'re not logged in.' =>
 		'',
 	'There are currently no awards in the database to display.' =>
 		'',
@@ -688,6 +732,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Type' =>
 		'',
+	'Unable to download theme file from ' =>
+		'',
 	'Unclassified' =>
 		'',
 	'Unique ID' =>
@@ -724,21 +770,23 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'View' =>
 		'',
+	'View Heatmap' =>
+		'',
 	'View History' =>
 		'',
-	'View Profile' =>
+	'View Statistics' =>
 		'',
 	'Weapon' =>
 		'',
-	'Weapon Profile' =>
-		'',
-	'Weapon Usage' =>
+	'Weapon Statistics' =>
 		'',
 	'Weapons' =>
 		'',
 	'weapons have killed' =>
 		'',
 	'Website' =>
+		'',
+	'Website must start with http:// or https://' =>
 		'',
 	'Week' =>
 		'',
@@ -751,6 +799,8 @@ function PsychoLanguage_default_en_US() {
 	'Windows' =>
 		'',
 	'Yesterday' =>
+		'',
+	'You are using this theme' =>
 		'',
 	'You can now access and modify your own <b><a href="{url _base=\'editplr.php\' id=$plr.plrid}">player profile</a></b>.' =>
 		'',
@@ -769,29 +819,29 @@ function PsychoLanguage_default_en_US() {
 function MANAGE_CLAN_MEMBERS() {
 	$text  = '';
 	$text .= 'If you manually edit the member list you should check the "lock" button.' . "\n";
-	$text .= 'Otherwise there is no guarantee the listing will remain the way you set it.' . "\n";
+	$text .= '		Otherwise there is no guarantee the listing will remain the way you set it.' . "\n";
 	return $text;
 }
 
 function REGISTER_NEW_USER() {
 	$text  = '';
 	$text .= 'Register a user for this player by entering a username and password below.' . "\n";
-	$text .= 'This will allow the user to login and modify their profile.' . "\n";
+	$text .= '		This will allow the user to login and modify their profile.' . "\n";
 	return $text;
 }
 
 function REGISTRATION_COMPLETE() {
 	$text  = '';
 	$text .= 'In the future, to <a href="{url _base=\'login.php\'}">login</a> please use your username ' . "\n";
-	$text .= '\'<b><a href="{url _base=\'edituser.php\' id=$reg.userid}">{$reg.username|escape}</a></b>\' with the password you supplied ' . "\n";
-	$text .= 'in your registration.' . "\n";
+	$text .= '	\'<b><a href="{url _base=\'edituser.php\' id=$reg.userid}">{$reg.username|escape}</a></b>\' with the password you supplied ' . "\n";
+	$text .= '	in your registration.' . "\n";
 	return $text;
 }
 
 function REGISTRATION_CONFIRM() {
 	$text  = '';
 	$text .= 'You will not be able to login and access your profile until an administrator confirms your account. ' . "\n";
-	$text .= 'If you entered an email address in your registration you will be notified when the account is confirmed.' . "\n";
+	$text .= '	If you entered an email address in your registration you will be notified when the account is confirmed.' . "\n";
 	return $text;
 }
 
