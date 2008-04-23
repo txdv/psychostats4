@@ -23,6 +23,7 @@
 *
 * Version: $Id$
 * Author:  K1ller
+* Website: http://www.psychostats.com/
 """
 
 import es
