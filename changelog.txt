@@ -1,4 +1,4 @@
-Version 3.1 (...)
+Version 3.1 (05/01/2008)
 * Implemented CMS and plugin architecture in the PHP front-end.
 * Recoded theme routines to be more robust and tolerant.
 * Redesigned default theme template. XHTML compliant and easier to maintain.
@@ -32,7 +32,14 @@ support for game mods.
 * Overhauled the overview page with lots of useful charts and a google map.
 * Implemented backend Spatial stats.
 * BUG: Fixed name changes when tracking by name (names were not being separated).
-* 1 million and 1 tweaks and fixes.
+* Implemented Heatmaps (uses spatial stats)
+* Added default-blue skin.
+* Updated player profile display in the default theme to be a bit more pleasing to 
+the eyes. And added a link to a players SteamID profile page on steamcommunity.com.
+* Fixed DOD flag caps.
+* Added theme install wizard to ACP for automatic download and installation of new themes.
+* 1 million and 1 tweaks and fixes and other things I've forgotten. See the full 
+timeline on http://www.psychostats.com/trac/psychostats/timeline/
 
 Version 3.0.6 beta (2007-05-01)
 * Fixed query.html: rcon commands would not work.
