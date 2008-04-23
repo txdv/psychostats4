@@ -69,7 +69,7 @@ function member_add(){
 	var params = $('#member-form').serialize() + '&ajax=1';
 	$.post('editclan.php', params, function(data){
 		if ($.trim(data) != 'error') {
-			$('#member-table').append(data);
+			$('#member-table tbody').append(data);
 			$('#member-table a[@id^=mem]').click(member_remove);
 			member_zebra();
 			selected.remove();

@@ -217,14 +217,12 @@ function next_str($next) {
 		list($y1,$m1,$d1) = explode('-', date("Y-m-d"));
 		list($y2,$m2,$d2) = explode('-', $next['day']);
 		if ("$y2$m2" == "$y1$m1" and $d2+0 == $d1+1) {
-			$str .= sprintf(" %s <a href='%s'>%s</a>", 
-				"<img src='" . $cms->theme->url() . "/img/icons/arrow_right.png' />",
+			$str .= sprintf("<a href='%s' class='next'>%s</a>", 
 				ps_url_wrapper(array( 'v' => 'day', 'd' => $next['day'], 'p' => $p )),
 				$cms->trans("Today")
 			);
 		} else {
-			$str .= sprintf(" %s <a href='%s'>%s</a>", 
-				"<img src='" . $cms->theme->url() . "/img/icons/arrow_right.png' />",
+			$str .= sprintf("<a href='%s' class='next'>%s</a>", 
 				ps_url_wrapper(array( 'v' => 'day', 'd' => $next['day'], 'p' => $p )),
 				date("M d", ymd2time($next['day']))
 			);
@@ -232,16 +230,14 @@ function next_str($next) {
 	}
 
 	if ($next['week']) {
-		$str .= sprintf(" %s <a href='%s'>%s</a>", 
-			"<img src='" . $cms->theme->url() . "/img/icons/arrow_right.png' />",
+		$str .= sprintf("<a href='%s' class='next'>%s</a>", 
 			ps_url_wrapper(array( 'v' => 'week', 'd' => $next['week'], 'p' => $p )),
 			$cms->trans("Week") . date(" W; M d", ymd2time($next['week']))
 		);
 	}
 
 	if ($next['month']) {
-		$str .= sprintf(" %s <a href='%s'><b>%s</b></a>", 
-			"<img src='" . $cms->theme->url() . "/img/icons/arrow_right.png' />",
+		$str .= sprintf("<a href='%s' class='next'><b>%s</b></a>", 
 			ps_url_wrapper(array( 'v' => 'month', 'd' => $next['month'], 'p' => $p )), 
 			date("M", ymd2time($next['month']))
 		);
@@ -254,18 +250,16 @@ function prev_str($prev) {
 	$str = "";
 
 	if ($prev['month']) {
-		$str .= sprintf("<a href='%s'><b>%s</b></a> %s ", 
+		$str .= sprintf("<a href='%s' class='prev'>%s</a>", 
 			ps_url_wrapper(array( 'v' => 'month', 'd' => $prev['month'], 'p' => $p )), 
-			date("M", ymd2time($prev['month'])),
-			"<img src='" . $cms->theme->url() . "/img/icons/arrow_left.png' />"
+			date("M", ymd2time($prev['month']))
 		);
 	}
 
 	if ($prev['week']) {
-		$str .= sprintf("<a href='%s'>%s</a> %s ", 
+		$str .= sprintf("<a href='%s' class='prev'>%s</a>", 
 			ps_url_wrapper(array( 'v' => 'week', 'd' => $prev['week'], 'p' => $p )),
-			$cms->trans("Week") . date(" W; M d", ymd2time($prev['week'])),
-			"<img src='" . $cms->theme->url() . "/img/icons/arrow_left.png' />"
+			$cms->trans("Week") . date(" W; M d", ymd2time($prev['week']))
 		);
 	}
 
@@ -273,16 +267,14 @@ function prev_str($prev) {
 		list($y1,$m1,$d1) = explode('-', date("Y-m-d"));
 		list($y2,$m2,$d2) = explode('-', $prev['day']);
 		if ("$y2$m2" == "$y1$m1" and $d2+0 == $d1-1) {
-			$str .= sprintf("<a href='%s'>%s</a> %s ", 
+			$str .= sprintf("<a href='%s' class='prev'>%s</a>", 
 				ps_url_wrapper(array( 'v' => 'day', 'd' => $prev['day'], 'p' => $p )),
-				$cms->trans("Yesterday"),
-				"<img src='" . $cms->theme->url() . "/img/icons/arrow_left.png' />"
+				$cms->trans("Yesterday")
 			);
 		} else {
-			$str .= sprintf("<a href='%s'>%s</a> %s ", 
+			$str .= sprintf("<a href='%s' class='prev'>%s</a>", 
 				ps_url_wrapper(array( 'v' => 'day', 'd' => $prev['day'], 'p' => $p )),
-				date("M d", ymd2time($prev['day'])),
-				"<img src='" . $cms->theme->url() . "/img/icons/arrow_left.png' />"
+				date("M d", ymd2time($prev['day']))
 			);
 		}
 	}
