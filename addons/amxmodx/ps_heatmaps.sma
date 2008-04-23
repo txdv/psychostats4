@@ -4,7 +4,7 @@
 
           | Author  : Stormtrooper
           | Plugin  : PsychoStats Plugin ( HL1 )
-          | Version : v1.1
+          | Version : $Id$
 
         (!) Original site  : http://www.psychostats.com/
         (!) Adapted on HL1 : Arkshine
