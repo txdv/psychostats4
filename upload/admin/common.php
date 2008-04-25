@@ -54,4 +54,13 @@ if (!$cms->user->admin_logged_in()) {
 	}
 }
 
+// set flag if the install directory (go script) is still readable by the webserver. 
+// admins need to remove the install directory after installation.
+if (is_readable(catfile(dirname(dirname(__FILE__)), 'install', 'go.php'))) {
+	$cms->theme->assign(array(
+		'install_dir_insecure' 	=> true,
+		'install_dir'		=> catfile(dirname(dirname(__FILE__)), 'install')
+	));
+}
+
 ?>

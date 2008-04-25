@@ -263,6 +263,27 @@ div.warning ul, div.warning ul li {
 	font-size: 120%;
 }
 
+div.insecure {
+	padding: 0.5em 0.5em 0.5em 30px;
+	margin: 0.5em auto;
+	width: 595px;
+	background: lightyellow url(../img/icons/error.png) repeat-y 5px 50%;
+	border: 1px solid darkred;
+	color: #000;
+	text-align: left;
+}
+#ps-main div.insecure h3 {
+	border-bottom: 1px solid darkred;
+	font-size: 120%;
+	font-weight: bold;
+	color: red;
+}
+#ps-main div.insecure h4 {
+	border: none;
+	font-size: 100%;
+	color: #000;
+}
+
 /* --- TABS ------------------------------- */
 
 .ps-tabs {

@@ -6,6 +6,14 @@
 
 {include file="crumbs.html"}
 
+{if $install_dir_insecure} {* warn the user that the install directory is still viewable *}
+	{include file='insecure.html'
+		title='Insecure Install Directory'
+		dir=$install_dir
+		message='<#The installation directory should be removed after installation is completed!#> <#If you do not remove this directory anyone will be able to access your database!!#>'
+	}
+{/if}
+
 <!-- admin menu -->
 <div id="ps-main-column">
 <div class="ps-column-frame">
