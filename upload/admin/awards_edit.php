@@ -70,7 +70,7 @@ $form->field('groupname');
 $form->field('expr','blank');
 $form->field('order');
 $form->field('where');
-$form->field('limit','numeric');
+//$form->field('limit','numeric');
 $form->field('format');
 $form->field('gametype');
 $form->field('modtype');
