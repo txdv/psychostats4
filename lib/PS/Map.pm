@@ -170,6 +170,7 @@ sub _init {
 	$self->{spatial} = {};
 
 	$self->{conf_maxdays} = $self->{conf}->get_main('maxdays');
+	$self->{heatmap_maxdays} = $self->{conf}->get_main('heatmap.maxdays');
 
 	$self->{mapid} = $self->{db}->select($self->{db}->{t_map}, 'mapid', 
 		"uniqueid=" . $self->{db}->quote($self->{mapname})
@@ -271,9 +272,12 @@ sub save {
 sub save_all_spatial {
 	my ($self) = @_;
 	if (defined $self->{spatial}) {
+		my $today = strftime("%Y-%m-%d", localtime);
 		foreach my $date (keys %{$self->{spatial}}) {
 			# save an entire day all at once
-			$self->save_spatial($self->{spatial}{$date});
+			if (diffdays_ymd($today, $date) <= $self->{heatmap_maxdays}) {
+				$self->save_spatial($self->{spatial}{$date});
+			}
 		}
 		$self->{spatial} = {};
 	}
@@ -325,10 +329,11 @@ sub hourly {
 sub spatial {
 	my ($self, $game, $p1, $ap, $p2, $vp, $w, $headshot) = @_;
 	return unless defined $ap && defined $vp;
+#	return if 60*60*24*$self->{conf_maxdays} - time > $game->{timestamp};
 	my $set = {
 		mapid		=> $self->{mapid},
 		weaponid	=> $w->{weaponid},
-		statdate	=> strftime("%Y-%m-%d", localtime($game->{timestamp})),
+		statdate	=> strftime("%Y-%m-%d", localtime($game->{timestamp})), 
 		hour		=> $game->{hour},
 		roundtime	=> $game->{roundstart} ? $game->{timestamp} - $game->{roundstart} : 0,
 		kid		=> $p1->{plrid},

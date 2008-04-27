@@ -223,7 +223,7 @@ if ($opt->team and ($opt->kteam or $opt->vteam)) {
 
 # setup some defaults and command overrides for our config that will generate the heatmap
 my $hc = $conf->get_main('heatmap');				# 'heatmap.*' config from database (hc = heatmap config)
-delete @$hc{qw( SECTION IDX hourly )};				# remove some variables
+delete @$hc{qw( SECTION IDX )};					# remove some variables
 $hc->{limit} 	= $opt->limit if $opt->exists('limit');
 $hc->{brush} 	= $opt->brush if $opt->exists('brush');
 $hc->{scale} 	= $opt->scale if $opt->exists('scale');
@@ -240,6 +240,7 @@ $hc->{kteam} 	= $opt->kteam if $opt->exists('kteam');
 $hc->{vteam} 	= $opt->vteam if $opt->exists('vteam');
 $hc->{headshot} = defined $opt->headshot ? $opt->headshot : undef;	# allow for undef, 0, 1
 $hc->{hourly} 	= (defined $opt->hourly and !$opt->nohourly);
+$hc->{dir}	= $opt->dir if $opt->exists('dir');
 
 # if hourly is enabled, change this option to the hours to generate (all 24 hours by default)
 if ($hc->{hourly}) {
@@ -297,16 +298,6 @@ $where .= "AND vteam=" . $db->quote($hc->{vteam}) . " " if $hc->{vteam};
 $where .= "AND kteam=" . $db->quote($hc->{kteam}) . " " if $hc->{kteam};
 $where .= "AND weaponid=$hc->{weaponid} " if $hc->{weaponid};
 $where .= "AND headshot=$hc->{headshot} " if defined $hc->{headshot};
-
-=pod
-my ($warm, $cold);
-{	# create some colors so we can reuse them
-	my $heat = new PS::Heatmap();
-	$heat->colorize;
-	$warm = $heat->warm;
-	$cold = $heat->cold;
-}
-=cut
 
 # loop through our map list and process each map
 while (my ($mapname, $mapid) = each(%$maplist)) {
@@ -399,7 +390,7 @@ sub get_resolution {
 # save the PNG data into the DB or as a file
 sub save_png {
 	my ($data, $hc) = @_;
-	my $out = $opt->file || 'DB';
+	my $out = $opt->file || $hc->{dir} || 'DB';
 	my @vars = qw(mapid weaponid statdate enddate hour headshot who pid kid vid team kteam vteam);	
 	my $set = { map {$_ => $hc->{$_}} @vars };
 	$set->{who} = 'both' if exists $hc->{who2} and $hc->{who2} ne $hc->{who};
@@ -409,7 +400,7 @@ sub save_png {
 		$set->{datablob} = $data;
 		warn "Saving heatmap for $hc->{mapname} directly to database (" . abbrnum(length($data)) . ")\n";
 	} else {
-		my $file = file_format($opt->file, $hc) || file_format($hc->{format}, $hc);
+		my $file = $out ? file_format($out, $hc) : file_format($hc->{format}, $hc);
 		if (-d $file) {
 			$file = catfile($file, file_format($hc->{format}, $hc));
 		}
