@@ -7,8 +7,6 @@ use base qw( PS::Map::halflife );
 our $TYPES = {
 	redkills		=> '+',
 	bluekills		=> '+',
-#	reddeaths		=> '+',
-#	bluedeaths		=> '+',
 
 	redwon			=> '+',
 	redwonpct		=> [ percent2 => qw( redwon bluewon ) ],

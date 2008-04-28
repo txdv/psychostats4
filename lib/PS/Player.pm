@@ -1006,10 +1006,15 @@ sub save {
 		}
 	}
 
+	# clear all stats in memory
 	$self->{basic} = {};
+	$self->{mod} = {};
 	$self->{weapons} = {};
 	$self->{victims} = {};
 	$self->{maps} = {};
+	$self->{mod_maps} = {};
+	$self->{roles} = {};
+	$self->{mod_roles} = {};
 
 	# ----------------------------------------------------------------
 	# all info below here is player info and not stats. It's possible I could code a method to 
