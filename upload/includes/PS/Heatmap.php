@@ -82,7 +82,7 @@ function get_map_heatmaps($mapid, $criteria = array()) {
 	$no_criteria 	= $this->heatkey(array( 'mapid' => $mapid ));
 	$hourly 	= $this->heatkey(array( 'mapid' => $mapid, 'hourly' => true ));
 	foreach ($list as $m) {
-		// overall heatmap: no specific criteria except for 'who'
+	// overall heatmap: no specific criteria except for 'who'
 		if ($m['hour'] == null and $m['heatkey'] == $no_criteria) {
 			$m['label'] = $this->_who_label("Overall ", $m['who']);
 
@@ -90,13 +90,25 @@ function get_map_heatmaps($mapid, $criteria = array()) {
 			$m['hour'] = true;
 			$m['label'] = $this->_who_label("Hourly ", $m['who']);
 
-		} elseif ($m['hour'] == null and $m['weaponid'] != null 
-			and $m['heatkey'] == $this->heatkey(array( 'mapid' => $mapid, 'weaponid' => $m['weaponid'] ))) 
+		} elseif ($m['team'] != null) {
+			$m['label'] = $this->_who_label("Combined " . $m['team'] . " " . $m['weaponlabel'] . " ", $m['who']);
+
+		} elseif ($m['kteam'] != null and $m['vteam'] != null) {
+			$m['label'] = $this->_who_label("Killer team " . $m['vteam'] . ", victim team " . $m['vteam'] . " " . $m['weaponlabel'] . " ", $m['who']);
+
+		} elseif ($m['kteam'] != null) {
+			$m['label'] = $this->_who_label("Killer team " . $m['kteam'] . ": " . $m['weaponlabel'] . " ", $m['who']);
+
+		} elseif ($m['vteam'] != null) {
+			$m['label'] = $this->_who_label("Victim team " . $m['vteam'] . ": " . $m['weaponlabel'] . " ", $m['who']);
+
+		} elseif ($m['hour'] == null and $m['weaponid'] != null
+			and $m['heatkey'] == $this->heatkey(array( 'mapid' => $mapid, 'weaponid' => $m['weaponid'] )))
 		{
 			$m['label'] = $this->_who_label("Weapon: " . $m['weaponlabel'] . " ", $m['who']);
 
-		} elseif ($m['hour'] != null and $m['weaponid'] != null 
-			and $m['heatkey'] == $this->heatkey(array( 'mapid' => $mapid, 'weaponid' => $m['weaponid'], 'hourly' => true ))) 
+		} elseif ($m['hour'] != null and $m['weaponid'] != null
+			and $m['heatkey'] == $this->heatkey(array( 'mapid' => $mapid, 'weaponid' => $m['weaponid'], 'hourly' => true )))
 		{
 			$m['hour'] = true;
 			$m['label'] = $this->_who_label("Hourly Weapon: " . $m['weaponlabel'] . " ", $m['who']);
@@ -105,7 +117,7 @@ function get_map_heatmaps($mapid, $criteria = array()) {
 			continue;
 		}
 
-//		print_r($m);
+		//          print_r($m);
 		$maps[ $m['heatid'] ] = $m;
 	}
 	return $maps;
