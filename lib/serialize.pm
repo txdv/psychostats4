@@ -99,7 +99,7 @@ you've thoroughly tested it.
 =pod
 Serialize a session hashref.
 http://php.net/session_encode
-=end
+=cut
 sub session_encode {
 	my ($value) = @_;
 	my $s = "";

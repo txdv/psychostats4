@@ -77,12 +77,12 @@ function get_map_heatmaps($mapid, $criteria = array()) {
 		" WHERE mapid=" . $db->escape($mapid, true) .
 		" GROUP BY heatkey,who"
 	);
-	print $db->errstr;
+//	print $db->errstr;
 	// loop through each heatmap row and determine the type and what criteria it has
 	$no_criteria 	= $this->heatkey(array( 'mapid' => $mapid ));
 	$hourly 	= $this->heatkey(array( 'mapid' => $mapid, 'hourly' => true ));
 	foreach ($list as $m) {
-	// overall heatmap: no specific criteria except for 'who'
+		// overall heatmap: no specific criteria except for 'who'
 		if ($m['hour'] == null and $m['heatkey'] == $no_criteria) {
 			$m['label'] = $this->_who_label("Overall ", $m['who']);
 
