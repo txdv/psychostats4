@@ -24,7 +24,7 @@ use warnings;
 use base qw( PS::Game );
 
 use util qw( :net :date bench print_r );
-use Encode;
+use Encode qw(encode decode);
 use Time::Local qw( timelocal_nocheck );
 use PS::Player;
 use PS::Map;
@@ -150,7 +150,7 @@ sub event {
 	my ($src, $event, $line) = @_;
 	my ($prefix, $timestamp);
 	my ($a, $b, $c);
-	$event = Encode::decode('utf8',$event);
+	$event = decode('UTF-8',$event);		# HL logs are UTF-8 encoded
 	chomp($event);
 	return if length($event) < PREFIX_LENGTH;	#			"123456789*123456789*12345"
 	$prefix = substr($event, 0, PREFIX_LENGTH);	# PREFIX (25 chars): 	"L MM/DD/YYYY - hh:mm:ss: "
@@ -517,7 +517,7 @@ sub event_connected {
 	# seems to interfere with character positions and sometimes the uid is not parsed properly.
 	# I'm not 100% sure why this is happening here, and not in the main get_plr() routine which uses
 	# some of the same code...
-	my $str = encode_utf8($plrstr);
+	my $str = encode('UTF-8', $plrstr);
 	substr($str, rindex($str,'<'), 128, '');				# remove the team
 	my $worldid = substr(substr($str, rindex($str,'<'), 128, ''), 1, -1);
 	my $uid = substr(substr($str, rindex($str,'<'), 128, ''), 1, -1);
@@ -752,7 +752,7 @@ sub event_chat {
 	my $p1 = $self->get_plr($plrstr) || return;
 	return if $self->isbanned($p1);
 
-#	$msg = encode('utf8',$msg);
+#	$msg = encode('UTF-8', $msg);
 	return unless $msg =~ /^$self->{usercmds}{prefix}(.+)\s+(.+)/o;
 	my ($cmd, $param) = ($1, $2);
 

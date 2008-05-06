@@ -125,8 +125,6 @@ sub event_plrtrigger {
 #		my $r2 = $self->get_role($p2->{role}, $p1->{team});
 		@vars = ( 'dominations' );
 
-		$self->plrbonus('domination', 'enactor', $p1, 'victim', $p2);
-
 	} elsif ($trigger eq 'captureblocked') {
 		@vars = ( $p1->{team} . 'captureblocked', 'captureblocked' );
 
