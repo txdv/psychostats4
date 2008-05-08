@@ -13,7 +13,7 @@ public OnPluginStart()
 
 public StartSQL()
 {
-	SQL_TConnect(GotDatabase);
+	SQL_TConnect(GotDatabase, "psychostats");
 }
  
 public GotDatabase(Handle:owner, Handle:hndl, const String:error[], any:data)
