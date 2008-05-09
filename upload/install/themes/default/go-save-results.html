@@ -17,7 +17,9 @@ res.html('');
 	{/foreach}
 {else}
 	res.append("<p class='row'><span class='good'>Configuration saved successfully!</span></p>");
+{*
 	{if $method == 'ftp'}$('#local-block').slideUp();{/if}
+*}
 {/if}
 res.slideDown();
 </script>

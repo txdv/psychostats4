@@ -133,7 +133,7 @@ if ($compiledir == $defaultdir) {
 // save the compiledir and fetch_compile (nosave) options
 //if ($dosubmit) {
 	if ($can_write) {
-		$db->query("UPDATE " . $db->table('config') . " SET value=" . $db->escape($compiledir, true) . " WHERE conftype='theme' AND section IS NULL AND var='compile_dir'");
+		$db->query("UPDATE " . $db->table('config') . " SET value=" . $db->escape($compiledir, true) . " WHERE conftype='theme' AND (section IS NULL OR section LIKE '') AND var='compile_dir'");
 	}
 	$db->query("UPDATE " . $db->table('config') . " SET value=" . ($nosave ? 0 : 1) . " WHERE conftype='theme' AND section IS NULL AND var='fetch_compile'");
 //}

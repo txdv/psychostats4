@@ -103,7 +103,14 @@ function download($follow_redirect = true) {
 	if ($this->_postdata) $req .= $this->_postdata;
 
 	// fetch
+	ob_start();
 	$this->_fp = fsockopen(($this->_protocol == 'https' ? 'ssl://' : '') . $this->_host, $this->_port, $this->errno, $this->errstr, 10);
+	$err = ob_get_clean();
+	if ($err) {
+		$this->_fp = false;
+		$this->_error = strip_tags($err);
+		$response = '';
+	}
 
 	if ($this->_fp) {
 		fwrite($this->_fp, $req);
