@@ -21,7 +21,7 @@
 #	$Id$
 #
 
-BEGIN { # FindBin isn't going to work on systems that run the stats.pl as SETUID
+BEGIN { # FindBin isn't going to work on systems that run as SETUID
 	use FindBin; 
 	use lib $FindBin::Bin;
 	use lib $FindBin::Bin . "/lib";
@@ -129,15 +129,24 @@ if ($opt->mapname and lc $opt->mapname ne 'all') {
 }
 
 { # private scope
+	my ($xml, $file);
 	my @ignored = ();
+	my $xmlpath = defined $opt->xmlpath ? $opt->xmlpath : '.';
 	foreach my $mapname (keys %$maplist) {
+		# try to load an XML file for each map (which will override any values found in heat.xml)
+		$file = catfile($xmlpath, $mapname . '.xml');
+		$xml = -f $file ? XMLin($file, NormaliseSpace => 2, SuppressEmpty => undef) : undef;
+		if ($xml) {
+			$mapinfo->{$mapname} = $xml;
+		}
 		unless (exists $mapinfo->{$mapname}) {
 			delete $maplist->{$mapname};
 			push(@ignored, $mapname);
 		}
 	}
 	if (@ignored) {
-		warn("Ignoring maps with no mapinfo available: " . join(", ", map { "'$_'" } @ignored) . ".\n") unless $opt->quiet;
+#		warn("Ignoring maps with no mapinfo available: " . join(", ", map { "'$_'" } @ignored) . ".\n") unless $opt->quiet;
+		warn(sprintf("Ignoring %d maps with no mapinfo available.\n", scalar @ignored));
 	}
 }
 

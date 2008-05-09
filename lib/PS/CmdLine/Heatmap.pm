@@ -51,6 +51,7 @@ sub _getOptions {
 		'overlay|img|bg=s'	=> \$self->{param}{overlay},
 		'scale=f'		=> \$self->{param}{scale},
 		'sql'			=> \$self->{param}{sql},
+		'xmlpath=s'		=> \$self->{param}{xmlpath},
 
 		# WHERE CLAUSE SETTINGS
 		'headshot:s'		=> \$self->{param}{headshot}, 
@@ -69,7 +70,7 @@ sub _getOptions {
 		# BASIC SETTINGS
 		'config=s'	=> \$self->{param}{config},
 		'noconfig'	=> \$self->{param}{noconfig},
-		'help|?'	=> \$self->{param}{help},
+		'help|h|?'	=> \$self->{param}{help},
 		'V|version'	=> \$self->{param}{version},
 		'quiet'		=> \$self->{param}{quiet},
 
@@ -276,6 +277,14 @@ Scale factor of the heat map. The higher the scale factor the smaller
 the heat map. A scale of 1 means the heat map will be the same size as the 
 map overlay image. 2 is half the size, etc. Each step in scale reduces the 
 size by half. The lower the scale the longer it takes to process the heatmap.
+
+=item B<-xmlpath> [path]
+
+Path to optional XML files for each map. heat.xml is loaded first, then each
+map is verified and if a valid XML file with the name of the map is present
+in the [xmlpath] specified then the values from that XML file will override
+those found in heat.xml. -xmlpath defaults to the same directory that heat.pl
+is located in.
 
 =back
 
