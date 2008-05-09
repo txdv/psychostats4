@@ -1,3 +1,12 @@
+Version 3.1.1 (...)
+* Fixed halflife::parseprops to properly parse player names in event parameters 
+that have double quotes (") in their name.
+* TF2: Team 'pointcaptured' old style events will once again give bonus points 
+to players (along with the newer style of the event
+* TF2: double bonus points for player 'dominations' are no longer given.
+* Fixed typo de_interno to de_inferno in heat.xml
+* Fixed a couple minor issues in the installer.
+
 Version 3.1 (05/01/2008)
 * Implemented CMS and plugin architecture in the PHP front-end.
 * Recoded theme routines to be more robust and tolerant.

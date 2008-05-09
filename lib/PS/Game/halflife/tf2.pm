@@ -58,7 +58,6 @@ sub event_plrtrigger {
 	my $m = $self->get_map;
 
 	$trigger = lc $trigger;
-	$self->plrbonus($trigger, 'enactor', $p1);
 	
 	my @vars = ();
 	if ($trigger eq 'weaponstats' or $trigger eq 'weaponstats2') {
@@ -93,24 +92,35 @@ sub event_plrtrigger {
 
 	} elsif ($trigger eq 'killedobject') {
 		my $props = $self->parseprops($propstr);
+		$p2 = $props->{objectowner} ? $self->get_plr($props->{objectowner}) : undef;
 		if ($props->{object} eq "OBJ_DISPENSER") {
 			@vars = ( 'dispenserdestroy' );
 
 		} elsif ($props->{object} eq "OBJ_SENTRYGUN") {
 			@vars = ( 'sentrydestroy' );
-			$self->plrbonus('killedsentry', 'enactor', $p1);	# these warrant an extra bonus
+			# do not give points to the object owner if they kill their own object
+			if (!$p2 or $p1->plrid != $p2->plrid) {
+				$self->plrbonus('killedsentry', 'enactor', $p1);	# depreciated; REMOVEME
+				$self->plrbonus('sentrydestroy', 'enactor', $p1);
+			}
 
 		} elsif ($props->{object} eq "OBJ_TELEPORTER_ENTRANCE" || $props->{object} eq "OBJ_TELEPORTER_EXIT") {
 			@vars = ( 'teleporterdestroy' );
+			# do not give points to the object owner if they kill their own object
+			$self->plrbonus('teleporterdestroy', 'enactor', $p1) if !$p2 or $p1->plrid != $p2->plrid;
 
 		} elsif ($props->{object} eq "OBJ_ATTACHMENT_SAPPER") {
 			@vars = ( 'sapperdestroy' );
+			# do not give points to the object owner if they kill their own object
+			$self->plrbonus('sapperdestroy', 'enactor', $p1) if !$p2 or $p1->plrid != $p2->plrid;
 
 		}
 		push(@vars, 'itemsdestroyed');
 
 	} elsif ($trigger eq 'revenge') {
 		@vars = ( 'revenge' );
+		$p2 = $self->get_plr($plrstr2);
+		$self->plrbonus($trigger, 'victim', $p2) if $p2;	# 'enactor' will get their bonus below...
 
 	} elsif ($trigger eq 'builtobject') {
 		@vars = ( 'itemsbuilt' );
@@ -121,9 +131,9 @@ sub event_plrtrigger {
 		@vars = ( 'chargedeployed' );
 
 	} elsif ($trigger eq 'domination') {
-		$p2 = $self->get_plr($plrstr2) || return;
-#		my $r2 = $self->get_role($p2->{role}, $p1->{team});
 		@vars = ( 'dominations' );
+		$p2 = $self->get_plr($plrstr2);
+		$self->plrbonus($trigger, 'victim', $p2) if $p2;	# 'enactor' will get their bonus below...
 
 	} elsif ($trigger eq 'captureblocked') {
 		@vars = ( $p1->{team} . 'captureblocked', 'captureblocked' );
@@ -135,6 +145,9 @@ sub event_plrtrigger {
 			$self->warn("Unknown player trigger '$trigger' from src $self->{_src} line $self->{_line}: $self->{_event}");
 		}
 	}
+
+	# allow bonuses on the raw trigger event
+	$self->plrbonus($trigger, 'enactor', $p1);
 
 	foreach my $var (@vars) {
 		$p1->{mod_maps}{ $m->{mapid} }{$var}++;
@@ -166,13 +179,23 @@ sub event_teamtrigger {
 		my $players = [];
 		my $list = [];
 		my $i = 1;
+
+		# old style (player "") (player "") ...
+		if (ref $props->{player}) {			# array of player strings
+			push(@$list, @{$props->{player}});
+		} elsif (defined $props->{player}) {		# 1 player string
+			push(@$list, $props->{player});
+		}
+
+		# new style (player1 "") (player2 "") ...
 		while (exists $props->{'player' . $i}) {
 			push(@$list, $props->{'player' . $i++});
 		}
+
 		return unless @$list;
 		foreach my $plrstr (@$list) {
 			my $p1 = $self->get_plr($plrstr) || next;
-			my $r1 = $self->get_role($p1->{roleid}, $team);
+#			my $r1 = $self->get_role($p1->{roleid}, $team);
 			$p1->{mod}{$trigger}++;
 			$p1->{mod}{$team . $trigger}++;
 			$p1->{mod_maps}{ $m->{mapid} }{$trigger}++;
@@ -208,6 +231,7 @@ sub event_round {
 		my $losers  = $self->get_team($team2, 1);
 		my $var = $team . 'won';
 		my $var2 = $team2 . 'lost';
+
 		$self->plrbonus($trigger, 'enactor_team', $winners, 'victim_team', $losers);
 		$m->{mod}{$var}++;
 		$m->{mod}{$var2}++;

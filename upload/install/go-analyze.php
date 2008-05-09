@@ -29,7 +29,7 @@ if (!defined("PSYCHOSTATS_INSTALL_PAGE")) die("Unauthorized access to " . basena
 $validfields = array();
 $cms->theme->assign_request_vars($validfields, true);
 
-$min_php_version = '4.1';
+$min_php_version = '4.3';
 $min_mysql_version = '4.1.11';
 
 $loaded_exts = array_flip(get_loaded_extensions());
@@ -49,7 +49,7 @@ $optional_ext = array(
 		   "player stats (charts and graphs).",
 	'mcrypt'=> "mcrypt support (encryption) is only needed if you want to enable some extra security features " . 
 		   "with user sessions. The extra security granted by having this extension is minimal to PsychoStats.",
-	'zip'	=> "ZIP support will enable some advanced features within the PsychoStats software but is not required."
+	'zip'	=> "ZIP support will allow you to download and install new themes directly from the ACP."
 );
 
 // check php and mysql versions for minimum requirement
