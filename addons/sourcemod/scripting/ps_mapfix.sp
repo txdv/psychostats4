@@ -36,9 +36,9 @@ new bool:fixed = false;
 
 public Plugin:myinfo =
 {
-        name = "PsychoStats Plugin",
+        name = "PsychoStats - First Map Fix",
         author = "Stormtrooper",
-        description = "PsychoStats Spatial Plugin",
+        description = "PsychoStats first map logging fix",
         version = "1.0",
         url = "http://www.psychostats.com/"
 };

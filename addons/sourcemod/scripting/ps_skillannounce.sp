@@ -1,5 +1,39 @@
+/**
+ * =============================================================================
+ * SourceMod PsychoStats Plugin
+ * Skill tracking in real-time in-game. Whenever player is skilled the skill
+ * change is announced for both victim and killer. When player joins his skill
+ * is announced publicly.
+ *
+ * =============================================================================
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License, version 3.0, as published by the
+ * Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Version: $Id: ps_mapfix.sp 411 2008-04-23 18:07:12Z lifo $
+ * Author: k1ller <http://www.psychostats.com/>
+ */
+
 new Handle:hDatabase = INVALID_HANDLE;
 new Handle:hSkills = INVALID_HANDLE;
+
+public Plugin:myinfo =
+{
+        name = "PsychoStats - Skill Announce",
+        author = "k1ller",
+        description = "PsychoStats real-time skill change tracker in-game",
+        version = "1.0",
+        url = "http://www.psychostats.com/"
+};
 
 public OnPluginStart()
 {
