@@ -555,20 +555,24 @@ function _sendquery($ipport, $cmd) {
 	fwrite($this->sock, $command, strlen($command));
 	$start = $this->_getmicrotime();
 
+	$has_splitsize = null;
+
+	$total_expected = 0;
 	$expected = 0;						// # of packets we're expecting
 	do {
 		$packet = fread($this->sock, 1500);
+		$original = $packet;
 		if (strlen($packet) == 0) {
 			$retry++;
 			if ($this->DEBUG) print "DEBUG: Resending query to $ip:$port:\n" . $this->hexdump($command) . "\n";
 			fwrite($this->sock, $command, strlen($command));
 #			$start = $this->_getmicrotime();
-			$expected = 1;
+			$total_expected = $expected = 1;
 			continue;
 		}
 
 		$time = sprintf("%0.4f", $this->_getmicrotime() - $start);
-		if ($this->DEBUG) print "DEBUG: ($time latency) Received " . strlen($packet) . " bytes from $ip:$port:\n" . $this->hexdump($packet) . "\n";
+		if ($this->DEBUG) print "\nDEBUG: ($time latency) Received " . strlen($packet) . " bytes from $ip:$port ...\n"; // . $this->hexdump($packet) . "\n";
 
 		$header = substr($packet, 0, 4);				// get the 4 byte header
 		// ugly 64bit hack. If the PHP_INT_SIZE is not 4 then we'll use "i" to unpack the header.
@@ -587,17 +591,25 @@ function _sendquery($ipport, $cmd) {
 			$size = $this->_hlver() <= 1 ? 1 : 2;			// HL1 = 1 byte, HL2(source) = 2 bytes
 			$pnum = substr($packet, 0, $size);			// get packet number
 			$packet = substr($packet, $size);
+
 			$this->reqid = $this->_unpack('V', $header);		// save the request ID
 			$this->compressed = false;
 			if ($size == 1) {
 				$byte = $this->_unpack("C", $pnum);
-				if (!$expected) $expected = $byte & 0x0F;
+				if (!$expected) {
+					$expected = $byte & 0x0F;
+					$total_expected = $expected;
+				}
 				$this->seq = $byte >> 4;
 			} else {
 				$short = $this->_unpack("v", $pnum);
-				if (!$expected) $expected = $short & 0x00FF;
+				if (!$expected) {
+					$expected = $short & 0x00FF;
+					$total_expected = $expected;
+				}
 				$this->seq = $short >> 8;
 			} 
+
 			if ($this->seq == 0 and $size == 2) {			// first packet of a HL2 response
 				$this->compressed = ($this->reqid >> 31 & 0x01 == 1);
 				if ($this->compressed) {			// read extra info about compression
@@ -612,10 +624,33 @@ function _sendquery($ipport, $cmd) {
 						strlen($packet) / $this->uncompressed_total * 100, 
 						$this->uncompressed_crc
 					);
+				} else {
+					/*
+					newer source games (TF2) include a split size short int at the end of the split header which
+					messes up the header offsets for the rest of the games. 
+					By default the split size is 1248 (0x04E0) but could change. However, I think it's safe to say 
+					that if it's 0xFFFF then the server did not return this extra short. So we check for that before
+					striping it off. We ignore this value either way...
+					it's only possible to detect the split size on the first packet. If the splitsize is present it will
+					be present on every split packet.
+
+					The auto detection doesn't work on compressed packets which is why this check is here..
+					This will break if a split packet is compressed and includes the split size header... 
+					TODO: Try to find a better way to do this.
+					*/
+					if (!$packets) { // this is the first packet...
+						$splitsize = $this->_unpack('v', substr($packet, 0, 2));
+						$has_splitsize = ($splitsize != 0xFFFF);
+					}
+					if ($has_splitsize) {
+						$splitsize = $this->_unpack('v', substr($packet, 0, 2));
+						if ($this->DEBUG) printf("DEBUG: Split size is %s (0x%04X)\n", number_format($splitsize), $splitsize);
+						$packet = substr($packet, 2);
+					}
 				}
 			}
 			if ($this->DEBUG) printf("DEBUG: Sub ACK: id=0x%X (%032b) seq=%d/%d (bz2=%s)\n", 
-				$this->reqid, $this->reqid, $this->seq+1, $expected, $this->compressed ? 'true' : 'false'
+				$this->reqid, $this->reqid, $this->seq+1, $total_expected, $this->compressed ? 'true' : 'false'
 			);
 			$packets[$this->seq] = $packet;				// store the packet
 			$expected--;
@@ -623,6 +658,7 @@ function _sendquery($ipport, $cmd) {
 			$packets[0] = $packet;
 			$expected = 0;
 		}
+		if ($this->DEBUG) print $this->hexdump($original) . "\n";
 	} while ($expected and $retry < $this->maxretries());
 
 	fclose($this->sock);
