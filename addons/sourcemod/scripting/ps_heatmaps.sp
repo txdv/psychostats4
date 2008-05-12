@@ -39,7 +39,7 @@ public Plugin:myinfo =
 	name = "PsychoStats Spatial Plugin",
 	author = "Stormtrooper, K1ller",
 	description = "Logs spatial statstics on kill events so Heatmaps can be created.",
-	version = "1.0",
+	version = "1.1",
 	url = "http://www.psychostats.com/"
 };
 
@@ -64,7 +64,7 @@ public Action:LogEvent(const String:message[]) {
 	// lookout for "killed" and "committed suicide" events
 	// This is not the desired way to do this, but I can't find another way to more accurately do it.
 	// We can't stop a log event from logging within the log event itself, so we have to override it here.
-	if (StrContains(message, ">\" killed \"") > 0 || StrContains(message, "\" committed suicide with \"")) {
+	if (StrContains(message, ">\" killed \"") > 0 || StrContains(message, "\" committed suicide with \"") > 0) {
 		if (ignoreKill) {
 			// do not log the current event
 			// Event_PlayerDeath will trigger next and log a 'killed' event instead
