@@ -30,7 +30,7 @@
 
 ***/
 
-class HTTPRequest {
+class HTTP_Request {
 var $_fp;
 var $_url;
 var $_method;
@@ -46,7 +46,7 @@ var $errstr;
 var $errno;
 
 // constructor
-function HTTPRequest($url, $method="GET", $data="") {
+function HTTP_Request($url, $method="GET", $data="") {
 	$this->_url = $url;
 	$this->_method = $method;
 	$this->_postdata = $data;
@@ -141,7 +141,7 @@ function download($follow_redirect = true) {
 
 	// redirection?
 	if (isset($headers['location']) and $follow_redirect) {
-		$http = new HTTPRequest($headers['location']);
+		$http = new HTTP_Request($headers['location']);
 		return $http->download($http);
 	} else {
 		$this->_text = $body;
@@ -149,6 +149,6 @@ function download($follow_redirect = true) {
 	}
 }
 
-} // end HTTPRequest
+} // end HTTP_Request
 
 ?>

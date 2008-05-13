@@ -27,7 +27,7 @@ require_once("./common.php");
 $opts = init_session_opts(true);
 $newer_avail = false;
 
-$h = new HTTPRequest('http://updates.psychostats.com/releases/' . PS_INSTALL_VERSION);
+$h = new HTTP_Request('http://updates.psychostats.com/releases/' . PS_INSTALL_VERSION);
 $res = $h->download();
 if ($h->status() == '200' and $res) {
 	$newer_avail = $res[0] ? trim($res[0]) : 0;
