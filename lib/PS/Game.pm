@@ -1228,7 +1228,7 @@ sub daily_activity {
 	my $last = time;
 	my ($cmd, $sth);
 
-	return 0 unless $db->table_exists($db->{c_map_data});
+	return 0 unless $db->table_exists($db->{c_map_data}) and $db->table_exists($db->{c_plr_data});
 
 	$::ERR->info(sprintf("Daily 'activity' process running (Last updated: %s)", 
 		$lastupdate ? scalar localtime $lastupdate : 'never'
