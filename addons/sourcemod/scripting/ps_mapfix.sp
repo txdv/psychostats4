@@ -39,7 +39,7 @@ public Plugin:myinfo =
         name = "PsychoStats - First Map Fix",
         author = "Stormtrooper",
         description = "PsychoStats first map logging fix",
-        version = "1.0",
+        version = "1.01",
         url = "http://www.psychostats.com/"
 };
 
@@ -48,7 +48,7 @@ public OnPluginStart()
         AddGameLogHook(LogMapEvent);
 }
 
-// write a "Loading map" event in order to fix a problem with the HLDS logging.
+// write a "Started map" event in order to fix a problem with the HLDS logging.
 // This will prevent an "unknown" map from appearing in your player stats.
 public Action:LogMapEvent(const String:message[]) {
         // The "Log file started" message is not captured by sourcemod (I assume it's an engine event; not a mod event)
@@ -60,7 +60,7 @@ public Action:LogMapEvent(const String:message[]) {
         {
                 decl String:map[128];
                 GetCurrentMap(map, sizeof(map));
-                LogToGame("Loading map \"%s\" (psychostats)", map);
+                LogToGame("Started map \"%s\" (CRC \"-1\") (psychostats)", map);
 
                 // Only record the first map, after that we're all good
                 fixed = true;
