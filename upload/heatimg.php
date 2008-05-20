@@ -19,14 +19,10 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
+ *
+ *	Returns a single heatmap image keyed on the heatid
  */
 
-/*
-	heatimg.php
-
-	Returns a single heatmap image keyed on the heatid
-	
-**/
 define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 include_once(PS_ROOTDIR . "/includes/PS/Heatmap.php");

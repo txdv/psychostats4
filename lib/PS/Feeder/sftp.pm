@@ -1,4 +1,3 @@
-# SFTP Feeder support. Requires Net::SFTP
 package PS::Feeder::sftp;
 #
 #	This file is part of PsychoStats.
@@ -19,6 +18,9 @@ package PS::Feeder::sftp;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#	SFTP Feeder support. Requires Net::SFTP
 
 use strict;
 use warnings;
@@ -27,7 +29,7 @@ use Digest::MD5 qw( md5_hex );
 use File::Spec::Functions qw( splitpath catfile );
 use File::Path;
 
-our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 my $FH = undef;
 

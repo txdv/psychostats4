@@ -1,4 +1,3 @@
-# FTP Feeder support
 package PS::Feeder::ftp;
 #
 #	This file is part of PsychoStats.
@@ -19,6 +18,9 @@ package PS::Feeder::ftp;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#	FTP support. Requires Net::FTP
 
 use strict;
 use warnings;
@@ -27,7 +29,7 @@ use Digest::MD5 qw( md5_hex );
 use File::Spec::Functions qw( splitpath catfile );
 use File::Path;
 
-our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 sub init {
 	my $self = shift;

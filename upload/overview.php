@@ -20,6 +20,7 @@
  *
  *	Version: $Id$
  */
+
 define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 include(PS_ROOTDIR . "/includes/class_Color.php");

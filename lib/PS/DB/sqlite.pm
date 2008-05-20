@@ -18,6 +18,8 @@ package PS::DB::sqlite;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
 
 # docs on sqlite sql functions/expressions
 # http://www.sqlite.org/lang_expr.html
@@ -29,7 +31,7 @@ use DBI;
 use Data::Dumper;
 use Carp;
 
-our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 sub init {
 	my $self = shift;

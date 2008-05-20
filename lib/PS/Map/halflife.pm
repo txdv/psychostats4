@@ -18,7 +18,8 @@ package PS::Map::halflife;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
-
+#	$Id$
+#
 use strict;
 use warnings;
 use base qw( PS::Map );

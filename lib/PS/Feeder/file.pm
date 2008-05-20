@@ -1,7 +1,3 @@
-# Basic 'file' Feeder. 
-# Feeds logs found in a local directory. 
-# Sub-directories will be scanned if logsource_file(recursive) is enabled, 
-# but only upto a depth defined by logsource_file(depth). If it's 0 ALL sub-dirs will be scanned.
 package PS::Feeder::file;
 #
 #	This file is part of PsychoStats.
@@ -22,6 +18,10 @@ package PS::Feeder::file;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#       Basic 'file' Feeder. Feeds logs found in a local directory.
+#
 
 use strict;
 use warnings;
@@ -30,7 +30,7 @@ use base qw( PS::Feeder );
 use IO::File;
 use File::Spec::Functions qw( catfile splitpath );
 
-our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 sub init { # called from calling program after new()
 	my $self = shift;

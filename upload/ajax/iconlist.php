@@ -19,14 +19,11 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
+ *
+ *	This ajax request simply returns a list of all available icons on the
+ *	system either as a comma separated list (CSV), or a list of <img> tags.
  */
 
-/*
-	AJAX REQUEST PAGE
-
-	This ajax request simply returns a list of all available icons on the system either as
-	a comma separated list (CSV), or a list of <img> tags.
-*/
 define("PSYCHOSTATS_PAGE", true);
 define("PSYCHOSTATS_SUBPAGE", true);
 include(dirname(__FILE__) . "/../includes/common.php");

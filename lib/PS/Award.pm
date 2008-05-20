@@ -29,7 +29,7 @@ use POSIX qw( strftime );
 use util qw( :all );
 use Safe;
 
-our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 sub new {
 	my ($proto, $award, $game) = @_;

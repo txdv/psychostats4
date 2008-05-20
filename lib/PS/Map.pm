@@ -25,7 +25,7 @@ use base qw( PS::Debug );
 use POSIX qw( strftime );
 use util qw( :date print_r );
 
-our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 our $BASECLASS = undef;
 
 our $GAMETYPE = '';
@@ -168,6 +168,8 @@ sub _init {
 	$self->{mod} = {};
 	$self->{hourly} = {};
 	$self->{spatial} = {};
+
+	$self->{basic}{lasttime} = 0;
 
 	$self->{conf_maxdays} = $self->{conf}->get_main('maxdays');
 	$self->{heatmap_maxdays} = $self->{conf}->get_main('heatmap.maxdays');

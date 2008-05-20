@@ -18,13 +18,14 @@ package PS::Feeder::stream;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
-
+#	$Id$
 #
 #	UDP Stream support.
 #	This feeder is EXPERIMENTAL and not very rubust. 
-#	It will allow for any number of simulteanous streams however it makes no attempt to separate
-#	them into different game instances. This will currently lead to broken stats, mainly with timing
-#	and map statistics. As long as you track by STEAMID most of the stats should come out ok.
+#       It will allow for any number of simulteanous streams however it makes no
+#       attempt to separate them into different game instances. This will
+#       currently lead to broken stats, mainly with timing and map statistics.
+#       As long as you track by STEAMID most of the stats should come out ok.
 #
 #	A future version will try and separate steams into different 'games'.
 #
@@ -40,7 +41,7 @@ use Digest::MD5 qw( md5_hex );
 use File::Spec::Functions qw( splitpath catfile );
 use File::Path;
 
-our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 
 sub init {

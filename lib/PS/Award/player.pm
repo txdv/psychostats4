@@ -27,6 +27,8 @@ use Data::Dumper;
 use POSIX qw( strftime );
 use util qw( :date :time :strings );
 
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+
 sub init_award {
 	my $self = shift;
 	# do something useful here, if needed ...

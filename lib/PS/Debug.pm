@@ -31,7 +31,7 @@ our $ANSI = 0;
 #	$ANSI = 1;
 #}
 
-our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 our $DEBUG = 0;		# enable global debugging for everything if TRUE
 
 # may be called as a class or package method

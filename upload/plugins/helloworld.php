@@ -1,11 +1,30 @@
 <?php
-/***
-	"Hello World" plugin.
-
-	This is not a useful plugin. It's simply for educational purposes only. 
-	Use this as a baseline when creating your own plugins for PsychoStats.
-
-***/
+/**
+ *	This file is part of PsychoStats.
+ *
+ *	Written by Jason Morriss <stormtrooper@psychostats.com>
+ *	Copyright 2008 Jason Morriss
+ *
+ *	PsychoStats is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	PsychoStats is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+ *
+ *	You should have received a copy of the GNU General Public License
+ *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *	Version: $Id$
+ *
+ *	"Hello World" plugin.
+ *
+ *	This is not a useful plugin. It's simply for educational purposes only. 
+ *	Use this as a baseline when creating your own plugins for PsychoStats.
+ */
 
 // the class name must be the same as the plugin directory or filename.
 // all plugins must inherhit PsychoPlugin

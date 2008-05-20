@@ -19,13 +19,13 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
+ *
+ *      AJAX session options update script.
+ *      This script is called via AJAX requests in the theme to update various
+ *      options on the current session. Currently, this is only used to update
+ *	which content shade boxes on a page are closed.
  */
 
-/*
-	AJAX session options update script.
-	This script is called via AJAX requests in the theme to update various options on the current session.
-	Currently, this is only used to update which content shade boxes on a page are closed.
-*/
 define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 #$cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);

@@ -19,11 +19,10 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
+ *
+ *	Common routines for various ajax requests
+ *
  */
-
-/*
-	Common routines for various ajax requests
-*/
 
 // verify the page was viewed from a valid entry point.
 if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FILE__));

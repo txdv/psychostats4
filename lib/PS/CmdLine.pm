@@ -1,8 +1,3 @@
-# PS::CmdLine initializes and collects all command line options passed to the main script (stats.pl).
-# This is always the very first object created in PS3. This object will then be passed to the PS::Config object 
-# in order to allow the PS::Config object to hand out config values based on command line or config loaded values.
-#
-# Command line documentation is located in the __DATA__ block of this file in POD format.
 package PS::CmdLine;
 #
 #	This file is part of PsychoStats.
@@ -23,6 +18,14 @@ package PS::CmdLine;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#       PS::CmdLine initializes and collects all command line options passed to
+#       the main script (stats.pl). This is always the very first object created
+#       in PS3. This object will then be passed to the PS::Config object 
+#       in order to allow the PS::Config object to hand out config values based
+#       on command line or config loaded values. Command line documentation is
+#       located in the __DATA__ block of this file in POD format.
 
 use strict;
 use warnings;
@@ -33,7 +36,7 @@ use Getopt::Long;
 use Pod::Usage;
 use util qw( :win );
 
-our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/) || '000')[0];
 our $AUTOLOAD;
 our @OPTS = ();
 

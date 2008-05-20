@@ -30,7 +30,7 @@ BEGIN { # FindBin isn't going to work on systems that run the stats.pl as SETUID
 	use lib $FindBin::Bin . "/lib";
 }
 
-our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 use strict;
 use warnings;

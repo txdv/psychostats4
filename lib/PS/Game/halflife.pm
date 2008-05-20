@@ -31,7 +31,7 @@ use PS::Map;
 use PS::Role;
 use PS::Weapon;
 
-our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 sub new {
 	my $proto = shift;
@@ -821,11 +821,13 @@ sub event_logstartend {
 	# SAVE MAPS
 	while (my ($mid,$m) = each %{$self->{maps}}) {
 		my $time = $m->timer;
-#		print "$timestamp - $m->{basic}{lasttime}\n";
 		$time ||= $timestamp - $m->{basic}{lasttime} if $timestamp - $m->{basic}{lasttime} > 0;
-#		print $m->name . ": time=$time\n";
-		$m->{basic}{onlinetime} += $time if ($time > 0);
-		$m->save;
+		# only save maps that have some time played or kills.
+		# this will help prevent the 'unknown' map from appearing.
+		if ($time > 0 or $m->{basic}{kills}) {
+			$m->{basic}{onlinetime} += $time;
+			$m->save;
+		}
 		$m = undef;
 	}
 	$self->{maps} = {};

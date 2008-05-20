@@ -1,4 +1,3 @@
-package PS::Role::halflife;
 #
 #	This file is part of PsychoStats.
 #
@@ -18,12 +17,15 @@ package PS::Role::halflife;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+package PS::Role::halflife;
 
 use strict;
 use warnings;
 use base qw( PS::Role );
 
-our $VERSION = '1.00';
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 
 1;

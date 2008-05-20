@@ -32,7 +32,7 @@ use base qw( PS::Debug );
 use util qw( :numbers );
 use Data::Dumper;
 
-our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our $WAIT   = 1;
 our $ERROR  = 0;

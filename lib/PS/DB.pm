@@ -30,7 +30,7 @@ use base qw( PS::Debug );
 use Carp;
 use Data::Dumper;
 
-our $VERSION = '1.00.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 our $AUTOLOAD;
 
 sub new {

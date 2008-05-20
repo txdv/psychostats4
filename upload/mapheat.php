@@ -20,6 +20,7 @@
  *
  *	Version: $Id$
  */
+
 define("PSYCHOSTATS_PAGE", true);
 include(dirname(__FILE__) . "/includes/common.php");
 include_once(PS_ROOTDIR . "/includes/PS/Heatmap.php");

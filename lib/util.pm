@@ -29,7 +29,7 @@ use Data::Dumper;
 
 require Exporter;
 
-our $VERSION = '1.01.' . ('$Rev: 183 $' =~ /(\d+)/)[0];
+our $VERSION = '1.01.' . (('$Rev: 183 $' =~ /(\d+)/)[0] || '000');
 
 our @ISA = qw(Exporter);
 

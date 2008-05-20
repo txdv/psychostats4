@@ -41,7 +41,7 @@ use PS::ErrLog;
 use PS::Heatmap;
 use util qw( expandlist print_r abbrnum );
 
-our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/) || '000')[0];
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our $DEBUG = 0;					# Global DEBUG level
 our $DEBUGFILE = undef;				# Global debug file to write debug info too

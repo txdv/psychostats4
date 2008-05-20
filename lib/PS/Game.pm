@@ -41,7 +41,7 @@ use POSIX qw(floor strftime mktime);
 use Time::Local;
 use Safe;
 
-our $VERSION = '1.12.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.12.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our @DAILY = qw( all maxdays decay activity players clans ranks awards );
 

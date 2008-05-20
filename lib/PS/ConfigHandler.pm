@@ -30,7 +30,7 @@ use Carp;
 use Data::Dumper;
 use PS::Config;
 
-our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 our $AUTOLOAD;
 
 sub new {

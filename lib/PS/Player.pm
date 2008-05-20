@@ -35,7 +35,7 @@ use Data::Dumper;
 use POSIX;
 use util qw( :date print_r );
 
-our $VERSION = '1.10.' . ('$Rev$' =~ /(\d+)/)[0];
+our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 our $BASECLASS = undef;
 
 our $GAMETYPE = '';
