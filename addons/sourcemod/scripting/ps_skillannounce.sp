@@ -99,7 +99,7 @@ public T_GetSkill(Handle:owner, Handle:query, const String:error[], any:data)
 		SQL_FetchString(query, 1, plrName, sizeof(plrName))
 	}
 	KvSetFloat(hSkills, plrName, plrSkill)
-	if(strlen(plrName) != 0 || plrSkill != 50.0)
+	if(strlen(plrName) != 0)
 	{
 		AnnounceJoin(plrName, plrSkill)
 	}
@@ -115,9 +115,17 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 {
  new victim_id = GetEventInt(event, "userid")
  new attacker_id = GetEventInt(event, "attacker")
- 
+
+ /* Return if suicide */
+ if (victim_id == attacker_id) 
+	return Plugin_Continue
+
  new victim = GetClientOfUserId(victim_id)
  new attacker = GetClientOfUserId(attacker_id)
+
+ /* Return if team kill */
+ if (GetClientTeam(victim) == GetClientTeam(attacker))
+	return Plugin_Continue
 
  /* Get both players' name */
  new String:kname[64]
