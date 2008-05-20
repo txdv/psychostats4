@@ -2,20 +2,23 @@
 {
 	"Victim"
 	{
-		"#format"	"{1:s},{2:f},{3:f},{4:s},{5:f},{6:f}"
+		"#format"	"{1:s},{2:.2f},{3:.2f},{4:s},{5:.2f},{6:.2f}"
 		"en"		"{1} got {2} points ({3}) for killing {4} who lost {5} points ({6})"
 		"fi"		"{1} sai {2} pistettä ({3}) tapettuaan {4}, joka menetti {5} pistettä ({6})"
+		"fr"		"{1] gagne {2} points ({3}) pour avoir tué {4} qui perd {5} points ({6})"
 	}
 	"Killer"
 	{
-		"#format"	"{1:s},{2:f},{3:f},{4:s},{5:f},{6:f}"
+		"#format"	"{1:s},{2:.2f},{3:.2f},{4:s},{5:.2f},{6:.2f}"
 		"en"		"{1} got {2} points ({3}) for killing {4} who lost {5} points ({6})"
 		"fi"		"{1} sai {2} pistettä ({3}) tapettuaan {4}, joka menetti {5} pistettä ({6})"
+		"fr"		"{1] gagne {2} points ({3}) pour avoir tué {4} qui perd {5} points ({6})"
 	}
 	"Joined"
 	{
-		"#format"	"{1:s},{2:f}"
+		"#format"	"{1:s},{2:.2f}"
 		"en"		"{1} joined game with skill {2}"
 		"fi"		"{1} liittyi peliin vahvuusluvulla {2}"
+		"fr"		"{1} rejoint le jeu avec une habileté de {2}"
 	}
 }

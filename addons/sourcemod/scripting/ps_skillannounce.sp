@@ -157,9 +157,6 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
  vbonus = RoundToNearest((vbonus * 100)) / 100.0
 
  PrintToServer("%t", "Killer", kname, kbonus, kskill, vname, vbonus, vskill)
-// PrintHintTextToAll("%s got %.2f points (%.2f) for killing %s who lost %.2f points (%.2f)", kname, kbonus, kskill, vname, vbonus, vskill)
-// PrintToConsole(victim, "%s got %.2f points (%.2f) for killing %s who lost %.2f points (%.2f)", kname, kbonus, kskill, vname, vbonus, vskill)
-// PrintToConsole(attacker, "%s got %.2f points (%.2f) for killing %s who lost %.2f points (%.2f)", kname, kbonus, kskill, vname, vbonus, vskill)
  PrintToConsole(victim, "%t", "Victim", kname, kbonus, kskill, vname, vbonus, vskill)
  PrintToConsole(attacker, "%t", "Killer", kname, kbonus, kskill, vname, vbonus, vskill)
  return Plugin_Continue
