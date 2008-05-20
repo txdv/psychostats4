@@ -122,12 +122,12 @@
 .calendar-hover {
 	border: 1px solid #999999;
 	background-color: #A6A6B3; /* #DDDDFF;*/
+	padding: 0;
 }
 
 .calendar-hover-week {
-	border-top: 1px solid #999999;
+/*	border-top: 1px solid #999999;*/
 	border-bottom: 1px solid #999999;
 	border-right: 1px solid #A6A6B3;
 	background-color: #A6A6B3;
-
 }
