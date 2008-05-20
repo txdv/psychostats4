@@ -5,9 +5,9 @@ sub calcskill_kill_elo {
 	my $vskill = $v->skill || $self->{baseskill};
 
 	my $diff = $kskill - $vskill;					# difference in skill
-	my $prob = 1 / ( 1 + 10 ** ($diff / $self->{baseskill}) );	# find probability of kill
-	my $kadj = $self->{_adj}->[-1] || 100;
-	my $vadj = $self->{_adj}->[-1] || 100;
+	my $prob = 1 / ( 1 + 10 ** ($diff / 400) );	# find probability of kill
+	my $kadj = $self->{_adj}->[-1] || 32;
+	my $vadj = $self->{_adj}->[-1] || 32;
 	my $kmins = int $k->totaltime / 60;
 	my $vmins = int $v->totaltime / 60;
 	my $idx = 0;
@@ -29,7 +29,7 @@ sub calcskill_kill_elo {
 		$idx++;
 	}
 	
-	my $kbonus = $kadj * $prob;
+	my $kbonus = $kadj * (1-$prob);
 	my $vbonus = $vadj * $prob;
 
 	my $weight = $w->weight;
