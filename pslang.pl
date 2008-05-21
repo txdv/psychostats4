@@ -125,7 +125,14 @@ if (!$args->{nolang}) {
 }
 
 # load a list of all PHP files to scan for strings
-@phpfiles = ( glob(catfile($args->{dir}, '*.php')), glob(catfile($args->{dir}, 'includes', '*.php')));
+@phpfiles = (
+	glob( catfile($args->{dir}, '*.php') ),
+	glob( catfile($args->{dir}, 'ajax', '*.php') ),
+	glob( catfile($args->{dir}, 'includes', '*.php') ),
+	glob( catfile($args->{dir}, 'includes', 'PS', '*.php') ),
+	glob( catfile($args->{dir}, 'install', '*.php') ),
+	glob( catfile($args->{dir}, 'plugins', '*.php') ),
+);
 
 # load a list of all theme HTML files to scan for strings
 @htmlfiles = glob(catfile($themedir, '*.html'));
