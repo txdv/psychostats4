@@ -71,7 +71,7 @@ function maps_table_mod(&$table) {
 	global $cms;
 	$table->insert_columns(
 		array( 
-			'axiswonpct' => array( 'label' => 'Wins', 'tooltip' => $cms->trans("Axis / Allied Wins"), 'callback' => array(&$this, 'team_wins') ), 
+			'axiswonpct' => array( 'label' => $cms->trans('Wins'), 'tooltip' => $cms->trans("Axis / Allied Wins"), 'callback' => array(&$this, 'team_wins') ), 
 		),
 		'rounds',
 		true
@@ -83,7 +83,7 @@ function index_table_mod(&$table) {
 	global $cms;
 	$table->insert_columns(
 		array( 
-			'flagscaptured' => array( 'label' => 'Flags', 'tooltip' => $cms->trans("Flags captured") ), 
+			'flagscaptured' => array( 'label' => $cms->trans('Flags'), 'tooltip' => $cms->trans("Flags captured") ), 
 		),
 		'onlinetime',
 		false
@@ -119,8 +119,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $pct1,
 				'pct2'	 	=> $pct2,
-				'title1'	=> $plr['joinedaxis'] . ' axis (' . $pct1 . '%)',
-				'title2'	=> $plr['joinedallies'] . ' ally (' . $pct2 . '%)',
+				'title1'	=> $plr['joinedaxis'] . ' ' . $cms->trans('axis') . ' (' . $pct1 . '%)',
+				'title2'	=> $plr['joinedallies'] . ' ' . $cms->trans('ally') . ' (' . $pct2 . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -132,8 +132,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $plr['axiswonpct'],
 				'pct2'	 	=> $plr['allieswonpct'],
-				'title1'	=> $plr['axiswon'] . ' axis (' . $plr['axiswonpct'] . '%)',
-				'title2'	=> $plr['allieswon'] . ' ally (' . $plr['allieswonpct'] . '%)',
+				'title1'	=> $plr['axiswon'] . ' ' . $cms->trans('axis') . ' (' . $plr['axiswonpct'] . '%)',
+				'title2'	=> $plr['allieswon'] . ' ' . $cms->trans('ally') . ' (' . $plr['allieswonpct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -145,8 +145,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $plr['axisflagscapturedpct'],
 				'pct2'	 	=> $plr['alliesflagscapturedpct'],
-				'title1'	=> $plr['axisflagscaptured'] . ' axis (' . $plr['axisflagscapturedpct'] . '%)',
-				'title2'	=> $plr['alliesflagscaptured'] . ' ally (' . $plr['alliesflagscapturedpct'] . '%)',
+				'title1'	=> $plr['axisflagscaptured'] . ' ' . $cms->trans('axis') . ' (' . $plr['axisflagscapturedpct'] . '%)',
+				'title2'	=> $plr['alliesflagscaptured'] . ' ' . $cms->trans('ally') . ' (' . $plr['alliesflagscapturedpct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -158,8 +158,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $plr['axisflagsblockedpct'],
 				'pct2'	 	=> $plr['alliesflagsblockedpct'],
-				'title1'	=> $plr['axisflagsblocked'] . ' axis (' . $plr['axisflagsblockedpct'] . '%)',
-				'title2'	=> $plr['alliesflagsblocked'] . ' ally (' . $plr['alliesflagsblockedpct'] . '%)',
+				'title1'	=> $plr['axisflagsblocked'] . ' ' . $cms->trans('axis') . ' (' . $plr['axisflagsblockedpct'] . '%)',
+				'title2'	=> $plr['alliesflagsblocked'] . ' ' . $cms->trans('ally') . ' (' . $plr['alliesflagsblockedpct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -171,8 +171,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $plr['axisscorepct'],
 				'pct2'	 	=> $plr['alliesscorepct'],
-				'title1'	=> $plr['axisscore'] . ' axis (' . $plr['axisscorepct'] . '%)',
-				'title2'	=> $plr['alliesscore'] . ' ally (' . $plr['alliesscorepct'] . '%)',
+				'title1'	=> $plr['axisscore'] . ' ' . $cms->trans('axis') . ' (' . $plr['axisscorepct'] . '%)',
+				'title2'	=> $plr['alliesscore'] . ' ' . $cms->trans('ally') . ' (' . $plr['alliesscorepct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130

@@ -78,7 +78,7 @@ function maps_table_mod(&$table) {
 	global $cms;
 	$table->insert_columns(
 		array( 
-			'ctwonpct' => array( 'label' => 'Wins', 'tooltip' => $cms->trans("Terr / CT Wins"), 'callback' => array(&$this, 'team_wins') ), 
+			'ctwonpct' => array( 'label' => $cms->trans('Wins'), 'tooltip' => $cms->trans("Terr / CT Wins"), 'callback' => array(&$this, 'team_wins') ), 
 		),
 		'rounds',
 		true
@@ -114,8 +114,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $pct1,
 				'pct2'	 	=> $pct2,
-				'title1'	=> $plr['joinedterrorist'] . ' Terrorists (' . $pct1 . '%)',
-				'title2'	=> $plr['joinedct'] . ' CT (' . $pct2 . '%)',
+				'title1'	=> $plr['joinedterrorist'] . ' ' . $cms->trans('Terrorists') . ' (' . $pct1 . '%)',
+				'title2'	=> $plr['joinedct'] . ' ' . $cms->trans('CT') . ' (' . $pct2 . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -127,8 +127,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $plr['terroristwonpct'],
 				'pct2'	 	=> $plr['ctwonpct'],
-				'title1'	=> $plr['terroristwon'] . ' Terrorist (' . $plr['terroristwonpct'] . '%)',
-				'title2'	=> $plr['ctwon'] . ' CT (' . $plr['ctwonpct'] . '%)',
+				'title1'	=> $plr['terroristwon'] . ' ' . $cms->trans('Terrorist') . ' (' . $plr['terroristwonpct'] . '%)',
+				'title2'	=> $plr['ctwon'] . ' ' . $cms->trans('CT') . ' (' . $plr['ctwonpct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -140,8 +140,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $plr['bombexplodedpct'],
 				'pct2'	 	=> $plr['bombplantedpct'],
-				'title1'	=> $plr['bombexploded'] . ' exploded (' . $plr['bombexplodedpct'] . '%)',
-				'title2'	=> $plr['bombplanted'] . ' planted',
+				'title1'	=> $plr['bombexploded'] . ' ' . $cms->trans('exploded') . ' (' . $plr['bombexplodedpct'] . '%)',
+				'title2'	=> $plr['bombplanted'] . ' ' . $cms->trans('planted'),
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -153,7 +153,7 @@ function player_left_column_mod(&$plr, &$theme) {
 			'label'	=> $cms->trans("Bombs Defused %"),
 			'value'	=> pct_bar(array(
 				'pct'	 	=> $plr['bombdefusedpct'],
-				'title'		=> $plr['bombdefused'] . ' bombs defused (' . $plr['bombdefusedpct'] . '%)',
+				'title'		=> $plr['bombdefused'] . ' ' . $cms->trans('bombs defused') . ' (' . $plr['bombdefusedpct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -164,7 +164,7 @@ function player_left_column_mod(&$plr, &$theme) {
 			'label'	=> $cms->trans("Rescued Hostages"),
 			'value'	=> pct_bar(array(
 				'pct'	 	=> $plr['rescuedhostagespct'],
-				'title'		=> $plr['rescuedhostages'] . ' hostages saved (' . $plr['rescuedhostagespct'] . '%)',
+				'title'		=> $plr['rescuedhostages'] . ' ' . $cms->trans('hostages saved') . ' (' . $plr['rescuedhostagespct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130

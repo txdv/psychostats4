@@ -97,7 +97,7 @@ function maps_table_mod(&$table) {
 	global $cms;
 	$table->insert_columns(
 		array( 
-			'bluewonpct' => array( 'label' => 'Wins', 'tooltip' => $cms->trans("Red / Blue Wins"), 'callback' => array(&$this, 'team_wins') ), 
+			'bluewonpct' => array( 'label' => $cms->trans('Wins'), 'tooltip' => $cms->trans("Red / Blue Wins"), 'callback' => array(&$this, 'team_wins') ), 
 		),
 		'rounds',
 		true
@@ -110,10 +110,10 @@ function index_table_mod(&$table) {
 	$table->remove_columns(array( 'headshotkills', 'headshotkillspct' ));
 	$table->insert_columns(
 		array( 
-			'dominations' => array( 'label' => 'Dom', 'tooltip' => $cms->trans("Dominations") ), 
-			'assists' => array( 'label' => 'Assists', 'tooltip' => $cms->trans("Kill Assists") ), 
-			'flagscaptured' => array( 'label' => 'Flags', 'tooltip' => $cms->trans("Flags captured") ), 
-			'pointcaptured' => array( 'label' => 'CP', 'tooltip' => $cms->trans("Points captured") ), 
+			'dominations' => array( 'label' => $cms->trans('Dom'), 'tooltip' => $cms->trans("Dominations") ), 
+			'assists' => array( 'label' => $cms->trans('Assists'), 'tooltip' => $cms->trans("Kill Assists") ), 
+			'flagscaptured' => array( 'label' => $cms->trans('Flags'), 'tooltip' => $cms->trans("Flags captured") ), 
+			'pointcaptured' => array( 'label' => $cms->trans('CP'), 'tooltip' => $cms->trans("Captured points") ), 
 		),
 		'onlinetime',
 		false
@@ -125,8 +125,8 @@ function roles_table_mod(&$table) {
 	global $cms;
 	$table->insert_columns(
 		array( 
-			'backstabkills' => array( 'label' => 'BS', 'modifier' => 'commify', 'tooltip' => $cms->trans("Backstab Kills") ),
-			'backstabkillspct' => array( 'label' => 'BS%', 'modifier' => '%s%%', 'tooltip' => $cms->trans("Backstab Kills Percentage") ),
+			'backstabkills' => array( 'label' => $cms->trans('BS'), 'modifier' => 'commify', 'tooltip' => $cms->trans("Backstab Kills") ),
+			'backstabkillspct' => array( 'label' => $cms->trans('BS%'), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Backstab Kills Percentage") ),
 		),
 		'headshotkillspct',
 		true
@@ -144,7 +144,7 @@ function map_left_column_mod(&$map, &$theme) {
 }
 
 function clan_left_column_mod(&$clan, &$theme) {
-	// clans and players have the same stats ...r
+	// clans and players have the same stats ...
 	$this->player_left_column_mod($clan, $theme);
 	$theme->assign('clan_left_column_mod', $theme->get_template_vars('player_left_column_mod'));
 }
@@ -171,8 +171,8 @@ function player_left_column_mod(&$plr, &$theme) {
 				'value'	=> dual_bar(array(
 					'pct1'	 	=> $plr['red' . $var . 'pct'],
 					'pct2'	 	=> $plr['blue' . $var . 'pct'],
-					'title1'	=> $plr['red' . $var] . ' Red (' . $plr['red' . $var . 'pct'] . '%)',
-					'title2'	=> $plr['blue' . $var] . ' Blue (' . $plr['blue' . $var . 'pct'] . '%)',
+					'title1'	=> $plr['red' . $var] . ' ' . $cms->trans('Red') . ' (' . $plr['red' . $var . 'pct'] . '%)',
+					'title2'	=> $plr['blue' . $var] . ' ' . $cms->trans('Blue') . ' (' . $plr['blue' . $var . 'pct'] . '%)',
 					'color1'	=> 'cc0000',
 					'color2'	=> '0000cc',
 					'width'		=> 130

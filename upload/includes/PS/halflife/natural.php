@@ -55,7 +55,7 @@ function maps_table_mod(&$table) {
 	global $cms;
 	$table->insert_columns(
 		array( 
-			'marinewonpct' => array( 'label' => 'Wins', 'tooltip' => $cms->trans("Alien / Marine Wins"), 'callback' => array(&$this, 'team_wins') ), 
+			'marinewonpct' => array( 'label' => $cms->trans('Wins'), 'tooltip' => $cms->trans("Alien / Marine Wins"), 'callback' => array(&$this, 'team_wins') ), 
 		),
 		'rounds',
 		true
@@ -91,8 +91,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $pct1,
 				'pct2'	 	=> $pct2,
-				'title1'	=> $plr['joinedalien'] . ' Alien (' . $pct1 . '%)',
-				'title2'	=> $plr['joinedmarine'] . ' Marine (' . $pct2 . '%)',
+				'title1'	=> $plr['joinedalien'] . ' ' . $cms->trans('Alien') . ' (' . $pct1 . '%)',
+				'title2'	=> $plr['joinedmarine'] . ' ' . $cms->trans('Marine') . ' (' . $pct2 . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
@@ -104,8 +104,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> dual_bar(array(
 				'pct1'	 	=> $plr['alienwonpct'],
 				'pct2'	 	=> $plr['marinewonpct'],
-				'title1'	=> $plr['alienwon'] . ' Alien (' . $plr['alienwonpct'] . '%)',
-				'title2'	=> $plr['marinewon'] . ' Marine (' . $plr['marinewonpct'] . '%)',
+				'title1'	=> $plr['alienwon'] . ' ' . $cms->trans('Alien') . ' (' . $plr['alienwonpct'] . '%)',
+				'title2'	=> $plr['marinewon'] . ' ' . $cms->trans('Marine') . ' (' . $plr['marinewonpct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130

@@ -15,11 +15,11 @@
 	<div id="q-menu-{$server.id}" style="display: none"><ul><li><#Please wait#> ...</li></ul></div>
 	<div class="menu" id="menu-{$server.id}">
 		<ul>
-			<li{if $active_tab == 'details'} class="selected"{/if}><a id="details-menu-{$server.id}" href="">Details</a></li>
-			<li{if $active_tab == 'players'} class="selected"{/if}><a id="players-menu-{$server.id}" href="">Players</a></li>
-			<li{if $active_tab == 'rules'} class="selected"{/if}><a id="rules-menu-{$server.id}" href="">Rules</a></li>
+			<li{if $active_tab == 'details'} class="selected"{/if}><a id="details-menu-{$server.id}" href=""><#Details#></a></li>
+			<li{if $active_tab == 'players'} class="selected"{/if}><a id="players-menu-{$server.id}" href=""><#Players#></a></li>
+			<li{if $active_tab == 'rules'} class="selected"{/if}><a id="rules-menu-{$server.id}" href=""><#Rules#></a></li>
 {*
-			<li{if $active_tab == 'rcon'} class="selected"{/if}><a id="rcon-menu-{$server.id}" href="">RCON</a></li>
+			<li{if $active_tab == 'rcon'} class="selected"{/if}><a id="rcon-menu-{$server.id}" href=""><#RCON#></a></li>
 *}
 		</ul>
 	</div>
@@ -28,18 +28,18 @@
 {if $server.timedout}
 		<span id="timeout-{$server.id}" class="timeout"><center><#Server timed out#> <a href="javascript:query({$server.id}, true)"><#Click here to refresh#></a></center></span>
 {else}
-		<p><label><#Server#>:</label> <a href="{$server.connect_url}"><acronym title="Click to connect">{$server.host|escape}:{$server.port}</acronym></a> <span class="ping">(ping: {$server.ping}ms)</span></p>
+		<p><label><#Server#>:</label> <a href="{$server.connect_url}"><acronym title="<#Click to connect#>">{$server.host|escape}:{$server.port}</acronym></a> <span class="ping">(<#ping#>: {$server.ping}ms)</span></p>
 		<p><label><#Type#>:</label> {$server.serveros} {$server.servertype}</p>
 		<p><label><#Game#>:</label> {$server.gamename|escape}</p>
 		<p><label><#Secure#>:</label> {if $server.serversecure}<#VAC secured#>{else}<#Not VAC secured#>{/if}</p>
 		<p><label><#Current Map#>:</label> <a href="{url _base='map.php' id=$server.map}">{$server.map|escape}</a>
 			{if $server.rules.amx_nextmap and $server.rules.amx_nextmap != $server.map}
-				(next <a href="{url _base='map.php' id=$server.rules.amx_nextmap}">{$server.rules.amx_nextmap|escape}</a>)
+				(<#next#> <a href="{url _base='map.php' id=$server.rules.amx_nextmap}">{$server.rules.amx_nextmap|escape}</a>)
 			{elseif $server.rules.mani_nextmap and $server.rules.mani_nextmap != $server.map}
-				(next <a href="{url _base='map.php' id=$server.rules.mani_nextmap}">{$server.rules.mani_nextmap|escape}</a>)
+				(<#next#> <a href="{url _base='map.php' id=$server.rules.mani_nextmap}">{$server.rules.mani_nextmap|escape}</a>)
 			{/if}			
 		</p>
-		<p><label><#Time Left#>:</label> {$server.timeleft|default:'unknown'}</p>
+		<p><label><#Time Left#>:</label> {$server.timeleft|default:'<#unknown#>'}</p>
 		<p><label><#Players#>:</label> {$server.activeplayers} / {$server.maxplayers} {if $server.maxbots} ({$server.maxbots} <#bots#>){/if} ({$server.totalkills} <#kills#>)</p>
 {/if}
 </div>

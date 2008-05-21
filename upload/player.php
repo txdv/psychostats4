@@ -408,8 +408,8 @@ function return_ofc_data() {
 	$g->set_data($data_avg);
 	$g->set_data($data);
 
-	$g->line(1, '#9999ee', 'Avg', 9);
-	$g->line(2, '#5555ff', 'Skill', 9);
+	$g->line(1, '#9999ee', $cms->trans('Avg'), 9);
+	$g->line(2, '#5555ff', $cms->trans('Skill'), 9);
 
 	// label each point with its value
 	$g->set_x_labels($labels);

@@ -298,10 +298,10 @@ function return_ofc_24() {
 	$g->set_data($conns);
 	$g->attach_to_y_right_axis(3);
 
-	$g->line(1, '#9999ee', 'Average Kills', 9);
-	$g->line_dot(2, 5, '#5555ff', 'Kills', 9);
+	$g->line(1, '#9999ee', $cms->trans('Average Kills'), 9);
+	$g->line_dot(2, 5, '#5555ff', $cms->trans('Kills'), 9);
 //	$g->line(1, '#666666', 'Average Connections', 9);
-	$g->line_hollow(1, 3, '#000000', 'Connections', 9);
+	$g->line_hollow(1, 3, '#000000', $cms->trans('Connections'), 9);
 
 	// label each point with its value
 	$g->set_x_labels($labels);
@@ -330,8 +330,8 @@ function return_ofc_24() {
 	$g->set_y_right_min($minlimit);
 	$g->set_y_right_max($maxlimit2);
 */
-	$g->set_y_legend('Kills',12,'#5555ff');
-	$g->set_y_right_legend('Connections',12,'#000000');
+	$g->set_y_legend($cms->trans('Kills'),12,'#5555ff');
+	$g->set_y_right_legend($cms->trans('Connections'),12,'#000000');
 //	$g->y_label_steps();
 
 	$g->set_tool_tip( '#key#<br>#val# (#x_label#)' );
@@ -405,11 +405,11 @@ function return_ofc_day() {
 #	$g->bar(75, '#5555ff', 'Connections', 9);
 
 	$avg_line = new line(1, '#999EE');
-	$avg_line->key('Average Connections', 9);
+	$avg_line->key($cms->trans('Average Connections'), 9);
 	$avg_line->data = $data_avg;
 
 	$conn_bar = new bar_3d(75, '#5555ff', '#3333DD');
-	$conn_bar->key('Connections', 9);
+	$conn_bar->key($cms->trans('Connections'), 9);
 	$conn_bar->data = $data;
 /*
 	$keys = array_keys($data);
@@ -421,7 +421,7 @@ function return_ofc_day() {
 	}
 /**/
 
-	$g->set_tool_tip('#x_label#<br>#key#: #val# (Avg: ' . round($data_avg[0]) . ')');
+	$g->set_tool_tip('#x_label#<br>#key#: #val# (' . $cms->trans(Avg) . ': ' . round($data_avg[0]) . ')');
 //	$g->set_tool_tip('#x_label#<br>#tip#');
 
 	$g->data_sets[] = $avg_line;
@@ -448,7 +448,7 @@ function return_ofc_day() {
 	$g->set_y_min(0);
 	$g->set_y_max($maxlimit);
 
-	$g->set_y_legend('Connections',12,'#5555ff');
+	$g->set_y_legend($cms->trans('Connections'),12,'#5555ff');
 
 	print $g->render();
 }

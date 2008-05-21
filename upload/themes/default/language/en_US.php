@@ -88,7 +88,13 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Available Weapons' =>
 		'',
+	'Average Connections' =>
+		'',
+	'Average Kills' =>
+		'',
 	'Average: %d' =>
+		'',
+	'Avg' =>
 		'',
 	'Awards' =>
 		'',
@@ -130,11 +136,15 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Click here to clear your avatar.' =>
 		'',
+	'Click here to login again.' =>
+		'',
 	'Click here to logout!' =>
 		'',
 	'Click here to refresh' =>
 		'',
 	'Click on an avatar to select it.' =>
+		'',
+	'Click to connect' =>
 		'',
 	'Click to select theme' =>
 		'',
@@ -173,6 +183,8 @@ function PsychoLanguage_default_en_US() {
 	'Delete' =>
 		'',
 	'Deleting a player does not prevent them from re-appearing in the stats.' =>
+		'',
+	'Details' =>
 		'',
 	'Diff' =>
 		'',
@@ -370,11 +382,15 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Lock Member List?' =>
 		'',
+	'Locked?' =>
+		'',
 	'Logged in as' =>
 		'',
 	'Login' =>
 		'',
 	'Login Help' =>
+		'',
+	'Login to admin control panel' =>
 		'',
 	'Login to edit this player\'s profile!' =>
 		'',
@@ -431,6 +447,8 @@ function PsychoLanguage_default_en_US() {
 	'Newbie?' =>
 		'',
 	'Next' =>
+		'',
+	'next' =>
 		'',
 	'No Awards Found' =>
 		'',
@@ -500,6 +518,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Optional' =>
 		'',
+	'Or click here to continue' =>
+		'',
 	'Other' =>
 		'',
 	'out of' =>
@@ -510,11 +530,15 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Overview' =>
 		'',
+	'Page loaded in' =>
+		'',
 	'Password' =>
 		'',
 	'Passwords do not match' =>
 		'',
 	'Passwords do not match; please try again' =>
+		'',
+	'ping' =>
 		'',
 	'Player' =>
 		'',
@@ -570,6 +594,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'potential clans' =>
 		'',
+	'Powered by' =>
+		'',
 	'Previous' =>
 		'',
 	'Previous Rank' =>
@@ -580,11 +606,17 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Querying Server' =>
 		'',
+	'Quick Login Popup' =>
+		'',
+	'Quick Search Popup' =>
+		'',
 	'R' =>
 		'',
 	'Rank' =>
 		'',
 	'ranked players out of' =>
+		'',
+	'RCON' =>
 		'',
 	'Register' =>
 		'',
@@ -624,13 +656,19 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Rule' =>
 		'',
+	'Rules' =>
+		'',
 	'S:K' =>
 		'',
 	'Save' =>
 		'',
+	'Search' =>
+		'',
 	'Search criteria' =>
 		'',
 	'Search criteria "<em>%s</em>" matched %d ranked players out of %d total' =>
+		'',
+	'seconds with' =>
 		'',
 	'Secure' =>
 		'',
@@ -643,6 +681,8 @@ function PsychoLanguage_default_en_US() {
 	'Server' =>
 		'',
 	'Server timed out' =>
+		'',
+	'Servers' =>
 		'',
 	'Session Time' =>
 		'',
@@ -657,6 +697,8 @@ function PsychoLanguage_default_en_US() {
 	'Shots per Kill' =>
 		'',
 	'Skill' =>
+		'',
+	'SQL queries' =>
 		'',
 	'Start Time' =>
 		'',
@@ -677,6 +719,8 @@ function PsychoLanguage_default_en_US() {
 	'The %s does not exist!' =>
 		'',
 	'The unique ID ({$conf.main.uniqueid}) given for your player must already exist or registration will fail.' =>
+		'',
+	'The unique ID entered above should match the player you play as.' =>
 		'',
 	'Theme download file not found or invalid type (' =>
 		'',
@@ -703,6 +747,8 @@ function PsychoLanguage_default_en_US() {
 	'Toggle flags' =>
 		'',
 	'Toggle gallery' =>
+		'',
+	'top 1 percentile' =>
 		'',
 	'Top 100 Highest Ranked Players' =>
 		'',
@@ -806,7 +852,11 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'You have been logged in.' =>
 		'',
+	'You have been logged out.' =>
+		'',
 	'You must have logged into the game server at least once before attempting to register.' =>
+		'',
+	'You will be redirected in a few seconds' =>
 		'',
 	'Your information is never sold or given away to third parties.' =>
 		'',
@@ -816,6 +866,13 @@ function PsychoLanguage_default_en_US() {
 
 // if a translation keyword maps to a method below then the matching method should return the translated string.
 // This is most useful for those large blocks of text in the theme. 
+function LOGIN_AUTOLOGIN() {
+	$text  = '';
+	$text .= 'If auto login is enabled a cookie will be saved in your browser and the next time you' . "\n";
+	$text .= '		visit this site you will automatically be logged in again, even if you close your browser.' . "\n";
+	return $text;
+}
+
 function MANAGE_CLAN_MEMBERS() {
 	$text  = '';
 	$text .= 'If you manually edit the member list you should check the "lock" button.' . "\n";

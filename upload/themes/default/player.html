@@ -23,7 +23,7 @@
 			{/if}
 
 			{if $plr.rank}
-			<h2>{flagimg cc=$plr.cc} {iconimg icon=$plr.icon} {$plr.name|escape} <#is ranked#> <strong>#{$plr.rank}</strong> <#out of#> <strong>{$totalranked|commify}</strong>{if $top1percentile} (top 1 percentile){/if}</h2>
+			<h2>{flagimg cc=$plr.cc} {iconimg icon=$plr.icon} {$plr.name|escape} <#is ranked#> <strong>#{$plr.rank}</strong> <#out of#> <strong>{$totalranked|commify}</strong>{if $top1percentile} (<#top 1 percentile#>){/if}</h2>
 			{else}
 			<h2>{flagimg cc=$plr.cc} {iconimg icon=$plr.icon} {$plr.name|escape} <#is not ranked#></h2>
 			{/if}
