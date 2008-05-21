@@ -73,6 +73,7 @@ sub _getOptions {
 		'config=s'	=> \$self->{param}{config},
 		'noconfig'	=> \$self->{param}{noconfig},
 		'help|?'	=> \$self->{param}{help},
+		'gametype=s'	=> \$self->{param}{gametype},
 		'modtype=s'	=> \$self->{param}{modtype},
 		'reset:s'	=> \$self->{param}{reset},
 		'unknown'	=> \$self->{param}{unknown},
@@ -147,10 +148,15 @@ sub _sanitize {
 	my $self = shift;
 
 	# lowercase the following
-	my @list = qw( daily modtype scanclantags );
+	my @list = qw( daily gametype modtype scanclantags );
 	foreach (@list) {
 		next unless defined $self->{param}{$_};
 		$self->{param}{$_} = lc $self->{param}{$_};
+	}
+	
+	# a dash means a 'blank' modtype
+	if ($self->{param}{modtype} eq '-') {
+		$self->{param}{modtype} = '';
 	}
 
 	# if daily is specified but it's blank or 0 default it to "all"
@@ -303,6 +309,13 @@ All debug output is written to a debug.txt file in the current directory.
 If a filename is specified its name is used instead. Using this implies
 "-debug 1" if no debug was specified.
 
+=item B<-gametype> <type>
+
+Processes logs using the specified GAME type. IE: halflife, cod. Using this
+option has a side effect of actually changing the value in your database
+configuration permanently. Most users will not have to use this. The update
+will fail if an unknown gametype is specified. See also: B<-modtype>
+
 =item B<-help>
 
 If you do not know what this does by now, go seek help, YOU NEED IT!
@@ -330,7 +343,7 @@ for more information.
 Processes logs using the specified MOD type. IE: cstrike, dod. Using this
 option has a side effect of actually changing the value in your database
 configuration permanently. Most users will not have to use this. The update
-will fail if an unknown modtype is specified.
+will fail if an unknown modtype is specified. See also: B<-gametype>
 
 =item B<-nodaily>
 

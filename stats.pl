@@ -194,7 +194,31 @@ $ERR = new PS::ErrLog($conf, $db);			# Now all error messages will be logged to 
 $db->init_tablenames($conf);
 $db->init_database;
 
-# ---------------------------------------------------------------------------------------------------------------
+# if a gametype was specified update the config
+my $confupdated = 0;
+if (defined $opt->get('gametype') and $conf->getconf('gametype','main') ne $opt->get('gametype')) {
+	my $old = $conf->getconf('gametype', 'main');
+	$db->update($db->{t_config}, { value => $opt->get('gametype') }, [ conftype => 'main', section => undef, var => 'gametype' ]);
+	$conf->set('gametype', $opt->get('gametype'), 'main');
+	$ERR->info("Changing gametype from '$old' to '" . $conf->getconf('gametype') . "' (per command line)");
+	$confpudated = 1;
+}
+
+# if a modtype was specified update the config
+if (defined $opt->get('modtype') and $conf->getconf('modtype','main') ne $opt->get('modtype')) {
+	my $old = $conf->getconf('modtype', 'main');
+	$db->update($db->{t_config}, { value => $opt->get('modtype') }, [ conftype => 'main', section => undef, var => 'modtype' ]);
+	$conf->set('modtype', $opt->get('modtype'), 'main');
+	$ERR->info("Changing modtype from '$old' to '" . $conf->getconf('modtype') . "' (per command line)");
+	$confupdated = 1;
+}
+
+# reinitialize the tables if the config was updated above...
+if ($confupdated) {
+	$db->init_tablenames($conf);
+	$db->init_database;	
+}
+
 # handle a 'stats reset' request
 if (defined $opt->get('reset')) {
 	my $game = new PS::Game($conf, $db);
@@ -217,14 +241,6 @@ $ERR->info("PsychoStats v$VERSION initialized.");
 # if -unknown is specified, temporarily enable report_unknown
 if ($opt->get('unknown')) {
 	$conf->set('errlog.report_unknown', 1, 'main');
-}
-
-# if a modtype was specified update the config
-if (defined $opt->get('modtype') and $conf->getconf('modtype','main') ne $opt->get('modtype')) {
-	$db->update($db->{t_config}, { value => $opt->get('modtype') }, [ conftype => 'main', section => undef, var => 'modtype' ]);
-	my $oldmod = $conf->getconf('modtype', 'main');
-	$conf->set('modtype', $opt->get('modtype'), 'main');
-	$ERR->info("Changing modtype from '$oldmod' to '" . $conf->get_main('modtype') . "' (per command line)");
 }
 
 # ---------------------------------------------------------------------------------------------------------------

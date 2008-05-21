@@ -176,6 +176,7 @@ sub set {
 	if (!exists $self->{configs}{$config}) {
 		$self->{configs}{$config} = new PS::Config($self->{db});
 	}
+	$self->{opt}->set($var, $value) if defined $self->{opt} and $self->{opt}->exists($var);
 	return $self->{configs}{$config}->set($var,$value);
 }
 
