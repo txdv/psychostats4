@@ -221,10 +221,10 @@
 
 {if $show_worldids}
 <div id="ps-id-plrworldid" class="ps-column-frame{if $shades.s_plrworldid} s-closed{/if}">
-<div class="ps-column-header"><a href="" onclick="return false"><span><#Player Steamid's#></span></a></div>
+<div class="ps-column-header"><a href="" onclick="return false"><span><#Player#> {$worldid_noun_plural}</span></a></div>
 <div id="s-plrworldid" class="ps-column-content">
 <p class="hl firstrow">
-	<label><#Steamid#></label>
+	<label>{$worldid_noun}</label>
 	<span><b><#Used#></b></span>
 </p>
 {foreach from=$plr.ids_worldid item='i'}

@@ -76,6 +76,10 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Allowed Tags' =>
 		'',
+	'ally' =>
+		'',
+	'Ally Kills' =>
+		'',
 	'and have done' =>
 		'',
 	'Are you sure you want to delete the player?' =>
@@ -97,6 +101,12 @@ function PsychoLanguage_default_en_US() {
 	'Avg' =>
 		'',
 	'Awards' =>
+		'',
+	'axis' =>
+		'',
+	'Axis / Ally Kills' =>
+		'',
+	'Axis Kills' =>
 		'',
 	'Bonus Points' =>
 		'',
@@ -249,6 +259,10 @@ function PsychoLanguage_default_en_US() {
 	'Google Map' =>
 		'',
 	'Guest' =>
+		'',
+	'GUID' =>
+		'',
+	'GUIDs' =>
 		'',
 	'has' =>
 		'',
@@ -430,6 +444,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Most FF Kills' =>
 		'',
+	'Most Hostages Touched' =>
+		'',
 	'Most Kills' =>
 		'',
 	'Most Online Time' =>
@@ -572,8 +588,6 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Player Statistics' =>
 		'',
-	'Player Steamid\'s' =>
-		'',
 	'Player Victims' =>
 		'',
 	'Player Weapons' =>
@@ -708,11 +722,17 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Steamid' =>
 		'',
+	'Steamids' =>
+		'',
 	'Stomach' =>
 		'',
 	'Suicides' =>
 		'',
 	'Team' =>
+		'',
+	'Team / Action Profile' =>
+		'',
+	'Team Kills' =>
 		'',
 	'Thank you for registering your player' =>
 		'',
@@ -843,6 +863,10 @@ function PsychoLanguage_default_en_US() {
 	'Why and How to Register?' =>
 		'',
 	'Windows' =>
+		'',
+	'Worldid' =>
+		'',
+	'Worldids' =>
 		'',
 	'Yesterday' =>
 		'',

@@ -18,7 +18,7 @@ if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FIL
 // If the language translation extends another translation set then you should include
 // that class file once here. This is useful for updating a translation set w/o having to define 
 // every single language map if some translations are no different from the extended language.
-//include_once('./en_US.php');
+//include_once($this->language_dir('en_US') . '/en_US.php');
 
 class PsychoLanguage_acp_en_US extends PsychoLanguage {
 
@@ -78,6 +78,8 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Allowed Tags' =>
 		'',
+	'allow_url_fopen INI setting is disabled.' =>
+		'',
 	'Are you sure you want to delete all aliases for this unique id?' =>
 		'',
 	'Are you sure you want to delete the award?' =>
@@ -97,6 +99,8 @@ function PsychoLanguage_acp_en_US() {
 	'Are you sure you want to delete the server?' =>
 		'',
 	'Are you sure you want to delete the user?' =>
+		'',
+	'Are you sure you want to install this theme?' =>
 		'',
 	'Ascending' =>
 		'',
@@ -252,6 +256,8 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Enactor Team' =>
 		'',
+	'Enter the URL location of the theme.xml for the theme you want to install.' =>
+		'',
 	'Erase' =>
 		'',
 	'Error copying new image to icon directory!' =>
@@ -274,7 +280,7 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Error writting to database' =>
 		'',
-	'Error writting to database: ' =>
+	'Error writting to database: %s' =>
 		'',
 	'Event' =>
 		'',
@@ -286,15 +292,23 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Fatal Error' =>
 		'',
+	'Fetch' =>
+		'',
 	'File' =>
 		'',
 	'File \'%s\' uploaded successfully!' =>
 		'',
 	'File download is too large' =>
 		'',
+	'File Size' =>
+		'',
+	'File Type' =>
+		'',
 	'Filename must have no spaces or path' =>
 		'',
 	'Filter' =>
+		'',
+	'For more information see the ' =>
 		'',
 	'Format' =>
 		'',
@@ -330,6 +344,8 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'ICQ' =>
 		'',
+	'If you do not remove this directory anyone will be able to access your database!!' =>
+		'',
 	'If you know logs exist then try enabling \'Passive Mode\' and test again' =>
 		'',
 	'Ignore?' =>
@@ -353,6 +369,8 @@ function PsychoLanguage_acp_en_US() {
 	'Install' =>
 		'',
 	'Install Date' =>
+		'',
+	'Install new theme' =>
 		'',
 	'Installed Plugins' =>
 		'',
@@ -492,6 +510,8 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Next' =>
 		'',
+	'No' =>
+		'',
 	'No Administrator session found' =>
 		'',
 	'No alias can be the same as the unique ID' =>
@@ -540,6 +560,8 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Non-Admin Users?' =>
 		'',
+	'none' =>
+		'',
 	'Normal configuration options should not be edited from this form unless you know what you\'re doing.' =>
 		'',
 	'Not Confirmed' =>
@@ -567,6 +589,8 @@ function PsychoLanguage_acp_en_US() {
 	'Override' =>
 		'',
 	'Override Tag' =>
+		'',
+	'parent' =>
 		'',
 	'Passive Mode?' =>
 		'',
@@ -610,6 +634,10 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Players Deleted!' =>
 		'',
+	'Please confirm theme installation!' =>
+		'',
+	'Please fix permissions.' =>
+		'',
 	'Please select a valid type from the list' =>
 		'',
 	'Please use a value greater than or equal to 0.00' =>
@@ -633,6 +661,10 @@ function PsychoLanguage_acp_en_US() {
 	'Plugins Not Installed' =>
 		'',
 	'Port' =>
+		'',
+	'Preview' =>
+		'',
+	'Preview of ' =>
 		'',
 	'Previous' =>
 		'',
@@ -668,6 +700,8 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Regular Expression' =>
 		'',
+	'Reinstall' =>
+		'',
 	'Reset' =>
 		'',
 	'Reset All Stats!' =>
@@ -698,6 +732,10 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Select All' =>
 		'',
+	'Select Theme' =>
+		'',
+	'Select theme to reinstall' =>
+		'',
 	'Server' =>
 		'',
 	'Server Host' =>
@@ -711,6 +749,8 @@ function PsychoLanguage_acp_en_US() {
 	'Severity' =>
 		'',
 	'SFTP support not available in this installation of PHP' =>
+		'',
+	'Short Name' =>
 		'',
 	'Skill' =>
 		'',
@@ -744,6 +784,8 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'The icons directory is not writable.' =>
 		'',
+	'The installation directory should be removed after installation is completed!' =>
+		'',
 	'The layout settings define how the config option is displayed in the main configuration form' =>
 		'',
 	'The URL does not point to an image' =>
@@ -756,11 +798,19 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'Theme \'%s\' was enabled' =>
 		'',
-	'Theme \'%s\' was uninstalled successfully. It was not deleted and can be re-installed later.' =>
+	'Theme \'%s\' was uninstalled successfully (note: directory was not deleted)' =>
+		'',
+	'Theme directory <em>{$conf.theme.template_dir|escape}</em> is not writable by web server.' =>
 		'',
 	'Themes' =>
 		'',
+	'Themes can not be installed!' =>
+		'',
+	'Themes should only be installed from trusted sources!' =>
+		'',
 	'There was an error uninstalling the plugin' =>
+		'',
+	'These themes are already in your themes directory but are not installed in your database.' =>
 		'',
 	'This field can not be blank' =>
 		'',
@@ -773,6 +823,8 @@ function PsychoLanguage_acp_en_US() {
 	'Time' =>
 		'',
 	'Timestamp' =>
+		'',
+	'Title' =>
 		'',
 	'Toggle flags' =>
 		'',
@@ -793,6 +845,8 @@ function PsychoLanguage_acp_en_US() {
 	'Unable to query server' =>
 		'',
 	'Unique ID' =>
+		'',
+	'Unknown' =>
 		'',
 	'Unknown error while deleting file' =>
 		'',
@@ -868,9 +922,15 @@ function PsychoLanguage_acp_en_US() {
 		'',
 	'With selected' =>
 		'',
-	'You can not disable the default theme' =>
+	'XML URL Location' =>
 		'',
-	'You can not uninstall the default theme!' =>
+	'Yes' =>
+		'',
+	'You can also reinstall a local theme in the list below.' =>
+		'',
+	'You can not disable the active theme' =>
+		'',
+	'You can not uninstall the default or currently active theme!' =>
 		'',
 	'You can not upload any new icons until the permissions are corrected.' =>
 		'',
@@ -879,6 +939,8 @@ function PsychoLanguage_acp_en_US() {
 	'You must enter the game type' =>
 		'',
 	'Your information is never sold or given away to third parties.' =>
+		'',
+	'Your server environment will not allow new themes to be installed due to the following reasons.' =>
 		'',
 
 	) + $this->map;

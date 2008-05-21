@@ -1864,16 +1864,26 @@ function theme_setup(&$theme) {
 		'show_clan_icons'	=> $this->conf['theme']['permissions']['show_clan_icons'],
 		'show_clan_flags'	=> $this->conf['theme']['permissions']['show_clan_flags'],
 		'loggedin'		=> ($_REQUEST['loggedin'] and $cms->user->logged_in()),
-		'shades'		=> $cms->session->opt('shades')
+		'shades'		=> $cms->session->opt('shades'),
+		'worldid_noun'		=> $this->worldid_noun(),
+		'worldid_noun_plural'	=> $this->worldid_noun(true),
 	));
 	$theme->assign_by_ref('conf', $this->conf);
 
 	// allow templates to access some PS methods
 	$theme->register_object('ps', $this, 
-		array( 'version' ),
+		array( 'version', 'worldid_noun' ),
 		false
 	);
 
+}
+
+// returns the noun used to describe the 'worldid' for players.
+// For example, halflife uses a "STEAMID" to identify/describe a player.
+// If $plural is true the plural form of the noun will be returned.
+function worldid_noun($plural = false) {
+	global $cms;
+	return $plural ? $cms->trans('Worldids') : $cms->trans('Worldid');
 }
 
 // returns the version of PsychoStats

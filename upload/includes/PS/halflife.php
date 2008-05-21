@@ -41,6 +41,11 @@ function PS_halflife(&$db) {
 	parent::PS($db);
 }
 
+function worldid_noun($plural = false) {
+	global $cms;
+	return $plural ? $cms->trans('Steamids') : $cms->trans('Steamid');
+}
+
 }
 
 ?>

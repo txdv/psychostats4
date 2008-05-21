@@ -56,6 +56,11 @@ function PS_cod(&$db) {
 	$this->CLAN_MAP_MODTYPES = $this->CLAN_MODTYPES;
 }
 
+function worldid_noun($plural = false) {
+	global $cms;
+	return $plural ? $cms->trans('GUIDs') : $cms->trans('GUID');
+}
+
 function add_map_player_list_mod($map, $setup = array()) {
 	global $cms;
 	$this->add_map_player_list('touchedhostages', $setup + array('label' => $cms->trans("Most Hostages Touched")) );
