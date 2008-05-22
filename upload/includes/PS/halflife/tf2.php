@@ -84,8 +84,8 @@ function add_map_player_list_mod($map, $setup = array()) {
 
 	$prefix = substr($map['uniqueid'], 0, 3);
 	if ($prefix == 'ctf') {
-		$this->add_map_player_list('flagscaptured', $setup + array('label' => $cms->trans("Most Flags Captured")) );
-		$this->add_map_player_list('flagsdefended', $setup + array('label' => $cms->trans("Most Flags Defended")) );
+		$this->add_map_player_list('flagscaptured', $setup + array('label' => $cms->trans("Most Intel Captured")) );
+		$this->add_map_player_list('flagsdefended', $setup + array('label' => $cms->trans("Most Intel Recovered")) );
 	} else {
 		$this->add_map_player_list('captureblocked', $setup + array('label' => $cms->trans("Most Blocked Captures")) );
 		$this->add_map_player_list('pointcaptured', $setup + array('label' => $cms->trans("Most Points Captured")) );
@@ -112,7 +112,7 @@ function index_table_mod(&$table) {
 		array( 
 			'dominations' => array( 'label' => $cms->trans('Dom'), 'tooltip' => $cms->trans("Dominations") ), 
 			'assists' => array( 'label' => $cms->trans('Assists'), 'tooltip' => $cms->trans("Kill Assists") ), 
-			'flagscaptured' => array( 'label' => $cms->trans('Flags'), 'tooltip' => $cms->trans("Flags captured") ), 
+			'flagscaptured' => array( 'label' => $cms->trans('Intel'), 'tooltip' => $cms->trans("Intelligence captured") ), 
 			'pointcaptured' => array( 'label' => $cms->trans('CP'), 'tooltip' => $cms->trans("Captured points") ), 
 		),
 		'onlinetime',
@@ -155,8 +155,8 @@ function player_left_column_mod(&$plr, &$theme) {
 	if (!$strings) {
 		$strings = array(
 			'won'			=> $cms->trans("Red / Blue Wins"),
-			'flagscaptured'		=> $cms->trans("Flags Captured"),
-			'flagsdefended'		=> $cms->trans("Flags Defended"),
+			'flagscaptured'		=> $cms->trans("Intel Captured"),
+			'flagsdefended'		=> $cms->trans("Intel Recovered"),
 			'captureblocked'	=> $cms->trans("Captures Blocked"),
 			'pointcaptured'		=> $cms->trans("Points Captured")
 		);

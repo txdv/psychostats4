@@ -450,6 +450,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Most Online Time' =>
 		'',
+	'ms' =>
+		'',
 	'MSN' =>
 		'',
 	'MSN Messenger' =>
