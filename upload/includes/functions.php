@@ -252,10 +252,12 @@ function rank_change($args = array()) {
 			$prevrank == 0 ? '' : $diff
 		);
 	} else {
-		$img = $cms->theme->url() . '/img/icons/' . sprintf($args['imgfmt'], $dir);
-		$parent = $cms->theme->is_child();
-		if (!file_exists($img) and $parent) {
-			$img = $cms->theme->url($parent) . '/img/icons/' . sprintf($args['imgfmt'], $dir);
+		$img = '/img/icons/' . sprintf($args['imgfmt'], $dir);
+		$path = catfile($ps->conf['theme']['template_dir'], $cms->theme->theme(), $img);
+		if (!file_exists($path) and $cms->theme->is_child()) {
+			$img = $cms->theme->url($cms->theme->is_child()) . $img;
+		} else {
+			$img = $cms->theme->url() . $img;
 		}
 
 		$output = sprintf("<img src='%s' alt='%s' title='%s' %s/>", $img, $alt, $alt, $args['attr']);
@@ -311,10 +313,12 @@ function skill_change($args = array()) {
 			$prevskill == 0 ? '' : $diff
 		);
 	} else {
-		$img = $cms->theme->url() . '/img/icons/' . sprintf($args['imgfmt'], $dir);
-		$parent = $cms->theme->is_child();
-		if (!file_exists($img) and $parent) {
-			$img = $cms->theme->url($parent) . '/img/icons/' . sprintf($args['imgfmt'], $dir);
+		$img = '/img/icons/' . sprintf($args['imgfmt'], $dir);
+		$path = catfile($ps->conf['theme']['template_dir'], $cms->theme->theme(), $img);
+		if (!file_exists($path) and $cms->theme->is_child()) {
+			$img = $cms->theme->url($cms->theme->is_child()) . $img;
+		} else {
+			$img = $cms->theme->url() . $img;
 		}
 
 		$output = sprintf("<img src='%s' alt='%s' title='%s' %s/>", $img, $alt, $alt, $args['attr']);
