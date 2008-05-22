@@ -95,9 +95,10 @@ function gametype() {
 function modtype() {
 	$m = $this->data['gamedir'];
 	switch ($m) {
-		case 'czero': return 'cstrike';
-		case 'hl2dm': return 'hldm';
-		default: return $m;
+		case 'czero': 	return 'cstrike';
+		case 'hl2dm': 	return 'hldm';
+		case 'tf':	return 'tf2';
+		default: 	return $m;
 	}
 	return $m;
 }
