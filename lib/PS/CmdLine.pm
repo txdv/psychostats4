@@ -155,7 +155,7 @@ sub _sanitize {
 	}
 	
 	# a dash means a 'blank' modtype
-	if ($self->{param}{modtype} eq '-') {
+	if ($self->{param}{modtype} and $self->{param}{modtype} eq '-') {
 		$self->{param}{modtype} = '';
 	}
 

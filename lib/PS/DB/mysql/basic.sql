@@ -504,6 +504,19 @@ CREATE TABLE `ps_role_data` (
   PRIMARY KEY  (`dataid`),
   UNIQUE KEY `roleid` (`roleid`,`statdate`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_search_results` (
+  `search_id` char(32) NOT NULL,
+  `session_id` char(32) NOT NULL,
+  `phrase` varchar(255) NOT NULL,
+  `result_total` int(10) unsigned NOT NULL default '0',
+  `abs_total` int(10) unsigned NOT NULL default '0',
+  `results` text,
+  `query` text,
+  `updated` datetime NOT NULL,
+  PRIMARY KEY  (`search_id`),
+  KEY `session_id` (`session_id`),
+  KEY `updated` (`updated`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_sessions` (
   `session_id` char(32) NOT NULL default '',
   `session_userid` int(10) unsigned NOT NULL default '0',
