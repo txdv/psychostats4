@@ -19,20 +19,21 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
- */
-
-/**
+ *	
  *	PsychoStats base class
  *
  *	Depends: class_DB.php
  *	Optional Depends: class_HTTP.php
  *
- *	PsychoStats class. This is a self contained API class for PsychoStats. It can be included almost
- *	anywhere to fetch stats from a PsychoStats database. The API is simple and does not require the user 
- *	to know how stats are stored in the database. No other libraries (except the DB class) are needed.
+ *      PsychoStats class. This is a self contained API class for PsychoStats.
+ *      It can be included almost anywhere to fetch stats from a PsychoStats
+ *      database. The API is simple and does not require the user to know how
+ *      stats are stored in the database. No other libraries (except the DB
+ *      class) are needed.
  *	
- *	Sub-classes will override this base class to provide some extra functionality based on game::mod.
- *
+ *      Sub-classes will override this base class to provide some extra
+ *      functionality based on game::mod.
+ *      
  *	Example:
  *		include("class_PS.php");
  *		$dbconf = array( ... DB settings ... );
@@ -43,20 +44,14 @@
  *
  *		$clans = $ps->get_clan_list(array( ... params ... ));
  *		print_r($clans);
+ *		
  * @package PsychoStats
+ * 
  */
 
 if (defined("CLASS_PS_PHP")) return 1;
 define("CLASS_PS_PHP", 1);
 
-/**
- * PsychoStats class. This is a self contained API class for PsychoStats. It can be included almost
- * anywhere to fetch stats from a PsychoStats database. The API is simple and provides several methods
- * fore fetching player statistics from the database.
- * No other libraries (except the DB class) are needed.
- * @package PsychoStats
- * 
- */
 class PS {
 var $use_roles = false;
 
@@ -238,6 +233,7 @@ function PS(&$db) {
 	$this->t_plugins 		= $this->tblprefix . 'plugins';
 	$this->t_role 			= $this->tblprefix . 'role';
 	$this->t_role_data		= $this->tblprefix . 'role_data';
+	$this->t_search_results		= $this->tblprefix . 'search_results';
 	$this->t_sessions 		= $this->tblprefix . 'sessions';
 	$this->t_state 			= $this->tblprefix . 'state';
 	$this->t_user 			= $this->tblprefix . 'user';
@@ -261,101 +257,215 @@ function PS(&$db) {
 	$this->c_role_data	= $this->tblprefix . 'c_role_data';
 } // constructor
 
-function search_players($args = array()) {
-	$args += array(
-		'sid'		=> 0, //session_sid(),
-		'search'	=> '',
-		'logic'		=> 'and',
-		'ranked'	=> 1,
-		'ignoresingle'	=> false,
-		'limit'		=> 0,
-		'where'		=> '',
+/*
+    * function init_search
+    * Generates a new unique search string (to be used with search_players())
+    *
+    * @return  string  A new unique search ID.
+*/
+function init_search() {
+	$id = md5(uniqid(rand(), true));	
+	return $id;
+}
+
+/*
+    * function search_players
+    * Performs a search on the DB for players matching the criteria specified.
+    * 
+    * @param  string  $search_id  The search ID to use for this search.
+    * @param  string/array  $criteria  Array of options allows to change
+    * the criteria very specifically. A string will be used as the text to
+    * search for.
+    * 
+    * @return integer Total matches found.
+*/
+function search_players($search_id, $criteria) {
+	global $cms;
+	$plrids = array();
+	
+	// convert criteria string to an array
+	if (!is_array($criteria)) {
+		$criteria = array( 'phrase' => $criteria );
+	}
+
+	// assign criteria defaults
+	$criteria += array(
+		'phrase'	=> null,
+		'mode'		=> 'contains', 	// 'contains', 'begins', 'ends', 'exact'
+		'status'	=> '',		// empty, 'ranked', 'unranked'
 	);
-	$list = array();
-	$res = array();
-	$output = array();
-	$output2 = array();
-	$ranked = $args['ranked'] ? TRUE : FALSE;
-	$limit = $args['limit'];
-	$where = $args['where'];
-	$logic = strtolower(in_array(strtolower($args['logic']), array('or','and','exact')) ? $args['logic'] : 'and');
-	$arr = explode('"',$args['search']);
+	// 'limit' is forced based on current configuration
+	$criteria['limit'] = coalesce($this->conf['main']['security']['search_limit'], 1000);
+	if (!$criteria['limit']) $criteria['limit'] = 1000;
 
-	// not the most perfect method of dealing with double quoted srings... but it works for my needs
-	for ($i=0; $i < count($arr); $i++) {
-		if ($i % 2 == 0) {
-			$output = array_merge($output, explode(" ", $arr[$i]));
-		} else {
-			$output[] = $arr[$i];
+	// do not allow blank phrases to be searched
+	$criteria['phrase'] = trim($criteria['phrase']);
+	if (is_null($criteria['phrase']) or $criteria['phrase'] == '') {
+		return false;
+	}
+
+	// sanitize 'mode'
+	$criteria['mode'] = strtolower($criteria['mode']);
+	if (!in_array($criteria['mode'], array('contains', 'begins', 'ends', 'exact'))) {
+		$criteria['mode'] = 'contains';
+	}
+
+	// sanitize 'status'
+	$criteria['status'] = strtolower($criteria['status']);
+	if (!in_array($criteria['status'], array('ranked', 'unranked'))) {
+		$criteria['status'] = '';
+	}
+
+	// tokenize our search phrase
+	$tokens = array();
+	if ($criteria['mode'] == 'exact') {
+		$tokens = array( $criteria['phrase'] );
+	} else {
+		$tokens = query_to_tokens($criteria['phrase']);
+	}
+
+	// build our WHERE clause
+	$where = "";
+	$inner = array();
+	$outer = array();
+	
+	// loop through each field and add it to the 'where' clause.
+	// Search plr, profile and ids
+	foreach (array('p.uniqueid', 'pp.name', 'pp.email', 'n.name', 'w.worldid', 'ip.ipaddr') as $field) {
+		foreach ($tokens as $t) {
+			$token = $this->token_to_sql($t, $criteria['mode']);
+			if ($field == 'ip.ipaddr') {
+				// Does the token phrase look like an IPv4 IP address?
+				// The IP is not verified to be a valid IP... I don't care.
+				if (preg_match('/^\d+\.\d+\.\d+\.\d+$/', $t)) {
+					$inner[] = "$field = INET_ATON('" . $this->db->escape($t) . "')";
+				}
+			} else {
+				$inner[] = "$field LIKE '$token'";
+			}
 		}
-	}
-	foreach($output as $word) {
-		if (trim($word) != "") $output2[] = $word;
-	}
-	$words = array_unique($output2);
-	$phrase = implode(' ', $words);
-
-	// search for a match of the phrase against player profile names
-	$cmd  = "SELECT DISTINCT p.plrid FROM $this->t_plr_profile pp, $this->t_plr p ";
-	$cmd .= "WHERE pp.name LIKE '%" . $this->db->escape($phrase) . "%' AND pp.uniqueid=p.uniqueid ";
-	if ($ranked) $cmd .= "AND p.allowrank=1 ";
-	if ($where) $cmd .= "AND $where ";
-	if ($limit) $cmd .= "LIMIT $limit";
-	$res = $this->db->fetch_list($cmd);
-	$list = array_merge($list, $res);
-#	print "$cmd<BR><BR>";
-
-	// try a match for the phrase given from plr_ids and profile name
-	// Do not perform the match if we already have a SINGLE match
-	if (($args['ignoresingle'] or count($res) != 1) and (!$limit or ($limit and count($res) < $limit))) {
-		// The c_plr_data table is included so that only players with compiled stats are returned in the result
-		$cmd  = "SELECT DISTINCT i.plrid FROM $this->t_plr_ids i, $this->t_plr p, $this->c_plr_data c ";
-		$cmd .= "WHERE p.plrid=i.plrid AND c.plrid=p.plrid AND ";
-		if ($ranked) $cmd .= "p.allowrank=1 AND ";
-		$cmd .= "( i.name LIKE '%" . $this->db->escape($phrase) . "%' OR ";
-		$cmd .= "i.worldid LIKE '%" . $this->db->escape($phrase) . "%' ";
-		if (preg_match('|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$|', $phrase)) {
-			$cmd .= " OR i.ipaddr = '" . sprintf("%u", ip2long($phrase)) . "' ";
+		if ($inner) {
+			$outer[] = $inner;
 		}
-		$cmd .= ") ";
-		if ($where) $cmd .= "AND $where ";
-#		if ($limit) $cmd .= "LIMIT " . ($limit - count($res));
-		if ($limit) $cmd .= "LIMIT $limit ";
-#		print "$cmd<BR><BR>";
-		$res = $this->db->fetch_list($cmd);
-		$list = array_merge($list, $res);
+		$inner = array();
 	}
 
-	$plrs = array_unique($list);
-	sort($plrs);
-	if ($limit) $plrs = array_slice($plrs, 0, $limit);
+	// combine the outer and inner clauses into a where clause
+	foreach ($outer as $in) {
+		$where .= " (" . join(" AND ", $in) . ") OR ";
+	}
+	$where = substr($where, 0, -4);		// remove the trailing " OR "
 
-	// delete any previous queries older than 4 hours or matching the current sid
-	$max = time() - (60*60*4);
-	$this->db->query("DELETE FROM $this->t_search WHERE session_id='" . $this->db->escape($args['sid']) . "' OR time < $max");
+	// perform search and find Jimmy Hoffa!
+	// NOTE: SQL_CALC_FOUND_ROWS is MYSQL specific and would need to be
+	// changed for other databases.
+	$cmd  = "SELECT SQL_CALC_FOUND_ROWS DISTINCT p.plrid " .
+		"FROM $this->t_plr p, $this->t_plr_profile pp, " .
+		"$this->t_plr_ids_name n, $this->t_plr_ids_worldid w," .
+		"$this->t_plr_ids_ipaddr ip " . 
+		"WHERE p.uniqueid=pp.uniqueid AND p.plrid=n.plrid AND " .
+		"p.plrid=w.plrid AND p.plrid=ip.plrid ";
+	if ($criteria['status'] == 'ranked') {
+		$cmd .= "AND p.allowrank=1 ";
+	} elseif ($criteria['status' == 'unranked']) {
+		$cmd .= "AND p.allowrank=0 ";
+	} 
+	$cmd .= "AND ($where) ";
+	$cmd .= "LIMIT " . $criteria['limit'];
+	$plrids = $this->db->fetch_list($cmd);
+	$total = $this->db->fetch_item("SELECT FOUND_ROWS()");
 
-	// save the results...
-	$this->db->insert($this->t_search, array(
-		'session_id'	=> $args['sid'],
-		'query'		=> $phrase,
-		'time'		=> time(),
-		'results'	=> join(',', $plrs),
-	));
-	$this->db->optimize($this->t_sessions);
+	// delete any searches that are more than a few hours old
+	$this->delete_stale_searches();
 
-	return count($plrs);
+	// ps_search_results record for insertion
+	$search = array(
+		'search_id'	=> $search_id,
+		'session_id'	=> $cms->session->sid(),
+		'phrase'	=> $criteria['phrase'],
+		'result_total'	=> count($plrids),
+		'abs_total'	=> $total,
+		'results'	=> join(',', $plrids),
+		'query'		=> $cmd,
+		'updated'	=> date('Y-m-d H:i:s'),
+		
+	);
+	$ok = $this->save_search($search);
+	
+	return $ok ? count($plrids) : false;
 }
 
-function del_search_results($sid) {
-//	if ($sid === NULL) $sid = session_sid();
-	return $this->db->delete($this->t_search, 'session_id', $sid);
+/*
+    * function save_search
+    * Saves the results of a search done with search_players
+    * 
+    * @param  array  $search  Search paramters to save
+    * 
+    * @return string  Returns true if the search was saved, false otherwise.
+*/
+function save_search($search) {
+	return $this->db->insert($this->t_search_results, $search);
 }
 
-function get_search_results($sid) {
-//	if ($sid === NULL) $sid = session_sid();
-	$sid = $this->db->escape($sid);
-	$res = $this->db->fetch_row(1,"SELECT * FROM $this->t_search WHERE session_id='$sid' LIMIT 1");
-	return $res ? $res : array();
+/*
+    * function get_search
+    * Returns a saved search result
+    * 
+    * @param  string  $search  Search paramters to save
+    * 
+    * @return string  Returns true if the search was saved, false otherwise.
+*/
+function get_search($search) {
+	if ($this->is_search($search)) {
+		return $this->db->fetch_row(1, "SELECT * FROM $this->t_search_results WHERE search_id=" . $this->db->escape($search, true));
+	}
+	return array();
+}
+
+/*
+    * function is_search
+    * Determines if the search id given is an active search
+    * 
+    * @param  string  $search  Search ID string to validate.
+    * 
+    * @return boolean Returns true if the search is valid.
+*/
+function is_search($search) {
+	if (!$search) return false;
+	return $this->db->exists($this->t_search_results, 'search_id', $search);
+	
+}
+/*
+    * function delete_stale_searches
+    * Deletes stale searches more than a few hours old
+    * 
+    * @param  integer  $hours  Maximum hours allowed to be stale (Optional)
+    * 
+    * @return void
+*/
+function delete_stale_searches($hours = 4) {
+	if (!is_numeric($hours) or $hours < 0) $hours = 4;
+	$this->db->query("DELETE FROM $this->t_search_results WHERE updated < NOW() - INTERVAL $hours HOURS");
+}
+
+/*
+    * function token_to_sql
+    * Converts the token string into a SQL string based on the $mode given.
+    * 
+    * @param  string  $str  The token string
+    * @param  string  $mode Token mode (contains, begins, ends, exact)
+    * 
+    * @return string  Returns the string ready to be used in a SQL statement.
+*/
+function token_to_sql($str, $mode) {
+	$token = $this->db->escape($str);
+	switch ($mode) {
+		case 'begins': 	return $token . '%'; break;
+		case 'ends': 	return '%' . $token; break;
+		case 'exact': 	return $token; break;
+		case 'contains':
+		default:	return '%' . $token . '%'; break;
+	}
 }
 
 // load a player's profile only. does not load any extra statistics.
@@ -994,6 +1104,8 @@ function get_player_list($args = array()) {
 		'filter'	=> '',
 		'joinclaninfo'	=> false,
 		'joinccinfo'	=> true,
+		'results'	=> null,
+		'search'	=> null
 	);
 	$values = "";
 	if (trim($args['fields']) == '') {
@@ -1020,8 +1132,19 @@ function get_player_list($args = array()) {
 		$f = '%' . $this->db->escape($filter) . '%';
 		$cmd .= "AND (pp.name LIKE '$f') ";
 	}
+	
+	$results = $args['results'];
+	if ($args['search']) {
+		$results = $this->get_search($args['search']);
+	}
+	if ($results) {
+		$plrids = array_slice(explode(',',$results['results']), $args['start'], $args['limit']);
+//		$plrids = explode(',',$results['results']);
+		$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
+	} else {
+		$cmd .= $this->getsortorder($args);
+	}
 
-	$cmd .= $this->getsortorder($args);
 	$list = array();
 	$list = $this->db->fetch_rows(1, $cmd);
 
@@ -1818,7 +1941,7 @@ function ip_lookup($ip) {
 		$ipstr = is_array($ip) ? implode(',',$ip) : $ip;
 		$url = (strpos($url, '$ip') === FALSE) ? $url.$ipstr : str_replace('$ip', $ipstr, $url);
 		include_once(dirname(dirname(__FILE__)) . '/class_HTTP.php');
-		$lookup = new HTTPRequest($url);
+		$lookup = new HTTP_Request($url);
 		$text = $lookup->download();
 		return $text;
 	} else {				// LOCAL FILE LOOKUP

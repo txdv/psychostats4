@@ -32,7 +32,7 @@ $DEFAULT_SORT = 'skill';
 $DEFAULT_LIMIT = 100;
 
 // collect url parameters ...
-$validfields = array('sort','order','start','limit','q');
+$validfields = array('sort','order','start','limit','q','search');
 $cms->theme->assign_request_vars($validfields, true);
 
 $sort = trim(strtolower($sort));
@@ -56,13 +56,40 @@ if (isset($cms->input['language'])) {
 	previouspage($PHP_SELF);
 }
 
-// fetch stats, etc...
-$totalplayers = $ps->get_total_players(array('allowall' => 1, 'filter' => $q));
-$overalltotal = $q == '' ? $totalplayers : $ps->get_total_players(array('allowall' => 1));
-$totalranked  = $ps->get_total_players(array('allowall' => 0, 'filter' => $q));
+$total = array();
+$results = array();
+if ($q != '') {
+	// a new search was requested (a query string was given)
+	$search = $ps->init_search();
+	$matched = $ps->search_players($search, array(
+		'phrase'	=> $q,
+		'mode'		=> 'contains',
+		'status'	=> 'ranked',
+	));
+	$results = $ps->get_search($search);
+	
+} else if ($ps->is_search($search)) {
+	// an existing search was requested (new page or sort)
+	$results = $ps->get_search($search);
+	
+} else {
+	// no search, just fetch a list players
+	$search = '';
+}
 
+// determine the total players found
+$total['all'] = $ps->get_total_players(array('allowall' => 1));
+if ($results) {
+	$total['ranked'] = $results['result_total'];
+	$total['absolute'] = $results['abs_total'];
+} else {
+	$total['ranked']   = $ps->get_total_players(array('allowall' => 0));
+	$total['absolute'] = $total['all'];
+}
+
+// fetch stats, etc...
 $players = $ps->get_player_list(array(
-	'filter'	=> $q,
+	'results'	=> $results,
 	'sort'		=> $sort,
 	'order'		=> $order,
 	'start'		=> $start,
@@ -70,9 +97,15 @@ $players = $ps->get_player_list(array(
 	'joinclaninfo' 	=> false,
 ));
 
+$baseurl = array('sort' => $sort, 'order' => $order, 'limit' => $limit);
+if ($search) {
+	$baseurl['search'] = $search;
+} else {
+	if ($q != '') $baseurl['q'] = $q;
+}
 $pager = pagination(array(
-	'baseurl'	=> ps_url_wrapper(array('sort' => $sort, 'order' => $order, 'limit' => $limit, 'q' => $q)),
-	'total'		=> $totalranked,
+	'baseurl'	=> ps_url_wrapper($baseurl),
+	'total'		=> $total['ranked'],
 	'start'		=> $start,
 	'perpage'	=> $limit, 
 	'pergroup'	=> 5,
@@ -112,12 +145,14 @@ $cms->filter('players_table_object', $table);
 // assign variables to the theme
 $cms->theme->assign(array(
 	'q'		=> $q,
-	'search_blurb'	=> $cms->trans('Search criteria "<em>%s</em>" matched %d ranked players out of %d total', ps_escape_html($q),$totalplayers,$totalranked),
+	'search'	=> $search,
+	'results'	=> $results,
+	'search_blurb'	=> $cms->trans('Search criteria "<em>%s</em>" matched %d ranked players out of %d total',
+		ps_escape_html($q), $total['ranked'], $total['absolute']
+	),
 	'players'	=> $players,
 	'players_table'	=> $table->render(),
-	'overalltotal'	=> $overalltotal,
-	'totalplayers'	=> $totalplayers,
-	'totalranked' 	=> $totalranked,
+	'total'		=> $total,
 	'pager'		=> $pager,
 	'language_list'	=> $cms->theme->get_language_list(),
 	'theme_list'	=> $cms->theme->get_theme_list(),
@@ -130,10 +165,7 @@ $basename = basename(__FILE__, '.php');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 
 function activity_bar($pct) {
-//	$out = $pct > 0 ? sprintf("%0.0f%%", $pct) : '-';
-	$out = pct_bar(array(
-		'pct' => $pct
-	));
+	$out = pct_bar(array( 'pct' => $pct ));
 	return $out;
 }
 

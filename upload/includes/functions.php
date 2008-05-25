@@ -47,6 +47,7 @@ function xml_result($code, $message, $header = true, $extra = array()) {
 	if ($header) header("Content-Type: text/xml");
 	return xml_response($data);
 }
+
 // converts the array key=>value pairs into an XML (SML) response string.
 // this function is recursive and will work with sub arrays to create nested <nodes>.
 // key names are not checked for validity. 
@@ -72,7 +73,6 @@ function xml_response($data = array(), $root = 'response', $indent = 0) {
 	return $xml;
 }
 
-// --------------------------------------------------------------------------------------------------------------------
 // Interpolates special $tokens in the string.
 // $tokens is a hash array containing variables and can be nested 1 level deep (ie $tok1 or $tok2.value)
 // if $fill is true than any tokens in the string that do not have a matching variable in $tokens is not removed.
@@ -109,7 +109,7 @@ function simple_interpolate($str, $tokens, $fill = false) {
 	}
 	return $str;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 function pct_bar($args = array()) {
 	global $cms;
 	require_once(dirname(__FILE__) . "/class_Color.php");
@@ -154,7 +154,7 @@ function pct_bar($args = array()) {
 	);
 	return $out;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // Returns HTML for a dual percentage bar between 2 percentages. Pure html+css.
 function dual_bar($args = array()) {
 	global $cms;
@@ -207,7 +207,7 @@ function dual_bar($args = array()) {
 	);
 	return $out;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 function rank_change($args = array()) {
 	global $cms, $ps;
 	if (!is_array($args)) $args['plr'] = array( 'plr' => $args );
@@ -268,7 +268,7 @@ function rank_change($args = array()) {
 	}
 	return $output;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 function skill_change($args = array()) {
 	global $cms, $ps;
 	if (!is_array($args)) $args['plr'] = array( 'plr' => $args );
@@ -329,7 +329,7 @@ function skill_change($args = array()) {
 	}
 	return $output;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // safer rename function (win/linux compatable)
 function rename_file($oldfile,$newfile) {
 	// first, try to rename since it's atomic (and faster)
@@ -341,7 +341,7 @@ function rename_file($oldfile,$newfile) {
 	}
 	return true;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // builds an URL 
 function url($arg = array()) {
 	if (!is_array($arg)) $arg = array( '_base' => $arg );
@@ -384,7 +384,7 @@ function url($arg = array()) {
 	return $base;
 }
 
-// --------------------------------------------------------------------------------------------------------------------
+
 function remote_addr($alt='') {
 	$ip = $alt;
 	if ($_SERVER['HTTP_X_FORWARDED_FOR'])  {
@@ -394,81 +394,9 @@ function remote_addr($alt='') {
 	}
 	return $ip;
 }
-// --------------------------------------------------------------------------------------------------------------------
-function abort($file, $title, $msg, $redirect='') {
-	global $smarty, $data;
-	$smarty->assign($data);
-	$smarty->assign(array(
-		'errortitle'	=> $title,
-		'errormsg'	=> $msg,
-		'redirect'	=> $redirect,
-	));
-	$smarty->parse($file);
-	ps_showpage($smarty->showpage());
-	include('includes/footer.php');
-	exit();
-}
-// --------------------------------------------------------------------------------------------------------------------
-// returns a list of all icons available
-function load_icons($dir=NULL, $url=NULL) {
-	global $ps;
-	$list = array();
-	if ($dir == NULL) $dir = catfile($ps->conf['theme']['rootimagesdir'], 'icons');
-	if ($url == NULL) $url = catfile($ps->conf['theme']['rootimagesurl'], 'icons/');
 
-	if ($dh = @opendir($dir)) {
-		while (($file = @readdir($dh)) !== false) {
-			if ($file{0} == '.') continue;			// skip dot files
-			$fullfile = catfile($dir,$file);
-			if (is_dir($fullfile)) continue;		// skip directories
-			if (is_link($fullfile)) continue;		// skip symlinks
-			$info = getimagesize($fullfile);
-			$size = @filesize($fullfile);
-			$list[$file] = array(
-				'filename'	=> $file,
-				'url'		=> catfile($url, $file),
-				'desc'		=> sprintf("%s - %dx%d - %s", $file, $info[0], $info[1], abbrnum($size)),
-				'size'		=> $size,
-				'width'		=> $info[0],
-				'height'	=> $info[1],
-				'attr'		=> $info[3],
-			);
-		}
-		@closedir($dh);
-	}
-	ksort($list);
-	return $list;
-}
-
-// load the basic clan information (no stats). do not confuse this function with 
-// get_clan() from the main PS object
-function load_clan($id) {
-	global $ps;
-	$id = $ps->db->escape($id);
-	$cmd = "SELECT clan.*,cp.* FROM $ps->t_clan clan, $ps->t_clan_profile cp " . 
-		"WHERE clan.clanid='$id' AND clan.clantag=cp.clantag";
-	$clan = array();
-	$clan = $ps->db->fetch_row(1, $cmd);
-	return $clan;
-}
-function load_clan_members($id) {
-	global $ps;
-	$id = $ps->db->escape($id);
-	# the 'allowrank IN (0,1)' is added so that the query will use the matching index (allorank,clanid)
-	$cmd = "SELECT p.plrid,p.uniqueid,pp.name FROM $ps->t_plr p LEFT JOIN $ps->t_plr_profile pp USING(uniqueid) " .
-		"WHERE p.allowrank IN (0,1) AND p.clanid='$id' ORDER BY pp.name";
-	$list = $ps->db->fetch_rows(1, $cmd);
-	return $list;
-}
-// --------------------------------------------------------------------------------------------------------------------
-function load_countries() {
-	global $ps;
-	$list = array();
-	$list = $ps->db->fetch_rows(1, "SELECT cc,cn FROM $ps->t_geoip_cc ORDER BY cc");
-	return $list;
-}
-// --------------------------------------------------------------------------------------------------------------------
-// redirects user to a page using $_REQUEST['ref'] if available, or the $alt URL provided (must be ABSOLUTE URL)
+// redirects user to a page using $_REQUEST['ref'] if available, or the $alt URL
+// provided (must be ABSOLUTE URL)
 function previouspage($alt=NULL) {
 	if ($alt==NULL) $alt = 'index.php';
 	if ($_REQUEST['ref']) {
@@ -479,8 +407,9 @@ function previouspage($alt=NULL) {
 		gotopage($alt);
 	}
 }
-// --------------------------------------------------------------------------------------------------------------------
-// Always specify an ABSOLUTE URL. Never send a relative URL, as the redirection will not work correctly.
+
+// Always specify an ABSOLUTE URL. Never send a relative URL, as the redirection
+// will not work correctly.
 function gotopage($url) {
 	global $cms;
 //	while (@ob_end_clean()) /* nop */; 		// erase all pending output buffers
@@ -504,7 +433,7 @@ function gotopage($url) {
 	} 
 	exit();
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // converts all HTML entities from all elements in the array.
 function htmlentities_all(&$ary, $trimtags=0) {
 	if (!is_array($ary)) {
@@ -516,9 +445,9 @@ function htmlentities_all(&$ary, $trimtags=0) {
 		$ary[$key] = ps_escape_html($ary[$key]);
 	}
 }
-// --------------------------------------------------------------------------------------------------------------------
-// removes any keys in the $set that are the same in the $mainset. useful for removing keys that do not need to be
-// changed in a database update
+
+// removes any keys in the $set that are the same in the $mainset. useful for
+// removing keys that do not need to be changed in a database update
 function trimset(&$set, &$mainset) {
 	foreach ($set as $key => $value) {
 		if (array_key_exists($key, $mainset) and $set[$key] == $mainset[$key]) {
@@ -526,7 +455,7 @@ function trimset(&$set, &$mainset) {
 		}
 	}
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // Trims white space from the RIGHT of all strings in the array 
 function rtrim_all(&$ary, $trimtags=0) {
 	if (!is_array($ary)) {
@@ -539,7 +468,7 @@ function rtrim_all(&$ary, $trimtags=0) {
 		$ary[$key] = rtrim($ary[$key]);
 	}
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // Trims white space and HTML/PHP tags from all elements in the array.
 function trim_all(&$ary, $trimtags=0) {
 	if (!is_array($ary)) {
@@ -557,7 +486,7 @@ function trim_all(&$ary, $trimtags=0) {
 		}
 	}
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // removes slashes from all elements in the array.
 function stripslashes_all(&$ary) {
 	if (!is_array($ary)) {
@@ -573,21 +502,15 @@ function stripslashes_all(&$ary) {
 		}
 	}
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // strips slashes and all tags from the variables in the array
 function tidy_all(&$ary, $trimtags=0) {
 	trim_all($ary, $trimtags);
 	stripslashes_all($ary);
 }
-// --------------------------------------------------------------------------------------------------------------------
-// Globalizes REQUEST variables specified, so we never have to worry about register_globals not being on
-function globalize($ary=array()) {
-	$items = is_array($ary) ? $ary : array( $ary );
-	foreach ($items as $v) {
-		$GLOBALS[$v] = isset($_REQUEST[$v]) ? $_REQUEST[$v] : '';
-	}
-}
-// --------------------------------------------------------------------------------------------------------------------
+
+// Returns an HTML string to be used as a pager for displaying long lists of
+// information. Use .pager styles from the css code to change the look.
 function pagination($args = array()) {
 	$args += array(
 		'baseurl'		=> '',
@@ -710,209 +633,13 @@ function pagination($args = array()) {
 
 	return "<span class='pager'>$output</span>";
 }
-// ----------------------------------------------------------------------------------------------------------------------------
-// PS2.0 :: PHP version of the sub loadConfig() (doesn't have all features of original function, but is good enough here)
-function loadConfig($args=array()) {
-  if (!is_array($args)) {
-    $f = $args;
-    $args = array();
-    $args['filename'] = $f;
-  }
-  if (!isset($args['filename'])) return 0;
-  if (!isset($args['oldconf'])) $args['oldconf'] = array();
-  if (!isset($args['fatal'])) $args['fatal'] = 1;
-  if (!isset($args['commentstr'])) $args['commentstr'] = '#';
-  if (!isset($args['idx'])) $args['idx'] = 0;
-  if (!isset($args['section'])) $args['global'] = '';
-  if (!isset($args['ignorequotes'])) $args['ignorequotes'] = 0;
-  if (!isset($args['preservecase'])) $args['preservecase'] = 0;
-  if (!isset($args['sectionname'])) $args['sectionname'] = 'SECTION';
-  if (!isset($args['fileblock'])) $args['fileblock'] = '';	# what block to read from file ('' or false = read everything)
-  $args['section'] = strtolower($args['section']);
 
-  $newconf = $oldconf;
-  $blockend = array('{' => '}', '[' => ']');
-  $confptr = &$newconf;
-  $file = @fopen($args['filename'], 'r', 1);
-  if (!$file) return 0;
-  $fileblock = ''; 
-
-  while ($line = fgets($file, 4096)) {
-    $line = trim($line);                                        			# remove front/ending whitespace
-    if (preg_match("/^". preg_quote($args['commentstr']) ."/", $line)) continue;	# skip comments
-    if ($line == '') continue;								# skip blank lines
-    if (!preg_match('/^\*+|\[?\s*\S+\s*(\*+|>|\]|=|:|\{|\[)/', $line, $m)) continue;	# skip invalid lines, and match $var=$val
-
-    if ($args['fileblock']) {				# if we only want a block, check for it here
-      if (preg_match('/^\*+\s*([^\*]+?)\s*\*+/',$line, $m)) {
-        $fileblock = $m[1];
-      }
-    }
-    if ($args['fileblock'] and ($args['fileblock'] != $fileblock)) continue;		# wrong fileblock, ignore it
-
-    if (preg_match('/^\[\s*(.+)\s*\]/', $line, $m)) {					# [SECTION] header
-      $args['section'] = strtolower($m[1]);
-      // create section if needed and create reference to new hash section, taking care of 'global'
-      if ($args['section'] != 'global') {
-        // keep order of sections as read from file
-        if (!$newconf[$args['section']]) { 
-          $newconf[$args['section']] = array();
-          $newconf[$args['section']]['IDX'] = ++$args['idx'];
-        }
-        $confptr = &$newconf[$args['section']];
-      } else {
-        $confptr = &$newconf;
-      }
-      $confptr[ $args['sectionname'] ] = $m[1];				# preserve the section header case
-
-    } elseif (preg_match('/^\s*(\S+?)\s*=\s*(.*)/', $line, $m)) {			# VAR = VALUE
-      list($x, $var, $val) = $m;
-      $var = trim($var);
-      $var = $args['preservecase'] ? $var : strtolower($var);				# lowercase variable
-      $val = preg_replace("/" . preg_quote($args['commentstr']) . ".*/",'',$val);	# ignore comments
-      $val = trim($val);
-
-      if ($var == '$comments') {                                  		# change the comment char(s)
-        $args['commentstr'] = $val;
-        continue;
-      }
-      
-      if (!$args['ignorequotes'] and preg_match('/^"(.*)"$/', $val, $m)) {		# remove the quotes, if present
-        $val = $m[1];
-      }
-
-      if (preg_match('/^([\w\d]+)\.([\w\d]+)/', $var, $m)) {				# dot notation to specify a different SECTION
-        if (strtolower($m[1]) != 'global') {						# IGNORE 'global' sections
-          _assignvar($newconf[ $m[1] ], $m[2], $val, $args['noarrays']);		# NOTE: use %newconf and not $confptr !
-        } else {
-          _assignvar($newconf, $m[2], $val, $args['noarrays']);
-        }
-      } else {									# normal variable
-        _assignvar($confptr, $var, $val, $args['noarrays']);
-      }
-
-    } elseif (preg_match('/^\s*(\S+?)\s*>+\s*([\.\w\d]+)/', $line, $m)) {	# VAR >> EOL
-      list($x, $var, $val) = $m;
-      $token = $val;
-      $val = '';
-      while ($line = fgets($file, 4096)) {
-        $line = trim($line);
-        if ($line == $token) break;
-        $val .= $line . "\n";
-      }
-      $val = trim($val);
-
-      if (preg_match('/^([\w\d]+)\.([\w\d]+)/', $var, $m)) {				# dot notation to specify a different SECTION
-        if (strtolower($m[1]) != 'global') {						# IGNORE 'global' sections
-          _assignvar($newconf[ $m[1] ], $m[2], $val, $args['noarrays']);		# NOTE: use %newconf and not $confptr !
-        } else {
-          _assignvar($newconf, $m[2], $val, $args['noarrays']);
-        }
-      } else {									# normal variable
-        _assignvar($confptr, $var, $val, $args['noarrays']);
-      }
-
-    } elseif (preg_match('/^\s*(\S+?)\s*([{\[])\s*(.*)/', $line, $m)) {		# -- VAR {[ VALUE (multi-line) ]} --
-      list($x, $var, $begin, $val) = $m;
-      $end = $blockend[$begin];
-      $var = $args['preservecase'] ? $var : strtolower($var);
-      $confptr[$var] = '';
-      
-      $begintotal = 1;
-      if (preg_match('/^(.*)(\Q$end\E\s*)/', $val, $m)) {		# var { $1 } ($2 = $end; line doesn't have to exist)
-        if (isset($m[1])) $confptr[$var] = $m[1];
-        if (isset($m[2])) {
-          $val = $end;
-          $begintotal = 0;
-        } else {
-          $confptr[$var] .= "\n";
-        }
-      }
-      while ((($val != $end) or ($begintotal > 0)) and !feof($file)) { 
-        $val = fgetc($file);
-        if ($val == $end) $begintotal--;
-        if ($val == $begin) $begintotal++;
-        if (($val != $end) or ($begintotal > 0)) $confptr[$var] .= $val;
-      }
-      $confptr[$var] = trim($confptr[$var]);
-
-      if ($begin.$end == '{}') {			# PERL CODE block { ... } needs to be run
-        $code = $confptr[$var];
-	# for obvious reasons, we ignore this step
-      }
-
-    } elseif (preg_match('/^\s*(\S+?)\s*:\s*(.*)/', $line, $m)) {		# INCLUDE: filename
-      if ((strtolower($m[1]) != 'include') or empty($m[2])) continue;
-      $inc = $m[2];
-      $newargs = $args;
-      $newargs['filename'] = $inc;
-      $incconf = loadconfig2($newargs);
-      $newconf = array_merge($newconf, $incconf);
-    }
-
-  } // end of while !eof $file ...
-  return $newconf;
-}
-# ---------
-# internal function for loadconfig(). Assigns a value to the 'var'. Automatically converts var into an array if required
-function _assignvar(&$conf, $var, $val, $noary) {
-  if (!$noary and isset($conf[$var])) {
-    if (!is_array($conf[$var])) {
-      $old = $conf[$var];
-      $conf[$var] = array( $old );                         # convert scalar into an array with its original value
-    }
-    $conf[$var][] = $val;				# add new value to the array
-  } else {
-    $conf[$var] = $val;                               # single value, so we keep it as a scalar
-  }
-  return 1;
-}
-// --------------------------------------------------------------------------------------------------------------------
-// Loads the config for the theme and caches it. Cached file is loaded if config hasn't changed
-function loadCachedConfig($args=array(), $cache_dir='', $file_id='') {
-  if (!is_array($args)) {       
-    $f = $args;
-    $args = array();
-    $args['filename'] = $f;
-  }
-  if (!isset($args['filename'])) return 0;
-
-  $origtime = @filemtime($args['filename']);
-  $cachefile = $cache_dir . DIRECTORY_SEPARATOR . $file_id . "^$origtime^" .  basename($args['filename']) . ".php";
-  $unlinkfile = $file_id . "\\^\\d+\\^" .  preg_quote(basename($args['filename']) . ".php");
- 
-  if (file_exists($cachefile)) {
-    $code = implode('', file($cachefile));
-    $conf = unserialize($code);
-    return $conf;
-
-  } else {					// Save loaded config to cache file
-    $d = @opendir(dirname($cachefile));		// first delete any older cache files for the config
-    if ($d) {
-      while (($f = @readdir($d)) !== FALSE) {
-        if (preg_match("/^$unlinkfile\$/", $f)) @unlink($cache_dir . DIRECTORY_SEPARATOR . $f);
-      }
-      @closedir($d);
-    }
-    $conf = loadConfig($args);
-    $code = serialize($conf);
-    $f = @fopen($cachefile, "w");
-    if ($f) {
-      @fwrite($f, $code);
-      @fclose($f);
-    } else {
-      // report error here ... but we don't want to do that right now. If it doesn't save the cached file, owell!
-    }
-  }
-
-  return $conf;
-}
-// --------------------------------------------------------------------------------------------------------------------
+// returns the number given with commas separating 'thousands'.
 function commify($num) {
 	return number_format($num);
 }
-// ------------------------------------------------------------------------------------------------------------------- 
-//
+
+// abbreviates the number given into the closet KB, MB, GB, TB range.
 function abbrnum($num, $tail=2, $size = null, $base = 1024) {
 	if ($size === null) {
 		$size = array(' bytes',' KB',' MB',' GB',' TB');
@@ -929,7 +656,8 @@ function abbrnum($num, $tail=2, $size = null, $base = 1024) {
 	return sprintf("%." . $tail . "f",$num) . $size[$i];
 }
 
-// shortcut for callback functions
+// shortcut for callback functions, number is abbreviated with no tail and the
+// base is 1000 (isntead of 1024)
 function abbrnum0($string, $tail = 0) {
 	if (intval($string) < 1000) {
 		return $string;
@@ -937,8 +665,10 @@ function abbrnum0($string, $tail = 0) {
 		return abbrnum($string, $tail, array('', 'K', 'M', 'B'), 1000);
 	}
 }
-// --------------------------------------------------------------------------------------------------------------------
-// the timing routines in this function should be updated to the use the same in the elapsedtime() function
+
+// returns a compact time string representing the total time from seconds in the
+// form "hh:mm:ss". NOTE: the timing routines in this function should be updated
+// to the use the same in the elapsedtime() function
 function compacttime($seconds, $format="hh:mm:ss") {
   $d = $h = $m = $s = "00";
   if (!isset($seconds)) $seconds = 0;
@@ -954,20 +684,30 @@ function compacttime($seconds, $format="hh:mm:ss") {
   $str = str_replace('ss', sprintf('%02d',$s), $str);
   return $str;
 }
-// --------------------------------------------------------------------------------------------------------------------
-// Returns the total time elapsed from the seconds given. 
-// Returns a string or an array of variables representing: "1 year, 2 weeks, 5 days, 4 hours, 34 minutes, 20 seconds".
-// This uses 'leap seconds' to calculate the time passed, which will partially compensates for leap years and DST (i think).
-// This is not 100% accurate, but is actually pretty close. This is good enough for our purposes.
-// $seconds is the total seconds elapsed.
-// $start is a number between 0..5. 0=years, 5=minutes and represents which timing value will start the calculations.
-// ie: $start=2 means the values for weeks on down will be returned. The examples below all use the same elapsed time.
-// EG: 	$start=0 == 1 year, 2 months, 2 weeks, 3 days, 8 hours, 47 minutes, 27 seconds
-// 	$start=1 == 14 months, 2 weeks, 3 days, 8 hours, 47 minutes, 27 seconds
-//	$start=2 == 63 weeks, 1 day, 37 minutes, 54 seconds
-// etc...
+
+/*
+
+ Returns the total time elapsed from the seconds given. 
+
+ Returns a string or an array of variables representing: "1 year, 2 weeks, 5
+ days, 4 hours, 34 minutes, 20 seconds".
+
+ This uses 'leap seconds' to calculate the time passed, which will partially
+ compensate for leap years and DST (i think). This is not 100% accurate, but
+ is actually pretty close. This is good enough for our purposes.
+
+ $seconds is the total seconds elapsed.
+
+ $start is a number between 0..5. 0=years, 5=minutes and represents which timing
+ value will start the calculations. IE: $start=2 means the values for weeks on
+ down will be returned. The examples below all use the same elapsed time.
+ EG: 	$start=0 == 1 year, 2 months, 2 weeks, 3 days, 8 hours, 47 minutes, 27 seconds
+ 	$start=1 == 14 months, 2 weeks, 3 days, 8 hours, 47 minutes, 27 seconds
+	$start=2 == 63 weeks, 1 day, 37 minutes, 54 seconds
+*/
 function elapsedtime($seconds, $start = 0, $wantarray = false) {
-	// total 'leap seconds' in a single year. This is no truly static and changes slightly every few years.
+	// total 'leap seconds' in a single year. This is not truly static and
+	// changes slightly every few years.
 	static $oneyear = 31556925.9936;
 	$years = $months = $weeks = $days = $hours = $minutes = 0;
 	if ($start <= 0) {
@@ -998,6 +738,7 @@ function elapsedtime($seconds, $start = 0, $wantarray = false) {
 	if ($wantarray) {
 		return array($years,$months,$weeks,$days,$hours,$minutes,$seconds);
 	} else {
+		// TODO: provide a way to translate these strings
 		$vars = array('years','months','weeks','days','hours','minutes','seconds');
 		$str = '';
 		for ($i = 0, $j = count($vars)-1; $i <= $j; $i++) {
@@ -1011,7 +752,7 @@ function elapsedtime($seconds, $start = 0, $wantarray = false) {
 		return $str;
 	}
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // Concatenate file path parts together always using / as the directory separator.
 // since '/' is always used this can be used on URL's as well.
 function catfile() {
@@ -1027,7 +768,7 @@ function catfile() {
   if (substr($path, -1, 1) == '/') $path = substr($path, 0, -1);
   return $path;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // returns a CSV line of text with the elements of the $data array
 function csv($data,$del=',',$enc='"') {
 	$csv = '';
@@ -1067,15 +808,16 @@ function csv($data,$del=',',$enc='"') {
 		}
 	}
 //}
-// --------------------------------------------------------------------------------------------------------------------
+
 function ymd2time($date, $char='-') {
 	list($y,$m,$d) = split($char, $date);
 	return mktime(0,0,0,$m,$d,$y);
 }
+
 function time2ymd($time, $char='-') {
 	return date(implode($char, array('Y','m','d')), $time);
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 function array_map_recursive($function, $data) {
 	if (is_array($data)) {
 		foreach ($data as $i => $item) {
@@ -1086,7 +828,7 @@ function array_map_recursive($function, $data) {
 	}
 	return $data;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // Inserts $arr2 after the $key (string). if $before is true then it's inserted before the $key specified.
 // I do not know why PHP doesn't have this built in already. It can be very useful. (array_splice works on numeric indexes only)
 function array_insert($arr1, $key, $arr2, $before = false) {
@@ -1099,7 +841,7 @@ function array_insert($arr1, $key, $arr2, $before = false) {
 	$end = array_splice($arr1, $index);
 	return array_merge($arr1, $arr2, $end);
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // joins a single key value from an array into a string using the glue
 function key_join($glue, $pieces, $key) {
 	if (!is_array($pieces)) return '';
@@ -1109,7 +851,7 @@ function key_join($glue, $pieces, $key) {
 	}
 	return substr($str, 0, -strlen($glue));
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // very simple recursive array2xml routine
 function array2xml($data, $key_prefix = 'key_', $depth = 0) {
 	if (!is_array($data)) return '';
@@ -1132,7 +874,6 @@ function array2xml($data, $key_prefix = 'key_', $depth = 0) {
 	return $xml;
 }
 
-// --------------------------------------------------------------------------------------------------------------------
 // dumps all output buffers, sends a content-type, prints the xml
 function print_xml($data, $clear_ob = true, $send_ct = true, $do_exit = true) {
 	if ($clear_ob) while (@ob_end_clean());
@@ -1141,8 +882,16 @@ function print_xml($data, $clear_ob = true, $send_ct = true, $do_exit = true) {
 	print array2xml($data);
 	if ($do_exit) exit();
 }
-// --------------------------------------------------------------------------------------------------------------------
-// returns a gradient array between 2 numbers
+
+/*
+    * function gradient
+    * Returns a linear gradient array between 2 numbers
+    * 
+    * @param integer  $low  Low gradient value
+    * @param integer  $high  High gradient value
+    * @param integer  $totalsteps  Number of steps between low..high.
+    * @return array  An array of gradient values
+*/
 function gradient($low, $high, $totalsteps) {
 	$steps = $totalsteps - 1;
 	$dist = $high - $low;
@@ -1157,7 +906,7 @@ function gradient($low, $high, $totalsteps) {
 	$ary[] = $high;
 	return $ary;
 }
-// --------------------------------------------------------------------------------------------------------------------
+
 // returns the RGB gradient between 2 RGB pairs
 function rgbGradient($low, $high, $totalsteps) {
 	$r1 = $low >> 16;
@@ -1187,6 +936,14 @@ function array_values_by_key(&$ary, $key) {
 	return $list;
 }
 
+/*
+    * function mkdir_recursive
+    * works like mkdir() but will work recursively in PHP4 or PHP5.
+    * 
+    * @param string $path  Directory to create
+    * @param integer $mode  Permissions for the file
+    * @return mixed
+*/
 function mkdir_recursive($path, $mode = 0777) {
 	if (version_compare(PHP_VERSION, '5.0.0', '>=')) {
 		return mkdir($path, $mode, true);
@@ -1194,6 +951,113 @@ function mkdir_recursive($path, $mode = 0777) {
 		is_dir(dirname($path)) || mkdir_recursive(dirname($path), $mode);
 		return is_dir($path) || @mkdir($path, $mode);
 	}
+}
+
+/*
+    * function coalesce
+    * Returns the first non-empty value.
+    * 
+    * @param mixed,mixed[,mixed,...]	2 or more parmaters to check
+    * @return mixed
+*/
+function coalesce() {
+    $args = func_get_args();
+    foreach ($args as $arg) {
+        if (!empty($arg)) {
+            return $arg;
+        }
+    }
+    return $args[0];
+}
+
+/*
+    * function query_to_tokens
+    * Tokenizes a string phrase for search queries and accounts for double
+    * quoted strings properly (Multibyte safe).
+    * 
+    * @param string $string  Query string to tokenize
+    * @return array  An array of query tokens (phrases)
+*/
+function query_to_tokens($string) {
+	if (!is_string($string)) {
+		return false;
+	}
+
+	// tokenize string into individual characters
+	$x = trim($string);
+
+	// short circuit if the string is empty
+	if (empty($x)) {
+		return array();
+	}
+       
+	$chars = mb_str_split($x);
+	$mode = 'normal';
+	$token = '';
+	$tokens = array();
+	for ($i=0, $j = count($chars); $i < $j; $i++) {
+		switch ($mode) {
+			case 'normal':
+				if ($chars[$i] == '"') {
+					if ($token != '') {
+						$tokens[] = $token;
+					}
+					$token = '';
+					$mode = 'quoting';
+				} else if (in_array($chars[$i], array(' ', "\t", "\n"))) {
+					if ($token != '') {
+						$tokens[] = $token;
+					}
+					$token = '';
+				} else {
+					$token .= $chars[$i];
+				}
+				break;
+       
+			case 'quoting':
+				if ($chars[$i] == '"') {
+					if ($token != '') {
+						$tokens[] = $token;
+					}
+					$token = '';
+					$mode = 'normal';
+				} else {
+					$token .= $chars[$i];
+				}
+				break;
+		}
+	}
+	if ($token != '') {
+		$tokens[] = $token;
+	}
+
+	return $tokens;
+}   
+
+/*
+    * function mb_str_split
+    * Multibyte safe str_split function. Splits a string into an array with
+    * 1 character per element (note: 1 char does not always mean 1 byte).
+    * 
+    * @param string  $str  string to split.
+    * @param integer  $length  character length of each array index. 
+    * @return array  Array of characters
+*/
+function mb_str_split($str, $length = 1) {
+	// fall back to old str_split if mb_ functions are not available.
+	if (!function_exists('mb_substr')) {
+		return str_split($str, $length);
+	}
+
+	if ($length < 1) return FALSE;
+
+	$result = array();
+
+	for ($i = 0; $i < mb_strlen($str); $i += $length) {
+		$result[] = mb_substr($str, $i, $length);
+	}
+
+	return $result;
 }
 
 ?>
