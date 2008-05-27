@@ -445,7 +445,7 @@ function is_search($search) {
 */
 function delete_stale_searches($hours = 4) {
 	if (!is_numeric($hours) or $hours < 0) $hours = 4;
-	$this->db->query("DELETE FROM $this->t_search_results WHERE updated < NOW() - INTERVAL $hours HOURS");
+	$this->db->query("DELETE FROM $this->t_search_results WHERE updated < NOW() - INTERVAL $hours HOUR");
 }
 
 /*
