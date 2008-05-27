@@ -1141,9 +1141,8 @@ function get_player_list($args = array()) {
 		$plrids = array_slice(explode(',',$results['results']), $args['start'], $args['limit']);
 //		$plrids = explode(',',$results['results']);
 		$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
-	} else {
-		$cmd .= $this->getsortorder($args);
 	}
+	$cmd .= $this->getsortorder($args);
 
 	$list = array();
 	$list = $this->db->fetch_rows(1, $cmd);

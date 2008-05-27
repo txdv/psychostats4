@@ -18,6 +18,8 @@
 		<div class="inner">
 		<span>
 			<input id='q-hdr' name="q" value="{if $results}{$results.phrase|escape}{else}{$q|escape}{/if}" class="field search"/>
+			<input name="sort" value="{$sort|escape}" type="hidden" />
+			<input name="order" value="{$order|escape}" type="hidden" />
 {*
 			<input type="image" src="{theme->url}/img/icons/bullet_go.png" style="vertical-align: middle" />
 *}

@@ -119,7 +119,7 @@ $pager = pagination(array(
 $table = $cms->new_table($players);
 $table->if_no_data($cms->trans("No Players Found"));
 $table->attr('class', 'ps-table ps-player-table');
-$table->sort_baseurl(array( 'q' => $q ));
+$table->sort_baseurl($search ? array( 'search' => $search ) : array( 'q' => $q ));
 $table->start_and_sort($start, $sort, $order);
 $table->columns(array(
 	'rank'			=> array( 'label' => $cms->trans("Rank"), 'callback' => 'dash_if_empty' ),
