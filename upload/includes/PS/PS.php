@@ -1138,15 +1138,17 @@ function get_player_list($args = array()) {
 		$results = $this->get_search($args['search']);
 	}
 	if ($results) {
-		$plrids = array_slice(explode(',',$results['results']), $args['start'], $args['limit']);
-//		$plrids = explode(',',$results['results']);
+//		$args['start'] = 0;	// override start since we sliced the array
+//		$plrids = array_slice(explode(',',$results['results']), $args['start'], $args['limit']);
+		$plrids = explode(',',$results['results']);
 		$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
 	}
 	$cmd .= $this->getsortorder($args);
 
 	$list = array();
 	$list = $this->db->fetch_rows(1, $cmd);
-
+//	print $this->db->lastcmd;
+	
 	return $list;
 }
 
