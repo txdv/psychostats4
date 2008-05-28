@@ -254,7 +254,7 @@ function rank_change($args = array()) {
 	} else {
 		$img = '/img/icons/' . sprintf($args['imgfmt'], $dir);
 		$path = catfile($ps->conf['theme']['template_dir'], $cms->theme->theme(), $img);
-		if (!file_exists($path) and $cms->theme->is_child()) {
+		if (!@file_exists($path) and $cms->theme->is_child()) {
 			$img = $cms->theme->url($cms->theme->is_child()) . $img;
 		} else {
 			$img = $cms->theme->url() . $img;
@@ -315,7 +315,7 @@ function skill_change($args = array()) {
 	} else {
 		$img = '/img/icons/' . sprintf($args['imgfmt'], $dir);
 		$path = catfile($ps->conf['theme']['template_dir'], $cms->theme->theme(), $img);
-		if (!file_exists($path) and $cms->theme->is_child()) {
+		if (!@file_exists($path) and $cms->theme->is_child()) {
 			$img = $cms->theme->url($cms->theme->is_child()) . $img;
 		} else {
 			$img = $cms->theme->url() . $img;
