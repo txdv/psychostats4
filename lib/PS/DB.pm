@@ -97,6 +97,7 @@ sub new {
 	$self->{t_plugins} 		= $self->{dbtblprefix} . 'plugins';
 	$self->{t_role}			= $self->{dbtblprefix} . 'role';
 	$self->{t_role_data}		= $self->{dbtblprefix} . 'role_data';
+	$self->{t_search_results}	= $self->{dbtblprefix} . 'search_results';
 	$self->{t_sessions} 		= $self->{dbtblprefix} . 'sessions';
 	$self->{t_state} 		= $self->{dbtblprefix} . 'state';
 	$self->{t_themes} 		= $self->{dbtblprefix} . 'themes';

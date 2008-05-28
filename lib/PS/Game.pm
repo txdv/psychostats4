@@ -2011,7 +2011,7 @@ sub reset {
 		t_plr t_plr_data t_plr_ids_ipaddr t_plr_ids_name t_plr_ids_worldid 
 		t_plr_maps t_plr_roles t_plr_sessions t_plr_victims t_plr_weapons
 		t_role t_role_data
-		t_state 
+		t_search_results t_state 
 		t_weapon_data
 	);
 
