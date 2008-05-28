@@ -129,13 +129,18 @@ if (!$args->{nolang}) {
 	glob( catfile($args->{dir}, '*.php') ),
 	glob( catfile($args->{dir}, 'ajax', '*.php') ),
 	glob( catfile($args->{dir}, 'includes', '*.php') ),
+	glob( catfile($args->{dir}, 'includes', '*', '*.php') ),
 	glob( catfile($args->{dir}, 'includes', 'PS', '*.php') ),
+	glob( catfile($args->{dir}, 'includes', 'PS', '*', '*.php') ),
 	glob( catfile($args->{dir}, 'install', '*.php') ),
 	glob( catfile($args->{dir}, 'plugins', '*.php') ),
 );
 
 # load a list of all theme HTML files to scan for strings
-@htmlfiles = glob(catfile($themedir, '*.html'));
+@htmlfiles = (
+	glob(catfile($themedir, '*.html')), 
+	glob(catfile($themedir, '*', '*.html')), 
+);
 
 # gather string translations from all PHP files
 foreach my $file (@phpfiles) {
@@ -208,6 +213,7 @@ sub trans_method {
 	my $code = "function $key() {\n\t\$text  = '';\n";
 	my @lines = split(/\n/, $text);
 	foreach my $line (@lines) {
+		$line =~ s/^\s+//;		# remove leading whitespace
 		$code .= "\t\$text .= '" . addslashes($line) . "' . \"\\n\";\n";
 	}
 	$code .= "\treturn \$text;\n}\n\n";
