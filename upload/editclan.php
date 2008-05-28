@@ -38,14 +38,12 @@ $cms->theme->assign_by_ref('message', $message);
 // ajax autocomplete request for player searching
 $limit = 50;
 if ($cms->user->logged_in() and $memberlist) {
-	$value = trim($value);
-	$match = '%' . $ps->db->escape($value) . '%';
-	$list = $ps->db->fetch_rows(1, 
-		"SELECT p.plrid,p.uniqueid,pp.name FROM $ps->t_plr p, $ps->t_plr_profile pp " . 
-		"WHERE pp.uniqueid=p.uniqueid AND p.clanid=0 AND (pp.uniqueid LIKE '$match' OR pp.name LIKE '$match') " .
-		"ORDER BY name " . 
-		"LIMIT $limit "	// limit the results
-	);
+	$search = $ps->init_search();
+	$ps->search_players($search, $value);
+	$list = $ps->get_basic_player_list(array( 'search' => $search ));
+
+	// no sense in keeping the search cached... 
+	$ps->delete_search($search);
 
 /*
 	$xml = '<?xml version="1.0"?><ajaxresponse>';

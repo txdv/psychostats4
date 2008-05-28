@@ -435,6 +435,22 @@ function is_search($search) {
 	return $this->db->exists($this->t_search_results, 'search_id', $search);
 	
 }
+
+/*
+    * function delete_search
+    * Deletes the search results assoicated with the search ID given.
+    * 
+    * @param  string  $search  Search ID to delete
+    * 
+    * @return boolean  True if successful
+*/
+function delete_search($search) {
+	if ($this->is_search($search)) {
+		return $this->db->delete($this->t_search_results, 'search_id', $search);
+	}
+	return false;
+}
+
 /*
     * function delete_stale_searches
     * Deletes stale searches more than a few hours old
@@ -1165,6 +1181,8 @@ function get_basic_player_list($args = array()) {
 		'joinclaninfo'		=> 0,
 		'joinccinfo'		=> 0,
 		'joinuserinfo'		=> 1,
+		'results'		=> null,
+		'search'		=> null
 	);
 	$values = "";
 	if (trim($args['fields']) == '') {
@@ -1194,11 +1212,21 @@ function get_basic_player_list($args = array()) {
 	if (trim($args['filter']) != '') {
 		$cmd .= " AND (pp.name LIKE '%" . $this->db->escape(trim($args['filter'])) . "%') ";		
 	}
+	
+	// limit list to search results
+	$results = $args['results'];
+	if ($args['search']) {
+		$results = $this->get_search($args['search']);
+	}
+	if ($results) {
+//		$args['start'] = 0;	// override start since we sliced the array
+//		$plrids = array_slice(explode(',',$results['results']), $args['start'], $args['limit']);
+		$plrids = explode(',',$results['results']);
+		$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
+	}
 	$cmd .= $this->getsortorder($args);
-	$list = array();
-	$list = $this->db->fetch_rows(1, $cmd);
-#	print $cmd;
 
+	$list = $this->db->fetch_rows(1, $cmd);
 	return $list;
 }
 

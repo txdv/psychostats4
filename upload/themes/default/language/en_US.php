@@ -72,6 +72,14 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'AIM Name' =>
 		'',
+	'Alien' =>
+		'',
+	'Alien / Marine Joins' =>
+		'',
+	'Alien / Marine Wins' =>
+		'',
+	'Alien Wins' =>
+		'',
 	'All informational fields are optional and used solely for display purposes.' =>
 		'',
 	'Allowed Tags' =>
@@ -80,9 +88,13 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Ally Kills' =>
 		'',
+	'Ally Wins' =>
+		'',
 	'and have done' =>
 		'',
 	'Are you sure you want to delete the player?' =>
+		'',
+	'Assists' =>
 		'',
 	'Auto Login' =>
 		'',
@@ -104,15 +116,47 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'axis' =>
 		'',
+	'Axis / Allied Wins' =>
+		'',
+	'Axis / Ally Joins' =>
+		'',
 	'Axis / Ally Kills' =>
 		'',
+	'Axis / Ally Wins' =>
+		'',
 	'Axis Kills' =>
+		'',
+	'Axis Wins' =>
+		'',
+	'Backstab Kills' =>
+		'',
+	'Backstab Kills Percentage' =>
+		'',
+	'Blocked Captures' =>
+		'',
+	'Blue' =>
+		'',
+	'Blue Wins' =>
+		'',
+	'bombs defused' =>
+		'',
+	'Bombs Defused %' =>
+		'',
+	'Bombs Exploded' =>
 		'',
 	'Bonus Points' =>
 		'',
 	'bots' =>
 		'',
+	'BS' =>
+		'',
+	'BS%' =>
+		'',
 	'Cancel' =>
+		'',
+	'Captured points' =>
+		'',
+	'Captures Blocked' =>
 		'',
 	'Change Password?' =>
 		'',
@@ -162,11 +206,17 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Connections: %d' =>
 		'',
+	'Counter-Terrorist Wins' =>
+		'',
 	'Country Breakdown' =>
 		'',
 	'Country Code' =>
 		'',
+	'CP' =>
+		'',
 	'Create user for this player' =>
+		'',
+	'CT' =>
 		'',
 	'Current Map' =>
 		'',
@@ -200,6 +250,10 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Dmg' =>
 		'',
+	'Dom' =>
+		'',
+	'Dominations' =>
+		'',
 	'Edit' =>
 		'',
 	'Edit Clan' =>
@@ -226,6 +280,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Error updating player profile: ' =>
 		'',
+	'exploded' =>
+		'',
 	'Fatal Error' =>
 		'',
 	'FF' =>
@@ -236,6 +292,12 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'First Seen' =>
 		'',
+	'Flags' =>
+		'',
+	'Flags captured' =>
+		'',
+	'Flags Captured' =>
+		'',
 	'Forgot password?' =>
 		'',
 	'Forgot your password?' =>
@@ -245,8 +307,6 @@ function PsychoLanguage_default_en_US() {
 	'Friendly Fire Kills' =>
 		'',
 	'Friendly Fire Kills Percentage' =>
-		'',
-	'from' =>
 		'',
 	'G' =>
 		'',
@@ -284,6 +344,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Home' =>
 		'',
+	'hostages saved' =>
+		'',
 	'HS' =>
 		'',
 	'HS%' =>
@@ -303,6 +365,14 @@ function PsychoLanguage_default_en_US() {
 	'Insufficient privileges to edit clan!' =>
 		'',
 	'Insufficient privileges to edit player!' =>
+		'',
+	'Intel' =>
+		'',
+	'Intel Captured' =>
+		'',
+	'Intel Recovered' =>
+		'',
+	'Intelligence captured' =>
 		'',
 	'Invalid access level specified' =>
 		'',
@@ -349,6 +419,8 @@ function PsychoLanguage_default_en_US() {
 	'K:D' =>
 		'',
 	'K:M' =>
+		'',
+	'Kill Assists' =>
 		'',
 	'Kill Profile' =>
 		'',
@@ -424,6 +496,10 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Maps Played' =>
 		'',
+	'Marine' =>
+		'',
+	'Marine Wins' =>
+		'',
 	'matched' =>
 		'',
 	'Member Added!' =>
@@ -440,15 +516,53 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Monthly awards for' =>
 		'',
+	'Most Active Bomb Runner' =>
+		'',
+	'Most Ally flags captured' =>
+		'',
+	'Most areas captured' =>
+		'',
+	'Most Axis flags captured' =>
+		'',
+	'Most Backstabs' =>
+		'',
+	'Most Blocked Captures' =>
+		'',
+	'Most Bombs Defused' =>
+		'',
+	'Most Bombs Exploded' =>
+		'',
+	'Most Bombs Planted' =>
+		'',
+	'Most Dominations' =>
+		'',
 	'Most FF Deaths' =>
 		'',
 	'Most FF Kills' =>
 		'',
+	'Most flags captured' =>
+		'',
+	'Most Hostages Killed' =>
+		'',
+	'Most Hostages Rescued' =>
+		'',
 	'Most Hostages Touched' =>
+		'',
+	'Most Intel Captured' =>
+		'',
+	'Most Intel Recovered' =>
 		'',
 	'Most Kills' =>
 		'',
+	'Most Often VIP' =>
+		'',
 	'Most Online Time' =>
+		'',
+	'Most Points Captured' =>
+		'',
+	'Most VIP Escapes' =>
+		'',
+	'Most VIP Kills' =>
 		'',
 	'ms' =>
 		'',
@@ -544,8 +658,6 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Overall Accuracy' =>
 		'',
-	'overall players' =>
-		'',
 	'Overview' =>
 		'',
 	'Page loaded in' =>
@@ -557,6 +669,8 @@ function PsychoLanguage_default_en_US() {
 	'Passwords do not match; please try again' =>
 		'',
 	'ping' =>
+		'',
+	'planted' =>
 		'',
 	'Player' =>
 		'',
@@ -608,6 +722,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Please wait' =>
 		'',
+	'Points Captured' =>
+		'',
 	'potential clans' =>
 		'',
 	'Powered by' =>
@@ -634,6 +750,12 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'RCON' =>
 		'',
+	'Red' =>
+		'',
+	'Red / Blue Wins' =>
+		'',
+	'Red Wins' =>
+		'',
 	'Register' =>
 		'',
 	'Register new user' =>
@@ -651,6 +773,8 @@ function PsychoLanguage_default_en_US() {
 	'Registration requires confirmation from the admin. You won\'t be able to login until confirmed.' =>
 		'',
 	'Remember me!' =>
+		'',
+	'Rescued Hostages' =>
 		'',
 	'Reset your password' =>
 		'',
@@ -728,13 +852,33 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Stomach' =>
 		'',
+	'Structures Built' =>
+		'',
+	'Structures Destroyed' =>
+		'',
+	'Structures Recycled' =>
+		'',
 	'Suicides' =>
+		'',
+	'T / CT Joins' =>
+		'',
+	'T / CT Wins' =>
 		'',
 	'Team' =>
 		'',
 	'Team / Action Profile' =>
 		'',
 	'Team Kills' =>
+		'',
+	'Team Scores' =>
+		'',
+	'Terr / CT Wins' =>
+		'',
+	'Terrorist' =>
+		'',
+	'Terrorist Wins' =>
+		'',
+	'Terrorists' =>
 		'',
 	'Thank you for registering your player' =>
 		'',
@@ -866,6 +1010,8 @@ function PsychoLanguage_default_en_US() {
 		'',
 	'Windows' =>
 		'',
+	'Wins' =>
+		'',
 	'Worldid' =>
 		'',
 	'Worldids' =>
@@ -895,36 +1041,37 @@ function PsychoLanguage_default_en_US() {
 function LOGIN_AUTOLOGIN() {
 	$text  = '';
 	$text .= 'If auto login is enabled a cookie will be saved in your browser and the next time you' . "\n";
-	$text .= '		visit this site you will automatically be logged in again, even if you close your browser.' . "\n";
+	$text .= 'visit this site you will automatically be logged in again, even if you close your browser.' . "\n";
 	return $text;
 }
 
 function MANAGE_CLAN_MEMBERS() {
 	$text  = '';
 	$text .= 'If you manually edit the member list you should check the "lock" button.' . "\n";
-	$text .= '		Otherwise there is no guarantee the listing will remain the way you set it.' . "\n";
+	$text .= 'Otherwise there is no guarantee the listing will remain the way you set it.' . "\n";
+	$text .= 'Changes to the member list below are instant!' . "\n";
 	return $text;
 }
 
 function REGISTER_NEW_USER() {
 	$text  = '';
 	$text .= 'Register a user for this player by entering a username and password below.' . "\n";
-	$text .= '		This will allow the user to login and modify their profile.' . "\n";
+	$text .= 'This will allow the user to login and modify their profile.' . "\n";
 	return $text;
 }
 
 function REGISTRATION_COMPLETE() {
 	$text  = '';
 	$text .= 'In the future, to <a href="{url _base=\'login.php\'}">login</a> please use your username ' . "\n";
-	$text .= '	\'<b><a href="{url _base=\'edituser.php\' id=$reg.userid}">{$reg.username|escape}</a></b>\' with the password you supplied ' . "\n";
-	$text .= '	in your registration.' . "\n";
+	$text .= '\'<b><a href="{url _base=\'edituser.php\' id=$reg.userid}">{$reg.username|escape}</a></b>\' with the password you supplied ' . "\n";
+	$text .= 'in your registration.' . "\n";
 	return $text;
 }
 
 function REGISTRATION_CONFIRM() {
 	$text  = '';
 	$text .= 'You will not be able to login and access your profile until an administrator confirms your account. ' . "\n";
-	$text .= '	If you entered an email address in your registration you will be notified when the account is confirmed.' . "\n";
+	$text .= 'If you entered an email address in your registration you will be notified when the account is confirmed.' . "\n";
 	return $text;
 }
 
