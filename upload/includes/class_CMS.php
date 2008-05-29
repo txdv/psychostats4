@@ -552,7 +552,6 @@ function full_page($pagename, $content, $page_header = null, $page_footer = null
 	$page .= $out;
 
 	$this->theme->showpage($page);
-	exit();
 }
 
 function full_page_err($pagename, $data = array()) {
@@ -576,7 +575,6 @@ function lite_page($pagename, $content, $prefix = '') {
 	$page .= $out;
 
 	$this->theme->showpage($page);
-	exit();
 }
 
 // output a simple page which has no header or footer. Just a single content block.
@@ -590,7 +588,6 @@ function tiny_page($pagename, $content, $prefix = '') {
 	$page .= $out;
 
 	$this->theme->showpage($page);
-	exit();
 }
 
 // returns a templated message block

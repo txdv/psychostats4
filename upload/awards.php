@@ -96,6 +96,7 @@ if (empty($d)) {
 		'message_title'	=> $cms->trans("No Awards Found"),
 		'message'	=> $cms->trans("There are currently no awards in the database to display.")
 	));
+	exit();
 }
 
 $andplr = $p ? " AND topplrid=$_p" : "";

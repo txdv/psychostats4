@@ -217,14 +217,15 @@ function image_passthru($id, $content_type = true, $skip_cache = false) {
 		header("Cache-Control: public, must-revalidate");
 		header("Last-Modified: " . gmdate("D, d M Y H:i:s", $lastupdate) . " GMT");
 		header("Connection: close");
-		$length = @filesize($img);	// @ to suppress warning if file doesn't exist
-		if (!$length) $length = 0;
 		if ($type == 'file') {
-			header('Content-Length: ' . $length); 
-			if (!file_exists($img)) {
+			if (file_exists($img)) {
+				$length = @filesize($img);	// @ to suppress warning if file doesn't exist
+				if (!$length) $length = 0;
+				header('Content-Length: ' . $length); 
+				readfile($img);
+			} else {
 				header('X-PsychoStats-Error: File not found!');
 			}
-			@readfile($img);
 		} else {
 			header('Content-Length: ' . strlen($img)); 
 			print $img;

@@ -54,7 +54,7 @@ if ($id) {
 	if (!$plr) {
 		$data = array( 'message' => $cms->trans("Invalid player ID Specified") );
 		$cms->full_page_err(basename(__FILE__, '.php'), $data);
-		exit();		
+		exit();
 	}
 	if ($plr['userid']) {
 		$plr_user->load($plr['userid']);
@@ -132,6 +132,16 @@ if ($submit) {
 		$input['website'] = "http://" . $input['website'];
 	}
 
+	// clear the lat/long fields if nothing is entered.
+	// this will avoid 0,0 being set when a player saves their profile
+	// w/o any values entered.
+	if (empty($input['latitude'])) {
+		unset($input['latitude']);
+	}
+	if (empty($input['longitude'])) {
+		unset($input['longitude']);
+	}
+	
 	// strip out any bad tags from the logo.
 	if (!empty($input['logo'])) {
 		$logo = ps_strip_tags($input['logo']);

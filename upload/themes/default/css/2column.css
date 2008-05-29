@@ -17,16 +17,16 @@
 	width: 300px;
 }
 
-.ps-column-frame {
+#ps-container .ps-column-frame {
 	margin-left: 1em;
 	margin-bottom: 1em;
 }
-.ps-column-sep {
+#ps-container .ps-column-sep {
 	margin-left: 1em;
 	margin-bottom: 0.5em;
 	border-top: 1px dashed gray;
 }
-.ps-column-sep2 {
+#ps-container .ps-column-sep2 {
 	margin-left: 1em;
 	margin-bottom: 0.5em;
 	overflow: hidden;
@@ -39,7 +39,7 @@
 	color: #666;
 }
 
-.ps-column-header {
+#ps-container .ps-column-header {
 	line-height: 19px;
 	background: url(../img/table-header-bg.png) repeat;
 	padding: 0 0.3em;
@@ -77,9 +77,9 @@
 	font-size: 100%;
 	clear: both;
 }
-.ps-column-content p,
-.ps-column-content p.hl,
-.ps-column-content p.substat
+#ps-container .ps-column-content p,
+#ps-container .ps-column-content p.hl,
+#ps-container .ps-column-content p.substat
 {					/* each <p>...</p> is a row */
 /*	margin-bottom: 0.3em; */
 	border-top: 1px solid #DDDDDD;
@@ -92,7 +92,7 @@
 	background-color: #e4dcce;
 	border-top: 1px solid #a29490;
 }
-.ps-column-content p.substat  {
+#ps-container .ps-column-content p.substat  {
 	margin-left: 1.5em;
 	border: none;
 /*	border-bottom: 1px dashed #dddddd; */

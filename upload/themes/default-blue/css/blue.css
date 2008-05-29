@@ -3,10 +3,14 @@
 */
 
 /* overall.css */
-a,a:link,a:visited,a:hover,a:active {	/* LVHA */
+#ps-container a,
+#ps-container a:link,
+#ps-container a:visited,
+#ps-container a:hover,
+#ps-container a:active {	/* LVHA */
 	color: #0066cc;
 }
-a:hover {
+#ps-container a:hover {
 	color: #003355;
 }
 
@@ -24,7 +28,8 @@ a:hover {
 
 /* content.css */
 
-body {
+body.psychostats,
+#ps-container {
 	background-color: #c5cedc;
 }
 
@@ -40,48 +45,49 @@ body {
 	background: #edeeff url(../img/page-title-bg-reverse.jpg) repeat-x top left;
 }
 
-.ps-frame-header { 
+#ps-container .ps-frame-header { 
 	background: #edeeff url(../img/frame-header-bg.jpg) repeat-y top left;
 }
 
-.ps-table th {
+#ps-container .ps-table th {
 	background: #edeeff url(../img/table-header-bg.jpg) repeat-x top left;
 }
 
-.ps-table th.active span {
+#ps-container .ps-table th.active span {
 
 }
 
-.ps-table th.active p {
+#ps-container .ps-table th.active p {
 	background: url(../img/table-header-active-l-bg.png) no-repeat;
 }
 
-.ps-table tr th.active span.asc {
+#ps-container .ps-table tr th.active span.asc {
 	background: url(../img/table-header-asc-r-bg.png) no-repeat 100% 0;
 }
 
-.ps-table tr th.active span.desc {
+#ps-container .ps-table tr th.active span.desc {
 	background: url(../img/table-header-desc-r-bg.png) no-repeat 100% 0;
 }
 
-.ps-table-footer {
+#ps-container .ps-table-footer {
 	background: url(../img/table-footer-bg.png) repeat-x 0 bottom;
 }
 
-.ps-award-ctrl, .ps-award-ctrl-bottom {
+#ps-container .ps-award-ctrl,
+#ps-container .ps-award-ctrl-bottom {
 	background: url(../img/table-header-bg.jpg) repeat-x;
 }
 
 /* 2column.css */
-.ps-column-header {
+#ps-container .ps-column-header {
 	background: url(../img/table-header-bg.jpg) repeat-x;
 }
 
-.ps-column-content p.hl {
+#ps-container .ps-column-content p.hl {
 	background-color: #c5d5fa;
 }
 
 /* query.css */
-.ps-server-main .hdr {
+#ps-container .ps-server-main .hdr {
 	background: url(../img/table-header-bg.jpg) repeat-x;
 }

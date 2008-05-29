@@ -92,16 +92,19 @@ if ($id) {
 	if (!$clan) {
 		$data = array( 'message' => $cms->trans("Invalid clan ID Specified") );
 		$cms->full_page_err(basename(__FILE__, '.php'), $data);
+		exit();
 	}
 } else {
 	$data = array( 'message' => $cms->trans("Invalid clan ID Specified") );
 	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	exit();
 }
 
 // check privileges to edit this clan
 if (!ps_user_can_edit_clan($clan['clanid'], ps_user_plrid())) {
 	$data = array( 'message' => $cms->trans("Insufficient privileges to edit clan!") );
 	$cms->full_page_err(basename(__FILE__, '.php'), $data);
+	exit();
 }
 
 // add or delete a member (ajax request)

@@ -1,7 +1,7 @@
 /* --- FORM styles ------------------------------- */
-.ps-form-container { text-align: center; margin: 0 auto; }
+#ps-container .ps-form-container { text-align: center; margin: 0 auto; }
 
-.ps-form form {
+#ps-container .ps-form form {
 	margin: 0 auto;
 	padding: 0.5em;
 	max-width: 620px;
@@ -13,7 +13,7 @@
 	border: 1px solid #3A3C40;
 }
 
-.ps-form form fieldset {
+#ps-container .ps-form form fieldset {
 	border-color: #747881;
 	border-style: solid none none;
 	border-width: 3px 0 0;
@@ -23,7 +23,7 @@
 	padding: 10px;
 }
 
-.ps-form form fieldset legend {
+#ps-container .ps-form form fieldset legend {
 	line-height: 150%;
 	color: #000000;
 	font-size: 150%;
@@ -32,20 +32,20 @@
 	padding: 0 5px;
 }
 
-.ps-form form div {
+#ps-container .ps-form form div {
 	clear: left;
 	display: block;
 	margin: 5px 0pt 0pt;
 	padding: 1px 3px;
 	width: 354px;
 }
-fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
+#ps-container fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
 	padding: 0;
 }
 
-.ps-form form fieldset div.inline-notes,
-.ps-form form fieldset div.inline-warn,
-.ps-form form fieldset div.notes 
+#ps-container .ps-form form fieldset div.inline-notes,
+#ps-container .ps-form form fieldset div.inline-warn,
+#ps-container .ps-form form fieldset div.notes 
 {
 	background-color: #FFFFE1;
 	border: 1px solid #666666;
@@ -57,16 +57,16 @@ fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
 	padding: 5px;
 	width: 158px;
 }
-.ps-form form fieldset div.inline-notes { width: auto; float: none; margin: 5px 0 0; padding: 3px; }
+#ps-container .ps-form form fieldset div.inline-notes { width: auto; float: none; margin: 5px 0 0; padding: 3px; }
 
-.ps-form form fieldset div.inline-notes a,
-.ps-form form fieldset div.notes a 
+#ps-container .ps-form form fieldset div.inline-notes a,
+#ps-container .ps-form form fieldset div.notes a 
 {
 	text-decoration: underline;
 }
 
-.ps-form form fieldset div.inline-notes h4,
-.ps-form form fieldset div.notes h4 
+#ps-container .ps-form form fieldset div.inline-notes h4,
+#ps-container .ps-form form fieldset div.notes h4 
 {
 	background: transparent url(../img/icons/information.png) no-repeat left 50%;
 	border-color: #666666;
@@ -77,20 +77,20 @@ fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
 	padding: 0 0 3px 20px;
 }
 
-.ps-form form fieldset div.inline-notes p,
-.ps-form form fieldset div.inline-notes ul,
-.ps-form form fieldset div.notes p 
+#ps-container .ps-form form fieldset div.inline-notes p,
+#ps-container .ps-form form fieldset div.inline-notes ul,
+#ps-container .ps-form form fieldset div.notes p 
 {
 	color: #666666;
 	margin: 0.5em 0 0;
 }
-.ps-form form fieldset div.inline-notes ul
+#ps-container .ps-form form fieldset div.inline-notes ul
 {
 	margin-left: 2em;
 }
 
-.ps-form form div label small, 
-.ps-form form div label {
+#ps-container .ps-form form div label small, 
+#ps-container .ps-form form div label {
 	display: block;
 	float: left;
 	margin: 0 0 5px;
@@ -99,12 +99,12 @@ fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
 	width: 135px;		/* main align */
 	font-weight: bold;
 }
-.ps-form form div label small {
+#ps-container .ps-form form div label small {
 	font-weight: normal;
 	text-align: left;
 }
 
-.ps-form form div p.small {
+#ps-container .ps-form form div p.small {
 	display: block;
 	padding: 0 3px;
 	font-size: 88%;
@@ -113,8 +113,8 @@ fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
 	margin-bottom: 0.5em;
 }
 
-.ps-form form div p.err { display: none; }
-.ps-form form div.err p.err, div.err p.err { 
+#ps-container .ps-form form div p.err { display: none; }
+#ps-container .ps-form form div.err p.err, div.err p.err { 
 	display: block;
 	background: url(../img/icons/error.png) no-repeat 0 50%;
 	padding-left: 20px;
@@ -125,20 +125,20 @@ fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
 	height: 16px;
 }
 
-.ps-form form div.err, div.err {
+#ps-container .ps-form form div.err, div.err {
 	border: 1px solid #FF0000;
 	background: #FFFFE1;
 	padding: 2px;
 }
 
-.ps-form form div.fatal, div.fatal {
+#ps-container .ps-form form div.fatal, div.fatal {
 	padding: 0.5em 0.5em 0.5em 30px;
 	margin-bottom: 1em;
 	background: #B75E52 url(../img/icons/error.png) no-repeat 5px 50%;
 	border: 1px solid black;
 	color: #FFFFFF;
 }
-.ps-form form div.fatal h4, div.fatal h4 {
+#ps-container .ps-form form div.fatal h4, div.fatal h4 {
 	border-bottom: 1px solid black;
 	color: #FFCEBF;
 }
@@ -161,10 +161,10 @@ fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
 
 /* --- Input styles ---------------------- */
 
-.ps-form form div input.field, 
-.ps-form form div select, 
-.ps-form form div textarea, 
-.ps-form form div span.readonly
+#ps-container .ps-form form div input.field, 
+#ps-container .ps-form form div select, 
+#ps-container .ps-form form div textarea, 
+#ps-container .ps-form form div span.readonly
 {
 	margin: 0;
 	padding: 1px;
@@ -178,40 +178,40 @@ fieldset .ps-table-frame div {	/* nested tables inside a form should not pad */
 	font-family: Helvetica,"trebuchet ms",arial,sans-serif;
 	font-size: 100%;
 }
-.ps-form form div span.readonly { background-color: #EEE; }
-.ps-form form div textarea { overflow: auto; }
+#ps-container .ps-form form div span.readonly { background-color: #EEE; }
+#ps-container .ps-form form div textarea { overflow: auto; }
 
-.ps-form form div input.checkbox, 
-.ps-form form div input.radio
+#ps-container .ps-form form div input.checkbox, 
+#ps-container .ps-form form div input.radio
 { 
 	width: auto; 
 	border: none; 
 }
-.ps-form form div textarea.medium {
+#ps-container .ps-form form div textarea.medium {
 	width: 300px;
 }
-.ps-form form div textarea.long, 
-.ps-form form div input.long,
-.ps-form form div select.long {
+#ps-container .ps-form form div textarea.long, 
+#ps-container .ps-form form div input.long,
+#ps-container .ps-form form div select.long {
 	width: 400px;
 }
-.ps-form form div input.short {
+#ps-container .ps-form form div input.short {
 	width: 50px;
 }
 
-.ps-form form fieldset div.submit {
+#ps-container .ps-form form fieldset div.submit {
 	width: auto;
 	text-align: center;
 }
 
-.ps-form form label.for {
+#ps-container .ps-form form label.for {
 	float: none;
 	width: auto;
 	display: inline;
 }
 
 /**/
-div.submit input.btn {
+#ps-container div.submit input.btn {
 /*
 	background-color: ButtonFace;
 	background-repeat: no-repeat;
@@ -257,24 +257,24 @@ div.submit input.register {
 	color: black;
 }
 
-.ps-table-header .links {
+#ps-container .ps-table-header .links {
 	float: left;
 	font-weight: bold;
 }
-.ps-table tr td.idx { 
+#ps-container .ps-table tr td.idx { 
 	width: 50px;
 }
-.ps-table tr td.item {
+#ps-container .ps-table tr td.item {
 	text-align: left;
 	font-weight: bold;
 }
 
-.ps-table tr.sep-row-top td {
+#ps-container .ps-table tr.sep-row-top td {
 	border-top: 2px solid gray;
 }
 
-.left { float: left; }
-.right { float: right; }
+#ps-container .left { float: left; }
+#ps-container .right { float: right; }
 
 /* --- Custom form alternations ---------------- */
 #ps-login-form .ps-form form {
@@ -288,10 +288,10 @@ div.submit input.register {
 	width: 115px;
 }
 
-.ps-form form div {
+#ps-container .ps-form form div {
 	width: auto;
 }
-.ps-form form div.block {
+#ps-container .ps-form form div.block {
 	padding: 0;
 }
 
@@ -355,19 +355,19 @@ div.submit input.register {
 
 
 /* autocomplete styles */
-.autocomplete
+#ps-container .autocomplete
 {
 	border: 1px solid #6FBEFF;
 	width: 250px;
 	background-color: #EFF8FF;
 }
-.autocomplete ul li
+#ps-container .autocomplete ul li
 {
 	padding: 2px 10px;
 	white-space: nowrap;
 	font-size: 11px;
 }
-.select-autocomplete
+#ps-container .select-autocomplete
 {
 	background-color: #d2fb8f;
 }

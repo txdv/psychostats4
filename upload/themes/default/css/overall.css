@@ -8,31 +8,44 @@
 
 */
 
-* {
+body.psychostats {
+	background: #C4C4C4;
 	margin: 0;
 	padding: 0;
 }
 
-body {
+/* This container wraps up everything on the page so styles can be applied
+ * globally within the context of PsychoStats only.
+**/
+#ps-container * {
+	margin: 0;
+	padding: 0;
+}
+
+#ps-container {
 	font-size: 80%;
 	font-family: Tahoma,Arial,sans-serif;
 	background: #C4C4C4;
 }
 
-a,a:link,a:visited,a:hover,a:active {	/* LVHA */
+#ps-container a,
+#ps-container a:link,
+#ps-container a:visited,
+#ps-container a:hover,
+#ps-container a:active {	/* LVHA */
 	color: DarkRed;
 	text-decoration: none;
 }
-a:hover {
+#ps-container a:hover {
 	color: #330000;
 }
 
-img {
+#ps-container img {
 	border: none;
 	vertical-align: middle;
 }
 
-acronym {
+#ps-container acronym {
 	font-size: 100%;
 }
 
@@ -70,10 +83,10 @@ acronym {
 	background-image: none;
 	padding-left: 0;
 }
-#ps-overall-menu a {
+#ps-container #ps-overall-menu a {
 	color: black;
 }
-#ps-overall-menu a:hover {
+#ps-container #ps-overall-menu a:hover {
 	color: #6A5ACD;
 }
 
