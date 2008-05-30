@@ -106,17 +106,27 @@ function player_left_column_mod(&$plr, &$theme) {
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Axis / Ally Kills"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $plr['axiskillspct'],
 				'pct2'	 	=> $plr['allieskillspct'],
 				'title1'	=> $plr['axiskills'] . ' ' . $cms->trans('axis') . ' (' . $plr['axiskillspct'] . '%)',
 				'title2'	=> $plr['allieskills'] . ' ' . $cms->trans('ally') . ' (' . $plr['allieskillspct'] . '%)',
 				'width'		=> 130
-			))
+			)
 		);
 
+		$cms->filter('left_column_actions', $actions);
+		for ($i=0; $i < count($actions); $i++) {
+			if ($actions[$i]['type'] == 'dual_bar') {
+				$actions[$i]['value'] = dual_bar( $actions[$i]['value'] );
+			} else {
+				$actions[$i]['value'] = pct_bar( $actions[$i]['value'] );
+			}
+		}
+		
 		$theme->assign(array(
-			'mod_actions'	=> $actions,
+			'mod_actions' => $actions,
 			'mod_actions_title' => $cms->trans("Team / Action Profile"),
 		));
 		$output = $theme->parse($tpl);

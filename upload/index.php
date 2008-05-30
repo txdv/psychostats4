@@ -87,6 +87,16 @@ if ($results) {
 	$total['absolute'] = $total['all'];
 }
 
+// auto-redirect to the exact player matched in the search
+// if a single player was found.
+if ($search and $results['abs_total'] == 1 and is_numeric($results['results'])) {
+	gotopage(ps_url_wrapper(array(
+		'_amp' => '&',
+		'_base' => 'player.php',
+		'id' => $results['results']
+	)));
+}
+
 // fetch stats, etc...
 $players = $ps->get_player_list(array(
 	'results'	=> $results,
