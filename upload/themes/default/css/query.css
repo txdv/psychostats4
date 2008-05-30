@@ -1,6 +1,6 @@
 /* specific styles for the query page */
 
-.ps-server-wrapper {
+#ps-container .ps-server-wrapper {
 	width: 450px;
 	float: left;
 	margin: 0 0.5em;
@@ -10,7 +10,7 @@
 	text-align: center;
 }
 
-.ps-server-main {
+#ps-container .ps-server-main {
 	margin: 0 auto 0.5em auto;
 	width: 450px;
 	border: 1px solid black;
@@ -73,16 +73,16 @@
 .ps-server-main table .kills { text-align: center; }
 .ps-server-main table .time { text-align: right; }
 
-.ps-server-main .content p label,
-.ps-server-main .details p label {
+#ps-container .ps-server-main .content p label,
+#ps-container .ps-server-main .details p label {
 	float: left;
 	width: 80px;
 	font-weight: bold;
 	padding-left: 3px;
 }
 
-.ps-server-main .content p span.ping,
-.ps-server-main .details p span.ping {
+#ps-container .ps-server-main .content p span.ping,
+#ps-container .ps-server-main .details p span.ping {
 	color: gray;
 	margin-left: 1em;
 }
@@ -93,7 +93,7 @@
 	text-align: center;
 }
 
-.ps-server-main .menu {
+#ps-container .ps-server-main .menu {
 	text-align: center;
 	font-size: 90%;
 	font-weight: bold;
@@ -102,16 +102,16 @@
 	margin-bottom: 0.25em;
 	background: #C9C1B3;
 }
-.ps-server-main .menu ul {
+#ps-container .ps-server-main .menu ul {
 	list-style: none;
 	margin: 0 auto;
 	padding: 1px;
 }
-.ps-server-main .menu ul li {
+#ps-container .ps-server-main .menu ul li {
 	display: inline;
 	margin-left: 1em;
 }
-.ps-server-main .menu ul li a {
+#ps-container .ps-server-main .menu ul li a {
 	padding: 0 1px;
 }
 .ps-server-main .menu ul li.selected {
@@ -127,10 +127,10 @@
 }
 
 /* timer bar is actually part of server.html */
-.ps-column-sep { /* override original style from 2columns.css */
+#ps-container .ps-column-sep { /* override original style from 2columns.css */
 	border: none;
 }
-.ps-column-sep p {
+#ps-container .ps-column-sep p {
 	text-align: left;
 }
 #timer-bar {

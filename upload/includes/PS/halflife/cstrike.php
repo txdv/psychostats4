@@ -102,6 +102,7 @@ function player_left_column_mod(&$plr, &$theme) {
 	$tpl = 'player_left_column_mod';
 	if ($theme->template_found($tpl, false)) {
 		$actions = array();
+		
 		$joined = $plr['joinedterrorist'] + $plr['joinedct'];
 		if ($joined) {
 			$pct1 = sprintf('%0.02f', $plr['joinedterrorist'] / $joined * 100);
@@ -111,7 +112,8 @@ function player_left_column_mod(&$plr, &$theme) {
 		}
 		$actions[] = array(
 			'label'	=> $cms->trans("T / CT Joins"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $pct1,
 				'pct2'	 	=> $pct2,
 				'title1'	=> $plr['joinedterrorist'] . ' ' . $cms->trans('Terrorists') . ' (' . $pct1 . '%)',
@@ -119,12 +121,13 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 		$actions[] = array(
 			'label'	=> $cms->trans("T / CT Wins"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $plr['terroristwonpct'],
 				'pct2'	 	=> $plr['ctwonpct'],
 				'title1'	=> $plr['terroristwon'] . ' ' . $cms->trans('Terrorist') . ' (' . $plr['terroristwonpct'] . '%)',
@@ -132,12 +135,13 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Bombs Exploded"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $plr['bombexplodedpct'],
 				'pct2'	 	=> $plr['bombplantedpct'],
 				'title1'	=> $plr['bombexploded'] . ' ' . $cms->trans('exploded') . ' (' . $plr['bombexplodedpct'] . '%)',
@@ -145,34 +149,45 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Bombs Defused %"),
-			'value'	=> pct_bar(array(
+			'type'	=> 'pct_bar',
+			'value'	=> array(
 				'pct'	 	=> $plr['bombdefusedpct'],
 				'title'		=> $plr['bombdefused'] . ' ' . $cms->trans('bombs defused') . ' (' . $plr['bombdefusedpct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Rescued Hostages"),
-			'value'	=> pct_bar(array(
+			'type'	=> 'pct_bar',
+			'value'	=> array(
 				'pct'	 	=> $plr['rescuedhostagespct'],
 				'title'		=> $plr['rescuedhostages'] . ' ' . $cms->trans('hostages saved') . ' (' . $plr['rescuedhostagespct'] . '%)',
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
+		$cms->filter('left_column_actions', $actions);
+		for ($i=0; $i < count($actions); $i++) {
+			if ($actions[$i]['type'] == 'dual_bar') {
+				$actions[$i]['value'] = dual_bar( $actions[$i]['value'] );
+			} else {
+				$actions[$i]['value'] = pct_bar( $actions[$i]['value'] );
+			}
+		}
+
 		$theme->assign(array(
-			'mod_actions'	=> $actions,
+			'mod_actions' => $actions,
 			'mod_actions_title' => $cms->trans("Team / Action Profile"),
 		));
 		$output = $theme->parse($tpl, false);

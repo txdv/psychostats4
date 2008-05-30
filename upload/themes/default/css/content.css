@@ -228,20 +228,24 @@ div.ps-plr-profile #map {
 }
 
 /* --- PAGER styles ------------ */
-.pager {
+#ps-container .pager {
 	display: block;
 	padding: 3px;
 }
-.pager-current, .pager-goto, .pager-next, .pager-prev {
+#ps-container .pager-current,
+#ps-container .pager-goto,
+#ps-container .pager-next,
+#ps-container .pager-prev {
 	border: 1px solid gray;
 	padding: 0 2px;
 	background: #DDDDDD;
 }
-.pager-current {
+#ps-container .pager-current {
 	background: lightyellow;
 	font-weight: bold;
 }
-.pager-next, .pager-prev {
+#ps-container .pager-next,
+#ps-container .pager-prev {
 	background: #BBBBBB;
 }
 

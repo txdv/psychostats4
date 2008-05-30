@@ -114,9 +114,11 @@ function player_left_column_mod(&$plr, &$theme) {
 		} else {
 			$pct1 = $pct2 = 0;
 		}
+		
 		$actions[] = array(
 			'label'	=> $cms->trans("Axis / Ally Joins"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $pct1,
 				'pct2'	 	=> $pct2,
 				'title1'	=> $plr['joinedaxis'] . ' ' . $cms->trans('axis') . ' (' . $pct1 . '%)',
@@ -124,12 +126,13 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Axis / Ally Wins"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $plr['axiswonpct'],
 				'pct2'	 	=> $plr['allieswonpct'],
 				'title1'	=> $plr['axiswon'] . ' ' . $cms->trans('axis') . ' (' . $plr['axiswonpct'] . '%)',
@@ -137,12 +140,13 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Flags Captured"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $plr['axisflagscapturedpct'],
 				'pct2'	 	=> $plr['alliesflagscapturedpct'],
 				'title1'	=> $plr['axisflagscaptured'] . ' ' . $cms->trans('axis') . ' (' . $plr['axisflagscapturedpct'] . '%)',
@@ -150,12 +154,13 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Blocked Captures"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $plr['axisflagsblockedpct'],
 				'pct2'	 	=> $plr['alliesflagsblockedpct'],
 				'title1'	=> $plr['axisflagsblocked'] . ' ' . $cms->trans('axis') . ' (' . $plr['axisflagsblockedpct'] . '%)',
@@ -163,12 +168,13 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Team Scores"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $plr['axisscorepct'],
 				'pct2'	 	=> $plr['alliesscorepct'],
 				'title1'	=> $plr['axisscore'] . ' ' . $cms->trans('axis') . ' (' . $plr['axisscorepct'] . '%)',
@@ -176,11 +182,20 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
+		$cms->filter('left_column_actions', $actions);
+		for ($i=0; $i < count($actions); $i++) {
+			if ($actions[$i]['type'] == 'dual_bar') {
+				$actions[$i]['value'] = dual_bar( $actions[$i]['value'] );
+			} else {
+				$actions[$i]['value'] = pct_bar( $actions[$i]['value'] );
+			}
+		}
+
 		$theme->assign(array(
-			'mod_actions'	=> $actions,
+			'mod_actions' => $actions,
 			'mod_actions_title' => $cms->trans("Team / Action Profile"),
 		));
 		$output = $theme->parse($tpl);

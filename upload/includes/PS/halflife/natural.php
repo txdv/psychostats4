@@ -86,9 +86,11 @@ function player_left_column_mod(&$plr, &$theme) {
 		} else {
 			$pct1 = $pct2 = 0;
 		}
+		
 		$actions[] = array(
 			'label'	=> $cms->trans("Alien / Marine Joins"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $pct1,
 				'pct2'	 	=> $pct2,
 				'title1'	=> $plr['joinedalien'] . ' ' . $cms->trans('Alien') . ' (' . $pct1 . '%)',
@@ -96,12 +98,13 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
 		$actions[] = array(
 			'label'	=> $cms->trans("Alien / Marine Wins"),
-			'value'	=> dual_bar(array(
+			'type'	=> 'dual_bar',
+			'value'	=> array(
 				'pct1'	 	=> $plr['alienwonpct'],
 				'pct2'	 	=> $plr['marinewonpct'],
 				'title1'	=> $plr['alienwon'] . ' ' . $cms->trans('Alien') . ' (' . $plr['alienwonpct'] . '%)',
@@ -109,9 +112,18 @@ function player_left_column_mod(&$plr, &$theme) {
 				'color1'	=> 'cc0000',
 				'color2'	=> '00cc00',
 				'width'		=> 130
-			))
+			)
 		);
 
+		$cms->filter('left_column_actions', $actions);
+		for ($i=0; $i < count($actions); $i++) {
+			if ($actions[$i]['type'] == 'dual_bar') {
+				$actions[$i]['value'] = dual_bar( $actions[$i]['value'] );
+			} else {
+				$actions[$i]['value'] = pct_bar( $actions[$i]['value'] );
+			}
+		}
+		
 		$theme->assign(array(
 			'mod_actions'	=> $actions,
 			'mod_actions_title' => $cms->trans("Team / Action Profile"),

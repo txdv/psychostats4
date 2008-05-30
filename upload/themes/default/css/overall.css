@@ -219,7 +219,7 @@ body.psychostats {
 	width: 155px;
 	padding-left: 17px;
 }
-input.search { /* generic search class */
+#ps-container input.search { /* generic search class */
 	background: white url(../img/search-input-icon.png) no-repeat 0 50%;
 	padding-left: 17px;
 	border: 1px solid gray;
