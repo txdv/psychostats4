@@ -1109,6 +1109,7 @@ function get_map_player_list($args = array()) {
 }
 
 function get_player_list($args = array()) {
+	global $cms;
 	$args += array(
 		'allowall'	=> false,
 		'start'		=> 0,
@@ -1160,11 +1161,8 @@ function get_player_list($args = array()) {
 		$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
 	}
 	$cmd .= $this->getsortorder($args);
-
-	$list = array();
-	$list = $this->db->fetch_rows(1, $cmd);
-//	print $this->db->lastcmd;
 	
+	$list = $this->db->fetch_rows(1, $cmd);
 	return $list;
 }
 

@@ -167,7 +167,8 @@ function player_left_column_mod(&$plr, &$theme) {
 
 		foreach (array('won','flagscaptured', 'flagsdefended',
 			       'captureblocked', 'pointcaptured') as $var) {
-			$actions[] = array(
+			$actions[$var] = array(
+				'what'	=> $var,
 				'label'	=> $strings[$var],
 				'type'	=> 'dual_bar',
 				'value'	=> array(
@@ -183,7 +184,7 @@ function player_left_column_mod(&$plr, &$theme) {
 		}
 
 		$cms->filter('left_column_actions', $actions);
-		for ($i=0; $i < count($actions); $i++) {
+		foreach (array_keys($actions) as $i) {
 			if ($actions[$i]['type'] == 'dual_bar') {
 				$actions[$i]['value'] = dual_bar( $actions[$i]['value'] );
 			} else {

@@ -110,7 +110,8 @@ function player_left_column_mod(&$plr, &$theme) {
 		} else {
 			$pct1 = $pct2 = 0;
 		}
-		$actions[] = array(
+
+		$actions['joined'] = array(
 			'label'	=> $cms->trans("T / CT Joins"),
 			'type'	=> 'dual_bar',
 			'value'	=> array(
@@ -124,7 +125,7 @@ function player_left_column_mod(&$plr, &$theme) {
 			)
 		);
 
-		$actions[] = array(
+		$actions['won'] = array(
 			'label'	=> $cms->trans("T / CT Wins"),
 			'type'	=> 'dual_bar',
 			'value'	=> array(
@@ -138,7 +139,7 @@ function player_left_column_mod(&$plr, &$theme) {
 			)
 		);
 
-		$actions[] = array(
+		$actions['bombexploded'] = array(
 			'label'	=> $cms->trans("Bombs Exploded"),
 			'type'	=> 'dual_bar',
 			'value'	=> array(
@@ -153,7 +154,7 @@ function player_left_column_mod(&$plr, &$theme) {
 		);
 
 
-		$actions[] = array(
+		$actions['bombdefused'] = array(
 			'label'	=> $cms->trans("Bombs Defused %"),
 			'type'	=> 'pct_bar',
 			'value'	=> array(
@@ -165,7 +166,7 @@ function player_left_column_mod(&$plr, &$theme) {
 			)
 		);
 
-		$actions[] = array(
+		$actions['rescuedhostages'] = array(
 			'label'	=> $cms->trans("Rescued Hostages"),
 			'type'	=> 'pct_bar',
 			'value'	=> array(
@@ -178,7 +179,7 @@ function player_left_column_mod(&$plr, &$theme) {
 		);
 
 		$cms->filter('left_column_actions', $actions);
-		for ($i=0; $i < count($actions); $i++) {
+		foreach (array_keys($actions) as $i) {
 			if ($actions[$i]['type'] == 'dual_bar') {
 				$actions[$i]['value'] = dual_bar( $actions[$i]['value'] );
 			} else {
