@@ -96,6 +96,7 @@ if ($ajax_request) {
 //	sleep(1);
 	$pagename = 'go-analyze-results';
 	$cms->tiny_page($pagename, $pagename);
+	exit();
 }
 
 

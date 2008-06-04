@@ -123,6 +123,7 @@ if ($ajax_request) {
 
 	$pagename = 'go-admin-results';
 	$cms->tiny_page($pagename, $pagename);
+	exit();
 }
 
 function load_admins() {

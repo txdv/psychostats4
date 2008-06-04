@@ -49,6 +49,7 @@ if ($ajax_request) {
 	save_db_opts();
 	$pagename = 'go-db-results';
 	$cms->tiny_page($pagename, $pagename);
+	exit();
 } else {
 	if ($dbhost != '') {
 		do_test($dbtest, true);

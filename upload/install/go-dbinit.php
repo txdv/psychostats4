@@ -112,6 +112,7 @@ if ($ajax_request) {
 	$pagename = 'go-dbinit-results';
 	do_init($gametype, $modtype);
 	$cms->tiny_page($pagename, $pagename);
+	exit();
 }
 
 // the DB will already exist (assuming the user did the 'db' step already; which they should have)
@@ -256,6 +257,7 @@ function err($msg) {
 //	print "<h3>Fatal Error!</h3>";
 	print "<p class='row'><span class='bad'>$msg</span></p>";
 	$cms->tiny_page($pagename, $pagename);
+	exit();
 }
 
 function not_empty($i) {

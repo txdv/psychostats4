@@ -70,6 +70,7 @@ if ($ajax_request) {
 //	sleep(1);
 	$pagename = 'go-done-results';
 	$cms->tiny_page($pagename, $pagename);
+	exit();
 }
 
 ?>
