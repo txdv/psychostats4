@@ -143,6 +143,15 @@
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map>
+ <map name='cs_estate'>
+  <minx>-1135</minx>
+  <miny>-2175</miny>
+  <maxx>1311</maxx>
+  <maxy>527</maxy>
+  <res>647x711</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
  <map name='de_seasideresort'>
   <minx>-1820</minx> 
   <miny>-2150</miny> 
@@ -152,7 +161,87 @@
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map>
-
+ <map name='fy_poolparty_v2'>
+  <minx>-264</minx>
+  <miny>-1966</miny>
+  <maxx>718</maxx>
+  <maxy>-205</maxy>
+  <res>1002x972</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='fy_iceworld'>
+  <minx>-752</minx>
+  <miny>-944</miny>
+  <maxx>752</maxx>
+  <maxy>944</maxy>
+  <res>1002x972</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='fy_paintball'>
+  <minx>396</minx>
+  <miny>-1740</miny>
+  <maxx>1488</maxx>
+  <maxy>778</maxy>
+  <res>1002x972</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='fy_simpsons_h'>
+  <minx>-952</minx>
+  <miny>-461</miny>
+  <maxx>952</maxx>
+  <maxy>469</maxy>
+  <res>1002x972</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='fy_beachparty_v1'>
+  <minx>-288</minx>
+  <miny>-1008</miny>
+  <maxx>2192</maxx>
+  <maxy>960</maxy>
+  <res>1002x972</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='fy_xbox'>
+  <minx>-1792</minx>
+  <miny>-672</miny>
+  <maxx>496</maxx>
+  <maxy>672</maxy>
+  <res>1002x972</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_airstrip'>
+  <minx>-3239</minx>
+  <miny>-3279</miny>
+  <maxx>839</maxx>
+  <maxy>2815</maxy>
+  <res>640x968</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='de_survivor'>
+  <minx>-1903</minx>
+  <miny>-1263</miny>
+  <maxx>3455</maxx>
+  <maxy>3055</maxy>
+  <res>965x764</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='cs_siege'>
+  <minx>-2813</minx>
+  <miny>-1391</miny>
+  <maxx>3911</maxx>
+  <maxy>3895</maxy>
+  <res>970x765</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
 
  <map name='cp_badlands'>
   <minx>-2504</minx> 
@@ -412,6 +501,70 @@
   <maxx>1614</maxx>
   <maxy>1232</maxy>
   <res>1002x972</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+
+ <map name='dod_dummy'>
+  <minx>1472</minx>
+  <miny>-3968</miny>
+  <maxx>-2176</maxx>
+  <maxy>4032</maxy>
+  <res>460x1015</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_siracusa'>
+  <minx>-1216</minx>
+  <miny>-2304</miny>
+  <maxx>2560</maxx>
+  <maxy>2496</maxy>
+  <res>589x742</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_edge2'>
+  <minx>-2176</minx>
+  <miny>-3968</miny>
+  <maxx>1472</maxx>
+  <maxy>4032</maxy>
+  <res>460x1015</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_vire'>
+  <minx>-1168</minx>
+  <miny>-3456</miny>
+  <maxx>2560</maxx>
+  <maxy>528</maxy>
+  <res>699x746</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_freeze_b5'>
+  <minx>-2112</minx>
+  <miny>-1024</miny>
+  <maxx>3648</maxx>
+  <maxy>3584</maxy>
+  <res>876x704</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_tact_v5'>
+  <minx>-1728</minx>
+  <miny>-3200</miny>
+  <maxx>3392</maxx>
+  <maxy>640</maxy>
+  <res>819x618</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_steinburg'>
+  <minx>-3264</minx>
+  <miny>-2560</miny>
+  <maxx>1088</maxx>
+  <maxy>3136</maxy>
+  <res>629x818</res>
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map>

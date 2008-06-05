@@ -472,7 +472,7 @@ sub get_data {
 	$where ||= '';
 	@$datax = ();	# clear the data arrays
 	@$datay = ();
-	my $limit = $hc->{limit} || 5500;
+	my $limit = $hc->{limit} || 10000;
 	my $cmd = "SELECT " . $hc->{$hc->{wkey}.'_x'} . "," . $hc->{$hc->{wkey}.'_y'} . " FROM $db->{t_map_spatial} WHERE mapid=$hc->{mapid} ";
 	$cmd .= $where if $where;
 	$cmd .= "LIMIT $limit";
