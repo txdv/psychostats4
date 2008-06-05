@@ -93,6 +93,7 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
         new Float:attackerLocation[3];
         new victim = GetClientOfUserId(victimId);
         new attacker = GetClientOfUserId(attackerId);
+	if(!attacker) return Plugin_Continue; // World is the attacker
         GetClientAbsOrigin(victim, victimLocation);
         GetClientAbsOrigin(attacker, attackerLocation);
 
