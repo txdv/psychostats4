@@ -1,4 +1,3 @@
-package PS::Player::cod;
 #
 #	This file is part of PsychoStats.
 #
@@ -19,55 +18,35 @@ package PS::Player::cod;
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
 #	$Id$
+#
+package PS::Map::soldat;
 
 use strict;
 use warnings;
-use base qw( PS::Player );
+use base qw( PS::Map );
+
+our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our $TYPES = {
-	allieskills		=> '+',
-	allieskillspct		=> [ percent2 => qw( allieskills axiskills ) ],
-	axiskills		=> '+',
-	axiskillspct		=> [ percent2 => qw( axiskills allieskills ) ],
-	alliesdeaths		=> '+',
-	axisdeaths		=> '+',
-	joinedallies		=> '+',
-	joinedaxis		=> '+',
-	allieswon		=> '+',
-	allieswonpct		=> [ percent2 => qw( allieswon axiswon ) ],
-	axiswon			=> '+',
-	axiswonpct		=> [ percent2 => qw( axiswon allieswon ) ],
-	allieslost		=> '+',
-	axislost		=> '+',
+	ctkills			=> '+',
+	terroristkills		=> '+',
+	joinedct		=> '+',
+	joinedterrorist		=> '+',
+	joinedspectator		=> '+',
+	ctwon			=> '+',
+	ctwonpct		=> [ percent2 => qw( ctwon terroristwon ) ],
+	ctlost			=> '+',
+	terroristwon		=> '+',
+	terroristwonpct		=> [ percent2 => qw( terroristwon ctwon ) ],
+	terroristlost		=> '+',
 };
-
-# Player map stats are the same as the basic stats
-our $TYPES_MAPS = { %$TYPES };
 
 # override parent methods to combine types
 sub get_types { return { %{$_[0]->SUPER::get_types}, %$TYPES } }
-sub get_types_maps { return { %{$_[0]->SUPER::get_types_maps}, %$TYPES_MAPS } }
-#sub get_types_roles { return { %{$_[0]->SUPER::get_types_roles}, %$TYPES_ROLES } }
 
 # allows the parent to determine our local types
 sub mod_types { $TYPES };
-sub mod_types_maps { $TYPES_MAPS };
-#sub mod_types_roles { $TYPES_ROLES };
-
-sub _init {
-	my $self = shift;
-	$self->SUPER::_init;
-
-#	$self->{role} = '';
-#	$self->{roles} = {};
-	$self->{mod} = {};
-#	$self->{mod_roles} = {};
-
-	return $self;
-}
 
 sub has_mod_tables { 0 }
-
-sub has_roles { 0 }
 
 1;

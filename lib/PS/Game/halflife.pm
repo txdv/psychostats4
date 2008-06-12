@@ -1,4 +1,3 @@
-package PS::Game::halflife;
 #
 #	This file is part of PsychoStats.
 #
@@ -18,6 +17,9 @@ package PS::Game::halflife;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+package PS::Game::halflife;
 
 use strict;
 use warnings;
@@ -31,7 +33,7 @@ use PS::Map;
 use PS::Role;
 use PS::Weapon;
 
-our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/) || '000')[0];
 
 sub new {
 	my $proto = shift;

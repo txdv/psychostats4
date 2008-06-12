@@ -1,4 +1,3 @@
-package PS::Map;
 #
 #	This file is part of PsychoStats.
 #
@@ -18,6 +17,9 @@ package PS::Map;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+package PS::Map;
 
 use strict;
 use warnings;
@@ -137,7 +139,7 @@ sub _init_table {
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
 	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
-	if ($tail and $self->has_mod_tables) {
+	if ($tail) {
 		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
 	}
 

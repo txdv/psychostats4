@@ -1,4 +1,3 @@
-package util;
 #
 #	This file is part of PsychoStats.
 #
@@ -18,6 +17,7 @@ package util;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+package util;
 
 use 5.006;
 use strict;

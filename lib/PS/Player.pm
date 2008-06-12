@@ -439,7 +439,7 @@ sub _init_table {
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
 	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
-	if ($tail and $self->has_mod_tables) {
+	if ($tail) {
 		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
 	}
 
@@ -476,7 +476,7 @@ sub _init_table_maps {
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
 	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
-	if ($tail and $self->has_mod_tables) {
+	if ($tail) {
 		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
 	}
 
@@ -514,7 +514,7 @@ sub _init_table_victims {
 	# get all keys used in the 2 tables so we can combine them all into a single table
 	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
 # victims do not currently allow for game/modtype extensions
-#	if ($tail and $self->has_mod_tables) {
+#	if ($tail) {
 #		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($basetable . $tail)};
 #	}
 
@@ -591,7 +591,7 @@ sub _init_table_weapons {
 	# get all keys used in the 2 tables so we can combine them all into a single table
 	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
 # weapons do not currently allow for game/modtype extensions
-#	if ($tail and $self->has_mod_tables) {
+#	if ($tail) {
 #		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($basetable . $tail)};
 #	}
 

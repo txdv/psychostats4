@@ -1,10 +1,3 @@
-# PS::Heatmap is a class that will generate a heatmap for maps.
-# A heatmap is a PNG image that is meant to be overlayed on top of a map image and represents some sort of
-# spatial stat on that map (like where players have died, what locations are used for AWP camping, etc...)
-#
-# 	$Id$
-#
-package PS::Heatmap;
 #
 #	This file is part of PsychoStats.
 #
@@ -24,6 +17,13 @@ package PS::Heatmap;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+# 	$Id$
+#
+#       PS::Heatmap is a class that will generate a heatmap for maps. A heatmap
+#       is a PNG image that is meant to be overlayed on top of a map image and
+#       represents some sort of spatial stat on that map (like where players
+#       have died, what locations are used for AWP camping, etc...)
+package PS::Heatmap;
 
 use strict;
 use warnings;
