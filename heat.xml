@@ -568,4 +568,31 @@
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map>
+ <map name='dod_fury'>
+  <minx>-2048</minx>
+  <miny>-2240</miny>
+  <maxx>2176</maxx>
+  <maxy>2816</maxy>
+  <res>679x785</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map> 
+ <map name='dod_thunder'>
+  <minx>-3968</minx>
+  <miny>-3840</miny>
+  <maxx>3840</maxx>
+  <maxy>2304</maxy>
+  <res>974x760</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map> 
+ <map name='dod_snowcity_v3'>
+  <minx>-3484</minx>
+  <miny>-3646</miny>
+  <maxx>3454</maxx>
+  <maxy>318</maxy>
+  <res>989x565</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map> 
 </maps>
