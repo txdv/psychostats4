@@ -1,11 +1,3 @@
-# Base Feeder class. This is a basic factory class that creates a Feeder object based on the current logsource.
-# If a subclass is detected for the current gametype it will be created and returned.
-# Order of class detection (first class to be found is used):
-#	PS::Feeder::{gametype}::{modtype}::{base}
-#	PS::Feeder::{gametype}::{base}
-#	PS::Feeder::{base}
-#
-package PS::Feeder;
 #
 #	This file is part of PsychoStats.
 #
@@ -25,11 +17,22 @@ package PS::Feeder;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#       Base Feeder class. This is a basic factory class that creates a Feeder
+#       object based on the current logsource. If a subclass is detected for the
+#       current gametype it will be created and returned. Order of class
+#       detection:
+#		PS::Feeder::{gametype}::{modtype}::{base}
+#		PS::Feeder::{gametype}::{base}
+#		PS::Feeder::{base}
+#
+package PS::Feeder;
 
 use strict;
 use warnings;
 use base qw( PS::Debug );
-use util qw( :numbers );
+use util qw( :numbers compacttime );
 use Data::Dumper;
 
 our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
@@ -101,10 +104,14 @@ sub new {
 
 	$self->{_lasttimebytes} = time;
 	$self->{_lasttimelines} = time;
+	$self->{_lastprint} = time;
+	$self->{_lastprint_threshold} = 3;
+	$self->{_lastprint_bytes} = 0;
 	$self->{_prevlines} = 0;
 	$self->{_totallines} = 0;
 	$self->{_totalbytes} = 0;
 	$self->{_prevbytes} = 0;
+	$self->{_offsetbytes} = 0;
 	$self->{_state_saved} = 0;
 
 	$self->_init;
@@ -131,6 +138,15 @@ sub bytes_per_second {
 	return $tail ? abbrnum($total,0) . 'ps' : $total;
 }
 
+sub percent_complete {
+	my ($self, $fmt) = @_;
+	$fmt ||= '%0.02f';
+	if ($self->{_filesize}) {
+		return sprintf($fmt, ($self->{_offsetbytes} + $self->{_lastprint_bytes}) / $self->{_filesize} * 100);
+	}
+	return undef;
+}
+
 sub lines_per_second {
 	my ($self, $tail) = @_;
 	return undef unless defined $self->{_lasttimelines};
@@ -140,6 +156,25 @@ sub lines_per_second {
 #	$self->{_prevlines} = $self->{_totallines};
 #	$self->{_lasttimelines} = time;
 	return $tail ? abbrnum($total,0) . 'ps' : $total;
+}
+
+
+sub echo_processing {
+	my ($self, $include_pct) = @_;
+	if ($self->{_filesize} and $include_pct) {
+		my $bps = $self->bytes_per_second;
+		my $eta = '';
+		if ($bps) {
+			$eta = '; ' . compacttime(($self->{_filesize} - $self->{_lastprint_bytes}) / $bps);
+		}
+		$::ERR->verbose("Processing $self->{_curlog} (" . $self->lines_per_second . " lps / " .
+			       $self->bytes_per_second(1) . ") [" . $self->percent_complete . "%$eta]"
+		);
+	} else {
+		$::ERR->verbose("Processing $self->{_curlog} (" . $self->lines_per_second . " lps / " .
+			       $self->bytes_per_second(1) . ")"
+		);
+	}
 }
 
 sub save_state {

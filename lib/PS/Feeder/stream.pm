@@ -1,4 +1,3 @@
-package PS::Feeder::stream;
 #
 #	This file is part of PsychoStats.
 #
@@ -29,6 +28,7 @@ package PS::Feeder::stream;
 #
 #	A future version will try and separate steams into different 'games'.
 #
+package PS::Feeder::stream;
 
 use strict;
 use warnings;

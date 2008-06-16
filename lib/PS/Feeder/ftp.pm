@@ -1,4 +1,3 @@
-package PS::Feeder::ftp;
 #
 #	This file is part of PsychoStats.
 #
@@ -21,6 +20,8 @@ package PS::Feeder::ftp;
 #	$Id$
 #
 #	FTP support. Requires Net::FTP
+#
+package PS::Feeder::ftp;
 
 use strict;
 use warnings;
@@ -87,6 +88,7 @@ sub init {
 				# finally: fast-forward to the proper line
 				my $fh = $self->{_loghandle};
 				while (defined(my $line = <$fh>)) {
+					$self->{_offsetbytes} += length($line);
 					if (++$self->{_curline} >= $self->{state}{line}) {
 						$::ERR->verbose("Resuming from source $self->{_curlog} (line: $self->{_curline})");
 						return $self->{type};
@@ -267,6 +269,10 @@ sub _opennextlog {
 
 	$self->{_curlog} = shift @{$self->{_logs}};
 	$self->{_curline} = 0;	
+	$self->{_offsetbytes} = 0;
+	$self->{_filesize} = 0;
+	$self->{_lastprint} = time;
+	$self->{_lastprint_bytes} = 0;
 
 	# keep trying logs until we get one that works (however, chances are if 1 log fails to load they all will)
 	while (!$self->{_loghandle}) {
@@ -321,6 +327,10 @@ sub _opennextlog {
 	$self->save_state if time - $self->{_last_saved} > 60;
 
 	$self->{_idle} = time;
+
+	if ($self->{_loghandle}) {
+		$self->{_filesize} = (stat $self->{_loghandle})[7];
+	}
 	return $self->{_loghandle};
 }
 
@@ -358,9 +368,15 @@ sub next_event {
 	if ($self->{_verbose}) {
 		$self->{_totallines}++;
 		$self->{_totalbytes} += length($line);
+		$self->{_lastprint_bytes} += length($line);
 #		$self->{_prevlines} = $self->{_totallines};
 #		$self->{_prevbytes} = $self->{_totalbytes};
 #		$self->{_lasttime} = time;
+
+		if (time - $self->{_lastprint} > $self->{_lastprint_threshold}) {
+			$self->echo_processing(1);
+			$self->{_lastprint} = time;
+		}
 	}
 
 #	my $logsrc = "ftp://" . $self->{_opts}{Host} . ($self->{_opts}{Port} ne '21' ? ':' . $self->{_opts}{Host} : '' ) . '/' . $self->{_dir};

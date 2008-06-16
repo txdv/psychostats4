@@ -1,4 +1,3 @@
-package PS::Feeder::file;
 #
 #	This file is part of PsychoStats.
 #
@@ -22,6 +21,7 @@ package PS::Feeder::file;
 #
 #       Basic 'file' Feeder. Feeds logs found in a local directory.
 #
+package PS::Feeder::file;
 
 use strict;
 use warnings;
@@ -79,12 +79,14 @@ sub init { # called from calling program after new()
 				# finally: fast-forward to the proper line
 				if (int($self->{state}{pos} || 0) > 0) {	# FAST forward quickly
 					seek($self->{_loghandle}, $self->{state}{pos}, 0);
+					$self->{_offsetbytes} = $self->{state}{pos};
 					$self->{_curline} = $self->{state}{line};
 					$::ERR->verbose("Resuming from source $self->{state}{file} (line: $self->{_curline}, pos: $self->{state}{pos})");
 					return $self->{type};
 				} else {					# move forward slowly
 					my $fh = $self->{_loghandle};
 					while (defined(my $line = <$fh>)) {
+						$self->{_offsetbytes} += length($line);
 						if (++$self->{_curline} >= $self->{state}{line}) {
 							$::ERR->verbose("Resuming from source $self->{state}{file} (line: $self->{_curline})");
 							return $self->{type};
@@ -187,6 +189,10 @@ sub _opennextlog {
 
 	# close the previous log, if there was one
 	undef $self->{_loghandle};
+	$self->{_offsetbytes} = 0;
+	$self->{_filesize} = 0;
+	$self->{_lastprint} = time;
+	$self->{_lastprint_bytes} = 0;
 
 	# no more logs in current directory, get next directory
 	while (!scalar @{$self->{_logs}} and scalar @{$self->{_dirs}}) {
@@ -195,7 +201,8 @@ sub _opennextlog {
 	return undef if !scalar @{$self->{_logs}};		# no more logs or directories to scan
 
 	$self->{_curlog} = catfile($self->{_curdir}, shift @{$self->{_logs}});
-	$self->{_curline} = 0;	
+	$self->{_curline} = 0;
+	$self->{_filesize} = 0;
 
 	# keep trying logs until we get one that works (however, chances are if 1 log fails to load they all will)
 	while (!$self->{_loghandle}) {
@@ -213,6 +220,10 @@ sub _opennextlog {
 #			}
 		}
 #		binmode($self->{_loghandle}, ":encoding(UTF-8)");
+	}
+
+	if ($self->{_loghandle}) {
+		$self->{_filesize} = -s $self->{_curlog};
 	}
 	return $self->{_loghandle};
 }
@@ -245,9 +256,15 @@ sub next_event {
 	if ($self->{_verbose}) {
 		$self->{_totallines}++;
 		$self->{_totalbytes} += length($line);
+		$self->{_lastprint_bytes} += length($line);
 #		$self->{_prevlines} = $self->{_totallines};
 #		$self->{_prevbytes} = $self->{_totalbytes};
 #		$self->{_lasttime} = time;
+
+		if (time - $self->{_lastprint} > $self->{_lastprint_threshold}) {
+			$self->echo_processing(1);
+			$self->{_lastprint} = time;
+		}
 	}
 
 	$self->save_state if time - $self->{_last_saved} > 60;
