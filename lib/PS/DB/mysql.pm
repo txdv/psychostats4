@@ -40,13 +40,15 @@ sub init {
 		$self->{dsn} = 'DBI:' . $self->{dbtype} . ':database=' . $self->{dbname};
 		$self->{dsn} .= ';host=' . $self->{dbhost} if defined $self->{dbhost};
 		$self->{dsn} .= ';port=' . $self->{dbport} if defined $self->{dbport};
+		$self->{dsn} .= ';mysql_compression=' . $self->{dbcompress} if $self->{dbcompress};
 #		$self->{dsn} .= ';' . $self->{dbopts} if defined $self->{dbopts};
 		$self->connect;
 		$self->fatal("Error connecting to database using dsn \"$self->{dsn}\":\n" . $DBI::errstr) unless ref $self->{dbh};
 	}
 
 	$self->{dbh}{mysql_auto_reconnect} = 1;		# always try to reconnect if we loose connection
-
+	$self->{dbh}{mysql_enable_utf8} = 1;		# assume all text columns are UTF8
+	
 	# setup our version number and if we're capable of doing sub-selects
 	my ($v) = $self->get_list("SELECT VERSION()");
 	if ($v) {
