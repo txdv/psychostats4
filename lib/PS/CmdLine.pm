@@ -1,4 +1,3 @@
-package PS::CmdLine;
 #
 #	This file is part of PsychoStats.
 #
@@ -26,6 +25,7 @@ package PS::CmdLine;
 #       in order to allow the PS::Config object to hand out config values based
 #       on command line or config loaded values. Command line documentation is
 #       located in the __DATA__ block of this file in POD format.
+package PS::CmdLine;
 
 use strict;
 use warnings;
@@ -120,6 +120,7 @@ sub _getOptions {
 		'dbuser=s'	=> \$self->{param}{dbuser},
 		'dbpass=s'	=> \$self->{param}{dbpass},
 		'dbtblprefix:s'	=> \$self->{param}{dbtblprefix},
+		'dbcompress=i'	=> \$self->{param}{dbcompress},
 
 		# grab extra params that are not options
 		'<>'		=> sub { push(@PS::CmdLine::OPTS, shift) }

@@ -1,8 +1,3 @@
-# PS::DB is a wrapper around the DBI modules and allows itself to be subclassed by other DB::* modules (ie; mysql).
-# When a PS::DB object is created it's actual class will be PS::DB::* where * is the subclass.
-# Any normal DBI method can be called directly by just referencing it's name to the PS::DB class, the AUTOLOAD mechanism 
-# will delegate the request to the database handle. This allows you direct access to the DBI if needed (bypassing PS::DB).
-package PS::DB;
 #
 #	This file is part of PsychoStats.
 #
@@ -22,6 +17,9 @@ package PS::DB;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+package PS::DB;
 
 use strict;
 use warnings;
@@ -39,12 +37,14 @@ sub new {
 	my $self = { debug => 0 };
 	my $dbconf = ref $_[0] ? $_[0] : { @_ };
 
-	$self->{$_} = $dbconf->{$_} foreach (qw(dbh dbtype dbhost dbport dbname dbuser dbpass dbtblprefix));
-
+	$self->{$_} = $dbconf->{$_} foreach (qw(dbh dbtype dbhost dbport dbname dbuser dbpass dbtblprefix dbcompress));
+	use Data::Dumper; print Dumper($dbconf);
+	
 	$self->{dbtype} = 'mysql' unless defined $self->{dbtype};
 	$self->{dbname} = 'psychostats' unless defined $self->{dbname};
 	$self->{dbtblprefix} = '' unless defined $self->{dbtblprefix};
 	$self->{dbtblcompiledprefix} = $self->{dbtblprefix} . "c_";
+	$self->{dbcompress} = $self->{dbcompress} ? 1 : 0;
 
 	$class .= "::" . $self->{dbtype};		# Change the base class that we're creating
 	$self->{class} = $class;
