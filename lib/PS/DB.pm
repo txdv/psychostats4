@@ -38,7 +38,6 @@ sub new {
 	my $dbconf = ref $_[0] ? $_[0] : { @_ };
 
 	$self->{$_} = $dbconf->{$_} foreach (qw(dbh dbtype dbhost dbport dbname dbuser dbpass dbtblprefix dbcompress));
-	use Data::Dumper; print Dumper($dbconf);
 	
 	$self->{dbtype} = 'mysql' unless defined $self->{dbtype};
 	$self->{dbname} = 'psychostats' unless defined $self->{dbname};
