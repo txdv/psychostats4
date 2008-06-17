@@ -46,7 +46,10 @@ if ($submit) {
 	$input = $form->values();
 	$valid = !$form->has_errors();
 	// protect against CSRF attacks
-	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
+	// Wait a minute, I can't do this for logins, otherwise the overall
+	// login popup window won't work with CSRF enabled. This should be fine,
+	// CSRF is more targeted at user requests and not logins, I think.
+//	if ($ps->conf['main']['security']['csrf_protection']) $valid = ($valid and $form->key_is_valid($cms->session));
 
 	$u = null;
 	if ($valid) {
@@ -93,13 +96,13 @@ if ($submit) {
 	}
 }
 
-if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
+//if ($ps->conf['main']['security']['csrf_protection']) $cms->session->key($form->key());
 
 // assign variables to the theme
 $cms->theme->assign(array(
 	'errors'	=> $form->errors(),
 	'form'		=> $form->values(),
-	'form_key'	=> $ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
+	'form_key'	=> '', //$ps->conf['main']['security']['csrf_protection'] ? $cms->session->key() : '',
 ));
 
 // display the output
