@@ -28,7 +28,9 @@
 			<h2>{flagimg cc=$plr.cc} {iconimg icon=$plr.icon} {$plr.name|escape} <#is not ranked#></h2>
 			{/if}
 		</div>
-		{include file="player_profile.html"}
+		{if $conf.theme.permissions.show_plr_profile}
+			{include file="../default/player_profile.html"}
+		{/if}
 	</div>
 
 {if $plr.logo}<div class="ps-plr-logo">{$plr.logo}</div>{/if}
