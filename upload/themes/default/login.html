@@ -10,7 +10,7 @@
 
 <div class="ps-form-container" id="ps-login-form">
 <div class="ps-form">
-<form method="post" action="{$SELF}">
+<form method="post" action="{url}">
 <fieldset>
 <legend><#User Login#></legend>
 {if $errors.fatal}<div class="err fatal"><h4><#Fatal Error#></h4><p>{$errors.fatal}</p></div>{/if}
@@ -36,7 +36,9 @@
 </div>
 <div class="inline-notes">
 	<h4><#Login Help#></h4>
+{if $show_register}
 	<p><strong><#Not registered?#></strong> <a href="register.php"><#Register now!#></a><br/>
+{/if}
 	<strong><#Forgot your password?#></strong> <a href="forgotpw.php"><#Reset your password#></a></p>
 </div>
 </fieldset>
