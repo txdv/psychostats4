@@ -183,7 +183,8 @@ $DBCONF = {
 	dbname		=> $opt->dbname || $dbconf->{dbname},
 	dbuser		=> $opt->dbuser || $dbconf->{dbuser},
 	dbpass		=> $opt->dbpass || $dbconf->{dbpass},
-	dbtblprefix	=> $opt->dbtblprefix || $dbconf->{dbtblprefix}
+	dbtblprefix	=> $opt->dbtblprefix || $dbconf->{dbtblprefix},
+	dbcompress	=> $opt->dbcompress || $dbconf->{dbcompress}
 };
 $db = new PS::DB($DBCONF);
 

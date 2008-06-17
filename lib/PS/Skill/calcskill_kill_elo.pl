@@ -4,7 +4,7 @@ sub calcskill_kill_elo {
 	my $kskill = $k->skill || $self->{baseskill};
 	my $vskill = $v->skill || $self->{baseskill};
 
-	my $diff = $kskill - $vskill;					# difference in skill
+	my $diff = $kskill - $vskill;			# difference in skill
 	my $prob = 1 / ( 1 + 10 ** ($diff / 400) );	# find probability of kill
 	my $kadj = $self->{_adj}->[-1] || 32;
 	my $vadj = $self->{_adj}->[-1] || 32;

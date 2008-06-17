@@ -29,9 +29,6 @@ use util qw( :net :date bench print_r );
 use Encode qw(encode decode);
 use Time::Local qw( timelocal_nocheck );
 use PS::Player;
-use PS::Map;
-use PS::Role;
-use PS::Weapon;
 
 our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/) || '000')[0];
 
@@ -70,8 +67,7 @@ sub _init {
 	$self->{weapons} = {};		# loaded weapon objects, keyed on id
 
 	$self->initcache;
-
-	$self->{ipcache} = {};		# player IPADDR cache, keyed on UID
+	$self->initipcache;
 
 	$self->{auto_plr_bans} = $self->{conf}->get_main('auto_plr_bans');
 
@@ -81,77 +77,12 @@ sub _init {
 	return $self;
 }
 
-# there are anomalys that cause players to not always be detected by a single 
-# criteria. So we cache each way we know we can reference a player. 
-sub initcache {
-	my $self = shift;
-
-	$self->{c_signature} = {};	# players keyed on their signature string
-	$self->{c_uniqueid} = {};	# players keyed on their uniqueid (not UID)
-	$self->{c_uid} = {};		# players keyed on UID
-	$self->{c_plrid} = {};		# players keyed on plrid
-}
-
-# add a player to all appropriate caches
-sub addcache_all {
-	my ($self, $p) = @_;
-	$self->addcache($p, $p->signature, 'signature');
-	$self->addcache($p, $p->uniqueid, 'uniqueid');
-	$self->addcache($p, $p->uid, 'uid');
-	$self->addcache($p, $p->plrid, 'plrid');
-}
-
-# remove player from all appropriate caches
-sub delcache_all {
-	my ($self, $p) = @_;
-	$self->delcache($p->signature, 'signature');
-	$self->delcache($p->uniqueid, 'uniqueid');
-	$self->delcache($p->uid, 'uid');
-	$self->delcache($p->plrid, 'plrid');
-}
-
-# add a plr to the cache
-sub addcache {
-	my ($self, $p, $sig, $cache) = @_;
-	$cache ||= 'signature';
-	$self->{'c_'.$cache}{$sig} = $p;
-}
-
-# remove a plr from the cache
-sub delcache {
-	my ($self, $sig, $cache) = @_;
-	$cache ||= 'signature';
-	delete $self->{'c_'.$cache}{$sig};
-}
-
-# return the cached plr or undef if not found
-sub cached {
-	my ($self, $sig, $cache) = @_;
-	return undef unless defined $sig;
-	$cache ||= 'signature';
-	return exists $self->{'c_'.$cache}{$sig} ? $self->{'c_'.$cache}{$sig} : undef;
-}
-
-# debug method; prints out some information about the player caches
-sub show_cache {
-	my ($self) = @_;
-#	printf("CACHE INFO: sig:% 3d  uniqueid: % 3d  uid:% 3d  plrid: % 3d\n",
-#	printf("CACHE INFO: s:% 3d w: % 3d u:% 3d p: % 3d\n",
-	printf("CACHE INFO: % 3d % 3d % 3d % 3d (s,w,u,p)\n",
-		scalar keys %{$self->{'c_signature'}},
-		scalar keys %{$self->{'c_uniqueid'}},
-		scalar keys %{$self->{'c_uid'}},
-		scalar keys %{$self->{'c_plrid'}}
-	);
-}
-
 # handle the event that comes in from the Feeder (log line)
 use constant 'PREFIX_LENGTH' => 25;
 sub event {
 	my $self = shift;
 	my ($src, $event, $line) = @_;
 	my ($prefix, $timestamp);
-	my ($a, $b, $c);
 	$event = decode('UTF-8',$event);		# HL logs are UTF-8 encoded
 	chomp($event);
 	return if length($event) < PREFIX_LENGTH;	#			"123456789*123456789*12345"
@@ -192,6 +123,7 @@ sub event {
 	my ($re, $params) = &{$self->{evregex}}($event);			# finds an EVENT match (fast)
 	if ($re) {
 		return if $self->{evconf}{$re}{ignore};				# should this match be ignored?
+		$self->{re_match} = $re;					# keep track of the event that matched
 		my $func = 'event_' . ($self->{evconf}{$re}{alias} || $re);	# use specified $event or 'event_$re'
 		$self->$func($timestamp, $params);				# call event handler
 	} else {
@@ -332,57 +264,14 @@ sub get_plr {
 		$p->timerstart($self->{timestamp});
 		$p->uid($uid);
 		$p->team($team);
-		$p->plrids;
+		# don't double the plrids when they enter (since get_plr will also call ->plrids).
+		$p->plrids unless $self->{re_match} eq 'entered_game';
 
 		$self->addcache_all($p);
 		$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
 	}
 
 	return $p;
-}
-
-sub get_map {
-	my ($self, $name) = @_;
-	$name ||= $self->{curmap} || 'unknown';
-
-	if (exists $self->{maps}{$name}) {
-		return $self->{maps}{$name};
-	}
-
-	$self->{maps}{$name} = new PS::Map($name, $self->{conf}, $self->{db});
-	$self->{maps}{$name}->timerstart($self->{timestamp});
-	$self->{maps}{$name}->statdate($self->{timestamp});
-	return $self->{maps}{$name};
-}
-
-sub get_weapon {
-	my ($self, $name) = @_;
-	$name ||= 'unknown';
-
-	if (exists $self->{weapons}{$name}) {
-		return $self->{weapons}{$name};
-	}
-
-	$self->{weapons}{$name} = new PS::Weapon($name, $self->{conf}, $self->{db});
-	$self->{weapons}{$name}->statdate($self->{timestamp});
-	return $self->{weapons}{$name};
-}
-
-sub get_role {
-	my ($self, $name, $team) = @_;
-
-	# do not create a role if it's not defined
-	return undef unless $name;
-
-	$name ||= 'unknown';
-
-	if (exists $self->{roles}{$name}) {
-		return $self->{roles}{$name};
-	}
-
-	$self->{roles}{$name} = new PS::Role($name, $team, $self->{conf}, $self->{db});
-	$self->{roles}{$name}->statdate($self->{timestamp});
-	return $self->{roles}{$name};
 }
 
 sub event_kill {

@@ -1,4 +1,3 @@
-package PS::Award::weapon;
 #
 #	This file is part of PsychoStats.
 #
@@ -20,6 +19,7 @@ package PS::Award::weapon;
 #
 #	$Id$
 #
+package PS::Award::weapon;
 
 use base qw( PS::Award );
 use strict;
@@ -28,6 +28,7 @@ use warnings;
 use Data::Dumper;
 use POSIX qw( strftime );
 use util qw( :date :time :strings );
+use serialize;
 
 our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
@@ -44,8 +45,8 @@ sub calc {
 	my $db = $self->{db};
 	my $conf = $self->{conf};
 	my $a = $self->{award};
-	my $weapons = $db->get_rows_hash("SELECT * FROM $db->{t_weapon} ORDER BY name,uniqueid");
 	my $allowpartial = $conf->get_main("awards.allow_partial_$range");
+	my $weapons = $db->get_rows_hash("SELECT * FROM $db->{t_weapon} ORDER BY name,uniqueid");
 	my ($cmd, $fields);
 
 	my ($newest) = $db->get_row_array("SELECT MAX(statdate) FROM $db->{t_plr_weapons}");
@@ -57,16 +58,21 @@ sub calc {
 	delete @$fields{ qw( dataid plrid weaponid statdate ) };
 
 	foreach my $weapon (@$weapons) {
+		# ignore weapons with the following unique names since they're not really weapons.
+		if (grep { $weapon->{uniqueid} eq $_ }
+		    qw( world flashbang smokegrenade_projectile )) {
+			next;
+		}
 		$weapon->{name} = $weapon->{uniqueid} unless $weapon->{name};
 		my $interpolate = {
-			weapon => $weapon
+			weapon => $weapon,
 		};
 		foreach my $timestamp (@$dates) {
 			my $start = strftime("%Y-%m-%d", localtime($timestamp));
 			my $end = $self->end_date($range, $start);
 			my $expr = simple_interpolate($a->{expr}, $fields);
 			my $order = $a->{order} || 'desc';
-			my $limit = $a->{limit} || '10';
+			my $limit = 1; #$a->{limit} || '10';
 			my $awardname = simple_interpolate($a->{name}, $interpolate);
 			my $complete = ($end lt $newest) ? 1 : 0;
 
@@ -91,13 +97,14 @@ sub calc {
 
 			# if all players have a 0 value ignore the award
 			my $total = 0;
-			$total += abs($_->{awardvalue} || 0)for @$plrs;
+			$total += abs($_->{awardvalue} || 0) for @$plrs;
 #			next unless $total;
 			$plrs = [] unless $total;
 
 			$db->begin;
 			my $id = $db->select($db->{t_awards}, 'id', 
-				[ awardid => $a->{id}, awarddate => $start, awardrange => $range, awardname => $awardname ]
+				[ awardid => $a->{id}, awarddate => $start,
+				 awardrange => $range, awardweapon => $weapon->{uniqueid} ]
 			);
 			if ($id) {
 				$db->delete($db->{t_awards}, [ id => $id ]);
@@ -115,10 +122,11 @@ sub calc {
 				awardid		=> $a->{id},
 				awardtype	=> 'weapon',
 				awardweapon	=> $weapon->{uniqueid},
-				awardname	=> $awardname,
+				awardname	=> $a->{name},
 				awarddate	=> $start,
 				awardrange	=> $range,
 				awardcomplete	=> $complete,
+				interpolate	=> serialize($interpolate),
 				topplrid	=> @$plrs ? $plrs->[0]{plrid} : 0,
 				topplrvalue	=> @$plrs ? $plrs->[0]{awardvalue} : 0
 #				topplrvalue	=> $self->format(@$plrs ? $plrs->[0]{awardvalue} : 0)

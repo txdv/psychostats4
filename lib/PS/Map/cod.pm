@@ -1,4 +1,3 @@
-package PS::Map::cod;
 #
 #	This file is part of PsychoStats.
 #
@@ -19,6 +18,8 @@ package PS::Map::cod;
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
 #	$Id$
+#
+package PS::Map::cod;
 
 use strict;
 use warnings;

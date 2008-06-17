@@ -1,6 +1,3 @@
-# PS::Config is responsible for loading a single 'conftype' from the database.
-# PS::ConfigHandler is used to load and keep track of several 'conftype' configs using PS::Config objects
-package PS::Config;
 #
 #	This file is part of PsychoStats.
 #
@@ -20,6 +17,12 @@ package PS::Config;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#       PS::Config is responsible for loading a single 'conftype' from the
+#       database. PS::ConfigHandler is used to load and keep track of several
+#       'conftype' configs using PS::Config objects
+package PS::Config;
 
 use strict;
 use warnings;

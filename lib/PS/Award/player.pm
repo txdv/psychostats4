@@ -1,4 +1,3 @@
-package PS::Award::player;
 #
 #	This file is part of PsychoStats.
 #
@@ -18,6 +17,9 @@ package PS::Award::player;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+package PS::Award::player;
 
 use base qw( PS::Award );
 use strict;
@@ -37,7 +39,7 @@ sub init_award {
 
 sub calc { 
 	my $self = shift;
-	my $range = lc shift;						# 'month', 'week' or 'day'
+	my $range = lc shift;				# 'month', 'week' or 'day'
 	my $dates = $self->valid_dates($range, ref $_[0] ? shift : [ @_ ]);
 	my $db = $self->{db};
 	my $conf = $self->{conf};
@@ -71,12 +73,14 @@ sub calc {
 		my $expr = simple_interpolate($a->{expr}, $fields);
 		my $where = simple_interpolate($a->{where}, $fields);
 		my $order = $a->{order} || 'desc';
-		my $limit = $a->{limit} || '10';
+		my $limit = 1; #$a->{limit} || '10';
 		my $complete = ($end lt $newest) ? 1 : 0;
-		# I use 'less then' (instead of 'less then or equal to' for $complete above so that
-		# the award is only marked completed if the newest date is the next day. Otherwise, awards
-		# would be marked completed early in the morning and would not reflect any stats from later
-		# in the day if awards were updated again on that day.
+		# I use 'less then' (instead of 'less then or equal to' for
+		# $complete above so that the award is only marked completed if
+		# the newest date is the next day. Otherwise, awards would be
+		# marked completed early in the morning and would not reflect
+		# any stats from later in the day if awards were updated again
+		# on that day.
 
 		next if (!$complete and !$allowpartial);
 
@@ -91,7 +95,7 @@ sub calc {
 		# must use 'having' and not 'where', since we're using expressions
 		$cmd .= "HAVING $where " if $a->{where};
 		$cmd .= "ORDER BY 1 $order ";
-		$cmd .= "LIMIT 1 ";  # $limit
+		$cmd .= "LIMIT $limit ";
 #		print "$cmd\n";
 
 		$::ERR->verbose("Calc " . ($complete ? 'complete' : 'partial ') . 

@@ -7,6 +7,7 @@ CREATE TABLE `ps_awards` (
   `awardrange` enum('month','week','day') NOT NULL default 'month',
   `awardweapon` varchar(64) default NULL,
   `awardcomplete` tinyint(1) unsigned NOT NULL default '1',
+  `interpolate` text,
   `topplrid` int(10) unsigned NOT NULL default '0',
   `topplrvalue` varchar(16) NOT NULL default '0',
   PRIMARY KEY  (`id`),

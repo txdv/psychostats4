@@ -1,4 +1,3 @@
-package PS::Player::cod;
 #
 #	This file is part of PsychoStats.
 #
@@ -19,6 +18,8 @@ package PS::Player::cod;
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
 #	$Id$
+#
+package PS::Player::cod;
 
 use strict;
 use warnings;
@@ -55,7 +56,7 @@ sub mod_types_maps { $TYPES_MAPS };
 #sub mod_types_roles { $TYPES_ROLES };
 
 sub _init {
-	my $self = shift;
+	my ($self) = @_;
 	$self->SUPER::_init;
 
 #	$self->{role} = '';

@@ -1,4 +1,3 @@
-package PS::Award::weaponclass;
 #
 #	This file is part of PsychoStats.
 #
@@ -20,6 +19,7 @@ package PS::Award::weaponclass;
 #
 #	$Id$
 #
+package PS::Award::weaponclass;
 
 use base qw( PS::Award );
 use strict;
@@ -28,6 +28,7 @@ use warnings;
 use Data::Dumper;
 use POSIX qw( strftime );
 use util qw( :date :time :strings );
+use serialize;
 
 our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
@@ -44,7 +45,7 @@ sub calc {
 	my $db = $self->{db};
 	my $conf = $self->{conf};
 	my $a = $self->{award};
-	my $classes = $db->get_list("SELECT distinct class FROM $db->{t_weapon} WHERE class != '' ORDER BY class");
+	my $classes = $db->get_list("SELECT distinct class FROM $db->{t_weapon} WHERE class IS NOT NULL ORDER BY class");
 	my $allowpartial = $conf->get_main("awards.allow_partial_$range");
 	my ($cmd, $fields);
 
@@ -57,16 +58,30 @@ sub calc {
 	delete @$fields{ qw( dataid plrid weaponid statdate ) };
 
 	foreach my $class (@$classes) {
+		# get a list of weapons that match this class
+		my $weapons = $db->get_list(
+			"SELECT coalesce(name,uniqueid) FROM $db->{t_weapon} w WHERE class=" . $db->quote($class) .
+			" ORDER BY name,uniqueid "
+		);
+		
+		# there's no point in creating an award for a weapon class that
+		# only has a single weapon assoicated with it.
+		if (@$weapons < 2) {
+			next;
+		}
+		
 		my $interpolate = {
-			class	=> $class,
-			weapon	=> { class => $class },
+			weapon	=> {
+				class	=> $class,
+				list	=> join(', ', @$weapons)
+			}
 		};
 		foreach my $timestamp (@$dates) {
 			my $start = strftime("%Y-%m-%d", localtime($timestamp));
 			my $end = $self->end_date($range, $start);
 			my $expr = simple_interpolate($a->{expr}, $fields);
 			my $order = $a->{order} || 'desc';
-			my $limit = $a->{limit} || '10';
+			my $limit = 1; #$a->{limit} || '10';
 			my $awardname = simple_interpolate($a->{name}, $interpolate);
 			my $complete = ($end lt $newest) ? 1 : 0;
 
@@ -98,7 +113,8 @@ sub calc {
 
 			$db->begin;
 			my $id = $db->select($db->{t_awards}, 'id', 
-				[ awardid => $a->{id}, awarddate => $start, awardrange => $range, awardname => $awardname ]
+				[ awardid => $a->{id}, awarddate => $start,
+				 awardrange => $range, awardweapon => 'weapon class ' . $class ]
 			);
 			if ($id) {
 				$db->delete($db->{t_awards}, [ id => $id ]);
@@ -115,11 +131,12 @@ sub calc {
 				id		=> $id,
 				awardid		=> $a->{id},
 				awardtype	=> $a->{type},
-				awardweapon	=> $class,
-				awardname	=> $awardname,
+				awardweapon	=> 'weapon class ' . $class,
+				awardname	=> $a->{name},
 				awarddate	=> $start,
 				awardrange	=> $range,
 				awardcomplete	=> $complete,
+				interpolate	=> serialize($interpolate),
 				topplrid	=> @$plrs ? $plrs->[0]{plrid} : 0,
 				topplrvalue	=> @$plrs ? $plrs->[0]{awardvalue} : 0
 #				topplrvalue	=> $self->format(@$plrs ? $plrs->[0]{awardvalue} : 0)

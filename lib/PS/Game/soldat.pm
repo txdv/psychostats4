@@ -142,6 +142,17 @@ sub event_teamtrigger {
 # prevent 'unknown event' warning
 sub event_cs_teamscore { }
 
+sub team_normal {
+	my ($self, $team) = @_;
+	$team = lc $team;
+	if ($team eq 'a' or $team eq 'ct') { 	# 'ct' is legacy from early logs
+		return 'alpha';
+	} else {				# anything else is bravo
+		return 'bravo';
+	}
+	return team;
+}
+
 sub logsort {
 	my $self = shift;
 	my $list = shift;

@@ -1,10 +1,3 @@
-# Factory class for all games
-# A $conf and $db object must always be passed to new. If no gametype is found a fatal error is given.
-# All game types should inherit this parent class for functionality.
-#
-# $Id$
-#
-package PS::Game;
 #
 #	This file is part of PsychoStats.
 #
@@ -24,6 +17,9 @@ package PS::Game;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+# 	$Id$
+#
+package PS::Game;
 
 use strict;
 use warnings;
@@ -35,6 +31,7 @@ use PS::Player;			# daily_clans(), daily_maxdays()
 use PS::Weapon;			# daily_maxdays()
 use PS::Map;			# daily_maxdays()
 use PS::Award;			# daily_awards()
+use PS::Role;
 use Data::Dumper;
 use File::Spec::Functions;
 use POSIX qw(floor strftime mktime);
@@ -222,6 +219,139 @@ sub _init {
 	return $self;
 }
 
+sub initipcache {
+	my $self = shift;
+	$self->{ipcache} = {};		# player IPADDR cache, keyed on UID
+}
+
+# there are anomalys that cause players to not always be detected by a single 
+# criteria. So we cache each way we know we can reference a player. 
+sub initcache {
+	my $self = shift;
+
+	$self->{c_signature} = {};	# players keyed on their signature string
+	$self->{c_uniqueid} = {};	# players keyed on their uniqueid (not UID)
+	$self->{c_uid} = {};		# players keyed on UID
+	$self->{c_plrid} = {};		# players keyed on plrid
+}
+
+# add a player to all appropriate caches
+sub addcache_all {
+	my ($self, $p) = @_;
+	$self->addcache($p, $p->signature, 'signature');
+	$self->addcache($p, $p->uniqueid, 'uniqueid');
+	$self->addcache($p, $p->uid, 'uid');
+	$self->addcache($p, $p->plrid, 'plrid');
+}
+
+# remove player from all appropriate caches
+sub delcache_all {
+	my ($self, $p) = @_;
+	$self->delcache($p->signature, 'signature');
+	$self->delcache($p->uniqueid, 'uniqueid');
+	$self->delcache($p->uid, 'uid');
+	$self->delcache($p->plrid, 'plrid');
+}
+
+# add a plr to the cache
+sub addcache {
+	my ($self, $p, $sig, $cache) = @_;
+	$cache ||= 'signature';
+	$self->{'c_'.$cache}{$sig} = $p;
+}
+
+# remove a plr from the cache
+sub delcache {
+	my ($self, $sig, $cache) = @_;
+	$cache ||= 'signature';
+	delete $self->{'c_'.$cache}{$sig};
+}
+
+# return the cached plr or undef if not found
+sub cached {
+	my ($self, $sig, $cache) = @_;
+	return undef unless defined $sig;
+	$cache ||= 'signature';
+	return exists $self->{'c_'.$cache}{$sig} ? $self->{'c_'.$cache}{$sig} : undef;
+}
+
+# debug method; prints out some information about the player caches
+sub show_cache {
+	my ($self) = @_;
+#	printf("CACHE INFO: sig:% 3d  uniqueid: % 3d  uid:% 3d  plrid: % 3d\n",
+#	printf("CACHE INFO: s:% 3d w: % 3d u:% 3d p: % 3d\n",
+	printf("CACHE INFO: % 3d % 3d % 3d % 3d (s,w,u,p)\n",
+		scalar keys %{$self->{'c_signature'}},
+		scalar keys %{$self->{'c_uniqueid'}},
+		scalar keys %{$self->{'c_uid'}},
+		scalar keys %{$self->{'c_plrid'}}
+	);
+}
+
+# normalize a role name
+sub role_normal { defined $_[1] ? lc $_[1] : '' }
+
+# normalize a team name
+sub team_normal { defined $_[1] ? lc $_[1] : '' }
+
+# normalize a weapon name
+sub weapon_normal { defined $_[1] ? lc $_[1] : '' }
+
+# returns a PS::Map object matching the map $name given
+sub get_map {
+	my ($self, $name) = @_;
+	$name ||= $self->{curmap} || 'unknown';
+
+	if (exists $self->{maps}{$name}) {
+		return $self->{maps}{$name};
+	}
+
+	$self->{maps}{$name} = new PS::Map($name, $self->{conf}, $self->{db});
+	$self->{maps}{$name}->timerstart($self->{timestamp});
+	$self->{maps}{$name}->statdate($self->{timestamp});
+	return $self->{maps}{$name};
+}
+
+# returns a PS::Weapon object matching the weapon $name given
+sub get_weapon {
+	my ($self, $name) = @_;
+	$name = $self->weapon_normal($name || 'unknown');
+
+	if (exists $self->{weapons}{$name}) {
+		return $self->{weapons}{$name};
+	}
+
+	$self->{weapons}{$name} = new PS::Weapon($name, $self->{conf}, $self->{db});
+	$self->{weapons}{$name}->statdate($self->{timestamp});
+	return $self->{weapons}{$name};
+}
+
+# returns a PS::Role object matching the role $name given
+sub get_role {
+	my ($self, $name, $team) = @_;
+	return undef unless $name;
+	$name = $self->role_normal($name);
+
+	if (exists $self->{roles}{$name}) {
+		return $self->{roles}{$name};
+	}
+
+	$self->{roles}{$name} = new PS::Role($name, $team, $self->{conf}, $self->{db});
+	$self->{roles}{$name}->statdate($self->{timestamp});
+	return $self->{roles}{$name};
+}
+
+# returns all player references on a certain team that are not dead.
+# if $all is true then dead players are included.
+sub get_team {
+	my ($self, $team, $all) = @_;
+	my (@list, @ids);
+	@ids = grep { $self->{c_plrid}{$_}->active and $self->{c_plrid}{$_}->{team} eq $team } keys %{$self->{c_plrid}};
+	@ids = grep { !$self->{c_plrid}{$_}->{isdead} } @ids unless $all;
+	@list = map { $self->{c_plrid}{$_} } @ids;
+	return wantarray ? @list : \@list;
+}
+
 # we only want active players to count towards the minconnected value, 
 # since players are not always removed from memory as soon as they disconnect.
 # This function is kept is small as possible for speed. However, it's very slow
@@ -347,11 +477,10 @@ sub isbanned {
 	return 0;
 }
 
-# scans the given player name for a matching clantag from the database.
-# creates a new clan+profile if it's a new tag.
-# $p is either a PS::Player object, or a plain scalar string to match.
-# if a PS::Player object is given it's updated directly.
-# the clanid is always returned if a match is found.
+# scans the given player name for a matching clantag from the database. creates
+# a new clan+profile if it's a new tag. $p is either a PS::Player object, or a
+# plain scalar string to match. if a PS::Player object is given it's updated
+# directly. the clanid is always returned if a match is found.
 sub scan_for_clantag {
 	my ($self, $p) = @_;
 	my ($ct, $tag, $id);
@@ -441,6 +570,7 @@ sub clantags_str_func {
 # prepares the EVENT patterns
 sub init_events {
 	my $self = shift;
+	return unless $self->{evregex};	# only need to initialize once
 	# sort all event patterns in the order they were loaded
 	$self->{evorder} = [ sort {$self->{evconf}{$a}{idx} <=> $self->{evconf}{$b}{idx}} keys %{$self->{evconf}} ];
 	$self->{evregex} = $self->_build_regex_func;
@@ -450,8 +580,6 @@ sub _build_regex_func {
 	my $self = shift;
 	my $code = '';
 	my $env = new Safe;
-
-#	$code .= "  study \$_[0];\n";			# not sure if I want this yet... Haven't done any benchmarks yet
 
 	foreach my $ev (@{$self->{evorder}}) {
 		my $regex = $self->{evconf}{$ev}{regex};
@@ -517,7 +645,8 @@ sub process_feed {
 		my ($src, $event, $line) = @$ev;
 		if ($src ne $lastsrc) {
 			last if defined $abs_logs and $logs >= $abs_logs;
-			$::ERR->verbose("Processing $src (" . $feeder->lines_per_second . " lps / " . $feeder->bytes_per_second(1) . ")");
+			$feeder->echo_processing;
+#			$::ERR->verbose("Processing $src (" . $feeder->lines_per_second . " lps / " . $feeder->bytes_per_second(1) . ")");
 			$lastsrc = $src;
 			$self->new_source($src);
 			$logs++;
@@ -676,17 +805,6 @@ sub get_plr_alias {
 		$self->{_plraliases}{$uniqueid} = $alias;
 	}
 	return (defined $alias and $alias ne '') ? $alias : $uniqueid;
-}
-
-# returns all player references on a certain team that are not dead.
-# if $all is true then dead players are included.
-sub get_team {
-	my ($self, $team, $all) = @_;
-	my (@list, @ids);
-	@ids = grep { $self->{c_plrid}{$_}->active and $self->{c_plrid}{$_}->{team} eq $team } keys %{$self->{c_plrid}};
-	@ids = grep { !$self->{c_plrid}{$_}->{isdead} } @ids unless $all;
-	@list = map { $self->{c_plrid}{$_} } @ids;
-	return wantarray ? @list : \@list;
 }
 
 # returns an array of all connected players (only active by default)
@@ -2053,16 +2171,11 @@ sub reset {
 	return ($errors == 0);
 }
 
-# sub classes want to override this to return a normalized team name based on the team string given.
-# this is required by some mods (like natural selection) where the team string in the log events
-# have extra characters that are useless.
-sub team_normal { defined $_[1] ? $_[1] : '' }
-
 # takes an array of log filenames and returns a sorted result
 sub logsort {}
 
 # return -1,0,1 (<=>), depending on outcome of comparison of 2 log files
-sub logcompare { }
+sub logcompare { $_[1] cmp $_[2] }
 
 sub has_mod_tables { 0 }
 

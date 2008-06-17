@@ -1,6 +1,3 @@
-# parent class to most anything else. This just provides very basic debugging methods to all classes
-# Don't try and create objects from this class directly.
-package PS::Debug;
 #
 #	This file is part of PsychoStats.
 #
@@ -20,6 +17,12 @@ package PS::Debug;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#       Parent class to most anything else. This just provides very basic
+#       debugging methods to all classes Don't try and create objects from this
+#       class directly.
+package PS::Debug;
 
 use strict;
 use warnings;

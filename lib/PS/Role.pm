@@ -1,4 +1,3 @@
-package PS::Role;
 #
 #	This file is part of PsychoStats.
 #
@@ -18,6 +17,9 @@ package PS::Role;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+package PS::Role;
 
 use strict;
 use warnings;

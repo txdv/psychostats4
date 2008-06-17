@@ -1,13 +1,3 @@
-# Base Player class. This is a basic factory class that creates a Player object based on the current gametype.
-# If a subclass is detected for the current gametype it will be created and returned.
-# Order of class detection (first class to be found is used):
-#	PS::Player::{gametype}::{modtype}
-#	PS::Player::{gametype}
-#	PS::Player
-# The first time a player object is created it's baseclass is saved so all other player objects will be created
-# in the same way w/o trying to search for subclasses (small performance gain).
-#
-package PS::Player;
 #
 #	This file is part of PsychoStats.
 #
@@ -27,6 +17,23 @@ package PS::Player;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#       Base Player class. This is a basic factory class that creates a Player
+#       object based on the current gametype. If a subclass is detected for the
+#       current gametype it will be created and returned. 
+#       Order of class detection:
+#
+#	PS::Player::{gametype}::{modtype}
+#	PS::Player::{gametype}
+#	PS::Player
+#
+#       The first time a player object is created it's baseclass is saved so all
+#       other player objects will be created in the same way w/o trying to
+#       search for subclasses (small performance gain). This means you can not
+#	load two different game classes in the same program.
+#
+package PS::Player;
 
 use strict;
 use warnings;
@@ -35,7 +42,7 @@ use Data::Dumper;
 use POSIX;
 use util qw( :date print_r );
 
-our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERSION = '1.15.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 our $BASECLASS = undef;
 
 our $GAMETYPE = '';
@@ -48,7 +55,8 @@ our (
 	$BASESKILL, $DECAY_TYPE, $DECAY_HOURS, $DECAY_VALUE, $DECAY
 );
 
-# variable types that can be stored in the table. Any variable not defined here is ignored when saving to the DB
+# variable types that can be stored in the table.
+# Any variable not defined here is ignored when saving to the DB
 our $TYPES = {
 	dataid		=> '=', 
 	plrid		=> '=',
@@ -186,7 +194,8 @@ our $_config_cache = {};
 sub new {
 	my ($proto, $plrids, $game) = @_;
 	my $baseclass = ref($proto) || $proto;
-	my $self = { 
+	my $self = {
+		_plrids		=> {},
 		skip_init	=> 0,
 		plrid 		=> 0, 
 		worldid 	=> $plrids->{worldid}, 
@@ -408,20 +417,42 @@ sub plrids {
 	my $newids = shift || { name => $self->{name}, ipaddr => $self->{ipaddr}, worldid => $self->{worldid} };
 	my $inc = @_ ? shift : 1;
 
+	# save the counter for each plr_ids variable into memory for now...
+	# counters will be saved when player is saved.
+	foreach my $column (keys %$newids) {
+		my $var = $newids->{$column};
+		$self->{_plrids}{$column}{$var}{totaluses} += $inc;
+		if (!$self->{_plrids}{$column}{$var}{firstseen}) {
+			$self->{_plrids}{$column}{$var}{firstseen} = $self->{game}{timestamp};
+		}
+	}
+}
+
+# saves the player signature Ids to the database and clears the current counters in memory
+sub save_plrids {
+	my ($self) = @_;
+	return unless ref $self->{_plrids};	# do nothing if hash doesn't exist
+	
 	# update plr_ids_name plr_ids_ipaddr plr_ids_worldid
 	if ($self->{db}->type eq 'mysql') {
-		foreach my $var (keys %$newids) {
-			$self->{db}->do("INSERT INTO " . $self->{db}->{'t_plr_ids_' . $var} . " (plrid,$var,totaluses,firstseen) " . 
-				"VALUES ($self->{plrid}," . $self->{db}->quote($newids->{$var}) . ",1,FROM_UNIXTIME($self->{game}{timestamp})) " . 
-				"ON DUPLICATE KEY UPDATE totaluses=totaluses+1"
-			);
+		foreach my $column (keys %{$self->{_plrids}}) {
+			foreach my $var (keys %{$self->{_plrids}{$column}}) {
+				$self->{db}->do(
+					"INSERT INTO " . $self->{db}{'t_plr_ids_' . $column} . " " .
+					"(plrid,$column,totaluses,firstseen) " . 
+					"VALUES ($self->{plrid}," .
+					$self->{db}->quote($var) .
+					"," . $self->{_plrids}{$column}{$var}{totaluses} . 
+					",FROM_UNIXTIME(" . $self->{_plrids}{$column}{$var}{firstseen} . ")) " . 
+					"ON DUPLICATE KEY UPDATE totaluses=totaluses+" . $self->{_plrids}{$column}{$var}{totaluses}
+				);
+			}
 		}
 	} else {
 		# abstract; this needs to be updated when SQLite starts to be used
 		die "Can not update plr_ids; I don't know how for DB::" . $self->{db}->type;
 	}
 }
-
 
 # makes sure the compiled player data table is already setup
 sub _init_table {
@@ -1041,6 +1072,9 @@ sub save {
 		$db->update($db->{t_plr}, { prevskill => $prevskill }, [ plrid => $plrid ]) if defined $prevskill;
 	}
 
+	# save the plrids counters
+	$self->save_plrids;
+	
 	# update most/least used name if the name is not locked
 	if (!$namelocked and $UNIQUEID ne 'name') {
 		if ($PLR_PRIMARY_NAME eq 'most') {

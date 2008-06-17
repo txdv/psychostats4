@@ -1,7 +1,3 @@
-# PS::ErrLog takes care of error reporting. All error messages are stored in the database
-# This class acts as a singleton. Only the 1st call to the new constructor will create a new object.
-# All successive calls to new will return the 1st object w/o instantiating a new object.
-package PS::ErrLog;
 #
 #	This file is part of PsychoStats.
 #
@@ -21,6 +17,13 @@ package PS::ErrLog;
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+#       PS::ErrLog takes care of error reporting. All error messages are stored
+#       in the database This class acts as a singleton. Only the 1st call to the
+#       new constructor will create a new object. All successive calls to new
+#       will return the 1st object w/o instantiating a new object.
+package PS::ErrLog;
 
 use strict;
 use warnings;

@@ -17,6 +17,8 @@
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
 package util;
 
 use 5.006;
@@ -29,7 +31,7 @@ use Data::Dumper;
 
 require Exporter;
 
-our $VERSION = '1.01.' . (('$Rev: 183 $' =~ /(\d+)/)[0] || '000');
+our $VERSION = '1.01.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our @ISA = qw(Exporter);
 
