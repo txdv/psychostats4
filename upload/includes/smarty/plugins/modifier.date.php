@@ -15,8 +15,8 @@
  * @param integer
  * @return string
  */
-function smarty_modifier_date($time, $format='') {
-	return ps_date($format, $time);
+function smarty_modifier_date($time, $format='', $ignore_ofs = false) {
+	return ps_date($format, $time, $ignore_ofs);
 }
 
 /* vim: set expandtab: */

@@ -16,11 +16,11 @@ require_once $smarty->_get_plugin_filepath('modifier', 'date');
  * @param integer
  * @return string
  */
-function smarty_modifier_datetime($time, $format='') {
+function smarty_modifier_datetime($time, $format='', $ignore_ofs = false) {
 	global $ps;
 	if (empty($format)) $format = $ps->conf['theme']['format']['datetime'];
 	if (empty($format)) $format = "Y-m-d H:i:s";
-	return smarty_modifier_date($time, $format);
+	return smarty_modifier_date($time, $format, $ignore_ofs);
 }
 
 /* vim: set expandtab: */

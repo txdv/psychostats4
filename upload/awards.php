@@ -152,11 +152,24 @@ $list = $ps->db->fetch_rows(1,
 );
 $awards = array();
 foreach ($list as $a) {
-	if ($a['awardtype'] == 'player') {
-		$awards[ $a['awardtype'] ][] = $a;
-	} else {
-		$awards[ $a['awardtype'] ][ $a['awardweapon'] ][] = $a;
+	if ($a['interpolate']) {
+		$ary = unserialize($a['interpolate']);
+		if (is_array($ary)) {
+			$a = array_merge($a, $ary);
+		}
+		unset($ary);
 	}
+
+	$awards[ $a['awardtype'] ][] = $a;
+
+//	if ($a['awardtype'] == 'player') {
+//		$awards[ $a['awardtype'] ][] = $a;
+//	} else {
+//		// separate weapon awards from weapon class awards...
+////		$key = trim(str_replace('weapon class', '', $a['awardweapon']));
+//		$awards[ $a['awardtype'] ][] = $a;
+//	}
+
 }
 //print_r($awards);
 

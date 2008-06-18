@@ -35,7 +35,9 @@ $cms->theme->assign_request_vars($validfields, true);
 // return a list of geocoded IP's using the most active IPs in the database
 if (is_numeric($ip) and $ip > 0) {
 	$limit = min($ip, 100);
-	$fields = 'p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime';
+	$fields =
+		'p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,' .
+		'c.kills,c.headshotkills,c.onlinetime,c.killsperdeath kpd';
 
 	// return a list of highest ranked players that have lat,lng values set
 	$profiles = $ps->db->fetch_rows(1,
@@ -49,7 +51,9 @@ if (is_numeric($ip) and $ip > 0) {
 
 	// return a list of IP's of the highest ranking players.
 	$list = $ps->db->fetch_rows(1,
-		"SELECT DISTINCT ip.plrid, INET_NTOA(ipaddr) ipaddr, p.plrid,p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills,c.onlinetime " .
+		"SELECT DISTINCT ip.plrid, INET_NTOA(ipaddr) ipaddr, p.plrid," .
+		"p.rank,p.skill,p.activity,pp.name,pp.icon,c.kills,c.headshotkills," .
+		"c.onlinetime,c.killsperdeath kpd " .
 		"FROM $ps->t_plr_ids_ipaddr ip, $ps->t_plr p, $ps->t_plr_profile pp, $ps->c_plr_data c " . 
 		"WHERE ip.plrid=p.plrid AND p.uniqueid=pp.uniqueid AND p.plrid=c.plrid AND p.allowrank=1 AND " . 
 		"pp.latitude IS NULL AND pp.longitude IS NULL AND " . 

@@ -118,7 +118,7 @@ if (!function_exists('ps_date')) {
 	Returns a formatted date using the timestamp given. 
 	The date will be offset by the configuration setting $theme.format.time_offset;
 	*/
-	function ps_date($fmt, $epoch = null) {
+	function ps_date($fmt, $epoch = null, $ignore_ofs = false) {
 		global $ps;
 		static $ofs = null;
 		// calculate the offset once...
@@ -139,7 +139,7 @@ if (!function_exists('ps_date')) {
 			}
 		}
 		if (is_null($epoch)) $epoch = time();
-		return date($fmt, $epoch + $ofs);
+		return date($fmt, $ignore_ofs ? $epoch : $epoch + $ofs);
 	}
 }
 

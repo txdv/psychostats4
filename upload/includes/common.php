@@ -19,16 +19,12 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
- */
+ *
+ *	Common entry point for all pages within PsychoStats.
+ *      This file will setup the environment and initialize all objects needed.
+ *      All pages must include this file first and foremost.
+**/
 
-/***
-	common.php
-	Common entry point for all pages within PsychoStats.
-
-	This file will setup the environment and initialize all objects needed.
-	All pages must include this file first and foremost.
-
-***/
 
 // verify the page was viewed from a valid entry point.
 if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FILE__));

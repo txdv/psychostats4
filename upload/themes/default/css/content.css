@@ -192,13 +192,13 @@ div.ps-plr-profile #map {
 	background: url(../img/table-header-desc-r-bg.png) no-repeat 100% 0;
 	cursor: pointer;
 }
-.ps-table acronym {
+#ps-container .ps-table acronym {
 	text-decoration: none;
 	border: none;
 	cursor: help;
 }
 
-.ps-table td.no-data {
+#ps-container .ps-table td.no-data {
 	font-size: 150%;
 	font-weight: bold;
 	text-align: center;
@@ -385,14 +385,27 @@ div.ps-plr-profile #map {
 }
 
 #ps-award-frame .award,
-#ps-award-frame .award-neg {
+#ps-award-frame .award-neg,
+#ps-award-frame .award-none {
 	padding: 0.5em;
 	border: 1px solid #CACAD9;
 	margin: 0.25em;
 	background: #D8D8EB; /* url(../img/icons/information.png) no-repeat 100% 50%; */
 }
+#ps-award-frame .award-hdr {
+	padding: 0.5em;
+	margin: 0.25em;
+	border-bottom: 3px solid #CCC;
+	background: #000;
+	color: #FFF;
+	font-weight: bold;
+	text-align: center;
+}
 #ps-award-frame .award-neg {
 	background: #FFD8EB;
+}
+#ps-award-frame .award-none {
+	background: #FFFFEE;
 }
 
 #ps-award-frame .award h2,
@@ -440,7 +453,7 @@ div.ps-plr-profile #map {
 	border: 1px solid gray;
 }
 #map {
-	height: 350px;
+	height: 450px;
 	border: 1px solid gray;
 	width: 90%;
 	margin: 0 auto;
@@ -454,7 +467,7 @@ div.ps-plr-profile #map {
 	font-size: 130%;
 	color: black;
 }
-.map-footer p {
+#ps-container .map-footer p {
 	font-size: 80%;
 	color: #666;
 	text-align: left;

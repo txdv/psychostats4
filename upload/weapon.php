@@ -61,8 +61,13 @@ $cms->theme->page_title(' for ' . $weapon['label'], true);
 // calculate the hitbox zone percentages
 $zone = array('head','chest','leftarm','rightarm','stomach','leftleg','rightleg');
 $hits = $weapon['hits'] ? $weapon['hits'] : 0;
+$max = 0;
 foreach ($zone as $z) {
-	$weapon['shot_'.$z.'pct'] = $hits ? ceil($weapon['shot_'.$z] / $hits * 100) : 0;
+	if ($weapon['shot_'.$z] > $max) $max = $weapon['shot_'.$z];
+}
+foreach ($zone as $z) {
+	$weapon['shot_'.$z.'pct'] = $hits ? ceil($weapon['shot_'.$z] / $max * 100) : 0;
+	$weapon['real_shot_'.$z.'pct'] = $hits ? ceil($weapon['shot_'.$z] / $hits * 100) : 0;
 }
 
 // get top10 players .....

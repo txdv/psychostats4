@@ -19,28 +19,28 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
- */
-
-/***
-	PsychoTheme class
-
-	Theme class that handles all HTML or text output (images are done elsewhere).
-	Smarty is the underlining code to produce the output. The PsychoTheme class
-	adds some new functionality like multiple language support. Also, parent/child
-	themes are supported. A child theme can be based on a parent and only have the
-	changed files within the child theme directory.
-
-	A theme is made up of template files. Almost anything can be done within a template.
-	For security reasons PHP tags are not allowed inside a template.
-
-	The layout of most themes generally follow this hierarchy:
-		overall_header
-		page_header
-		page_content
-		page_footer
-		overall_footer
-	Plugins can hook into the different pieces of themes to apply changes that are transparent
-	no matter what theme is being used.
+ *
+ *	PsychoTheme class
+ *
+ *      Theme class that handles all HTML or text output (images are done
+ *	elsewhere). Smarty is the underlining code to produce the output. The
+ *	PsychoTheme class adds some new functionality like multiple language
+ *	support. Also, parent/child themes are supported. A child theme can be
+ *      based on a parent and only have the changed files within the child theme
+ *	directory.
+ *
+ *      A theme is made up of template files. Almost anything can be done within
+ *      a template. For security reasons PHP tags are not allowed inside a
+ *      template.
+ *
+ *      The layout of most themes generally follow this hierarchy:
+ *		overall_header
+ *		page_header
+ *		page_content
+ *		page_footer
+ *		overall_footer
+ *      Plugins can hook into the different pieces of themes to apply changes
+ *      that are transparent no matter what theme is being used.
 
 ***/
 

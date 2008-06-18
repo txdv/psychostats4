@@ -226,21 +226,21 @@ body.psychostats {
 	width: 125px;
 }
 
-.gmapinfo {
+#ps-container .gmapinfo {
 	text-align: left;
 	font-size: 90%;
 }
-.gmapinfo h4 {
+#ps-container .gmapinfo h4 {
 	text-align: center;
 	border-bottom: 1px solid gray;
 	font-size: 110%;
 }
-.gmapinfo label {
+#ps-container .gmapinfo label {
 	font-weight: bold;
 	float: left;
-	width: 50px;
+	width: 70px;
 }
-.gmapinfo span {
+#ps-container .gmapinfo span {
 	clear: right;
 }
 

@@ -19,27 +19,27 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
- */
-
-/***
-	PsychoStats CMS class
-	First conceived on March 20th, 2007 by Stormtrooper
-
-	This is not a full Content Management System.
-	It's "just enough" to be useful for PsychoStats but powerful enough to have some nifty features.
-
-	Depends: CMS/functions.php
-	Optional Depends: class_DB.php, class_session.php, class_theme.php, class_table.php
-
-	* The CMS class attempts to make all input and output streams within PsychoStats easy to access.
-	* A plugin system is built into the IO stream to allow for 3rd party plugins.
-	* Plugins can also override some core functionality (ie: add different session support).
-	* Smarty templates are used for output and supports multi-language <#text#> strings.
-
-	PsychoStats Plugins use a class hierarchy to help avoid namespace collisions. 
-	Using classes also opens up new posibilities in the future.
-
-***/
+ *
+ *	PsychoStats CMS class
+ *	First conceived on March 20th, 2007 by Stormtrooper
+ *
+ *      This is not a full Content Management System. It's "just enough" to be
+ *      useful for PsychoStats but powerful enough to have some nifty features.
+ *
+ *      Depends: CMS/functions.php
+ *      Optional Depends: class_DB.php, class_session.php, class_theme.php,
+ *      class_table.php
+ *      
+ *      The CMS class attempts to make all input and output streams within
+ *	PsychoStats easy to access.
+ *      A plugin system is built into the IO stream to allow for 3rd party
+ *      plugins. Plugins can also override some core functionality (ie: add
+ *      different session support). Plugins use a class hierarchy to help avoid
+ *	namespace collisions.
+ *      Smarty templates are used for output and supports multi-language
+ *	<#text#> strings.
+ *      Using classes also opens up new posibilities in the future.
+**/
 
 if (defined("CLASS_CMS_PHP")) return 1;
 define("CLASS_CMS_PHP", 1);

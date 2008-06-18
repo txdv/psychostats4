@@ -59,37 +59,37 @@
 </p>
 <p class="substat">
 	<label><#Head#></label>
-	{if $weapon.shot_headpct}<em>{$weapon.shot_headpct}%</em>{/if}
+	{if $weapon.shot_headpct}<em>{pctbar pct=$weapon.shot_headpct}</em>{/if}
 	<span>{$weapon.shot_head|commify}</span>
 </p>
 <p class="substat">
 	<label><#Chest#></label>
-	{if $weapon.shot_chestpct}<em>{$weapon.shot_chestpct}%</em>{/if}
+	{if $weapon.shot_chestpct}<em>{pctbar pct=$weapon.shot_chestpct}</em>{/if}
 	<span>{$weapon.shot_chest|commify}</span>
 </p>
 <p class="substat">
 	<label><#Left Arm#></label>
-	{if $weapon.shot_leftarmpct}<em>{$weapon.shot_leftarmpct}%</em>{/if}
+	{if $weapon.shot_leftarmpct}<em>{pctbar pct=$weapon.shot_leftarmpct}</em>{/if}
 	<span>{$weapon.shot_leftarm|commify}</span>
 </p>
 <p class="substat">
 	<label><#Right Arm#></label>
-	{if $weapon.shot_rightarmpct}<em>{$weapon.shot_rightarmpct}%</em>{/if}
+	{if $weapon.shot_rightarmpct}<em>{pctbar pct=$weapon.shot_rightarmpct}</em>{/if}
 	<span>{$weapon.shot_rightarm|commify}</span>
 </p>
 <p class="substat">
 	<label><#Stomach#></label>
-	{if $weapon.shot_stomachpct}<em>{$weapon.shot_stomachpct}%</em>{/if}
+	{if $weapon.shot_stomachpct}<em>{pctbar pct=$weapon.shot_stomachpct}</em>{/if}
 	<span>{$weapon.shot_stomach|commify}</span>
 </p>
 <p class="substat">
 	<label><#Left Leg#></label>
-	{if $weapon.shot_leftlegpct}<em>{$weapon.shot_leftlegpct}%</em>{/if}
+	{if $weapon.shot_leftlegpct}<em>{pctbar pct=$weapon.shot_leftlegpct}</em>{/if}
 	<span>{$weapon.shot_leftleg|commify}</span>
 </p>
 <p class="substat">
 	<label><#Right Leg#></label>
-	{if $weapon.shot_rightlegpct}<em>{$weapon.shot_rightlegpct}%</em>{/if}
+	{if $weapon.shot_rightlegpct}<em>{pctbar pct=$weapon.shot_rightlegpct}</em>{/if}
 	<span>{$weapon.shot_rightleg|commify}</span>
 </p>
 </div>

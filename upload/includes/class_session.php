@@ -68,6 +68,7 @@ function PsychoSession($_config = array()) {
 		'dbhandle'		=> 0,
 		'delaystart'		=> 0,
 		'cookielife'		=> 60 * 60,			// 1 hour
+		'cookielifoptions'	=> 60 * 60 * 24 * 30,		// ~30 days
 		'cookiedomain'		=> '',
 		'cookiepath'		=> '/',
 		'cookiename'		=> 'sess',
@@ -121,7 +122,6 @@ function PsychoSession($_config = array()) {
 
 	$this->is_bot();
 
-	$this->_initkey();
 	if (!$this->config['delaystart']) $this->start();		// start session if its not 'delayed'
 }
 
@@ -329,6 +329,7 @@ function _session_start() {
 function start() {
 	$this->ended = 0;
 	$this->_session_start();
+	$this->_initkey();
 
 	$now = time();
 	$this->sessdata['session_last'] = $now;
@@ -377,9 +378,10 @@ function start() {
 function _initkey() {
 	$this->session_encrypted = false;
 	if ($this->config['cookiesalt'] and function_exists('mcrypt_module_open')) {
+		$salt = $this->config['cookiesalt'] == -1 ? $this->sid() : $this->config['cookiesalt'];
 		$this->td = mcrypt_module_open('tripledes', '', 'ecb', '');
 		$this->iv = mcrypt_create_iv(mcrypt_enc_get_iv_size($this->td), MCRYPT_RAND);
-		$this->key = substr($this->config['cookiesalt'], 0, mcrypt_enc_get_key_size($this->td));
+		$this->key = substr($salt, 0, mcrypt_enc_get_key_size($this->td));
 		$this->session_encrypted = true;
 	}
 	return $this->session_encrypted;
@@ -540,8 +542,9 @@ function load_session_options() {
 	$o = array();
 	if (array_key_exists($sidname, $this->cms->cookie)) {
 		$str = $this->cms->cookie[$sidname];
-		// decode -> inflate -> unserialize
-		$decoded = $this->config['cookieencode'] ? base64_decode($str) : $str;
+		// decode -> decrypt -> inflate -> unserialize
+		$str = $this->config['cookieencode'] ? base64_decode($str) : $str;
+		$decoded = $this->decrypt($str);
 		if ($this->config['cookiecompress'] and function_exists('gzinflate')) $decoded = @gzinflate($decoded);
 		if ($decoded === FALSE) $this->delete_cookie('_opts');
 		$o = unserialize($decoded);
@@ -562,11 +565,12 @@ function save_session_options($opts = null) {
 		$opts = $this->options;
 	}
 	if (!is_array($opts)) $opts = array();
-	// serialize -> deflate -> encode
+	// serialize -> deflate -> encrypt -> encode
 	$str = serialize($opts);
 	if ($this->config['cookiecompress'] and function_exists('gzdeflate')) $str = gzdeflate($str);
+	$str = $this->encrypt($str);
 	$encoded = $this->config['cookieencode'] ? base64_encode($str) : $str;
-	$this->send_cookie($encoded, time()+60*60*24*30, '_opts');
+	$this->send_cookie($encoded, $this->config['cookielifeoptions'] ? time() + $this->config['cookielifeoptions'] : 0, '_opts');
 //	$this->send_cookie(strlen($encoded), 0, '_opts_size');	// debug
 
 	// add the modified cookie to memory incase we re-read the options before we exit

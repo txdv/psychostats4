@@ -90,12 +90,14 @@ $cms = new PsychoCMS(array(
 // this session will not actually store a session in a database or file.
 // it's mearly used in the install for cookie support.
 $cms->session = new PsychoSession(array(
-	'cms'		=> $cms,
-	'cookiename'	=> 'ps_install_sess',
-	'cookiecompress'=> true,
-	'cookieencode'	=> true,
-	'dbhandle'	=> $db,
-	'delaystart'	=> true,
+	'cms'			=> $cms,
+	'cookiename'		=> 'ps_install_sess',
+	'cookiesalt'		=> '',
+	'cookiecompress'	=> true,
+	'cookieencode'		=> true,
+	'cookielifeoptions' 	=> 0,	
+	'dbhandle'		=> $db,
+	'delaystart'		=> true,
 ));
 
 $cms->init(true); // quick init; no plugins, session or user

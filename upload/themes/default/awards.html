@@ -40,27 +40,47 @@
 </div>
 {/if}
 
+	<div class="award-hdr">
+		<p><#Player Action Awards#></p>
+	</div>
 {foreach from=$awards.player item='a'}
 	<div class="award{if $a.negative}-neg{/if}{if $plrid and $a.topplrid == $plrid} selected-plr{/if}">
 		<h2>{award_phrase award=$a}</h2>
-		<p>{$a.description|escape}</p>
+		<p>{award_phrase award=$a desc=1}</p>
 	</div>
 {foreachelse}
-	<#No player awards on this date#>
+	<div class="award-none">
+		<p><#No player awards on this date#></p>
+	</div>
 {/foreach}
 
-{*
-{foreach from=$awards.weaponclass item='weaponclasses' key='class'}
-	{foreach from=$weaponclasses item='a'}
-	<div class="award{if $a.negative}-neg{/if}{if $plrid and $a.topplrid == $plrid} selected-plr{/if}">
-		<h2>{award_phrase award=$a class=$class}</h2>
-		<p>{$a.description|escape}</p>
+	<div class="award-hdr">
+		<p><#Weapon Class Awards#></p>
 	</div>
-	{/foreach}
+{foreach from=$awards.weaponclass item='a'}
+	<div class="award{if $a.negative}-neg{/if}{if $plrid and $a.topplrid == $plrid} selected-plr{/if}">
+		<h2>{award_phrase award=$a}</h2>
+		<p>{award_phrase award=$a desc=1}</p>
+	</div>
 {foreachelse}
-	<#No weapon class awards on this date#>
+	<div class="award-none">
+		<p><#No weapon class awards on this date#></p>
+	</div>
 {/foreach}
-*}
+
+	<div class="award-hdr">
+		<p><#Individual Weapon Awards#></p>
+	</div>
+{foreach from=$awards.weapon item='a'}
+	<div class="award{if $a.negative}-neg{/if}{if $plrid and $a.topplrid == $plrid} selected-plr{/if}">
+		<h2>{award_phrase award=$a}</h2>
+		<p>{award_phrase award=$a desc=1}</p>
+	</div>
+{foreachelse}
+	<div class="award-none">
+		<p><#No weapon awards on this date#></p>
+	</div>
+{/foreach}
 
 {if $awards}
 <div class="ps-award-ctrl-bottom">

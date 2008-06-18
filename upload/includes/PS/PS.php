@@ -2013,7 +2013,7 @@ function theme_setup(&$theme) {
 		'show_plr_flags'	=> $this->conf['theme']['permissions']['show_plr_flags'],
 		'show_clan_icons'	=> $this->conf['theme']['permissions']['show_clan_icons'],
 		'show_clan_flags'	=> $this->conf['theme']['permissions']['show_clan_flags'],
-		'loggedin'		=> ($_REQUEST['loggedin'] and $cms->user->logged_in()),
+		'loggedin'		=> ($cms->input['loggedin'] and $cms->user->logged_in()),
 		'shades'		=> $cms->session->opt('shades'),
 		'worldid_noun'		=> $this->worldid_noun(),
 		'worldid_noun_plural'	=> $this->worldid_noun(true),
@@ -2553,10 +2553,11 @@ function award_format($value, $format = '%s') {
 	switch ($format) {
 		case "commify": 	return commify($value);
 		case "compacttime": 	return compacttime($value);
-		case "date":		return date($this->conf['theme']['format']['date'], $value);
-		case "datetime":	return date($this->conf['theme']['format']['datetime'], $value);
+		case "date":		return ps_date_stamp($value);
+		case "datetime":	return ps_datetime_stamp($value);
 	}
-	return "[ $value ]";	// the [brackets] will help troubleshoot issues when a non-valid format is specified
+	// the [brackets] will help troubleshoot issues when a invalid format is specified
+	return "[ $value ]";
 }
 
 function gametype() {

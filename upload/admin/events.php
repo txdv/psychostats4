@@ -29,7 +29,7 @@ $validfields = array('ref','start','limit','order','sort','move','id','filter','
 $cms->theme->assign_request_vars($validfields, true);
 
 if (!is_numeric($start) or $start < 0) $start = 0;
-if (!is_numeric($limit) or $limit < 0) $limit = 50;
+if (!is_numeric($limit) or $limit < 0) $limit = 100;
 if (!in_array($order, array('asc','desc'))) $order = 'asc';
 $sort = 'idx';
 

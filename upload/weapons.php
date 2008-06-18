@@ -56,24 +56,34 @@ $max = array();
 $keys = array('kills', 'damage', 'headshotkills');
 for ($i=0; $i < count($weapons); $i++) {
 	foreach ($keys as $k) {
-		if ($stats[$k]) {
-			$weapons[$i][$k.'pct'] = ($stats[$k]) ? ceil($weapons[$i][$k] / $stats[$k] * 100) : 0;
-		}
 		if ($weapons[$i][$k] > $max[$k]) $max[$k] = $weapons[$i][$k];
 	}
 }
-// calculate scale width of pct's based on max
-$scale = 200;
-$ofs   = $scale; // + 40;
+
+// calculate percentages scaled to max values
 for ($i=0; $i < count($weapons); $i++) {
 	foreach ($keys as $k) {
-		if ($max[$k] == 0) {
-			$weapons[$i][$k.'width'] = $ofs - ceil($weapons[$i][$k] / 1 * $scale);
-		} else {
-			$weapons[$i][$k.'width'] = $ofs - ceil($weapons[$i][$k] / $max[$k] * $scale);
+		if ($max[$k]) {
+			$weapons[$i][$k.'pct'] = ceil($weapons[$i][$k] / $max[$k] * 100);
+		}
+		if ($stats[$k]) {
+			$weapons[$i]['real'.$k.'pct'] = ceil($weapons[$i][$k] / $stats[$k] * 100);
 		}
 	}
 }
+
+// calculate scale width of pct's based on max
+//$scale = 200;
+//$ofs   = $scale; // + 40;
+//for ($i=0; $i < count($weapons); $i++) {
+//	foreach ($keys as $k) {
+//		if ($max[$k] == 0) {
+//			$weapons[$i][$k.'width'] = $ofs - ceil($weapons[$i][$k] / 1 * $scale);
+//		} else {
+//			$weapons[$i][$k.'width'] = $ofs - ceil($weapons[$i][$k] / $max[$k] * $scale);
+//		}
+//	}
+//}
 
 if ($xml) {
 	$ary = array();
@@ -92,7 +102,6 @@ foreach ($weapons as $w) {
 }
 ksort($weaponclasses);
 
-
 // build a dynamic table that plugins can use to add custom columns of data
 $table = $cms->new_table($weapons);
 $table->if_no_data($cms->trans("No Weapons Found"));
@@ -100,6 +109,7 @@ $table->attr('class', 'ps-table ps-weapon-table');
 $table->start_and_sort($start, $sort, $order);
 $table->columns(array(
 	'uniqueid'		=> array( 'label' => $cms->trans("Weapon"), 'callback' => 'ps_table_weapon_link' ),
+	'_killspct'		=> array( 'nolabel' => true, 'callback' => 'kills_pct' ),
 	'kills'			=> array( 'label' => $cms->trans("Kills"), 'modifier' => 'commify' ),
 	'headshotkills'		=> array( 'label' => $cms->trans("HS"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Headshot Kills") ),
 	'headshotkillspct'	=> array( 'label' => $cms->trans("HS%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Headshot Kills Percentage") ),
@@ -107,9 +117,11 @@ $table->columns(array(
 	'ffkillspct'		=> array( 'label' => $cms->trans("FF%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Friendly Fire Kills Percentage") ),
 	'accuracy'		=> array( 'label' => $cms->trans("Acc"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Accuracy") ),
 	'shotsperkill' 		=> array( 'label' => $cms->trans("S:K"), 'tooltip' => $cms->trans("Shots Per Kill") ),
-	'damage' 		=> array( 'label' => $cms->trans("Dmg"), 'modifier' => 'abbrnum0', 'tooltip' => $cms->trans("Damage") ),
+	'damage' 		=> array( 'label' => $cms->trans("Dmg"), 'callback' => 'abbr_dmg', 'tooltip' => $cms->trans("Damage") ),
 ));
 $table->column_attr('uniqueid', 'class', 'first');
+$table->column_attr('_killspct', 'width', '50');
+$table->header_attr('kills', 'colspan', '2');
 $ps->weapons_table_mod($table);
 $cms->filter('weapons_table_object', $table);
 
@@ -128,5 +140,20 @@ $cms->theme->assign(array(
 $basename = basename(__FILE__, '.php');
 //$cms->theme->add_css('css/tabs.css');
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
+
+function kills_pct($name, $weapon) {
+	global $cms, $max;
+	return pct_bar(array(
+		'pct'		=> $weapon['killspct'],
+		'title'		=> $cms->trans('Overall kills percentage') . ' (' . $weapon['realkillspct'] . '%)',
+		'color1'	=> 'cc0000',
+		'color2'	=> '00cc00',
+//		'width'		=> 100
+	));
+}
+
+function abbr_dmg($name, $weapon) {
+	return "<acronym title='" . commify($weapon['damage']) . "'>" . abbrnum0($weapon['damage'],1) . "</acronym>";
+}
 
 ?>
