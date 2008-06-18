@@ -292,9 +292,6 @@ sub event_kill {
 	my $r2 = $self->get_role($p2->{role}, $p2->{team});
 	my $props = $self->parseprops($propstr);
 
-	$weapon = 'unknown' unless $weapon;
-	$weapon =~ tr/ /_/;				# convert spaces to '_'
-
 	my $w = $self->get_weapon($weapon);
 
 	# I directly access the player variables in the objects (bad OO design), 
@@ -384,9 +381,6 @@ sub event_spatial {
 	my $m = $self->get_map;
 	my $props = $self->parseprops($propstr);
 
-	$weapon = 'unknown' unless $weapon;
-	$weapon =~ tr/ /_/;				# convert spaces to '_'
-
 	my $w = $self->get_weapon($weapon);
 	$m->spatial(
 		$self, 
@@ -394,7 +388,6 @@ sub event_spatial {
 		$p2, $props->{victim_position}, 
 		$w, $props->{headshot}, 
 	);
-
 }
 
 sub event_connected {
@@ -590,8 +583,7 @@ sub event_suicide {
 	return if $self->isbanned($p1);
 	my $m = $self->get_map;
 
-	$weapon = 'unknown' unless $weapon;
-	$weapon =~ tr/ /_/;
+	$weapon = $self->weapon_normal($weapon);
 
 	if (lc $weapon ne 'world') {
 		$p1->{basic}{lasttime} = $timestamp;
@@ -818,9 +810,11 @@ sub event_weaponstats {
 
 	$p1->{basic}{lasttime} = $timestamp;
 	return unless $self->minconnected;
-
+	
 	my $props = $self->parseprops($propstr);
-	my $weapon = $props->{weapon} || return;
+	return unless $props->{weapon};
+	
+	my $weapon = $props->{weapon};
 	my $w = $self->get_weapon($weapon) || return;
 	my $r1 = $self->get_role($p1->{role}, $p1->{team});
 

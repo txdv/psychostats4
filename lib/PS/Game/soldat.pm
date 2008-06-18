@@ -44,7 +44,7 @@ sub _init {
 }
 
 sub get_role { undef }
-sub has_mod_tables { 0 }
+sub has_mod_tables { 1 }
 
 # override default event so we can reset per-log variables
 sub event_logstartend {
@@ -68,9 +68,9 @@ sub event_plrtrigger {
 	$p1->{basic}{lasttime} = $timestamp;
 	return unless $self->minconnected;
 	my $m = $self->get_map;
+	my @vars = ();
 
 	$trigger = lc $trigger;
-	$self->plrbonus($trigger, 'enactor', $p1);
 	if ($trigger eq 'weaponstats' or $trigger eq 'weaponstats2') {
 		$self->event_weaponstats($timestamp, $args);
 
@@ -79,8 +79,19 @@ sub event_plrtrigger {
 		return unless $p1->{uid} and $props->{address};
 		$self->{ipcache}{$p1->{uid}} = ip2int($props->{address});
 
-	#} elsif ($trigger eq 'something') {
-	#	# I'm not sure what plugin provides this trigger...
+	} elsif ($trigger eq 'flagevent') {
+		my $props = $self->parseprops($propstr);
+		if ($props->{event} eq "returned") {
+			@vars = ( $p1->{team} . 'flagsdefended', 'flagsdefended' );
+			$self->plrbonus('flag_defended','enactor',$p1);
+
+		} elsif ($props->{event} eq "grabbed") {
+			@vars = ( $p1->{team} . 'flagspickedup', 'flagspickedup' );
+
+		} elsif ($props->{event} eq "captured") {
+			@vars = ( $p1->{team} . 'flagscaptured', 'flagscaptured' );
+			$self->plrbonus('flag_captured', 'enactor', $p1);
+		}
 
 	} else {
 		if ($self->{report_unknown}) {
@@ -88,6 +99,14 @@ sub event_plrtrigger {
 		}
 	}
 
+	# allow bonuses on the raw trigger event
+	$self->plrbonus($trigger, 'enactor', $p1);
+
+	foreach my $var (@vars) {
+		$p1->{mod_maps}{ $m->{mapid} }{$var}++;
+		$p1->{mod}{$var}++;
+		$m->{mod}{$var}++;
+	}
 }
 
 
@@ -100,20 +119,18 @@ sub event_teamtrigger {
 	my $terr = $self->get_team('terrorist', 1);
 	my ($p1, $p2, $ctvar, $terrvar, $enactor_team, $victim_team);
 
-	$team = lc $team;
-#	$team =~ tr/ /_/;
-#	$team =~ tr/a-z0-9_//cs;
+	$team = $self->team_normal($team);
 	$trigger = lc $trigger;
 
-	if ($trigger eq "terrorists_win") {
-		$terrvar  = 'terroristwon';
-		$ctvar = 'ctlost';
+	if ($trigger eq "terrorists_win" or $trigger eq "bravo_wins") {
+		$terrvar  = 'bravowon';
+		$ctvar = 'alphalost';
 		$enactor_team = $terr;
 		$victim_team = $ct;
 
-	} elsif ($trigger eq "cts_win") {
-		$terrvar  = 'terroristlost';
-		$ctvar = 'ctwon';
+	} elsif ($trigger eq "cts_win" or $trigger eq "alpha_wins") {
+		$terrvar  = 'bravolost';
+		$ctvar = 'alphawon';
 		$enactor_team = $ct;
 		$victim_team = $terr;
 
@@ -142,6 +159,14 @@ sub event_teamtrigger {
 # prevent 'unknown event' warning
 sub event_cs_teamscore { }
 
+sub weapon_normal {
+	my ($self, $weapon) = @_;
+	$weapon = lc $weapon;
+	$weapon =~ tr/ /_/;
+	$weapon =~ s/-//;
+	return $weapon;
+}
+
 sub team_normal {
 	my ($self, $team) = @_;
 	$team = lc $team;
@@ -150,7 +175,7 @@ sub team_normal {
 	} else {				# anything else is bravo
 		return 'bravo';
 	}
-	return team;
+	return $team;
 }
 
 sub logsort {

@@ -28,17 +28,31 @@ use base qw( PS::Map );
 our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our $TYPES = {
-	ctkills			=> '+',
-	terroristkills		=> '+',
-	joinedct		=> '+',
-	joinedterrorist		=> '+',
-	joinedspectator		=> '+',
-	ctwon			=> '+',
-	ctwonpct		=> [ percent2 => qw( ctwon terroristwon ) ],
-	ctlost			=> '+',
-	terroristwon		=> '+',
-	terroristwonpct		=> [ percent2 => qw( terroristwon ctwon ) ],
-	terroristlost		=> '+',
+	alphakills		=> '+',
+	bravokills		=> '+',
+	joinedalpha		=> '+',
+	joinedbravo		=> '+',
+	alphawon		=> '+',
+	alphawonpct		=> [ percent2 => qw( alphawon bravowon ) ],
+	alphalost		=> '+',
+	bravowon		=> '+',
+	bravowonpct		=> [ percent2 => qw( bravowon alphawon ) ],
+	bravolost		=> '+',
+	
+	flagscaptured		=> '+',
+	flagsreturned		=> '+',
+
+	bravoflagscaptured	=> '+',
+	bravoflagscapturedpct	=> [ percent => qw( bravoflagscaptured flagscaptured ) ],
+	bravoflagsdefended	=> '+',
+	bravoflagsdefendedpct	=> [ percent => qw( bravoflagsdefended flagsdefended ) ],
+	bravoflagspickedup	=> '+',
+
+	alphaflagscaptured	=> '+',
+	alphaflagscapturedpct	=> [ percent => qw( alphaflagscaptured flagscaptured ) ],
+	alphaflagsdefended	=> '+',
+	alphaflagsdefendedpct	=> [ percent => qw( alphaflagsdefended flagsdefended ) ],
+	alphaflagspickedup	=> '+',
 };
 
 # override parent methods to combine types
@@ -47,6 +61,6 @@ sub get_types { return { %{$_[0]->SUPER::get_types}, %$TYPES } }
 # allows the parent to determine our local types
 sub mod_types { $TYPES };
 
-sub has_mod_tables { 0 }
+sub has_mod_tables { 1 }
 
 1;

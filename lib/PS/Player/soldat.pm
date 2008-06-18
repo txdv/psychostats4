@@ -28,20 +28,35 @@ use base qw( PS::Player );
 our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our $TYPES = {
-	ctkills			=> '+',
-	terroristkills		=> '+',
-	ctdeaths		=> '+',
-	terroristdeaths		=> '+',
-	joinedct		=> '+',
-	joinedterrorist		=> '+',
-	joinedspectator		=> '+',
-	ctwon			=> '+',
-	ctwonpct		=> [ percent2 => qw( ctwon terroristwon ) ],
-	ctlost			=> '+',
-	terroristwon		=> '+',
-	terroristwonpct		=> [ percent2 => qw( terroristwon ctwon ) ],
-	terroristlost		=> '+',
+	alphakills		=> '+',
+	bravokills		=> '+',
+	alphadeaths		=> '+',
+	bravodeaths		=> '+',
+	joinedalpha		=> '+',
+	joinedbravo		=> '+',
+	alphawon		=> '+',
+	alphawonpct		=> [ percent2 => qw( alphawon bravowon ) ],
+	alphalost		=> '+',
+	bravowon		=> '+',
+	bravowonpct		=> [ percent2 => qw( bravowon alphawon ) ],
+	bravolost		=> '+',
+	
+	flagscaptured		=> '+',
+	flagsreturned		=> '+',
+
+	bravoflagscaptured	=> '+',
+	bravoflagscapturedpct	=> [ percent => qw( bravoflagscaptured flagscaptured ) ],
+	bravoflagsdefended	=> '+',
+	bravoflagsdefendedpct	=> [ percent => qw( bravoflagsdefended flagsdefended ) ],
+	bravoflagspickedup	=> '+',
+
+	alphaflagscaptured	=> '+',
+	alphaflagscapturedpct	=> [ percent => qw( alphaflagscaptured flagscaptured ) ],
+	alphaflagsdefended	=> '+',
+	alphaflagsdefendedpct	=> [ percent => qw( alphaflagsdefended flagsdefended ) ],
+	alphaflagspickedup	=> '+',
 };
+
 
 # Player map stats are the same as the basic stats
 our $TYPES_MAPS = { %$TYPES };
@@ -54,6 +69,6 @@ sub get_types_maps { return { %{$_[0]->SUPER::get_types_maps}, %$TYPES_MAPS } }
 sub mod_types { $TYPES };
 sub mod_types_maps { $TYPES_MAPS };
 
-sub has_mod_tables { 0 }
+sub has_mod_tables { 1 }
 
 1;
