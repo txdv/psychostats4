@@ -87,6 +87,8 @@ sub _init {
 	return $self;
 }
 
+sub has_mod_tables { 1 }
+
 # handle the event that comes in from the Feeder (log line)
 sub event {
 	my $self = shift;
@@ -105,13 +107,25 @@ sub event {
 	($time, $event) = split(' ', $event, 2);
 	return unless $time;
 	($min,$sec) = split(':', $time);
-
-	# Implicitly ignore all lines that start with a dash (-)
+	return unless defined $sec;
+	
+	# Implicitly ignore all lines that start or end with a dash (-)
 	# these happen so frequently it's more efficient to check for it here than adding an event to the config.
-	return if substr($event,0,1) eq '-';
+	# if a line ends with a dash, it's most likely a corrupted line where the previous
+	# line didn't finish before a server crash.
+	return if substr($event,0,1) eq '-' or substr($event,-1) eq '-';
 
+	$self->{prev_timestamp} = $self->{timestamp} || $self->{gamestart};
 	$self->{timestamp} = $self->{gamestart} + ($min * 60) + $sec;
 	($self->{min}, $self->{hour}, $self->{day}) = (localtime($self->{timestamp}))[1,2,3];
+
+	# server restarted so we need to reset the game start timestamp
+	# there's no way to determine when the server restarted though, so we
+	# can only guess and assume it restarted instantly.
+	if ($self->{prev_timestamp} > $self->{timestamp}) {
+		$self->{gamestart} = $self->{prev_timestamp};
+		$self->info("COD server restart timestamp " . date("%Y-%m-%d %H:%i:%s\n", $self->{gamestart}));
+	}
 
 	# SEARCH FOR A MATCH ON THE EVENT USING OUR LIST OF REGEX'S
 	# If a match is found we dispatch the event to the proper event method 'event_{match}'
@@ -233,19 +247,25 @@ sub event_cod_plrtrigger {
 	} elsif ($trigger eq 'Q') {		# player disconnected
 		$self->event_disconnected($timestamp, [ $event ]);
 
-	} elsif ($trigger eq 'K') {		# player killed themself?
+	} elsif ($trigger eq 'K') {		# player killed someone (or themself)
 		@parts = split(';', $event);
+		return unless @parts >= 8;	# avoid corrupted lines
 		$self->event_kill($timestamp, [ join(';', @parts[0..3]), join(';', @parts[4..7]), splice(@parts, 8) ]);
 
 	} elsif ($trigger eq 'D') {		# player damaged someone else (or themself)
 		@parts = split(';', $event);
+		return unless @parts >= 8;	# avoid corrupted lines
 		# only record the attack if it's against someone else.
 		# if $parts[4] is blank then the player fell or caused dmg to themself and we don't care.
 		if ($parts[4] ne '') {
 			$self->event_attacked($timestamp, [ join(';', @parts[0..3]), join(';', @parts[4..7]), splice(@parts, 8) ]);
 		}
 
-	} elsif ($trigger eq 'Weapon') {	# player picked up a weapon?
+	} elsif ($trigger eq 'Weapon') {	# player switched weapons?
+		@parts = split(';', $event);
+		return unless @parts >= 4;
+		$p1 = $self->get_plr(join(';', @parts[0..2])) || return;
+		$p1->weapon( $self->weapon_normal($parts[-1]) );
 
 	} elsif ($trigger eq 'say') {		# player said something publicly
 	} elsif ($trigger eq 'sayteam') {	# player said something to team
@@ -257,7 +277,7 @@ sub event_cod_plrtrigger {
 	}
 }
 
-# COD "InitGame" event. Occurs when the server has been restarted, or the map has changed.
+# COD "InitGame" event. Occurs when the server has been restarted or the map has changed.
 sub event_cod_init {
 	my ($self, $timestamp, $args) = @_;
 	my ($propstr) = @$args;
@@ -272,6 +292,20 @@ sub event_cod_init {
 		delete $self->{maps}{ $self->{curmap} };
 	}
 
+	# previous event was a "ShutdownGame" event.
+	#if ($self->{cod_shutdown}) {
+	#	# If the shutdown time is greater then the current time then the
+	#	# server was literally restarted. Unfortunately at this point we
+	#	# don't know when the server was restarted so we have to use the
+	#	# last known time stamp as the starting point.
+	#	if ($self->{cod_shutdown} > $timestamp) {
+	#		$self->{gamestart} = $self->{cod_shutdown};
+	#		$timestamp = $self->{cod_shutdown};
+	#		$self->info("COD server restart timestamp " . date("%Y-%m-%d %H:%i:%s\n", $timestamp));
+	#	}
+	#	$self->{cod_shutdown} = 0;
+	#}
+
 	# start up the new map in memory
 	$self->{curmap} = $props->{mapname};
 	$m = $self->get_map;
@@ -283,7 +317,7 @@ sub event_cod_init {
 
 	# SAVE PLAYERS
 	foreach my $p ($self->get_plr_list) {
-		$p->end_all_streaks;					# do not count streaks across map/log changes
+		$p->end_all_streaks;
 		$p->disconnect($timestamp, $m);
 		$p->save; # if $p->active;
 		$p = undef;
@@ -320,36 +354,15 @@ sub event_cod_init {
 
 }
 
-sub _record_shot {
-	my ($self, $hitgroup, $dmg, $p1, $r1, $w) = @_;
-	return unless $hitgroup and $dmg;
-
-	if ($r1) {
-		$r1->{basic}{shots}++;
-		$r1->{basic}{hits}++;
-		$r1->{basic}{damage} += $dmg;
-	}
-
-	$w->{basic}{shots}++;
-	$w->{basic}{hits}++;
-	$w->{basic}{damage} += $dmg;
-
-	$p1->{basic}{shots}++;
-	$p1->{basic}{hits}++;
-	$p1->{basic}{damage} += $dmg;
-
-	$p1->{weapons}{ $w->{weaponid} }{shots}++;
-	$p1->{weapons}{ $w->{weaponid} }{hits}++;
-	$p1->{weapons}{ $w->{weaponid} }{damage} += $dmg;
-
-	if ($hitgroup and $hitgroup ne 'none') {
-		my $loc = $self->{hitgroups}{$hitgroup};
-		if ($loc) {
-			$w->{basic}{$loc}++;
-			$p1->{weapons}{ $w->{weaponid} }{$loc}++;
-			$r1->{basic}{$loc}++ if $r1;
-		}
-	}
+# COD "ShutdownGame" event. Occurs when the server is shutdown or the map
+# changes. If the server was literally shutdown then the next event will be an
+# "InitGame" with a time of 00:00.
+sub event_cod_shutdown {
+	#my ($self, $timestamp, $args) = @_;
+	## flag that a shutdown occured, the event() sub will handle the
+	## game reset or round restart depending on what the new timestamp is
+	## on the next event.
+	#$self->{cod_shutdown} = $timestamp;
 }
 
 sub event_attacked {
@@ -385,7 +398,7 @@ sub event_kill {
 	my $m = $self->get_map;
 	my $r1 = $self->get_role($p1->{role}, $p1->{team});
 	my $r2 = $self->get_role($p2->{role}, $p2->{team});
-	my $w = $self->get_weapon($weapon || 'unknown');
+	my $w = $self->get_weapon($weapon);
 
 	# I directly access the player variables in the objects (bad OO design), 
 	# but the speed advantage is too great to do it the "proper" way.
@@ -501,16 +514,6 @@ sub event_disconnected {
 	undef $p1;
 }
 
-# normalize a weapon name
-sub weapon_normal {
-	my ($self, $weapon) = @_;
-	$weapon = lc $weapon;
-	# remove the weapon customizations... 
-	$weapon =~ s/(?:_acog|_gl|_reflex|_silencer|_short|_bipod_crouch|_bipod_stand|_grip)?_mp$//;
-#	$weapon =~ s/_mp$//;
-	return $weapon;
-}
-
 sub event_changed_name {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $name) = @$args;
@@ -569,7 +572,7 @@ sub event_suicide {
 	return if $self->isbanned($p1);
 	my $m = $self->get_map;
 
-	$weapon = $self->weapon_normal($weapon || 'unknown');
+	$weapon = $self->weapon_normal($weapon);
 
 	if ($weapon ne 'world') {
 		$p1->{basic}{lasttime} = $timestamp;
@@ -650,7 +653,7 @@ sub event_logstartend {
 
 	# SAVE PLAYERS
 	foreach my $p ($self->get_plr_list) {
-		$p->end_all_streaks;					# do not count streaks across map/log changes
+		$p->end_all_streaks;	# do not count streaks across map/log changes
 		$p->disconnect($timestamp, $m);
 		$p->save; # if $p->active;
 		$p = undef;
@@ -686,6 +689,21 @@ sub event_logstartend {
 	$self->{db}->commit;
 }
 
+# normalize a weapon name
+sub weapon_normal {
+	my ($self, $weapon) = @_;
+	$weapon = lc $weapon;
+	# remove the weapon customizations... 
+	$weapon =~ s/(?:_acog|_gl|_reflex|_silencer|_short|_bipod_crouch|_bipod_stand|_grip)?_mp$//;
+#	$weapon =~ s/^\s//;
+	# the following 'fixes' corrupted lines where a game server crashed and has
+	# "  00:00 ------------------" logged at the end of an incomplete line.
+	# we record the weapon as 'none' so its at least partially tracked.
+#	$weapon = 'none' if substr($weapon,0,1) eq '0';
+#	$weapon =~ s/_mp$//;
+	return $weapon;
+}
+
 sub parseprops {
 	my ($self, $str) = @_;
 	my ($var, $val);     
@@ -702,6 +720,38 @@ sub logsort {
 	my $self = shift;
 	my $list = shift;		# array ref to a list of log filenames
 	return [ sort { $a cmp $b } @$list ];
+}
+
+sub _record_shot {
+	my ($self, $hitgroup, $dmg, $p1, $r1, $w) = @_;
+	return unless $hitgroup and $dmg;
+
+	if ($r1) {
+		$r1->{basic}{shots}++;
+		$r1->{basic}{hits}++;
+		$r1->{basic}{damage} += $dmg;
+	}
+
+	$w->{basic}{shots}++;
+	$w->{basic}{hits}++;
+	$w->{basic}{damage} += $dmg;
+
+	$p1->{basic}{shots}++;
+	$p1->{basic}{hits}++;
+	$p1->{basic}{damage} += $dmg;
+
+	$p1->{weapons}{ $w->{weaponid} }{shots}++;
+	$p1->{weapons}{ $w->{weaponid} }{hits}++;
+	$p1->{weapons}{ $w->{weaponid} }{damage} += $dmg;
+
+	if ($hitgroup and $hitgroup ne 'none') {
+		my $loc = $self->{hitgroups}{$hitgroup};
+		if ($loc) {
+			$w->{basic}{$loc}++;
+			$p1->{weapons}{ $w->{weaponid} }{$loc}++;
+			$r1->{basic}{$loc}++ if $r1;
+		}
+	}
 }
 
 1;

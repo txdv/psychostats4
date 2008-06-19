@@ -202,7 +202,7 @@ if (defined $opt->get('gametype') and $conf->getconf('gametype','main') ne $opt-
 	$db->update($db->{t_config}, { value => $opt->get('gametype') }, [ conftype => 'main', section => undef, var => 'gametype' ]);
 	$conf->set('gametype', $opt->get('gametype'), 'main');
 	$ERR->info("Changing gametype from '$old' to '" . $conf->getconf('gametype') . "' (per command line)");
-	$confpudated = 1;
+	$confupdated = 1;
 }
 
 # if a modtype was specified update the config

@@ -84,14 +84,21 @@ sub init {
 		while (scalar @{$self->{_logs}}) {
 			my $cmp = $self->{game}->logcompare($self->{_logs}[0], $statelog);
 			if ($cmp == 0) { # ==
-				$self->_opennextlog;
+				$self->_opennextlog($self->{state}{pos});
 				# finally: fast-forward to the proper line
-				my $fh = $self->{_loghandle};
-				while (defined(my $line = <$fh>)) {
-					$self->{_offsetbytes} += length($line);
-					if (++$self->{_curline} >= $self->{state}{line}) {
-						$::ERR->verbose("Resuming from source $self->{_curlog} (line: $self->{_curline})");
-						return $self->{type};
+				if (int($self->{state}{pos} || 0) > 0) {	# FAST forward quickly
+					$self->{_offsetbytes} = $self->{state}{pos};
+					$self->{_curline} = $self->{state}{line};
+					$::ERR->verbose("Resuming from source $self->{state}{file} (line: $self->{_curline}, pos: $self->{state}{pos})");
+					return $self->{type};
+				} else {					# move forward slowly
+					my $fh = $self->{_loghandle};
+					while (defined(my $line = <$fh>)) {
+						$self->{_offsetbytes} += length($line);
+						if (++$self->{_curline} >= $self->{state}{line}) {
+							$::ERR->verbose("Resuming from source $self->{_curlog} (line: $self->{_curline})");
+							return $self->{type};
+						}
 					}
 				}
 			} elsif ($cmp == -1) { # <
@@ -154,6 +161,10 @@ sub _connect {
 		return undef;
 	}
 
+	# do transfers in binary. so we can use REST commands to fast forward
+	# log files when needed from a previous state.
+	$self->{ftp}->binary;
+	
 	$self->info(sprintf("Connected to %s://%s%s%s%s. HOME=%s, CWD=%s",
 		$self->{_protocol},
 		$self->{_user} ? $self->{_user} . '@' : '',
@@ -254,7 +265,8 @@ sub parsesource {
 
 sub _opennextlog {
 	my $self = shift;
-
+	my $offset = shift;	# byte offset to fast-foward to
+	
 	# delete previous log if we had one, and we have 'delete' enabled in the logsource_ftp config
 	if ($self->{delete} and $self->{_curlog}) {
 		$self->debug2("Deleting log $self->{_curlog}");
@@ -269,7 +281,7 @@ sub _opennextlog {
 
 	$self->{_curlog} = shift @{$self->{_logs}};
 	$self->{_curline} = 0;	
-	$self->{_offsetbytes} = 0;
+	$self->{_offsetbytes} = defined $offset ? int($offset)+0 : 0;
 	$self->{_filesize} = 0;
 	$self->{_lastprint} = time;
 	$self->{_lastprint_bytes} = 0;
@@ -285,7 +297,7 @@ sub _opennextlog {
 		}
 #		binmode($self->{_loghandle}, ":encoding(UTF-8)");
 		$self->debug2("Downloading log $self->{_curlog}");
-		if (!$self->{ftp}->get( $self->{_curlog}, $self->{_loghandle} )) {
+		if (!$self->{ftp}->get( $self->{_curlog}, $self->{_loghandle}, $offset )) {
 			undef $self->{_loghandle};
 			chomp(my $msg = $self->{ftp}->message);
 			$::ERR->warn("Error downloading file: $self->{_curlog}: " . ($msg ? $msg : "Unknown Error"));
@@ -306,21 +318,21 @@ sub _opennextlog {
 			}
 			seek($self->{_loghandle},0,0);		# back up to the beginning of the file, so we can read it
 
-			if ($self->{savedir}) {			# save entire file to our local directory ...
-				my $file = catfile($self->{savedir}, $self->{_curlog});
-				my $path = (splitpath($file))[1] || '';
-				eval { mkpath($path) } if $path and !-d $path;
-				if (open(F, ">$file")) {
-					my $fh = $self->{_loghandle};
-					while (defined(my $line = <$fh>)) {
-						print F $line;
-					}
-					close(F);
-					seek($self->{_loghandle},0,0);
-				} else {
-					$::ERR->warn("Error creating local file for writting ($file): $!");
-				}
-			}
+			#if ($self->{savedir}) {			# save entire file to our local directory ...
+			#	my $file = catfile($self->{savedir}, $self->{_curlog});
+			#	my $path = (splitpath($file))[1] || '';
+			#	eval { mkpath($path) } if $path and !-d $path;
+			#	if (open(F, ">$file")) {
+			#		my $fh = $self->{_loghandle};
+			#		while (defined(my $line = <$fh>)) {
+			#			print F $line;
+			#		}
+			#		close(F);
+			#		seek($self->{_loghandle},0,0);
+			#	} else {
+			#		$::ERR->warn("Error creating local file for writting ($file): $!");
+			#	}
+			#}
 		}
 	}
 
@@ -390,7 +402,9 @@ sub save_state {
 
 	$self->{state}{file} = $self->{_curlog};
 	$self->{state}{line} = $self->{_curline};
-	$self->{state}{pos}  = defined $self->{_loghandle} ? tell($self->{_loghandle}) : undef;
+	$self->{state}{pos}  = defined $self->{_loghandle}
+		? tell($self->{_loghandle}) + $self->{_offsetbytes}
+		: undef;
 
 	$self->{_last_saved} = time;
 

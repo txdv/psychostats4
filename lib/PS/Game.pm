@@ -295,7 +295,7 @@ sub role_normal { defined $_[1] ? lc $_[1] : '' }
 sub team_normal { defined $_[1] ? lc $_[1] : '' }
 
 # normalize a weapon name
-sub weapon_normal { defined $_[1] ? lc $_[1] : '' }
+sub weapon_normal { defined $_[1] ? lc $_[1] : 'unknown' }
 
 # returns a PS::Map object matching the map $name given
 sub get_map {
@@ -315,7 +315,7 @@ sub get_map {
 # returns a PS::Weapon object matching the weapon $name given
 sub get_weapon {
 	my ($self, $name) = @_;
-	$name = $self->weapon_normal($name || 'unknown');
+	$name = $self->weapon_normal($name);
 
 	if (exists $self->{weapons}{$name}) {
 		return $self->{weapons}{$name};

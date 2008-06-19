@@ -183,11 +183,16 @@ sub save_state {
 	my $db = $self->{db};
 	delete($state->{players});
 
+	# if the game timestamp is not available then the log state is attempting
+	# to be saved before any actual events have been read (this can mainly
+	# occur with FTP log sources when it takes longer than a minute to
+	# download the first log file)
+	return unless defined $self->{game}{timestamp};
+	
+	# Do not save state if it was already saved recently
 	return if (defined $self->{game}{timestamp} and ($self->{_state_saved} == $self->{game}{timestamp}));
-#	$::ERR->verbose("Saving state");
 
 	my ($state_id) = $db->select($db->{t_state}, 'id', [ logsource => $self->{logsource}{id} ]);
-#	$self->{db}->delete($db->{t_state}, [ logsource => $state_id ]);
 
 	$state->{id} 		= $state_id ? $state_id : $self->{db}->next_id($db->{t_state});
 	$state->{logsource} 	= $self->{logsource}{id};
@@ -216,7 +221,6 @@ sub save_state {
 	}
 	$state->{players} = Dumper(\@players);
 	$state->{ipaddrs} = Dumper($self->{game}{ipcache});
-#	$state->{ipaddrs} = join("\n", map { "$_=" . $self->{game}{ipcache}{$_} } keys %{$self->{game}{ipcache}} );
 
 	if ($state_id) {
 		$self->{db}->update($db->{t_state}, $state, [ id => $state_id ]);

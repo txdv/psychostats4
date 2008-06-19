@@ -64,11 +64,18 @@ sub _init {
 	$self->{mod} = {};
 #	$self->{mod_roles} = {};
 
+	$self->{holding_weapon} = '';
+
 	return $self;
 }
 
-sub has_mod_tables { 0 }
-
+sub has_mod_tables { 1 }
 sub has_roles { 0 }
+
+# keeps track of what weapon the player is holding
+sub weapon {
+	my ($self, $w) = @_;
+	$self->{holding_weapon} = $w;
+}
 
 1;
