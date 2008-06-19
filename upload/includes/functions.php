@@ -1060,4 +1060,9 @@ function mb_str_split($str, $length = 1) {
 	return $result;
 }
 
+// returns true if the variable given is not empty. Used as a callback function.
+function not_empty($i) {
+	return !empty($i);
+}
+
 ?>

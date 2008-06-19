@@ -266,9 +266,4 @@ function err($msg) {
 	exit();
 }
 
-function not_empty($i) {
-	print "'$i'<br>";
-	return (!empty($i));
-}
-
 ?>

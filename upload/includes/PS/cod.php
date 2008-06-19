@@ -54,6 +54,7 @@ var $CLAN_MODTYPES = array(
 function PS_cod(&$db) {
 	parent::PS($db);
 	$this->CLAN_MAP_MODTYPES = $this->CLAN_MODTYPES;
+	$this->cod_remove_columns = array('headshotkills','headshotkillspct','accuracy');
 }
 
 function worldid_noun($plural = false) {
@@ -66,7 +67,18 @@ function add_map_player_list_mod($map, $setup = array()) {
 	$this->add_map_player_list('touchedhostages', $setup + array('label' => $cms->trans("Most Hostages Touched")) );
 }
 
-// Add or remove columns from maps.php listing
+function index_table_mod(&$table) {
+	global $cms;
+	$table->remove_columns($this->cod_remove_columns);
+	$table->insert_columns(
+		array( 
+			'flagscaptured' => array( 'label' => $cms->trans('Flags'), 'tooltip' => $cms->trans("Flags captured") ), 
+		),
+		'onlinetime',
+		false
+	);
+}
+
 function maps_table_mod(&$table) {
 	global $cms;
 	$table->insert_columns(
@@ -78,6 +90,32 @@ function maps_table_mod(&$table) {
 	);
 	$table->remove_columns('rounds');
 }
+
+function weapons_table_mod(&$table) {
+	$table->remove_columns($this->cod_remove_columns);
+}
+function weapon_players_table_mod(&$table) {
+	$table->remove_columns($this->cod_remove_columns);
+}
+
+function clans_table_mod(&$table) {
+	$table->remove_columns($this->cod_remove_columns);
+}
+
+function clan_weapons_table_mod(&$table) {
+	$table->remove_columns($this->cod_remove_columns);
+}
+function clan_players_table_mod(&$table) {
+	$table->remove_columns($this->cod_remove_columns);
+}
+
+function player_sessions_table_mod(&$table) {
+	$table->remove_columns($this->cod_remove_columns);
+}
+function player_weapons_table_mod(&$table) {
+	$table->remove_columns($this->cod_remove_columns);
+}
+
 
 function map_left_column_mod(&$map, &$theme) {
 	// maps and players have the same stats ...
@@ -110,8 +148,8 @@ function player_left_column_mod(&$plr, &$theme) {
 			'value'	=> array(
 				'pct1'	 	=> $plr['axiskillspct'],
 				'pct2'	 	=> $plr['allieskillspct'],
-				'title1'	=> $plr['axiskills'] . ' ' . $cms->trans('axis') . ' (' . $plr['axiskillspct'] . '%)',
-				'title2'	=> $plr['allieskills'] . ' ' . $cms->trans('ally') . ' (' . $plr['allieskillspct'] . '%)',
+				'title1'	=> commify($plr['axiskills']) . ' ' . $cms->trans('axis') . ' (' . $plr['axiskillspct'] . '%)',
+				'title2'	=> commify($plr['allieskills']) . ' ' . $cms->trans('ally') . ' (' . $plr['allieskillspct'] . '%)',
 				'width'		=> 130
 			)
 		);
@@ -140,8 +178,8 @@ function team_wins($value, $data) {
 	$bar = dual_bar(array(
 		'pct1'	=> $data['axiskillspct'], 
 		'pct2'	=> $data['allieskillspct'],
-		'title1'=> $data['axiskills'] . " " . $cms->trans("Axis Kills") . " (" . $data['axiskillspct'] . "%)",
-		'title2'=> $data['allieskills'] . " " . $cms->trans("Ally Kills") . " (" . $data['allieskillspct'] . "%)",
+		'title1'=> commify($data['axiskills']) . " " . $cms->trans("Axis Kills") . " (" . $data['axiskillspct'] . "%)",
+		'title2'=> commify($data['allieskills']) . " " . $cms->trans("Ally Kills") . " (" . $data['allieskillspct'] . "%)",
 	));
 	return $bar;
 }

@@ -1962,6 +1962,12 @@ function parse_logsource($log, $passwd = false) {
 // geocode lookup of an ip; returns an XML result of data that can be directly used on google maps.
 // $ip can be a single IP address or an array of addresses.
 function ip_lookup($ip) {
+	if (is_array($ip)) {
+		$ip = array_unique(array_filter($ip, 'not_empty'));
+	}
+	if (!$ip) {
+		return '';
+	}
 	$url = $this->conf['theme']['map']['iplookup_url'];
 	if (!$url) return false;
 	if (substr($url,0,4) == 'http') {	// URL LOOKUP

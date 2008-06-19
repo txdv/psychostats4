@@ -84,13 +84,16 @@ if (is_numeric($ip) and $ip > 0) {
 		if ($m['tag'] != 'marker') continue;
 		$set = $m['attributes'];
 		$ip = $set['ip'];
-
-		$set = array_merge($set, $iplist[$ip]);
+		if ($iplist[$ip]) {
+			$set = array_merge($set, $iplist[$ip]);
+		}
 		unset($set['ip'],$set['ipaddr']);
 		$set['onlinetime'] = compacttime($set['onlinetime']);
 //		$set['activity_bar'] = pct_bar(array('pct' => $set['activity'], 'width' => 215, 'title' => "Activity: " . $set['activity'] . "%" ));
 
-		$markers[ $ip ] = $set;
+		if (!empty($set['lat']) and !empty($set['lng'])) {
+			$markers[ $ip ] = $set;
+		}
 	}
 
 	// now, spew out the markers XML
