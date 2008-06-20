@@ -27,6 +27,7 @@ use base qw( PS::Debug );
 
 use Carp;
 use Data::Dumper;
+use DBI;
 
 our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 our $AUTOLOAD;
@@ -614,13 +615,8 @@ sub do {
 	my $cmd = shift;
 	$self->{lastcmd} = $cmd;
 	my $res = $self->{dbh}->do($cmd);
-
-#	if (defined $res) {
-		$self->debug5(join(" ", split(/\s*\015?\012\s*/, $cmd)),20);
-#	} else {
-#		$self->fatal_safe("Error executing DB query:\n$cmd\n" . $self->errstr . "\n--end of error--");
-#	}
-	return defined $res ? int($res) : 0;
+	$self->debug5(join(" ", split(/\s*\015?\012\s*/, $cmd)),20);
+	return $res;
 }
 
 # _expr_* methods are called with the prototype: ($self, $quoted_key, $key, $value)

@@ -274,5 +274,6 @@ sub event_round {
 }
 
 sub has_mod_tables { 1 }
+sub has_roles { 1 }
 
 1;

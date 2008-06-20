@@ -194,6 +194,7 @@ our $_config_cache = {};
 sub new {
 	my ($proto, $plrids, $game) = @_;
 	my $baseclass = ref($proto) || $proto;
+	$plrids ||= {};
 	my $self = {
 		_plrids		=> {},
 		skip_init	=> 0,
@@ -289,8 +290,8 @@ sub _init {
 	$self->{streaks} = {};
 	$self->{pq} = 0;		# player IQ (strength) used in skill calculations
 
-	# don't do any queries or work if skip_init is true ( Game::daily_maxdays )
-	return $self if $self->{skip_init};
+	# don't do any queries or work if we don't have a uniqueid (PS::Game::daily_maxdays)
+	return $self unless $self->{uniqueid};
 
 	$self->{basic} = {};
 	$self->{weapons} = {};

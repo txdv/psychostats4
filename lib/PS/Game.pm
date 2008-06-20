@@ -873,96 +873,6 @@ sub reset_isdead {
 }
 
 =pod
-sub calcskill_kill_alternative {
-	my ($self,$k,$v,$w) = @_;
-	my ($kbonus, $vbonus);
-
-	my $kskill = $k->skill || $self->{baseskill};
-	my $vskill = $v->skill || $self->{baseskill};
-
-	# don't allow player skill to go negative ...
-	$kskill = 1 if $kskill < 1;
-	$vskill = 1 if $vskill < 1;
-
-	if ($kskill > $vskill) {
-		# killer is better than the victim
-		$kbonus = ($kskill + $vskill)**2 / $kskill**2;
-		$vbonus = $kbonus * $vskill / ($vskill + $kskill);
-	} else {
-		# the victim is better than the killer
-		$kbonus = ($vskill + $kskill)**2 / $vskill**2 * $vskill / $kskill;
-		$vbonus = $kbonus * ($vskill + $self->{baseskill}) / ($vskill + $kskill);
-	}
-
-	# do not allow the victim to lose more than X points
-	$vbonus = 10 if $vbonus > 10;
-
-	$vbonus = $vskill if $vbonus > $vskill;
-	$kbonus = $kskill if $kbonus > $kskill;
-
-	# apply weapon weight to skill bonuses
-	my $weight = $w->weight;
-	if ($weight) {
-		$kbonus *= $weight;
-		$vbonus *= $weight;
-	}
-
-	$kskill += $kbonus;
-	$vskill -= $vbonus;
-
-	$k->skill($kskill);
-	$v->skill($vskill);
-}
-
-sub calcskill_kill_default {
-	my ($self,$k,$v,$w) = @_;
-
-	my $kskill = $k->skill || $self->{baseskill};
-	my $vskill = $v->skill || $self->{baseskill};
-
-	my $diff = $kskill - $vskill;					# difference in skill
-	my $prob = 1 / ( 1 + 10 ** ($diff / $self->{baseskill}) );	# find probability of kill
-	my $kadj = $self->{_adj}->[-1] || 100;
-	my $vadj = $self->{_adj}->[-1] || 100;
-	my $kmins = int $k->totaltime / 60;
-	my $vmins = int $v->totaltime / 60;
-	my $idx = 0;
-	foreach my $level (@{$self->{_adj_onlinetime}}) {
-		if ($kmins >= $level) {
-			$kadj = $self->{_adj}->[$idx];
-#			print "level: " . ("\t" x $idx+1) . "$level\n";
-			last;
-		}
-		$idx++;
-	}
-	$idx = 0;
-	foreach my $level (@{$self->{_adj_onlinetime}}) {
-		if ($vmins >= $level) {
-			$vadj = $self->{_adj}->[$idx];
-#			print "level: " . ("\t" x $idx+1) . "$level\n";
-			last;
-		}
-		$idx++;
-	}
-	
-	my $kbonus = $kadj * $prob;
-	my $vbonus = $vadj * $prob;
-
-	my $weight = $w->weight;
-	if (defined $weight and $weight != 0.0 and $weight != 1.0) {
-		$kbonus *= $weight;
-		$vbonus *= $weight;
-	}
-
-	$kskill += $kbonus;
-	$vskill -= $vbonus;
-
-	$k->skill($kskill);
-	$v->skill($vskill);
-}
-=pod
-=cut
-
 use constant 'PI' => 3.1415926;
 use constant 'T'  => 1;
 our $KMAX = 100;
@@ -1034,6 +944,7 @@ sub calcskill_kill_new {
 #	printf "KS: %0.2f, VK: %0.2f, MEAN: %0.7f, VAR: %0.7f, NVAR: %0.7f, kprob: %0.7f (%d plrs)\n", 
 #		$kskill, $vskill, $MEAN, $VARIANCE, $NORMVAR, $kprob, $tot;
 #}
+=cut
 
 # assign bonus points to players
 # ->plrbonus('trigger', 'enactor type', $PLR/LIST, ... )
@@ -1478,20 +1389,25 @@ sub _delete_stale_players {
 	$db->do("DELETE FROM $db->{t_plr_data} WHERE dataid IN (SELECT id FROM deleteids)");
 	$db->truncate('deleteids');
 
-
 	# delete player maps
 	$db->do("INSERT INTO deleteids SELECT dataid FROM $db->{t_plr_maps} WHERE statdate <= $sql_oldest");
 	$db->do("DELETE FROM $db->{t_plr_maps_mod} WHERE dataid IN (SELECT id FROM deleteids)") if $db->{t_plr_maps_mod};
 	$db->do("DELETE FROM $db->{t_plr_maps} WHERE dataid IN (SELECT id FROM deleteids)");
 	$db->truncate('deleteids');
 
-	# delete remaining historical stats 
+	# delete player roles
+	if ($self->has_roles) {
+		$db->do("INSERT INTO deleteids SELECT dataid FROM $db->{t_plr_roles} WHERE statdate <= $sql_oldest");
+		$db->do("DELETE FROM $db->{t_plr_roles_mod} WHERE dataid IN (SELECT id FROM deleteids)") if $db->{t_plr_roles_mod};
+		$db->do("DELETE FROM $db->{t_plr_roles} WHERE dataid IN (SELECT id FROM deleteids)");
+		$db->truncate('deleteids');
+	}
+	
+	# delete remaining historical stats (no 'mod' tables for these)
 	$db->do("DELETE FROM $db->{t_plr_victims} WHERE statdate <= $sql_oldest");
-	$db->do("DELETE FROM $db->{t_plr_roles} WHERE statdate <= $sql_oldest");
 	$db->do("DELETE FROM $db->{t_plr_weapons} WHERE statdate <= $sql_oldest");
 
 	# sessions are stored slightly differently
-#	$db->do("DELETE FROM $db->{t_plr_sessions} WHERE sessionend <= UNIX_TIMESTAMP($sql_oldest)");
 	$db->do("DELETE FROM $db->{t_plr_sessions} WHERE FROM_UNIXTIME(sessionstart,'%Y-%m-%d') <= $sql_oldest");
 
 	# only delete the compiled data if maxdays_exclusive is enabled
@@ -1499,7 +1415,9 @@ sub _delete_stale_players {
 		# Any player in deleteids hasn't played since the oldest date allowed, so get rid of them completely
 		$db->do("INSERT INTO deleteids SELECT plrid FROM $db->{c_plr_data} WHERE lastdate <= $sql_oldest");
 		$db->do("DELETE FROM $db->{t_plr} WHERE plrid IN (SELECT id FROM deleteids)");
-		$db->do("DELETE FROM $db->{t_plr_ids} WHERE plrid IN (SELECT id FROM deleteids)");
+		$db->do("DELETE FROM $db->{t_plr_ids_name} WHERE plrid IN (SELECT id FROM deleteids)");
+		$db->do("DELETE FROM $db->{t_plr_ids_ipaddr} WHERE plrid IN (SELECT id FROM deleteids)");
+		$db->do("DELETE FROM $db->{t_plr_ids_worldid} WHERE plrid IN (SELECT id FROM deleteids)");
 		$db->truncate('deleteids');
 
 		# delete the compiled data. 
@@ -1561,7 +1479,11 @@ sub _delete_stale_roles {
 	# keep track of what stats are being deleted 
 	my $total = $db->do("INSERT INTO roleids SELECT DISTINCT roleid FROM $db->{t_role_data} WHERE statdate <= $sql_oldest");
 
-	$db->do("DELETE FROM $db->{t_role_data} WHERE statdate <= $sql_oldest");
+	# delete basic data
+	$db->do("INSERT INTO deleteids SELECT dataid FROM $db->{t_role_data} WHERE statdate <= $sql_oldest");
+	$db->do("DELETE FROM $db->{t_role_data_mod} WHERE dataid IN (SELECT id FROM deleteids)") if $db->{t_role_data_mod};
+	$db->do("DELETE FROM $db->{t_role_data} WHERE dataid IN (SELECT id FROM deleteids)");
+	$db->truncate('deleteids');
 
 	# only delete the compiled data if maxdays_exclusive is enabled
 	if ($self->{maxdays_exclusive}) {
@@ -1588,6 +1510,7 @@ sub _delete_stale_weapons {
 	# keep track of what stats are being deleted 
 	my $total = $db->do("INSERT INTO weaponids SELECT DISTINCT weaponid FROM $db->{t_weapon_data} WHERE statdate <= $sql_oldest");
 
+	# delete basic data
 	$db->do("DELETE FROM $db->{t_weapon_data} WHERE statdate <= $sql_oldest");
 
 	# only delete the compiled data if maxdays_exclusive is enabled
@@ -1683,6 +1606,9 @@ sub _update_player_stats {
 
 	$db->commit;
 
+	# remove and update clans now that players were updated
+	
+
 	return $total;
 }
 
@@ -1745,6 +1671,7 @@ sub _update_player_roles {
 	$db->begin;
 
 	$cmd  = "SELECT plrid,roleid,MIN(statdate) firstdate, MAX(statdate) lastdate,$fields FROM $db->{t_plr_roles} ";
+	$cmd .=	"LEFT JOIN $db->{t_plr_roles_mod} USING (dataid) " if $db->{t_plr_roles_mod};
 	$cmd .= "WHERE plrid IN (SELECT id FROM plrids) ";
 	$cmd .= "GROUP BY plrid,roleid ";
 	if (!($sth = $db->query($cmd))) {
@@ -1860,7 +1787,6 @@ sub _update_map_stats {
 
 	$db->begin;
 
-	# if exclusive update stats to remove old data
 	$cmd  = "SELECT mapid, MIN(statdate) firstdate, MAX(statdate) lastdate, $fields FROM $db->{t_map_data} data ";
 	$cmd .=	"LEFT JOIN $db->{t_map_data_mod} USING (dataid) " if $db->{t_map_data_mod};
 	$cmd .= "WHERE mapid IN (SELECT id FROM mapids) ";
@@ -1900,7 +1826,6 @@ sub _update_weapon_stats {
 
 	$db->begin;
 
-	# if exclusive update stats to remove old data
 	$cmd  = "SELECT weaponid, MIN(statdate) firstdate, MAX(statdate) lastdate, $fields FROM $db->{t_weapon_data} data ";
 	$cmd .= "WHERE weaponid IN (SELECT id FROM weaponids) ";
 	$cmd .= "GROUP BY weaponid ";
@@ -1941,6 +1866,7 @@ sub _update_role_stats {
 
 	# if exclusive update stats to remove old data
 	$cmd  = "SELECT roleid, MIN(statdate) firstdate, MAX(statdate) lastdate, $fields FROM $db->{t_role_data} data ";
+	$cmd .=	"LEFT JOIN $db->{t_role_data_mod} USING (dataid) " if $db->{t_role_data_mod};
 	$cmd .= "WHERE roleid IN (SELECT id FROM roleids) ";
 	$cmd .= "GROUP BY roleid ";
 	if (!($sth = $db->query($cmd))) {
@@ -1974,21 +1900,28 @@ sub daily_maxdays {
 	));
 
 	# determine the oldest date to delete
-#	my $oldest = strftime("%Y-%m-%d", localtime(time-60*60*24*($self->{maxdays}+1)));
-# I think it'll be better to use the newest date in the database instead of the current time to determine where to trim stats.
-# This way the database won't lose stats if it stops getting new logs for a period of time.
-	my ($oldest) = $db->get_list("SELECT MAX(statdate) - INTERVAL $self->{maxdays} DAY FROM $db->{t_plr_data}");
+	my $oldest = strftime("%Y-%m-%d", localtime(time-60*60*24*($self->{maxdays}+1)));
+	# I think it'll be better to use the newest date in the database instead
+	# of the current time to determine where to trim stats. This way the
+	# database won't lose stats if it stops getting new logs for a period of
+	# time.
+	#my ($oldest) = $db->get_list("SELECT MAX(statdate) - INTERVAL $self->{maxdays} DAY FROM $db->{t_plr_data}");
 	goto MAXDAYS_DONE unless $oldest;	# will be null if there's no historical data available
 	my $sql_oldest = $db->quote($oldest);
 
 	$::ERR->verbose("Deleting stale stats older than $oldest ...");
 
 	# first create temporary tables to store ids (dont want to use potentially huge arrays in memory)
-	$db->do("CREATE TEMPORARY TABLE deleteids (id INT UNSIGNED PRIMARY KEY)");
-	$db->do("CREATE TEMPORARY TABLE plrids (id INT UNSIGNED PRIMARY KEY)");
-	$db->do("CREATE TEMPORARY TABLE mapids (id INT UNSIGNED PRIMARY KEY)");
-	$db->do("CREATE TEMPORARY TABLE roleids (id INT UNSIGNED PRIMARY KEY)");
-	$db->do("CREATE TEMPORARY TABLE weaponids (id INT UNSIGNED PRIMARY KEY)");
+	$ok = 1;
+	$ok = ($ok and $db->do("CREATE TEMPORARY TABLE deleteids (id INT UNSIGNED PRIMARY KEY)"));
+	$ok = ($ok and $db->do("CREATE TEMPORARY TABLE plrids (id INT UNSIGNED PRIMARY KEY)"));
+	$ok = ($ok and $db->do("CREATE TEMPORARY TABLE mapids (id INT UNSIGNED PRIMARY KEY)"));
+	$ok = ($ok and $db->do("CREATE TEMPORARY TABLE roleids (id INT UNSIGNED PRIMARY KEY)"));
+	$ok = ($ok and $db->do("CREATE TEMPORARY TABLE weaponids (id INT UNSIGNED PRIMARY KEY)"));
+	# temporary tables could not be created
+	if (!$ok) {
+		$::ERR->fatal("Error creating temporary tables for maxdays process: " . $db->errstr);
+	}
 
 	$t{plrs} = $total = $self->_delete_stale_players($oldest);
 	$::ERR->info(sprintf("%s stale players deleted!", commify($total))) if $total;
@@ -2100,11 +2033,49 @@ sub _prepare_row {
 	}
 }
 
-# deletes clans from the database. Does not delete the profiles. Sets all player.clanid to 0. 
-sub delete_clans {
+# rescans for player -> clan relationships and rebuilds the clan database
+sub rescan_clans {
 	my $self = shift;
 	my $db = $self->{db};
-	# NOP
+	my $total = $db->count($db->{t_plr}, [ allowrank => 1, clanid => 0 ]);
+	$::ERR->info("$total ranked players will be scanned.");
+
+	my $clanid;
+	my $cur = 0;
+	my $clans = {};
+	my $members = 0;
+	my $time = time - 1;
+	my $sth = $db->query(
+		"SELECT p.plrid,pp.uniqueid,pp.name " .
+		"FROM $db->{t_plr} p, $db->{t_plr_profile} pp " .
+		"WHERE p.uniqueid=pp.uniqueid and p.allowrank=1 and p.clanid=0"
+	);
+	while (my ($plrid,$uniqueid,$name) = $sth->fetchrow_array) {
+		local $| = 1;	# do not buffer STDOUT
+		$cur++;
+		if ($time != time or $cur == $total) { # only update every second
+			$time = time;
+			$::ERR->verbose(sprintf("Scanning player %d / %d [%6.2f%%]\r", $cur, $total, $cur / $total * 100), 1);
+		}
+		$clanid = $self->scan_for_clantag($name) || next;
+		$clans->{$clanid}++;
+		$members++;
+		$db->update($db->{t_plr}, { clanid => $clanid }, [ plrid => $plrid ]);
+	}
+	$::ERR->verbose("");
+	$::ERR->info(sprintf("%d clans with %d members found.", scalar keys %$clans, $members));
+
+	return ($clans, $members);
+}
+
+# delete's all clans and removes player relationships to them.
+sub delete_clans {
+	my $self = shift;
+	my $profile_too = shift;
+	my $db = $self->{db};
+	$db->query("UPDATE $db->{t_plr} SET clanid=0 WHERE clanid <> 0");
+	$db->truncate($db->{t_clan});
+	$db->truncate($db->{t_clan_profile}) if $profile_too;
 }
 
 # resets all stats in the database. USE WITH CAUTION!
@@ -2178,6 +2149,7 @@ sub logsort {}
 sub logcompare { $_[1] cmp $_[2] }
 
 sub has_mod_tables { 0 }
+sub has_roles { 0 }
 
 sub event_ignore { }
 
