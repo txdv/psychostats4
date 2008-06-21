@@ -30,8 +30,10 @@ our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 our $TYPES = {
 	alphakills		=> '+',
 	bravokills		=> '+',
+	
 	joinedalpha		=> '+',
 	joinedbravo		=> '+',
+	
 	alphawon		=> '+',
 	alphawonpct		=> [ percent2 => qw( alphawon bravowon ) ],
 	alphalost		=> '+',
@@ -40,7 +42,7 @@ our $TYPES = {
 	bravolost		=> '+',
 	
 	flagscaptured		=> '+',
-	flagsreturned		=> '+',
+	flagsdefended		=> '+',
 
 	bravoflagscaptured	=> '+',
 	bravoflagscapturedpct	=> [ percent => qw( bravoflagscaptured flagscaptured ) ],

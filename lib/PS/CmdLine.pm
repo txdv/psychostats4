@@ -246,7 +246,7 @@ stats.pl -daily [daily options]
 
 =over 4
 
-=item B<-config> <filename>
+=item B<-config> <filename>, -noconfig
 
 Specifies an alternate filename to load the required database settings 
 for PsychoStats. By default the stats.cfg file is loaded.
@@ -263,6 +263,15 @@ The daily process performs several intensive stats updates that can not be
 done in 'real-time'. This includes calculating player ranks, removing stale
 clans, applying skill decay to players and removing old stats that are older
 than the current maxdays setting.
+
+=item B<-dbcompress> [0,1]
+
+Enables or disables client to server compression when talking to the mysql
+server. This should usually be disabled for databases that are local but can
+be enabled for remote database for a possible performance gain. The trade off
+is while compression will generally decrease the amount of data transfered
+between the server, more CPU is required by both sides and may hinder
+performance.
 
 =item B<-dbtype> [mysql]
 

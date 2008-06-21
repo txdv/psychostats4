@@ -32,8 +32,10 @@ our $TYPES = {
 	bravokills		=> '+',
 	alphadeaths		=> '+',
 	bravodeaths		=> '+',
+	
 	joinedalpha		=> '+',
 	joinedbravo		=> '+',
+	
 	alphawon		=> '+',
 	alphawonpct		=> [ percent2 => qw( alphawon bravowon ) ],
 	alphalost		=> '+',
@@ -42,7 +44,7 @@ our $TYPES = {
 	bravolost		=> '+',
 	
 	flagscaptured		=> '+',
-	flagsreturned		=> '+',
+	flagsdefended		=> '+',
 
 	bravoflagscaptured	=> '+',
 	bravoflagscapturedpct	=> [ percent => qw( bravoflagscaptured flagscaptured ) ],

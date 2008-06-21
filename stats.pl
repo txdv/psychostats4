@@ -247,35 +247,18 @@ if ($opt->get('unknown')) {
 # ---------------------------------------------------------------------------------------------------------------
 # rescan clantags
 if (defined $opt->get('scanclantags')) {
+	my $game = new PS::Game($conf, $db);
 	my $all = lc $opt->get('scanclantags') eq 'all' ? 1 : 0;
-	# remove all current clans and player relationships (profiles remain untouched)
 	$::ERR->info("Rescanning clantags for ranked players.");
 	if ($all) {
 		$::ERR->info("Removing ALL player to clan relationships.");
-		$db->query("UPDATE $db->{t_plr} SET clanid=0 WHERE clanid != 0");
-		$::ERR->info("Deleting all clans (profiles will remain intact).");
-		$db->query("DELETE FROM $db->{t_clan}");
+		$::ERR->info("All clans will be deleted except profiles.");
+		$game->delete_clans(0);
 	}
 
-	my $total = $db->count($db->{t_plr}, [ allowrank => 1, clanid => 0 ]);
-	$::ERR->info("$total ranked players will be scanned.");
+	$game->rescan_clans;
 
-	my $game = new PS::Game($conf, $db);
-	my $clanid;
-	my $cur = 1;
-	my $clans = {};
-	my $members = 0;
-	my $plrsth = $db->query("SELECT p.plrid,pp.uniqueid,pp.name FROM $db->{t_plr} p, $db->{t_plr_profile} pp WHERE p.uniqueid=pp.uniqueid and p.allowrank=1 and p.clanid=0");
-	while (my ($plrid,$uniqueid,$name) = $plrsth->fetchrow_array) {
-		$::ERR->verbose(sprintf("%6.2f%% completed.\r", $cur++ / $total * 100), 1);
-		$clanid = $game->scan_for_clantag($name) || next;
-		$clans->{$clanid}++;
-		$members++;
-		$db->update($db->{t_plr}, { clanid => $clanid }, [ plrid => $plrid ]);
-	}
-	$::ERR->verbose("");
-	$::ERR->info(sprintf("%d clans with %d members found.", scalar keys %$clans, $members));
-
+	# force a daily 'clans' update to verify what clans rank
 	$opt->set('daily', ($opt->get('daily') || '') . ',clans');
 }
 
@@ -363,26 +346,6 @@ sub check_daily {
 	my ($conf) = @_;
 	my @dodaily = ();
 	do_daily(join(',', @PS::Game::DAILY));
-=pod
-	$conf->reload;
-	foreach my $v (@PS::Game::DAILY) {
-		my $lastupdate = $conf->getinfo("daily_$v.lastupdate") || 0;
-		my $when = $conf->get_main("auto.update_$v");
-		next unless $when;
-		my $offset = (time - $lastupdate) / 60;		# number of minutes since last update
-		if ($lastupdate) {
-			push(@dodaily, $v) if
-				($when eq 'all') ||
-				($when eq 'hourly'  and $offset >= 60) || 
-				($when eq 'daily'   and $offset >= 60*24) || 
-				($when eq 'weekly'  and $offset >= 60*24*6) || 
-				($when eq 'monthly' and $offset >= 60*24*30);
-		} else {
-			push(@dodaily, $v);
-		}
-	}
-	do_daily(join(',',@dodaily)) if @dodaily;
-=cut
 }
 
 sub do_daily {

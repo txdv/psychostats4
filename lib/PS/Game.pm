@@ -1381,7 +1381,8 @@ sub _delete_stale_players {
 	$db->begin;
 
 	# keep track of what stats are being deleted 
-	my $total = $db->do("INSERT INTO plrids SELECT DISTINCT plrid FROM $db->{t_plr_data} WHERE statdate <= $sql_oldest");
+	$db->do("INSERT INTO plrids SELECT DISTINCT plrid FROM $db->{t_plr_data} WHERE statdate <= $sql_oldest");
+	my $total = $db->count('plrids');
 
 	# delete basic data
 	$db->do("INSERT INTO deleteids SELECT dataid FROM $db->{t_plr_data} WHERE statdate <= $sql_oldest");
@@ -1446,8 +1447,9 @@ sub _delete_stale_maps {
 	$db->begin;
 
 	# keep track of what stats are being deleted 
-	my $total = $db->do("INSERT INTO mapids SELECT DISTINCT mapid FROM $db->{t_map_data} WHERE statdate <= $sql_oldest");
-
+	$db->do("INSERT INTO mapids SELECT DISTINCT mapid FROM $db->{t_map_data} WHERE statdate <= $sql_oldest");
+	my $total = $db->count('mapids');
+	
 	# delete basic data
 	$db->do("INSERT INTO deleteids SELECT dataid FROM $db->{t_map_data} WHERE statdate <= $sql_oldest");
 	$db->do("DELETE FROM $db->{t_map_data_mod} WHERE dataid IN (SELECT id FROM deleteids)") if $db->{t_map_data_mod};
@@ -1477,8 +1479,9 @@ sub _delete_stale_roles {
 	$db->begin;
 
 	# keep track of what stats are being deleted 
-	my $total = $db->do("INSERT INTO roleids SELECT DISTINCT roleid FROM $db->{t_role_data} WHERE statdate <= $sql_oldest");
-
+	$db->do("INSERT INTO roleids SELECT DISTINCT roleid FROM $db->{t_role_data} WHERE statdate <= $sql_oldest");
+	my $total = $db->count('roleids');
+	
 	# delete basic data
 	$db->do("INSERT INTO deleteids SELECT dataid FROM $db->{t_role_data} WHERE statdate <= $sql_oldest");
 	$db->do("DELETE FROM $db->{t_role_data_mod} WHERE dataid IN (SELECT id FROM deleteids)") if $db->{t_role_data_mod};
@@ -1508,7 +1511,8 @@ sub _delete_stale_weapons {
 	$db->begin;
 
 	# keep track of what stats are being deleted 
-	my $total = $db->do("INSERT INTO weaponids SELECT DISTINCT weaponid FROM $db->{t_weapon_data} WHERE statdate <= $sql_oldest");
+	$db->do("INSERT INTO weaponids SELECT DISTINCT weaponid FROM $db->{t_weapon_data} WHERE statdate <= $sql_oldest");
+	my $total = $db->count('weaponids');
 
 	# delete basic data
 	$db->do("DELETE FROM $db->{t_weapon_data} WHERE statdate <= $sql_oldest");
@@ -1911,6 +1915,9 @@ sub daily_maxdays {
 
 	$::ERR->verbose("Deleting stale stats older than $oldest ...");
 
+	# delete the temporary tables if they exist
+	$db->droptable($_) for (qw( deleteids plrids mapids roleids weaponids ));
+
 	# first create temporary tables to store ids (dont want to use potentially huge arrays in memory)
 	$ok = 1;
 	$ok = ($ok and $db->do("CREATE TEMPORARY TABLE deleteids (id INT UNSIGNED PRIMARY KEY)"));
@@ -2007,6 +2014,8 @@ sub daily_maxdays {
 	}
 
 MAXDAYS_DONE:
+	$db->droptable($_) for (qw( deleteids plrids mapids roleids weaponids ));
+
 	$self->{conf}->setinfo('daily_maxdays.lastupdate', time);
 	$::ERR->info("Daily process completed: 'maxdays' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
 }
