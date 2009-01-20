@@ -36,9 +36,17 @@ sub init {
 
 	# setup our database connection
 	if (!$self->{dbh}) {
+		my $socket;
+		if ($self->{dbhost} =~ m|^/\S|) {
+			# if the host looks like an absolute path then assume
+			# its a Socket and use it.
+			$socket = $self->{dbhost};
+			$self->{dbhost} = 'localhost';			
+		}
 		$self->{dsn} = 'DBI:' . $self->{dbtype} . ':database=' . $self->{dbname};
 		$self->{dsn} .= ';host=' . $self->{dbhost} if defined $self->{dbhost};
 		$self->{dsn} .= ';port=' . $self->{dbport} if defined $self->{dbport};
+		$self->{dsn} .= ';mysql_socket=' . $socket if defined $socket;
 		$self->{dsn} .= ';mysql_compression=' . $self->{dbcompress} if $self->{dbcompress};
 		#$self->{dsn} .= ';' . $self->{dbopts} if defined $self->{dbopts};
 		$self->connect;
