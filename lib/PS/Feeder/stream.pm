@@ -31,6 +31,7 @@ use POSIX;
 use IO::Socket::INET;
 use IO::Select;
 use Time::Local;
+use List::Util qw( first );
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
@@ -391,7 +392,7 @@ sub allowed {
 			if (!defined $acl->{ports}) {
 				# if no ports are defined then allow all
 				$matched = 1;
-			} elsif (grep { $_ == $port } @{$acl->{ports}}) {
+			} elsif (first { $_ == $port } @{$acl->{ports}}) {
 				# must match one of the ports configured
 				$matched = 1;
 			}

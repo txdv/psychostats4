@@ -533,7 +533,8 @@ sub save_stats {
 
 			# find out if a compiled row exists already...
 			$compiled = $_cache->{$cacheid}
-				|| $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid}, $id);
+				|| ($_cache->{$cacheid} =
+				    $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid}, $id));
 
 			if ($compiled) {
 				# UPDATE the existing row
