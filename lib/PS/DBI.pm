@@ -74,7 +74,7 @@ sub new {
 		heatmaps
 		geoip_cc geoip_ip
 		map map_data map_hourly map_statial
-		plr plr_aliases plr_bans plr_data
+		plr plr_aliases plr_bans plr_chat plr_data
 		plr_ids_ipaddr plr_ids_name plr_ids_guid
 		plr_maps plr_profile plr_roles plr_sessions
 		plr_victims plr_weapons
@@ -114,13 +114,13 @@ sub new {
 	# Note: Creating constant subs for table names turned out to be a bad
 	# idea. It's much easier to reference tables by a hash element so they
 	# can be interpolated into strings more easily.
-	if ($code) {
-		#print $code;
-		eval $code;
-		if ($@) {
-			$self->fatal_safe("Error creating table name subs!");
-		}
-	}
+	#if ($code) {
+	#	#print $code;
+	#	eval $code;
+	#	if ($@) {
+	#		$self->fatal_safe("Error creating table name subs!");
+	#	}
+	#}
 	
 	return $self->init;
 }
@@ -250,9 +250,9 @@ sub prepare {
 	my $named = defined $cmd;
 	my $exists;
 	
-	# if $cmd is undefined then we're preparing an unnamed statement and
-	# we won't be saving it for future use, instead the caller will use
-	# the returned statement handle directly.
+	# if $cmd is undefined then we're preparing an unnamed statement and we
+	# won't be saving it for future use, instead the caller will use the
+	# returned statement handle directly.
 	$cmd = $name if !$named;
 	$exists = $named ? (exists $self->{prepared}{$name} ? $self->{prepared}{$name} : undef) : undef;
 

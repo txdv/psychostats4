@@ -43,9 +43,8 @@ use constant {
 
 # Global fields hash that determines what can be saved in the DB. Fields are
 # created at COMPILE TIME.
-our ($CALC, $FIELDS, $ALL, $ORDERED);
+our ($FIELDS, $HISTORY, $ALL, $ORDERED);
 BEGIN {
-	$CALC = {};
 	$FIELDS = {};
 	$FIELDS->{DATA} = { data => {
 		(map { $_ => '+' } qw(
@@ -58,6 +57,9 @@ BEGIN {
 		kill_streak	=> '>',
 		death_streak	=> '>',
 	}};
+	$HISTORY->{DATA} = { data => {}
+		
+	};
 	#$CALC->{DATA} = {
 	#	kills_per_death		=> [ ratio 		=> qw( kills deaths ) 		],
 	#	kills_per_minute	=> [ ratio_minutes 	=> qw( kills online_time ) 	],
@@ -146,6 +148,7 @@ sub new {
 		victims		=> {}, 		# victim stats
 		#history	=> {},		# historical stats, keyed on date
 
+		#chat		=> [],		# track chat messages, if enabled in config
 		#track		=> {}, 		# track in-memory information (not saved to DB)
 	};
 	
@@ -212,9 +215,15 @@ sub freeze {
 	# If the player does not have a 'plrid' yet then we should freeze the
 	# stats collected so far, in hopes that they can be saved next time.
 	if (!$state->{plrid}) {
+		# copy hashes
 		$state->{$_} = deep_copy($self->{$_}) for
 			grep { defined $self->{$_} and scalar keys %{$self->{$_}} }
 			qw( ids data weapons maps roles victims track );
+
+		# copy arrays
+		$state->{$_} = deep_copy($self->{$_}) for
+				grep { defined $self->{$_} and @{$self->{$_}} > 0 }
+				qw( chat );
 	}
 	
 	return $state;
@@ -223,14 +232,15 @@ sub freeze {
 # unfreezes a previously frozen plr hash into a new PS::Plr instance.
 sub unfreeze {
 	my ($class, $state) = @_;
+	$class = ref $class if ref $class;
 	return unless ref $state eq 'HASH';
 	my $plr = $class->new($state, @$state{qw( gametype modtype timestamp )});
 	
 	$plr->{$_} = $state->{$_} for qw( plrid firstseen role skill dead );
 
 	$plr->{$_} = deep_copy($state->{$_}) for
-		grep { defined $state->{$_} and scalar keys %{$state->{$_}} }
-		qw( ids data weapons maps roles victims track );
+		grep { defined $state->{$_} }
+		qw( ids data weapons maps roles victims chat track );
 
 	return $plr;
 }
@@ -291,6 +301,12 @@ sub save {
 	}
 	$self->{ids} = {};	# reset plr_ids in memory
 
+	# NEXT: Save player chat messages, if enabled.
+	if ($self->{chat}) {
+		$self->save_plr_chat($self->{chat});
+		$self->trim_plr_chat;
+	}
+
 	# don't save any stats if the player doesn't have a timestamp.
 	return unless $self->{timestamp};
 
@@ -319,23 +335,31 @@ sub save {
 }
 
 # Quick save any stats that are pending.
-# This will only save basic stats (kills, deaths, etc).
-sub quicksave {
+# This will only save basic stats (kills, deaths, etc). This allows for a quick
+# saving of basic stats to be seen in-game or online w/o waiting for the
+# player to fully disconnect.
+sub quick_save {
 	my ($self) = @_;
-	# force a normal save if the player has no plrid.
-	return $self->save unless $self->{plrid};
 	# don't save if we don't have a timestamp
 	return unless $self->{timestamp};
+
+	# force a normal save if the player has no plrid.
+	return $self->save unless $self->{plrid};
 	
 	# save stats only, don't bother with other stuff...
 	my ($d, $m, $y) = (gmtime($self->{timestamp}))[3,4,5];
 	my $statdate = sprintf('%04u-%02u-%02u', $y+1900, $m+1, $d);
 
-	#warn "Quick saving $self == " . (join(',', keys %{$self->{data}})) . "\n";
-	#$self->save_data($statdate);
+	# calculate the current online time for this player
+	$self->{data}{online_time} = $self->onlinetime;
+
+	$self->save_stats($statdate, 'data');
 	
 	# reset in-memory stats that were saved
 	%{$self->{$_}} = () for qw( data );
+
+	# reset the timer start since we've calculated the online time above.
+	$self->{timestart} = $self->{timestamp};
 }
 
 my $_data_dataids = {};
@@ -423,20 +447,28 @@ sub _save_data {
 }
 
 # Save a set of player stats (maps, roles, weapons, victims)
-my $_cache = {};
+my $_cache = {};		# helps reduce the number of SELECT's we have to do
+my $_cache_max = 1024 * 2;	# max entries allowed in cache before its reset (power of 2)
+keys(%$_cache) = $_cache_max;	# preset hash bucket size for efficiency
 sub save_stats {
 	my ($self, $statdate, $stats_key, $field_key) = @_;
 	my $list = $self->{$stats_key} || return undef;
 	my $tbl = sprintf('plr_%s_%s', $stats_key, $self->{type});	# ie: plr_data_halflife_cstrike
 	my ($cmd, $history, $compiled, @bind, @updates);
 	$field_key ||= uc $stats_key;
-	
+
+	# don't allow the cache to consume a ton of memory
+	%$_cache = () if keys %$_cache >= $_cache_max;
+
 	if ($stats_key eq 'data') {
 		# SAVE COMPILED STATS
 		
 		# find out if a compiled row exists already...
+		# The _cache saves us a SELECT query if it trues true. The
+		# cache must be pruned often to reduce memory consumption.
 		$compiled = $_cache->{$stats_key . '-' . $self->{plrid}}
-			|| $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid});
+			|| ($_cache->{$stats_key . '-' . $self->{plrid}} =
+			    $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid}));
 
 		if ($compiled) {
 			# UPDATE an existing row
@@ -467,7 +499,7 @@ sub save_stats {
 			# INSERT a new row
 			@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
 			$self->db->execute('insert_c' . $tbl, $self->{plrid}, @bind);
-			$_cache->{$self->{plrid}} = 1;
+			$_cache->{$stats_key . '-' . $self->{plrid}} = 1;
 
 			# Update the 'lastseen' column in ps_plr since it'll
 			# almost always be different from firstseen
@@ -578,6 +610,47 @@ sub save_stats {
 		}
 	}
 =cut
+}
+
+# Save "plr_chat" messages. 1 or more messages can be saved at the same time.
+sub save_plr_chat {
+	my ($self, $messages) = @_;
+	my ($st, @bind);
+	return unless $self->{plrid} and defined $messages and @$messages;
+	# Build an optimized insert state that inserts 1..N messages with a
+	# single query. The statement is cached so its only prepared once.
+	if (!defined($st = $self->db->prepared('insert_plr_chat_' . @$messages))) {
+		my $cmd = 'INSERT INTO t_plr_chat VALUES ';
+		$cmd .= '(?,?,?,?,?,?),' x @$messages;
+		$cmd = substr($cmd,0,-1);	# remove trailing comma
+		$st = $self->db->prepare('insert_plr_chat_' . @$messages, $cmd);
+	}
+	
+	foreach my $m (@$messages) {
+		push(@bind, $self->{plrid}, map { $m->{$_} } qw( timestamp message team team_only dead ));
+	}
+	$st->execute(@bind);
+}
+
+# trim the player chat messages to the configured limit.
+sub trim_plr_chat {
+	my ($self) = @_;
+	my ($st, $total);
+	my $max = $self->conf->main->plr_chat_max || return;
+	
+	if (!$self->db->prepared('total_plr_chat')) {
+		$self->db->prepare('total_plr_chat', 'SELECT COUNT(*) FROM t_plr_chat WHERE plrid=?');
+	}
+	$total = $self->db->execute_selectcol('total_plr_chat', $self->{plrid});
+	return unless $total > $max;
+
+	if (!defined($st = $self->db->prepared('trim_plr_chat'))) {
+		# MYSQL specific
+		$st = $self->db->prepare('trim_plr_chat',
+			'DELETE FROM t_plr_chat WHERE plrid=? ORDER BY timestamp LIMIT ?'
+		);
+	}
+	$st->execute($self->{plrid}, $total - $max);
 }
 
 # save "plr_plr_ids" usage.
@@ -834,9 +907,32 @@ sub action_attacked {
 # The player changed their name
 sub action_changed_name {
 	my ($self, $name, $props) = @_;
-	;;; $self->debug5("$self changed name to $name", 0);
+	#;;; $self->debug5("$self changed name to $name", 0);
 	$self->timestamp($props->{timestamp});
 	$self->name($name);
+}
+
+# The player said something
+sub action_chat {
+	my ($self, $msg, $teamonly, $props) = @_;
+	my $max = ($self->conf->main->plr_chat_max || 1) - 1;
+	$self->timestamp($props->{timestamp});
+
+	$self->{chat} ||= [];
+	# add the new message to the FRONT of the array, so its easier to
+	# shrink the array if its too large by lobing off the oldest ones.
+	unshift(@{$self->{chat}}, {
+		timestamp 	=> $props->{timestamp},
+		message 	=> $msg,
+		team 		=> $self->team || undef,
+		team_only 	=> $teamonly ? 0 : 1,
+		dead 		=> $props->{dead} ? 1 : 0
+	});
+	
+	if (@{$self->{chat}} > $max) {
+		# reduce the size of the array to the max
+		$#{@{$self->{chat}}} = $max;
+	}
 }
 
 # The player connected to the server. This doesn't always mean the player is
@@ -1166,19 +1262,19 @@ sub FIELDS {
 }
 
 # Package method to return a $CALC hash for database columns
-sub CALC {
-	my ($self, $rootkey) = @_;
-	my $group = ($self =~ /^PS::Plr::(.+)/)[0];
-	my $root = $CALC;
-	$group =~ s/::/_/g;
-	if ($rootkey) {
-		$rootkey =~ s/::/_/g;
-		$CALC->{$rootkey} ||= {};
-		$root = $CALC->{$rootkey};
-		$root->{$group} ||= {};
-	}
-	return $root;
-}
+#sub CALC {
+#	my ($self, $rootkey) = @_;
+#	my $group = ($self =~ /^PS::Plr::(.+)/)[0];
+#	my $root = $CALC;
+#	$group =~ s/::/_/g;
+#	if ($rootkey) {
+#		$rootkey =~ s/::/_/g;
+#		$CALC->{$rootkey} ||= {};
+#		$root = $CALC->{$rootkey};
+#		$root->{$group} ||= {};
+#	}
+#	return $root;
+#}
 
 # Package method. 
 # Prepares some SQL statements for use by all objects of this class to speed

@@ -260,7 +260,7 @@ sub init {
 	$self->{_prevbytes} = 0;
 	$self->{_offsetbytes} = 0;
 	
-	$self->{_initialized} = 1;
+	$self->{_iniized} = 1;
 
 	return 1;
 }
@@ -302,7 +302,8 @@ sub echo_processing {
 		my $bps = $self->bytes_per_second;
 		my $eta = '';
 		if ($bps) {
-			$eta = '; ' . compacttime(($self->{_filesize} - $self->{_lastprint_bytes}) / $bps);
+			#$eta = '; ' . compacttime(($self->{_filesize} - $self->{_lastprint_bytes}) / $bps);
+			$eta = '; ' . sprintf('%d', ($self->{_filesize} - $self->{_lastprint_bytes}) / $bps) . ' secs remaining';
 		}
 		$self->verbose("Processing $self->{_curlog} (" . $self->lines_per_second . " lps / " .
 			       $self->bytes_per_second(1) . ") [" . $self->percent_complete . "%$eta]"

@@ -162,17 +162,23 @@ sub save {
 	%{$self->{data}} = ();
 }
 
-my $_cache = {};
+my $_cache = {};		# helps reduce the number of SELECT's we have to do
+my $_cache_max = 256;		# max entries allowed in cache before its reset (power of 2)
+keys(%$_cache) = $_cache_max;	# preset hash bucket size for efficiency
 sub save_stats {
 	my ($self, $statdate) = @_;
 	my $tbl = sprintf('weapon_data_%s', $self->{type});
 	my ($cmd, $history, $compiled, @bind, @updates);
+
+	# don't allow the cache to consume a ton of memory
+	%$_cache = () if keys %$_cache >= $_cache_max;
 	
 	# SAVE COMPILED STATS
 	
 	# find out if a compiled row exists already...
 	$compiled = $_cache->{'data-' . $self->{weaponid}}
-		|| $self->db->execute_selectcol('find_c' . $tbl, $self->{weaponid});
+		|| ($_cache->{'data-' . $self->{weaponid}} =
+		    $self->db->execute_selectcol('find_c' . $tbl, $self->{weaponid}));
 
 	if ($compiled) {
 		# UPDATE an existing row

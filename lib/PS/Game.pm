@@ -945,20 +945,23 @@ sub restore_state {
 	$state = $str ? unserialize($str) : {};
 	
 	if (ref $state) {
+		# correct some 'side-effects' of the serialize() process,
+		# some arrays are serialized as hashes. We must fix that.
 		foreach my $server (keys %$state) {
 			# convert player hash into an array
-			# (side effect of of the serialize function)
 			if (ref $state->{$server}{players} eq 'HASH') {
 				$state->{$server}{players} = [ values %{$state->{$server}{players}} ];
 			}
 
-			# convert player 'ids' hash into an array
-			# (side effect of of the serialize function)
+			# convert player 'ids' hashes into arrays
 			foreach my $plr (@{$state->{$server}{players}}) {
 				if ($plr->{ids}) {
 					foreach my $var (keys %{$plr->{ids}}) {
 						foreach my $key (keys %{$plr->{ids}{$var}}) {
-							$plr->{ids}{$var}{$key} = [ map { $plr->{ids}{$var}{$key}{$_} } sort keys %{$plr->{ids}{$var}{$key}} ];
+							$plr->{ids}{$var}{$key} = [
+								map { $plr->{ids}{$var}{$key}{$_} }
+								sort keys %{$plr->{ids}{$var}{$key}}
+							];
 						}
 					}
 				}

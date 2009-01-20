@@ -102,7 +102,7 @@ BEGIN { # do checks for required modules
 	}
 }
 
-use util qw( compacttime print_r abbrnum );
+use util qw( compacttime print_r abbrnum commify );
 use PS::SourceFilter;
 use PS::CmdLine;
 use PS::DBI;
@@ -137,10 +137,11 @@ my ($opt, $dbconf, $db, $conf);
 # verbose tracking/progress variables
 my $starttime = time;
 my $total_logs = 0;
-my $total_lines = 0;
+my $total_events = 0;
 
 eval {
-	# I don't think this actually does anything useful
+	# I don't think this actually does anything useful, need to research
+	# this a bit more...
 	binmode(STDOUT, ":utf8");
 	binmode(STDERR, ":utf8");
 };
@@ -328,7 +329,7 @@ sub process_streams {
 	my $feeds = {};
 	
 	# setup some init parameters for the feeders (generic)
-	$args{verbose}	= $opt->verbose && !$opt->quiet;
+	$args{verbose}	= ($opt->verbose && !$opt->quiet);
 	$args{maxlogs}	= $opt->maxlogs;
 	$args{maxlines}	= $opt->maxlines;
 
@@ -380,6 +381,12 @@ sub process_streams {
 			
 			# process the game event for the server
 			$games->{$srv}->event($ev, $feed);
+			++$total_events;
+
+			#if ($feed->curlog ne $last_log) {
+			#	$last_log = $feed->curlog;
+			#	++$total_logs;
+			#}
 			
 			# if ^C was pressed, stop processing.
 			last if $GRACEFUL_EXIT > 0;
@@ -388,6 +395,7 @@ sub process_streams {
 
 		# yield the CPU if no events occured, this prevents us from
 		# taking up 100% CPU when no events are pending.
+		# I need to test this and make sure it works on Windows.
 		usleep(0) unless $had_event;
 	}
 	
@@ -396,6 +404,7 @@ sub process_streams {
 	# simply being restarted then only a couple of seconds will elapse.
 	foreach $srv (keys %$games) {
 		$feeds->{$srv}->save_state;
+		$games->{$srv}->save;	# save current stats first
 		$games->{$srv}->save_state($feeds->{$srv}, $srv);
 	}
 
@@ -408,10 +417,10 @@ sub process_files {
 	my (@list) = @_;
 	my ($ev, $had_event, $srv, $game, %args);
 	my $saved = time;
-	my $save_threshold = 60 * 1;
+	my $save_threshold = 60 * 1;		# interval to save game state
 
 	# setup some init parameters for the feeders (generic)
-	$args{verbose}	= $opt->verbose && !$opt->quiet;
+	$args{verbose}	= ($opt->verbose && !$opt->quiet);
 	$args{maxlogs}	= $opt->maxlogs;
 	$args{maxlines}	= $opt->maxlines;
 	$args{echo}	= $opt->echo;
@@ -440,11 +449,18 @@ sub process_files {
 		#&lps_reset;
 		#my $last = time - 3;
 		#my $total = 0;
+		my $last_log = '';
 		while (defined($ev = $feed->next_event)) {
 			next unless $ev;
 			
 			# process the event for the server
 			$game->event($ev, $feed);
+			++$total_events;
+
+			if ($feed->curlog ne $last_log) {
+				$last_log = $feed->curlog;
+				++$total_logs;
+			}
 
 			#&lps_prev($total);
 			#++$total;
@@ -479,6 +495,7 @@ sub process_files {
 		
 		# save our logsource and game state
 		$feed->save_state;
+		$game->save; 	# save current stats first.
 		$game->save_state($feed, scalar $feed->server);
 		
 		last if $GRACEFUL_EXIT > 0;
@@ -571,7 +588,7 @@ sub main::exit {
 }
 
 END {
-	$ERR->info("PsychoStats v$VERSION exiting (elapsed: " . compacttime(time-$starttime) . ", logs: $total_logs, lines: $total_lines)") if defined $ERR;
+	$ERR->info("PsychoStats v$VERSION exiting (elapsed: " . compacttime(time-$starttime) . ", logs: $total_logs, events: " . commify($total_events) . ")") if defined $ERR;
 	;;;$ERR->debug("DEBUG END: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE") if $DEBUGFILE and defined $opt;
 	$db->disconnect if $db;
 }

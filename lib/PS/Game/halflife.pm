@@ -404,19 +404,17 @@ sub event_changed_role {
 }
 
 sub event_chat {
-	return; ############################### IGNORE IT
 	my ($self, $timestamp, $args) = @_;
-	return unless $self->{uniqueid} eq 'guid';
-	return unless $self->{usercmds}{enabled};
-	my ($plrstr, $teamonly, $msg, $props) = @$args;
-	my $p1 = $self->get_plr($plrstr);
-	return unless ref $p1;
-	return if $self->isbanned($p1);
+	return unless $self->conf->main->plr_chat_max > 0;
+	my ($plrstr, $teamonly, $msg, $propstr) = @$args;
+	my $p = $self->get_plr($plrstr);
+	my $props = $self->parseprops($propstr);
+	return unless ref $p;
+	# hell, let banned players chat it up!
+	#return if $self->isbanned($p1);
 
-#	$msg = encode('UTF-8', $msg);
-	return unless $msg =~ /^$self->{usercmds}{prefix}(.+)\s+(.+)/o;
-	my ($cmd, $param) = ($1, $2);
-
+	#$msg = encode('UTF-8', $msg);
+	$p->action_chat($msg, $teamonly, $props);
 }
 
 # "Player<uid><STEAM_ID_PENDING><>" connected, address "1.2.3.4:12345"
@@ -528,7 +526,7 @@ sub event_kill {
 	$m->action_kill( $k, $v, $w, $props);	# record a kill on the MAP
 	$v->action_death($k, $w, $m, $props);	# record a death for the VICTIM
 
-	#if (1) {
+	#if ($self->conf->main->save_plr_on_kill) {
 	#	# if we're configured for up-to-the-second real-time stats
 	#	# then we need to quick save these players.
 	#	$k->quick_save;

@@ -175,17 +175,23 @@ sub save {
 	$self->{timestart} = $self->{timestamp};
 }
 
-my $_cache = {};
+my $_cache = {};		# helps reduce the number of SELECT's we have to do
+my $_cache_max = 8;		# max entries allowed in cache before its reset (power of 2)
+keys(%$_cache) = $_cache_max;	# preset hash bucket size for efficiency
 sub save_stats {
 	my ($self, $statdate) = @_;
 	my $tbl = sprintf('map_data_%s', $self->{type});
 	my ($cmd, $history, $compiled, @bind, @updates);
+
+	# don't allow the cache to consume a ton of memory
+	%$_cache = () if keys %$_cache >= $_cache_max;
 	
 	# SAVE COMPILED STATS
 	
 	# find out if a compiled row exists already...
 	$compiled = $_cache->{'data-' . $self->{mapid}}
-		|| $self->db->execute_selectcol('find_c' . $tbl, $self->{mapid});
+		|| ($_cache->{'data-' . $self->{mapid}} =
+		    $self->db->execute_selectcol('find_c' . $tbl, $self->{mapid}));
 
 	if ($compiled) {
 		# UPDATE an existing row
