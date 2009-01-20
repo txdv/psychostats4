@@ -147,6 +147,9 @@ sub init {
 sub save {
 	my ($self) = @_;
 
+	# don't save any stats if we don't have a timestamp.
+	return unless $self->{timestamp};
+
 	if (!$self->{weaponid}) {
 		# side effect; make sure a WEAPONID is assigned to this weapon.
 		$self->id || return undef;
@@ -176,8 +179,8 @@ sub save_stats {
 	# SAVE COMPILED STATS
 	
 	# find out if a compiled row exists already...
-	$compiled = $_cache->{'data-' . $self->{weaponid}}
-		|| ($_cache->{'data-' . $self->{weaponid}} =
+	$compiled = $_cache->{$self->{weaponid}}
+		|| ($_cache->{$self->{weaponid}} =
 		    $self->db->execute_selectcol('find_c' . $tbl, $self->{weaponid}));
 
 	if ($compiled) {

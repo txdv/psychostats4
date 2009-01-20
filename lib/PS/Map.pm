@@ -151,13 +151,13 @@ sub init {
 sub save {
 	my ($self) = @_;
 
+	# don't save any stats if we don't have a timestamp.
+	return unless $self->{timestamp};
+
 	if (!$self->{mapid}) {
 		# side effect; make sure a MAPID is assigned to this map.
 		$self->id || return undef;
 	}
-
-	# don't save any stats if we don't have a timestamp.
-	return unless $self->{timestamp};
 
 	# calculate the total online time
 	$self->{data}{online_time} = $self->onlinetime;
@@ -189,8 +189,8 @@ sub save_stats {
 	# SAVE COMPILED STATS
 	
 	# find out if a compiled row exists already...
-	$compiled = $_cache->{'data-' . $self->{mapid}}
-		|| ($_cache->{'data-' . $self->{mapid}} =
+	$compiled = $_cache->{$self->{mapid}}
+		|| ($_cache->{$self->{mapid}} =
 		    $self->db->execute_selectcol('find_c' . $tbl, $self->{mapid}));
 
 	if ($compiled) {
