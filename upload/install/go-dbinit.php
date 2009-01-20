@@ -38,18 +38,21 @@ $gametypes = array(
 	'halflife'	=> "Half-Life",
 	'soldat'	=> "Soldat"
 );
-
 $modtypes = array(
-	'halflife'	=> array(
-		'cstrike'	=> "Counter Strike",
-		'dod'		=> "Day of Defeat",
-		'hldm'		=> "Deathmatch",
-//		'gungame'	=> "Gungame",
-		'natural'	=> "Natural Selection",
-		'tf2'		=> "Team Fortress 2",
-	),
-	'cod'		=> array(),
-	'soldat'	=> array(),
+	'cstrike'	=> "Counter Strike",
+	'dod'		=> "Day of Defeat",
+	'hldm'		=> "Deathmatch (valve)",
+//	'hl2dm'		=> "Deathmatch (halflife 2)",
+	'gungame'	=> "Gungame",
+	'natural'	=> "Natural Selection",
+	'tf2'		=> "Team Fortress 2",
+
+);
+
+$gamesupport = array(
+	'halflife'	=> array( 'cstrike','dod','gungame','hldm','natural','tf2' ),
+	'cod'		=> array( ),
+	'soldat'	=> array( ),
 );
 
 // make DB connection
@@ -79,6 +82,8 @@ $allow_next = false;
 $db_init = false;
 $errors = array();
 $actions = array();
+$schema = array();
+$defaults = array();
 
 $cms->theme->assign_by_ref('db_init', $db_init);
 $cms->theme->assign_by_ref('errors', $errors);
@@ -95,7 +100,7 @@ foreach ($list as $k) {
 		$gametype[] = $k;
 	}
 }
-if (!$gametype) $gametype[] = 'halflife';
+//if (!$gametype) $gametype[] = 'halflife';
 
 // validate modtype's selected
 $list = is_array($modtype) ? $modtype : array();
@@ -105,10 +110,11 @@ foreach ($list as $k) {
 		$modtype[] = $k;
 	}
 }
-if (!$modtype) $modtype[] = 'cstrike';
+//if (!$modtype) $modtype[] = 'cstrike';
 
 
 $cms->theme->assign(array(
+	'gamesupport'	=> $gamesupport,
 	'gametypes'	=> $gametypes,
 	'modtypes'	=> $modtypes,
 ));
@@ -123,11 +129,22 @@ if ($ajax_request) {
 
 // the DB will already exist (assuming the user did the 'db' step already; which they should have)
 function do_init($games, $mods) {
-	global $cms, $db, $db_init, $errors, $actions, $overwrite, $dropdb, $allow_next;
+	global $cms, $db, $db_init, $errors, $actions, $overwrite, $dropdb,
+		$allow_next, $schema, $defaults;
 	$i = 1;
 	$exists = array();
 	$dropped = array();
 	$ignore = array();
+
+	if (!$games) {
+		$errors[] = "No 'game type' selected! You must select at least one.";
+	}
+	// a 'mod' must be selected if 'halflife' is selected as a game type.
+	// the other games supported at this time do not have mods.
+	if (!$mods and in_array('halflife',$games)) {
+		$errors[] = "No 'mod type' selected! You must select at least one.";
+	}
+	if ($errors) return false;
 
 	// get a list of all PS tables in the database (ignore tables without our prefix
 	$db->query("SHOW TABLES LIKE '" . $db->escape($db->dbtblprefix) . "%'");
@@ -146,21 +163,11 @@ function do_init($games, $mods) {
 	// load the modtype defaults, if avaialble
 	// bug: the same modtype from different games will be loaded... not an issue right now though.
 	foreach ($games as $g) {
+		assign_sql(load_schema($db->type() . "/$g.sql"));
 		foreach ($mods as $m) {
-			$mod_defaults = load_schema($db->type() . "/$g/$m.sql");
-			if ($mod_defaults) {
-				foreach ($mod_defaults as $d) {
-					$q = strtolower(substr($d, 0, 6));
-					if ($q == 'create') {
-						$schema[] = $d;
-					} else {
-						$defaults[] = $d;
-					}
-				}
-			}
+			assign_sql(load_schema($db->type() . "/$g/$m.sql"));
 		}
 	}
-
 	if ($errors) return false;
 
 	// recreate DB if needed
@@ -177,7 +184,6 @@ function do_init($games, $mods) {
 			$errors[] = "Error dropping current database: " . $db->errstr;
 		}
 	}
-
 	if ($errors) return false;
 	$queries = array_merge($schema, $defaults);
 
@@ -246,16 +252,29 @@ function do_init($games, $mods) {
 	}
 }
 
+function assign_sql($sql) {
+	global $schema, $defaults;
+	if (!$sql) return;
+	foreach ($sql as $d) {
+		$q = strtolower(substr($d, 0, 6));
+		if ($q == 'create') {
+			$schema[] = $d;
+		} else {
+			$defaults[] = $d;
+		}
+	}
+}
+
 function load_schema($file) {
-	$schema = preg_split('/;\n/', 
+	$sql = preg_split('/;\n/', 
 		implode("\n", 
 			array_map('rtrim', 
 				preg_grep("/^(--|(UN)?LOCK|DROP|\\/\\*)/", (array)@file($file), PREG_GREP_INVERT)
 			)
 		)
 	);
-	if (empty($schema[ count($schema)-1 ])) array_pop($schema);
-	return $schema;
+	if (empty($sql[ count($sql)-1 ])) array_pop($sql);
+	return $sql;
 }
 
 function err($msg) {

@@ -595,4 +595,58 @@
   <flipv>1</flipv>
   <fliph>0</fliph>
  </map> 
+ <map name='dod_muhle_b2'>
+  <minx>-3978</minx>
+  <miny>-2054</miny>
+  <maxx>1872</maxx>
+  <maxy>1890</maxy>
+  <res>871x585</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_frost2'>
+  <minx>-3326</minx>
+  <miny>-2562</miny>
+  <maxx>3076</maxx>
+  <maxy>3348</maxy>
+  <res>799x735</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_expire_b3'>
+  <minx>-3840</minx>
+  <miny>-1508</miny>
+  <maxx>3608</maxx>
+  <maxy>1124</maxy>
+  <res>1005x354</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_strom_b4'>
+  <minx>-2674</minx>
+  <miny>-2128</miny>
+  <maxx>2760</maxx>
+  <maxy>2458</maxy>
+  <res>943x797</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_acclaim'>
+  <minx>-1920</minx>
+  <miny>-3456</miny>
+  <maxx>2560</maxx>
+  <maxy>3584</maxy>
+  <res>589x941</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
+ <map name='dod_advance'>
+  <minx>-1152</minx>
+  <miny>-3968</miny>
+  <maxx>2176</maxx>
+  <maxy>3968</maxy>
+  <res>589x941</res>
+  <flipv>1</flipv>
+  <fliph>0</fliph>
+ </map>
 </maps>

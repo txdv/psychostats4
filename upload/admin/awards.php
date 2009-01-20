@@ -78,7 +78,7 @@ if ($filter != '') {
 	$f = '%' . $ps->db->escape($filter) . '%';
 	$where .= " AND (name LIKE '%$f%' OR description LIKE '%$f%')";
 }
-$cmd .= $where . $ps->getsortorder($_order);
+$cmd .= $where . " " . $ps->getsortorder($_order);
 $list = $ps->db->fetch_rows(1, $cmd);
 
 $total = $ps->db->count($ps->t_config_awards, '*', $where);

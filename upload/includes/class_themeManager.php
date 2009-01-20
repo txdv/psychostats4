@@ -31,6 +31,7 @@ define("PSTHEME_ERR_VALUE", 4);
 define("PSTHEME_ERR_CONTENT", 5);
 
 include_once(PS_ROOTDIR . "/includes/class_XML.php");
+//require_once(PS_ROOTDIR . '/includes/class_simplexml.php');
 
 
 class PsychoThemeManager {

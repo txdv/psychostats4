@@ -51,6 +51,7 @@ sub new {
 		_brush		=> 'medium',		# brush to use ('small', 'medium', 'large' or an array ref for custom)
 		_flip_horizontal=> 0,			# flip the canvas left->right?
 		_flip_vertical	=> 0,			# flip the canvas top->bottom?
+		_rotate		=> 0,			# rotation angle
 	};
 	bless($self, $class);
 
@@ -71,6 +72,21 @@ sub new {
 	return $self;
 }
 
+# rotate the x/y values by the angle given
+sub rotate_xy {
+	my ($self, $x1, $y1, $x0, $y0, $angle) = @_;
+	my ($x2, $y2) = ($x1, $y1);
+	$angle ||= $self->rotate;
+	if ($angle) {
+		$angle = 3.14159265358979 * $angle / 180;	# deg2rad
+		$x2 = cos($angle) * ($x1 - $x0) - sin($angle) * ($y1 - $y0) + $x0;
+		$x2 = int($x2 + .5 * ($x2 <=> 0));	# round
+		$y2 = sin($angle) * ($x1 - $x0) - cos($angle) * ($y1 - $y0) + $y0;
+		$y2 = int($y2 + .5 * ($y2 <=> 0));	# round
+	}
+	return wantarray ? ($x2, $y2) : [$x2, $y2];
+}
+
 sub debug { $_[0]->_get('debug') }
 
 # burn the heatmap data onto our canvas array.
@@ -85,6 +101,8 @@ sub burn {
 
 	my $dimx = $self->dimx;
 	my $dimy = $self->dimy;
+	#my $dimx2 = $dimx/2;
+	#my $dimy2 = $dimy/2;
 
 	# setup some variables to avoid calling 'getter' functions over and over
 	my $minx = $self->minx || 0;
@@ -108,6 +126,7 @@ sub burn {
 	for (my $i=0; $i < @$datax; $i++) {
 		my $x = floor(($datax->[$i] - $minx) / $cellwidth);
 		my $y = floor(($datay->[$i] - $miny) / $cellheight);
+		#($x, $y) = $self->rotate_xy($x, $y, $dimx/2, $dimy/2);
 
 		# each brush stroke adds a bit of heat to the canvas
 		$self->stroke($x, $y, $dimx, $dimy, $canvas, $brush, $brushsize);
@@ -312,14 +331,14 @@ sub render {
 	# normalize the burn values. $canvas values will be between -255 .. 255
 	$self->normalize_burn;
 
-	# rotate and flip the canvas ...
+	# flip the canvas ...
 	my $canvas = $self->canvas;
 	if ($self->flip_vertical and $self->flip_horizontal) {
-		warn ">> Rotating canvas V/H ... \n" if $self->debug;
+		warn ">> Flipping canvas V/H ... \n" if $self->debug;
 		# easy peasy ... 
 		@$canvas = reverse @$canvas;
 	} elsif ($self->flip_vertical) {
-		warn ">> Rotating canvas vertically ... \n" if $self->debug;
+		warn ">> Flipping canvas vertically ... \n" if $self->debug;
 		my @tmp = ();
 		my $y = -1;
 		for (my $i=0; $i < @$canvas; $i++) {
@@ -329,7 +348,7 @@ sub render {
 		}		
 		@$canvas = @tmp;
 	} elsif ($self->flip_horizontal) {
-		warn ">> Rotating canvas horizontaly ... \n" if $self->debug;
+		warn ">> Flipping canvas horizontaly ... \n" if $self->debug;
 		my @tmp = ();
 		for (my $i=0; $i < @$canvas; $i++) {
 			# each row is reversed (left to right)

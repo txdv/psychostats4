@@ -254,18 +254,27 @@ function insert($tbl, $set) {
 
 function sortorder($args, $prefix='') {
 	$str = "";
-	if ($args[$prefix . 'sort'] != '') {
-		$sort = '';
-		if ($args['no_quote']) {
-			if ($args['fieldprefix']) $sort = $args['fieldprefix'] . '.';
-			$sort .= $args[$prefix . 'sort'];
-		} else {
-			if ($args['fieldprefix']) $sort = $this->qi($args['fieldprefix']) . '.';
-			$sort .= $this->qi($args[$prefix . 'sort']);
+	if (!$args) return $str;
+	$order = $args[$prefix . 'order'] ? " " . $args[$prefix . 'order'] : '';
+	$fields = array_filter(explode(',', $args[$prefix . 'sort']), 'not_empty');
+	foreach ($fields as $sort) {
+		$sort = trim($sort);
+		if ($sort != '') {
+			if ($args['no_quote']) {
+				if ($args['fieldprefix']) $sort = $args['fieldprefix'] . '.' . $sort;
+			} else {
+				if ($args['fieldprefix']) {
+					$sort = $this->qi($args['fieldprefix']) . '.' . $this->qi($sort);
+				} else {
+					$sort = $this->qi($sort);
+				}
+			}
+			$str .= " " . $sort;
+			$str .= $order;
+			$str .= ",";
 		}
-		$str .= " ORDER BY $sort";
-		if ($args[$prefix . 'order']) $str .= " " . $args[$prefix . 'order'];
 	}
+	if ($fields) $str = substr("ORDER BY " . $str, 0, -1);
 	$str .= $this->limit($args, $prefix);
 	return $str;    
 }
@@ -371,8 +380,8 @@ function lasterr() {
 function error($e, $force = false) {
 	$e = trim($e);
 	if (!empty($e) and ($e != $this->lasterr() or $force)) {
-		$this->errstr = $e;				// assign the current error
-		$this->errors[] = $e;
+		$this->errstr = $e;		// assign the current error
+		$this->errors[] = array('error' => $e, 'query' => $this->lastcmd);
 	}
 }
 
@@ -413,7 +422,6 @@ function _soloexpr_ratio_minutes($ary) 	{ return "ROUND(IFNULL($ary[0] / ($ary[1
 
 function _expr_min($ary)		{ return "IF($ary[0] < $ary[1], $ary[0], $ary[1])"; }
 function _expr_max($ary)		{ return "IF($ary[0] > $ary[1], $ary[0], $ary[1])"; }
-
 
 }
 

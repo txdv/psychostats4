@@ -323,7 +323,7 @@ sub unserialize_value {
 	# Invalid data
 	else {
 		serialize_dbg("Unserializing BAD DATA!\n($value)");
-		die("Trying to unserialize bad data!");
+		#die("Trying to unserialize bad data!");
 		return '';
 	}
 

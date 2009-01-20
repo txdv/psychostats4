@@ -19,20 +19,13 @@
 #
 #	$Id$
 #
-#       PS::ErrLog takes care of error reporting. All error messages are stored
-#       in the database This class acts as a singleton. Only the 1st call to the
-#       new constructor will create a new object. All successive calls to new
-#       will return the 1st object w/o instantiating a new object.
 package PS::ErrLog;
 
 use strict;
 use warnings;
-use base qw( PS::Debug );
-use util qw( iswindows );
-
 use Carp;
 
-our $VERSION = '1.01.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our $ANSI = 0;
 #eval "use Term::ANSIColor";
@@ -45,21 +38,16 @@ my $ERRHANDLER = undef;		# only 1 Error handler is ever created by new{}
 sub new {
 	return $ERRHANDLER if defined $ERRHANDLER;
 	my $proto = shift;
-	my $conf = shift;
 	my $class = ref($proto) || $proto;
 	my $db = shift || croak("You must provide a database object to $class\->new");
-	my $self = { debug => 0, class => $class, conf => $conf, db => $db };
-	bless($self, $class);
-
-	$ERRHANDLER = $self;
-
-	if ($conf->can('get_opt')) {
-		$self->{_verbose} = ($conf->get_opt('verbose') and !$conf->get_opt('quiet'));
-	} else {
-		$self->{_version} = 0;
-	}
-
-#	$self->debug($self->{class} . " initializing");
+	my $conf = shift;
+	my $self = {
+		class => $class,
+		db => $db,
+		conf => $conf,
+		_verbose => 0
+	};
+	$ERRHANDLER = bless($self, $class);
 	return $self;
 }
 
@@ -82,7 +70,7 @@ sub log {
 		while ($callerlevel >= 0) {
 			my ($pkg,$filename,$line) = caller($callerlevel);
 			--$callerlevel && next unless defined $pkg and $line;
-			push(@trace, "$pkg($line)") unless $pkg =~ /^PS::(ErrLog|Debug)/;
+			push(@trace, "$pkg($line)") unless $pkg =~ /^PS::(ErrLog|Debug|Core)/;
 			$callerlevel--;
 		}
 		my $plaintrace = join("->", @trace);
@@ -91,16 +79,24 @@ sub log {
 	}
 
 	if (((ref $self and $self->{_verbose}) or !ref $self) or $severity ne 'info') {
-		if ($ANSI) {
-			print STDERR "[" . color('bold') . uc($severity) . color('reset') . "]" . (!ref $self ? '*' : '') . " $msg\n"
-		} else {
-			print STDERR "[" . uc($severity) . "]" . (!ref $self ? '*' : '') . " $msg\n"
+		my $prefix = '';
+		if ($severity ne 'info') {
+			if ($ANSI) {
+				$prefix = "[" . color('bold') . uc($severity) . color('reset') . "] ";
+			} else {
+				$prefix = "[" . uc($severity) . "] ";
+			}
+			$prefix .= '* ' if !ref $self;
 		}
+		warn $prefix . $msg . "\n";
 	}
 
 	if (ref $self and ref $self->{db}) {
 		my $nextid = $self->{db}->next_id($self->{db}->{t_errlog});
-		$self->{db}->insert($self->{db}->{t_errlog}, { 'id' => $nextid, 'timestamp' => time, 'severity' => $severity, 'msg' => $msg });
+		$self->{db}->insert($self->{db}->{t_errlog},{
+			'id' => $nextid, 'timestamp' => time,
+			'severity' => $severity, 'msg' => $msg
+		});
 		$self->truncate;
 	} else {
 		if (open(L, ">>stats.log")) {
@@ -112,7 +108,11 @@ sub log {
 	}
 
 	if ($severity eq 'fatal') {
-		main::exit();
+		if (main->can('exit')) {
+			main::exit();
+		} else {
+			exit();
+		}
 	}
 }
 
@@ -121,19 +121,12 @@ sub info { shift->log(shift, 'info', @_) }
 sub warn { shift->log(shift, 'warning', @_) }
 sub fatal { shift->log(shift, 'fatal', @_) }
 
-# Simple verbose command. Only echos the output given if verbose is enabled in the config
-sub verbose {
-	my ($self, $msg, $no_newline) = @_;
-	return unless $self->{_verbose};
-	print $msg;
-	print "\n" if (!$no_newline and $msg !~ /\n$/);
-}
-
-# never let the size of the errlog table grow too large. Truncate based on date and total rows
+# never let the size of the errlog table grow too large. Truncate based on date
+# and total rows
 sub truncate {
 	my $self = shift;
-	my $maxrows = defined $_[0] ? shift : $self->{conf}->get_main('errlog.maxrows');
-	my $maxdays = defined $_[0] ? shift : $self->{conf}->get_main('errlog.maxdays');
+	my $maxrows = defined $_[0] ? shift : $self->{conf}->main->errlog->maxrows;
+	my $maxdays = defined $_[0] ? shift : $self->{conf}->main->errlog->maxdays;
 	my $db = $self->{db};
 	$maxrows = 5000 unless defined $maxrows;
 	$maxdays = 30 unless defined $maxdays;
@@ -156,6 +149,7 @@ sub truncate {
 			while ($db->{sth}->fetch) {
 				push(@ids, $id);
 			}
+			$db->{sth}->finish;
 			if (scalar @ids) {
 				$db->query("DELETE FROM $tbl WHERE " . $db->qi('id') . " IN (" . join(',', @ids) . ")");
 				$deleted++;
@@ -163,10 +157,30 @@ sub truncate {
 		}
 	}
 	if ($deleted) {
-		# I'd rather have this in a DESTORY block, but the database handle seems to be destroyed before the ErrLog is
-		# so I have no valid DB handle at the time this object is destroyed. Owell.
+		$db->{sth}->finish;
+		# I'd rather have this in a DESTORY block, but the database
+		# handle seems to be destroyed before the ErrLog is so I have no
+		# valid DB handle at the time this object is destroyed. Owell.
 		$db->optimize($db->{t_errlog}) if int(rand(20)) == 1;		# approximately 5% chance to optimize the table
 	}
+}
+
+# Simple verbose command. Only echos the output given if verbose is enabled in
+# the config
+sub verbose {
+	my ($self, $msg, $no_newline) = @_;
+	return unless $self->{_verbose};
+	print $msg;
+	print "\n" if (!$no_newline and $msg !~ /\n$/);
+}
+
+sub set_verbose {
+	my ($self, $new) = @_;
+	$self->{_verbose} = $new;
+}
+
+sub get_verbose {
+	$_[0]->{_verbose};
 }
 
 1;

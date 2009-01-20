@@ -460,10 +460,12 @@ sub event_kill {
 	$self->_record_shot($hitgroup, $dmg, $p1, $r1, $w);
 
 	# allow mods to add their own stats for kills
-	$self->mod_event_kill($p1, $p2, $w, $m, $r1, $r2, '') if $self->can('mod_event_kill');
-
+	my $skill_handled = 0;
+	if ($self->can('mod_event_kill')) {
+		$skill_handled = $self->mod_event_kill($p1, $p2, $w, $m, $r1, $r2, '');
+	}
 	# calculate new skill values for the players
-	$self->calcskill_kill_func($p1, $p2, $w);
+	$self->calcskill_kill_func($p1, $p2, $w) unless $skill_handled;
 }
 
 # player has connected and 'entered the game' (unlike HALFLIFE games which do this in 2 separate steps)
@@ -648,45 +650,7 @@ sub event_logstartend {
 	return unless lc $startedorclosed eq 'started';
 
 #	$self->show_cache;
-
-	$self->{db}->begin;
-
-	# SAVE PLAYERS
-	foreach my $p ($self->get_plr_list) {
-		$p->end_all_streaks;	# do not count streaks across map/log changes
-		$p->disconnect($timestamp, $m);
-		$p->save; # if $p->active;
-		$p = undef;
-	}
-	$self->initcache;
-
-	# SAVE WEAPONS
-	while (my ($wid,$w) = each %{$self->{weapons}}) {
-		$w->save;
-		$w = undef;
-	}
-	$self->{weapons} = {};
-
-	# SAVE ROLES
-	while (my ($rid,$r) = each %{$self->{roles}}) {
-		$r->save;
-		$r = undef;
-	}
-	$self->{roles} = {};
-
-	# SAVE MAPS
-	while (my ($mid,$m) = each %{$self->{maps}}) {
-		my $time = $m->timer;
-#		print "$timestamp - $m->{basic}{lasttime}\n";
-		$time ||= $timestamp - $m->{basic}{lasttime} if $timestamp - $m->{basic}{lasttime} > 0;
-#		print $m->name . ": time=$time\n";
-		$m->{basic}{onlinetime} += $time if ($time > 0);
-		$m->save;
-		$m = undef;
-	}
-	$self->{maps} = {};
-
-	$self->{db}->commit;
+	$self->save(1);
 }
 
 # normalize a weapon name

@@ -23,45 +23,57 @@ package PS::Map::halflife::cstrike;
 
 use strict;
 use warnings;
-use base qw( PS::Map::halflife );
+use PS::SourceFilter;
 
-our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+# NOTE ------------------------------------------------------------------------
+# NOTE: We don't subclass halflife here, since there's no need at the moment.
+use base qw( PS::Map );
+# NOTE ------------------------------------------------------------------------
 
-our $TYPES = {
-	ctkills			=> '+',
-	terroristkills		=> '+',
-	joinedct		=> '+',
-	joinedterrorist		=> '+',
-	joinedspectator		=> '+',
-	bombdefuseattempts	=> '+',
-	bombdefused		=> '+',
-	bombdefusedpct		=> [ percent => qw( bombdefused bombdefuseattempts ) ],
-	bombplanted		=> '+',
-	bombplantedpct		=> [ percent => qw( bombplanted rounds ) ],
-	bombexploded		=> '+',
-	bombexplodedpct		=> [ percent => qw( bombexploded bombplanted ) ],
-	bombrunner		=> '+',
-	bombrunnerpct		=> [ percent => qw( bombrunner rounds ) ],
-	killedhostages		=> '+',
-	rescuedhostages		=> '+',
-	rescuedhostagespct	=> [ percent => qw( rescuedhostages touchedhostages ) ],
-	touchedhostages		=> '+',
-	vipescaped		=> '+',
-	vipkilled		=> '+',
-	ctwon			=> '+',
-	ctwonpct		=> [ percent2 => qw( ctwon terroristwon ) ],
-	ctlost			=> '+',
-	terroristwon		=> '+',
-	terroristwonpct		=> [ percent2 => qw( terroristwon ctwon ) ],
-	terroristlost		=> '+',
-};
+our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
-# override parent methods to combine types
-sub get_types { return { %{$_[0]->SUPER::get_types}, %$TYPES } }
+BEGIN {
+	my $fields = __PACKAGE__->SUPER::FIELDS('DATA');
+	%{$fields->{halflife_cstrike}} = (
+		(map { $_ => '+' } qw(
+			team_kills		
+			killed_terrorist 	killed_ct 
+			terrorist_kills 	ct_kills 
+			joined_terrorist	joined_ct
+			terrorist_wins		ct_wins
+			terrorist_losses	ct_losses
+			hostages_killed		hostages_rescued 	hostages_touched
+			bomb_planted		bomb_exploded
+			bomb_defuse_attempts	bomb_defused
+		 ))
+			#vip_became		vip_killed		vip_escaped
+	);
+}
 
-# allows the parent to determine our local types
-sub mod_types { $TYPES };
+# A player did something with a bomb
+sub action_bomb {
+	my ($self, $action, $plr, $props) = @_;
+	$self->timestamp($props->{timestamp});
 
-sub has_mod_tables { 1 }
+	$self->{data}{'bomb_' . $action}++;
+}
+
+# The player did something to a hostage (killed, touched, rescued)
+sub action_hostage {
+	my ($self, $action, $plr, $props) = @_;
+	my $var = $action . '_hostages';
+	#warn "$plr $action a hostage!!\n";
+	
+	$self->{data}{$var}++;
+}
+
+sub action_vip {
+	my ($self, $action, $map, $props) = @_;
+	my $m = $map->id;
+	my $var = 'vip_' . $action;
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{$var}++;
+}
 
 1;

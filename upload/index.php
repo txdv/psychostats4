@@ -110,8 +110,8 @@ $players = $ps->get_player_list(array(
 $baseurl = array('sort' => $sort, 'order' => $order, 'limit' => $limit);
 if ($search) {
 	$baseurl['search'] = $search;
-} else {
-	if ($q != '') $baseurl['q'] = $q;
+} else if ($q != '') {
+	$baseurl['q'] = $q;
 }
 $pager = pagination(array(
 	'baseurl'	=> ps_url_wrapper($baseurl),

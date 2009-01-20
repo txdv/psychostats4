@@ -76,6 +76,7 @@ sub init {
 	return undef unless $self->_readdir;
 
 	$self->{state} = $self->load_state;
+	$self->{_pos} = $self->{state}{pos};
 
 	# we have a previous state to deal with. We must "fast-forward" to the log we ended with.
 	if ($self->{state}{file}) {
@@ -84,7 +85,7 @@ sub init {
 		while (scalar @{$self->{_logs}}) {
 			my $cmp = $self->{game}->logcompare($self->{_logs}[0], $statelog);
 			if ($cmp == 0) { # ==
-				$self->_opennextlog($self->{state}{pos});
+				$self->_opennextlog($self->{state}{pos}, 1);
 				# finally: fast-forward to the proper line
 				if (int($self->{state}{pos} || 0) > 0) {	# FAST forward quickly
 					$self->{_offsetbytes} = $self->{state}{pos};
@@ -116,7 +117,7 @@ sub init {
 		}
 	}
 
-	return scalar @{$self->{_logs}} ? 1 : 0;
+	return scalar @{$self->{_logs}} ? $self->{type} : 0;
 }
 
 # reads the contents of the current directory
@@ -126,7 +127,11 @@ sub _readdir {
 	if (scalar @{$self->{_logs}}) {
 		$self->{_logs} = $self->{game}->logsort($self->{_logs});
 	}
-	pop(@{$self->{_logs}}) if $self->{logsource}{skiplast};	# skip the last log in the directory
+	# skip the last log in the directory
+	if ($self->{logsource}{skiplast}) {
+		my $log = pop(@{$self->{_logs}});
+		$::ERR->verbose("Last log '$log' in '$self->{_dir}' will be skipped.");
+	}
 	$::ERR->verbose(scalar(@{$self->{_logs}}) . " logs found in $self->{_dir}");
 	return scalar @{$self->{_logs}};
 }
@@ -266,6 +271,7 @@ sub parsesource {
 sub _opennextlog {
 	my $self = shift;
 	my $offset = shift;	# byte offset to fast-foward to
+	my $fastforward = shift;
 	
 	# delete previous log if we had one, and we have 'delete' enabled in the logsource_ftp config
 	if ($self->{delete} and $self->{_curlog}) {
@@ -279,12 +285,19 @@ sub _opennextlog {
 	undef $self->{_loghandle};				# close the previous log, if there was one
 	return undef if !scalar @{$self->{_logs}};		# no more logs or directories to scan
 
-	$self->{_curlog} = shift @{$self->{_logs}};
-	$self->{_curline} = 0;	
 	$self->{_offsetbytes} = defined $offset ? int($offset)+0 : 0;
-	$self->{_filesize} = 0;
 	$self->{_lastprint} = time;
 	$self->{_lastprint_bytes} = 0;
+
+	# we're done if the maximum number of logs has been reached
+	if (!$fastforward and $self->{_maxlogs} and $self->{_totallogs} >= $self->{_maxlogs}) {
+		$self->save_state;
+		return undef;
+	}
+
+	$self->{_curlog} = shift @{$self->{_logs}};
+	$self->{_curline} = 0;	
+	$self->{_filesize} = 0;
 
 	# keep trying logs until we get one that works (however, chances are if 1 log fails to load they all will)
 	while (!$self->{_loghandle}) {
@@ -292,10 +305,19 @@ sub _opennextlog {
 		if (!$self->{_loghandle}) {
 			$::ERR->warn("Error creating temporary file for download: $!");
 			undef $self->{_loghandle};
-#			undef $self->{_curlog};
 			last;					# that's it, we give up
 		}
-#		binmode($self->{_loghandle}, ":encoding(UTF-8)");
+
+#		if ($offset) {
+#			# do not attempt to download the log if the position
+#			# from the previous state (offset) is actually EOF.
+#			# Just skip to the next instead.
+#			my $size = $self->{ftp}->size($self->{_curlog}) || 0;
+#			if (!$size or $offset >= $size) {
+#				$self->debug2("Skipping log $self->{_curlog} (EOF from previous state)");
+##				$self->{_curlog} = shift @{$self->{_logs}} || return undef;
+#			}
+#		}
 		$self->debug2("Downloading log $self->{_curlog}");
 		if (!$self->{ftp}->get( $self->{_curlog}, $self->{_loghandle}, $offset )) {
 			undef $self->{_loghandle};
@@ -341,6 +363,7 @@ sub _opennextlog {
 	$self->{_idle} = time;
 
 	if ($self->{_loghandle}) {
+		$self->{_totallogs}++ unless $fastforward;
 		$self->{_filesize} = (stat $self->{_loghandle})[7];
 	}
 	return $self->{_loghandle};
@@ -353,7 +376,8 @@ sub next_event {
 	$self->idle;
 
 	# User is trying to ^C out, try to exit cleanly (save our state)
-	if ($::GRACEFUL_EXIT > 0) {
+	# Or we've reached our maximum allowed lines
+	if ($::GRACEFUL_EXIT > 0 or ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines})) {
 		$self->save_state;
 		return undef;
 	}
@@ -361,7 +385,9 @@ sub next_event {
 	# No current loghandle? Get the next log in the queue
 	if (!$self->{_loghandle}) {
 		$self->_opennextlog;
-		unless ($self->{_loghandle}) {
+		if ($self->{_loghandle}) {
+			$self->echo_processing;
+		} else {
 			$self->save_state;
 			return undef;
 		}
@@ -371,11 +397,21 @@ sub next_event {
 	my $fh = $self->{_loghandle};
 	while (!defined($line = <$fh>)) {
 		$fh = $self->_opennextlog;
-		unless ($fh) {
+		if ($self->{_loghandle}) {
+			$self->echo_processing;
+		} else {
 			$self->save_state;
 			return undef;
 		}
 	}
+	# skip the last line if we're at EOF and there are no more logs in the directory
+	# do not increment the line counter, etc.
+	if ($self->{logsource}{skiplastline} and eof($fh) and !scalar @{$self->{_logs}}) {
+		$self->save_state;
+		return undef;
+	}
+	$self->{_curline}++;
+	$self->{_pos} = tell($fh);
 
 	if ($self->{_verbose}) {
 		$self->{_totallines}++;
@@ -393,7 +429,7 @@ sub next_event {
 
 #	my $logsrc = "ftp://" . $self->{_opts}{Host} . ($self->{_opts}{Port} ne '21' ? ':' . $self->{_opts}{Host} : '' ) . '/' . $self->{_dir};
 #	my @ary = ( $logsrc, $line, ++$self->{_curline} );
-	my @ary = ( $self->{_curlog}, $line, ++$self->{_curline} );
+	my @ary = ( $self->{_curlog}, $line, $self->{_curline} );
 	return wantarray ? @ary : [ @ary ];
 }
 
@@ -402,9 +438,7 @@ sub save_state {
 
 	$self->{state}{file} = $self->{_curlog};
 	$self->{state}{line} = $self->{_curline};
-	$self->{state}{pos}  = defined $self->{_loghandle}
-		? tell($self->{_loghandle}) + $self->{_offsetbytes}
-		: undef;
+	$self->{state}{pos}  = $self->{_pos};
 
 	$self->{_last_saved} = time;
 

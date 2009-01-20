@@ -19,14 +19,13 @@
  *	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
  *
  *	Version: $Id$
- */
-
-/**
+ *	
  *	PsychoStats Heatmap class
  *
- *	PsychoStats heatmaps show spatial information related to where players are on a map when they do something.
- *	A "Death Map" is the most common usage to show areas where people are killed the most on a map.
- *
+ *      PsychoStats heatmaps show spatial information related to where players
+ *	are on a map when they do something. A "Death Map" is the most common
+ *	usage to show areas where people are killed the most on a map.
+ *	
  *	@package PsychoStats
  */
 if (defined("CLASS_PS_HEATMAP_PHP")) return 1;

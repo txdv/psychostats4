@@ -28,8 +28,11 @@
 <div id="ls-stream" class="inline-notes">
 	<h4><#A note about log streams#></h3>
 	<p>
-		The log path is ignored for log streams. Logs are not saved locally when listening to a stream.
-		The port is the listening port for incomming UDP streams from remote servers.
+		Logs are not saved locally when listening to a stream.
+		If no IP is entered or if the IP is 'localhost' then all
+		interfaces will be monitored for the incoming UDP stream. The
+		port is the listening port for the incomming UDP stream from
+		remote servers.
 	</p>
 </div>
 
@@ -38,9 +41,11 @@
 	<label><#Log Path#>:</label>
 	<input name="path" value="{$form.path|escape}" type="text" class="field long" />
 	<p class="small">
-		If your logs are on this server then set the protocol to 'Local Logs' and enter the path above.
-		Also note: Local paths should always be <b>full absolute paths</b>. Relative paths can cause problems and are
-		relative to the directory where stats.pl is run from (not from this website).
+		If your logs are on this server then set the protocol to 'Local
+		Logs' and enter the path above. Also note: Local paths should
+		always be <b>full absolute paths</b>. Relative paths can cause
+		problems and are relative to the directory where stats.pl is run
+		from (not from this website).
 	</p>
 </div>
 <div{if $errors.type} class="err"{/if}>
@@ -104,14 +109,6 @@
 </div> {* --- pasword div --- *}
 </div> {* --- blank div --- *}
 
-{* none of the log Feeders use any extra 'options' so we'll leave the field below out for now
-<div{if $errors.options} class="err"{/if}>
-	<p class="err" id="err-options">{$errors.options|escape}</p>
-	<label><#Options#>:</label>
-	<textarea class="long" name="options" rows="3" wrap="virtual">{$form.options|escape}</textarea>
-</div>
-*}
-
 <div{if $errors.defaultmap} class="err"{/if}>
 	<p class="err" id="err-defaultmap">{$errors.defaultmap|escape}</p>
 	<label><#Default Map#>:</label>
@@ -123,6 +120,14 @@
 	<label><#Skip Last Log?#></label>
 	<label class="for" for="skiplast1"><input id="skiplast1" name="skiplast" value="1" {if  $form.skiplast}checked="" {/if}type="radio" class="radio" /> Yes</label>
 	<label class="for" for="skiplast2"><input id="skiplast2" name="skiplast" value="0" {if !$form.skiplast}checked="" {/if}type="radio" class="radio" /> No</label>
+</div>
+
+<div id="ls-skiplastline"{if $errors.skiplastline} class="err"{/if}>
+	<p class="err" id="err-skiplastline">{$errors.skiplastline|escape}</p>
+	<label><#Skip Last Line?#></label>
+	<label class="for" for="skiplastline1"><input id="skiplastline1" name="skiplastline" value="1" {if  $form.skiplastline}checked="" {/if}type="radio" class="radio" /> Yes</label>
+	<label class="for" for="skiplastline2"><input id="skiplastline2" name="skiplastline" value="0" {if !$form.skiplastline}checked="" {/if}type="radio" class="radio" /> No</label>
+	<small>(<#only affects the last log in a directory#>)</small>
 </div>
 
 <div id="ls-recursive" class="block">
@@ -139,6 +144,31 @@
 	<input name="depth" value="{$form.depth|escape}" type="text" class="field short" />
 </div>
 </div> {* recursive div *}
+
+<div id="ls-stream-opt" class="inline-notes">
+	<h4><#Stream Access-List#></h3>
+	<p>
+		Using the options input below you can enter a list of IP hosts 
+		or networks that are allowed to stream to this log source. If
+		nothing is entered then any stream will be allowed (which is
+		not recommended). If an IP is entered with no ports then any
+		port is allowed for that IP. CIDR block notation can be used
+		to specify a network of hosts.
+	</p>
+	<p>
+		1 IP and port combination per line. For example:
+	</p>
+	<pre>	192.168.1.1     27015
+	172.16.0.0/24	27000-27050
+	10.9.4.2/8      27015,27018-27020
+	200.3.2.1</pre>
+</div>
+
+<div id="ls-options"{if $errors.options} class="err"{/if}>
+	<p class="err" id="err-options">{$errors.options|escape}</p>
+	<label><#Options#>:</label>
+	<textarea class="long" name="options" rows="5" wrap="virtual">{$form.options|escape}</textarea>
+</div>
 
 </fieldset>
 <fieldset>

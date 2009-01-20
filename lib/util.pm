@@ -28,20 +28,20 @@ use POSIX qw( strftime );
 use Time::HiRes qw( gettimeofday tv_interval );
 use Time::Local;
 use Data::Dumper;
-
+  
 require Exporter;
 
-our $VERSION = '1.01.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERSION = '1.20.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our @ISA = qw(Exporter);
 
 our %EXPORT_TAGS = ( 
 	'all' => [ qw(
-		&ip2int	&int2ip &ipwildmask &ipnetmask &ipbroadcast 
-		&abbrnum &commify
+		&ip2int	&int2ip &ipwildmask &ipnetmask &ipnetwork &ipbroadcast 
+		&abbrnum &commify &deep_copy
 		&date &diffdays_ymd &ymd2time &time2ymd &daysinmonth &isleapyear &dayofyear
 		&compacttime
-		&simple_interpolate &expandlist
+		&simple_interpolate &expandlist &trim
 		&iswindows
 		&bench &print_r
 	) ],
@@ -52,12 +52,12 @@ our %EXPORT_TAGS = (
 
 	# :net exports functions dealing with network ipaddrs
 	'net' => [ qw(
-		&ip2int	&int2ip &ipwildmask &ipnetmask &ipbroadcast
+		&ip2int	&int2ip &ipwildmask &ipnetmask &ipnetwork &ipbroadcast
 	) ],
 
 	# :strings exports functions dealing with strings
 	'strings' => [ qw(
-		&simple_interpolate &expandlist
+		&simple_interpolate &expandlist &trim
 	) ],
 
 	# :numbers exports functions dealing with numbers
@@ -81,13 +81,33 @@ our %EXPORT_TAGS = (
 
 our @EXPORT_OK = ( @{$EXPORT_TAGS{'all'}} );
 
-our @EXPORT = qw( );
+# I use print_r a lot and I hate having to import it implicitly.
+our @EXPORT = qw( &print_r );
+
+# Copies a data structure (hashes and arrays with sub hashes and arrays)
+# Objects and ties are not supported. Also, if any circular refs exist they
+# will cause an infinite loop. 
+sub deep_copy {
+	# credit: http://www.stonehenge.com/merlyn/UnixReview/col30.html
+	my $this = shift;
+	if (not ref $this) {
+		return $this;
+	} elsif (ref $this eq 'ARRAY') {
+		return [ map deep_copy($_), @$this ];
+	} elsif (ref $this eq 'HASH') {
+		return +{ map { $_ => deep_copy($this->{$_}) } keys %$this };
+	} else {
+		# This is harsh, but this sub is only meant to be a simple deep
+		# copy function. Objects, ties and recursion are not supported.
+		die "DEEP_COPY error. Unknown type for $this?"
+	}
+}
 
 # Converts an IP "1.2.3.4" into a 32bit integer. Ignores any :port on the IP
 sub ip2int {
 	my ($ip, $port) = split(/:/, shift, 2);		# strip off any port if it's present
 	my ($i1,$i2,$i3,$i4) = split(/\./, $ip);
-	return ($i4) | ($i3 << 8) | ($i2 << 16) | ($i1 << 24);
+	return $i4 | ($i3 << 8) | ($i2 << 16) | ($i1 << 24);
 }
 
 # Converts a 32bit integer into its IP "1.2.3.4" representation
@@ -101,6 +121,7 @@ sub int2ip {
 	);
 }
 
+# returns the network mask for the bits specified (1..32)
 sub ipnetmask {
 	my $bits = shift;
 	my $num = 0xFFFFFFFF;
@@ -108,15 +129,25 @@ sub ipnetmask {
 	return int2ip($mask);
 }
 
+# returns the wildcard mask for the bits specified (1..32)
 sub ipwildmask {
 	my $num = ip2int( ipnetmask(shift) );
 	$num = $num ^ 0xFFFFFFFF;
 	return int2ip($num);
 }
 
+# returns the network IP of the CIDR block given
+sub ipnetwork {
+	my ($num, $bits) = @_;
+	$num = ip2int($num) unless $num =~ /^\d+$/;
+	return int2ip($num & ip2int(ipnetmask($bits)));
+}
+
+# returns the broadcast IP of the CIDR block given
 sub ipbroadcast {
 	my ($num, $bits) = @_;
-	my @ip = split(/\./, int2ip($num));
+	$num = ip2int($num) unless $num =~ /^\d+$/;
+	my @ip = split(/\./, int2ip($num & ip2int(ipnetmask($bits))));
 	my @wc = split(/\./, ipwildmask($bits));
 	my $bc = "";
 	for (my $i=0; $i < 4; $i++) { $ip[$i] += $wc[$i]; }
@@ -124,15 +155,19 @@ sub ipbroadcast {
 }
 
 # converts a large integer into KB,MB, etc totals (1024 = 1 K)
+# $digits is the number of decimal places to use (0 by default)
+# $blocksize is the size of each step (1024 by default)
+# $tail is an arrayref of strings for each blocksize step. (defaults to byte strings, B, KB, MB, etc)
 sub abbrnum {
-	my ($num, $digits) = @_;
-	my @size = (' B',' KB',' MB', ' GB', ' TB');
+	my ($num, $digits, $blocksize, $tail) = @_;
+	my @size = ref $tail ? @$tail : (' B',' KB',' MB', ' GB', ' TB');
 	my $i = 0;
-	$digits = 0 if !defined $digits;
+	$digits ||= 0;
+	$blocksize ||= 1024;
 
 	return "0" . $size[0] unless $num;
-	while (($num >= 1024) and ($i < 4)) {
-		$num /= 1024;
+	while (($num >= $blocksize) and ($i < @size)) {
+		$num /= $blocksize;
 		$i++;
 	}
 	return sprintf("%." . $digits . "f",$num) . $size[$i];
@@ -189,9 +224,10 @@ sub time2ymd {
 	my $daysin4centuries	= 146097;				# static variables for datefrom1bc function ...
 	my $daysin1century	= 36524;
 	my $daysin4years	= 1461;
-	my $daysin1year	= 365;
+	my $daysin1year		= 365;
 
-	# returns the number of days in the given month (1..12) or epoch timestamp, or undef for current epoch time
+	# returns the number of days in the given month (1..12) or epoch
+	# timestamp, or undef for current epoch time
 	sub daysinmonth {
 		my ($year, $month) = @_;
 		if (!defined $month) {	# we assume $year is an epoch timestamp, since there's no month
@@ -205,7 +241,8 @@ sub time2ymd {
 
 } # end of local date variables
 
-# Returns true if the year given is a leap year or false otherwise. the year MUST be a 4 digit year '2003'
+# Returns true if the year given is a leap year or false otherwise. the year
+# MUST be a 4 digit year '2003'
 sub isleapyear {
 	my ($year) = @_;
 	return 0 unless $year % 4 == 0;
@@ -223,8 +260,9 @@ sub dayofyear {
 	return ($days[$month-1] + $day + $leapyear);
 }
 
-# Returns the date formated according to the format given (partially mimics PHPs date() function)
-# one could always use the POSIX strftime() function too, which is much better than this.
+# Returns the date formated according to the format given (partially mimics PHPs
+# date() function) one could always use the POSIX strftime() function too, which
+# is much better than this.
 my @weekdays = ('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
 my @weekabbr = ('Sun','Mon','Tue','Wed','Thu','Fri','Sat');
 my @months   = ('January','February','March','April','May','June','July','August','September','October','November','December');
@@ -297,23 +335,26 @@ sub compacttime {
   return $str;
 }
 
-# A very simple version of an interpolating routine to do very simple variable substitution on a string.
-# This allows for 2 levels of hash variables ONLY. ie: $key, or $key.var (but not $key.var.subvar) .. this is only meant to be 
-# a SIMPLE interpolator :-) ... If a code ref is found in a $token, it will be called and it's return value used.
-# This function was updated to use tokens like {$var.value} instead of $var.value
+# A very simple version of an interpolating routine to do very simple variable
+# substitution on a string. This allows for 2 levels of hash variables ONLY. ie:
+# $key, or $key.var (but not $key.var.subvar) .. this is only meant to be a
+# SIMPLE interpolator :-) ... If a code ref is found in a $token, it will be
+# called and it's return value used. This function was updated to use tokens
+# like {$var.value} instead of $var.value
 sub simple_interpolate {
 	my ($str, $data, $fill) = @_;
 	my ($var1,$var2, $rep, $rightpos, $leftpos, $varlen);
 	$fill ||= 0;
 
-	while ($str =~ /\{\$([a-z][a-z\d_]+)(?:\.([a-z][a-z\d_]+))?\}/gsi) {	# match $token or $key.token (but not $123token) 
+	# match $token or $key.token (but not $123token) 
+	while ($str =~ /\{\$([a-z][a-z\d_]+)(?:\.([a-z][a-z\d_]+))?\}/gsi) {
 		$var1 = lc $1;
 		$var2 = lc($2 || '');
 		$varlen = length($var1 . $var2) + 2;
 		if (exists $data->{$var1}) {
 			if ($var2 ne '') {
 				$rep = exists $data->{$var1}{$var2} ? $data->{$var1}{$var2} : ($fill) ? "$var1.$var2" : '';
-				$varlen++;					# must account for the extra '.' in the $token.var
+				$varlen++;	# must account for the extra '.' in the $token.var
 			} else {
 				$rep = $data->{$var1};
 			}
@@ -333,11 +374,11 @@ sub simple_interpolate {
 	return $str;
 }
 
-sub iswindows {
-	return (lc substr($^O,0,-2) eq "mswin");
-}
+sub iswindows { lc substr($^O,0,-2) eq "mswin" }
 
 sub print_r { # mimic PHP.. sorta
+	#local $Data::Dumper::Indent = 1;
+	local $Data::Dumper::Sortkeys = 1;
 	print Dumper(@_);
 }
 
@@ -367,6 +408,13 @@ sub expandlist {
 	my %uniq;
 	@range = grep(!$uniq{$_}++, @range);
 	return wantarray ? @range : [ @range ];
+}
+
+sub trim {
+	my ($str) = @_;
+	$str =~ s/^\s+//;
+	$str =~ s/\s+$//;
+	return $str;
 }
 
 {

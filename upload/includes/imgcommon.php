@@ -31,7 +31,6 @@ if (defined("PSFILE_IMGCOMMON_PHP")) return 1;
 define("PSFILE_IMGCOMMON_PHP", 1);
 
 require_once(dirname(__FILE__) . "/common.php");
-require_once(dirname(__FILE__) . "/class_XML.php");
 $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
 
@@ -45,7 +44,7 @@ define("READ_CACHE", true);
 // 0=never timeout! This means images will only be created once! 
 define("CACHE_TIMEOUT", $ps->conf['theme']['images']['cache_timeout']);	
 
-// Path to store cached images. If left blank system defaults will be used
+// Path to store cached images. If right blank system defaults will be used
 if (!empty($ps->conf['theme']['images']['cache_dir'])) {
 	define("CACHE_DIR", catfile($ps->conf['theme']['images']['cache_dir']) . DIRECTORY_SEPARATOR);
 } else {
@@ -92,34 +91,20 @@ function isImgCached($file) {
 }
 
 function stdImgFooter(&$graph,$left=true,$right=true) {
-	global $ps, $imgconf;
+	global $ps, $cms, $imgconf;
+	$styles =& $cms->theme->styles;
 	$i =& $imgconf;
-	if ($left and imgdef($i['common']['@footer']['show'],1)) {
-		$graph->footer->left->Set(sprintf(imgdef($i['common']['footer']['left'], 'PsychoStats v%s'), $ps->version(true)));
-		$graph->footer->left->SetColor(imgdef($i['common']['@footer']['color'], 'black@0.5'));
-		$graph->footer->left->SetFont(constant(imgdef($i['common']['@footer']['font'],'FF_FONT0')),FS_NORMAL);
+	if ($left) {
+		$graph->footer->left->Set(sprintf($styles->val('image.common.footer.left', 'PsychoStats v%s', true), $ps->version(true)));
+		$graph->footer->left->SetColor($styles->val('image.common.footer.color', 'black@0.5', true));
+		$graph->footer->left->SetFont(constant($styles->val('image.common.footer.font','FF_FONT0', true)),FS_NORMAL);
 	}
 
-	if ($right and imgdef($i['common']['@footer']['show'],1)) {
-		$graph->footer->right->Set(date(imgdef($i['common']['footer']['right'], 'Y-m-d @ H:i:s')));
-		$graph->footer->right->SetColor(imgdef($i['common']['@footer']['color'], 'black@0.5'));
-		$graph->footer->right->SetFont(constant(imgdef($i['common']['@footer']['font'],'FF_FONT0')),FS_NORMAL);
+	if ($right) {
+		$graph->footer->right->Set(date($styles->val('image.common.footer.right', 'Y-m-d @ H:i:s', true)));
+		$graph->footer->right->SetColor($styles->val('image.common.footer.color', 'black@0.5', true));
+		$graph->footer->right->SetFont(constant($styles->val('image.common.footer.font','FF_FONT0', true)),FS_NORMAL);
 	}
 }
-
-function imgdef($var, $def = '') {
-	if ($var != '') {
-		return $var;
-	}
-	return $def;		
-}
-
-function load_img_conf() {
-	global $cms;
-	$xml = $cms->theme->parse('images.xml');
-	$conf = XML_unserialize($xml);
-	return $conf['images'] ? $conf['images'] : array();
-}
-
 
 ?>

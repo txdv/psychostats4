@@ -105,7 +105,7 @@ if (!function_exists('pq_query_types')) {
 # these haven't been tested or used in a long time so I have no idea if they work. 
 # so I'm commenting them out for now.
 #		$q['gamespy'] 		= 'Gamespy (partial support)';
-#		$q['quake3'] 		= 'Quake 3';
+		$q['quake3'] 		= 'Quake 3';
 		return $q;
 	}
 }

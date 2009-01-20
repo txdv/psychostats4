@@ -1,4 +1,3 @@
-package PS::Map::halflife;
 #
 #	This file is part of PsychoStats.
 #
@@ -20,10 +19,20 @@ package PS::Map::halflife;
 #
 #	$Id$
 #
+package PS::Map::halflife;
+
 use strict;
 use warnings;
 use base qw( PS::Map );
 
 our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+
+BEGIN {
+	my $fields = __PACKAGE__->SUPER::FIELDS('DATA');
+	%{$fields->{halflife}} = (
+		(map { $_ => '+' } qw(
+		 ))
+	);
+}
 
 1;

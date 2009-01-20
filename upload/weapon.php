@@ -66,7 +66,7 @@ foreach ($zone as $z) {
 	if ($weapon['shot_'.$z] > $max) $max = $weapon['shot_'.$z];
 }
 foreach ($zone as $z) {
-	$weapon['shot_'.$z.'pct'] = $hits ? ceil($weapon['shot_'.$z] / $max * 100) : 0;
+	$weapon['shot_'.$z.'pct'] = $max ? ceil($weapon['shot_'.$z] / $max * 100) : 0;
 	$weapon['real_shot_'.$z.'pct'] = $hits ? ceil($weapon['shot_'.$z] / $hits * 100) : 0;
 }
 

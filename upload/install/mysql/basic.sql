@@ -109,6 +109,23 @@ CREATE TABLE `ps_config_events` (
   KEY `gametype` (`gametype`),
   KEY `modtype` (`modtype`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_config_overlays` (
+  `id` int(10) unsigned NOT NULL,
+  `gametype` varchar(32) NOT NULL,
+  `modtype` varchar(32) NOT NULL,
+  `map` varchar(64) NOT NULL,
+  `minx` smallint(6) NOT NULL,
+  `miny` smallint(6) NOT NULL,
+  `maxx` smallint(6) NOT NULL,
+  `maxy` smallint(6) NOT NULL,
+  `width` smallint(5) unsigned NOT NULL,
+  `height` smallint(5) unsigned NOT NULL,
+  `flipv` tinyint(1) unsigned NOT NULL,
+  `fliph` tinyint(1) unsigned NOT NULL,
+  `rotate` smallint(6) NOT NULL,
+  PRIMARY KEY  (`id`),
+  UNIQUE KEY `gametype` (`gametype`,`modtype`,`map`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_config_logsources` (
   `id` int(10) unsigned NOT NULL,
   `type` varchar(64) NOT NULL default 'file',
@@ -121,8 +138,9 @@ CREATE TABLE `ps_config_logsources` (
   `recursive` tinyint(1) unsigned default NULL,
   `depth` tinyint(3) unsigned default NULL,
   `skiplast` tinyint(1) unsigned default NULL,
+  `skiplastline` tinyint(1) unsigned default NULL,
   `delete` tinyint(1) unsigned default NULL,
-  `options` varchar(255) default NULL,
+  `options` text,
   `defaultmap` varchar(128) NOT NULL default 'unknown',
   `enabled` tinyint(1) unsigned NOT NULL,
   `idx` int(11) NOT NULL default '0',
@@ -279,6 +297,47 @@ CREATE TABLE `ps_map_spatial` (
   `headshot` tinyint(1) unsigned NOT NULL,
   KEY `mapid` (`mapid`,`statdate`,`hour`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_live_entities` (
+  `game_id` int(10) unsigned NOT NULL,
+  `ent_id` int(11) NOT NULL,
+  `ent_type` enum('unknown','player','bot','medkit','ammo','weapon','structure','turret','teleport') NOT NULL default 'unknown',
+  `ent_name` varchar(255) NOT NULL,
+  `ent_team` tinyint(3) unsigned NOT NULL default '0',
+  `onlinetime` int(10) unsigned NOT NULL default '0',
+  `kills` int(11) NOT NULL default '0',
+  `deaths` int(10) unsigned NOT NULL default '0',
+  `suicides` int(10) unsigned NOT NULL default '0',
+  PRIMARY KEY  (`game_id`,`ent_id`,`ent_type`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_live_events` (
+  `game_id` int(10) unsigned NOT NULL,
+  `event_idx` int(10) unsigned NOT NULL,
+  `event_time` int(10) unsigned NOT NULL,
+  `event_type` enum('ROUND_START','ROUND_END','PLR_CONNECT','PLR_DISCONNECT','PLR_SPAWN','PLR_MOVE','PLR_KILL','PLR_TEAM','PLR_NAME','PLR_HURT','PLR_BOMB_PICKUP','PLR_BOMB_DROPPED','PLR_BOMB_PLANTED','PLR_BOMB_DEFUSED','PLR_BOMB_EXPLODED') NOT NULL,
+  `ent_id` int(11) default NULL,
+  `ent_id2` int(11) default NULL,
+  `xyz` varchar(20) default NULL,
+  `weapon` varchar(32) default NULL,
+  `value` varchar(255) default NULL,
+  `json` text,
+  UNIQUE KEY `sequential` (`game_id`,`event_idx`),
+  KEY `eventtypes` (`game_id`,`event_type`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_live_games` (
+  `game_id` int(10) unsigned NOT NULL auto_increment,
+  `start_time` int(10) unsigned NOT NULL,
+  `end_time` int(10) unsigned default NULL,
+  `server_ip` int(10) unsigned default NULL,
+  `server_port` smallint(5) unsigned default NULL,
+  `server_name` varchar(255) default NULL,
+  `game_name` varchar(255) default NULL,
+  `gametype` varchar(32) NOT NULL,
+  `modtype` varchar(32) default NULL,
+  `map` varchar(64) default NULL,
+  PRIMARY KEY  (`game_id`),
+  KEY `start_time` (`start_time`,`end_time`),
+  KEY `lastgame` (`server_ip`,`server_port`,`start_time`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr` (
   `plrid` int(10) unsigned NOT NULL default '0',
   `uniqueid` varchar(128) NOT NULL default '',
@@ -347,21 +406,24 @@ CREATE TABLE `ps_plr_ids_ipaddr` (
   `plrid` int(10) unsigned NOT NULL default '0',
   `ipaddr` int(10) unsigned NOT NULL default '0',
   `totaluses` int(10) unsigned NOT NULL default '1',
-  `firstseen` datetime default NULL,
+  `firstseen` datetime NOT NULL,
+  `lastseen` datetime NOT NULL,
   PRIMARY KEY  (`plrid`,`ipaddr`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_ids_name` (
   `plrid` int(10) unsigned NOT NULL default '0',
   `name` varchar(128) NOT NULL default '',
   `totaluses` int(10) unsigned NOT NULL default '1',
-  `firstseen` datetime default NULL,
+  `firstseen` datetime NOT NULL,
+  `lastseen` datetime NOT NULL,
   PRIMARY KEY  (`plrid`,`name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_ids_worldid` (
   `plrid` int(10) unsigned NOT NULL default '0',
   `worldid` varchar(128) NOT NULL,
   `totaluses` int(10) unsigned NOT NULL default '1',
-  `firstseen` datetime default NULL,
+  `firstseen` datetime NOT NULL,
+  `lastseen` datetime NOT NULL,
   PRIMARY KEY  (`plrid`,`worldid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_maps` (

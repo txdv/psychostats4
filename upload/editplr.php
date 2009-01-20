@@ -136,7 +136,8 @@ if ($submit) {
 	// this will avoid 0,0 being set when a player saves their profile
 	// w/o any values entered.
 	if (empty($input['latitude'])) {
-		$input['latitude'] = null;	}
+		$input['latitude'] = null;
+	}
 	if (empty($input['longitude'])) {
 		$input['longitude'] = null;
 	}

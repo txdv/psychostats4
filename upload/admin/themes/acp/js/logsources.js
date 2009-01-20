@@ -27,12 +27,12 @@ function change_proto(e) {
 
 	$('div[@id^=ls-]', this.form).show();
 	if (proto.selectedIndex < 1 || value == '' || value == 'file') {
-		$('#ls-stream,#ls-host,#ls-port,#ls-passive,#ls-username,#ls-blank,#ls-password').hide();
+		$('#ls-stream,#ls-stream-opt,#ls-host,#ls-port,#ls-passive,#ls-username,#ls-blank,#ls-password').hide();
 	} else if (value == 'ftp' || value == 'sftp') {
 		if (value == 'sftp') $('#ls-passive').hide();
-		$('#ls-stream,#ls-recursive').hide();
+		$('#ls-stream,#ls-stream-opt,#ls-recursive').hide();
 	} else if (value == 'stream') {
-		$('#ls-path,#ls-host,#ls-passive,#ls-username,#ls-blank,#ls-password,#ls-recursive,#ls-skiplast').hide();
+		$('#ls-path,#ls-passive,#ls-username,#ls-blank,#ls-password,#ls-recursive,#ls-skiplast,#ls-skiplastline').hide();
 	}
 }
 

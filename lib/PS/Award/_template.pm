@@ -1,6 +1,3 @@
-# Award plugin template. 
-# Use this as a starting point for any new award class.
-package PS::Award::award_type;	# change "award_type" to the basename of the file
 #
 #	This file is part of PsychoStats.
 #
@@ -20,6 +17,11 @@ package PS::Award::award_type;	# change "award_type" to the basename of the file
 #	You should have received a copy of the GNU General Public License
 #	along with PsychoStats.  If not, see <http://www.gnu.org/licenses/>.
 #
+#	$Id$
+#
+# 	Award plugin template. 
+# 	Use this as a starting point for any new award class.
+package PS::Award::award_type;	# change "award_type" to the basename of the file
 
 # always have these 3 lines
 use base qw( PS::Award );

@@ -5,7 +5,22 @@ $(function(){
 	$('#btn-init').click(do_init);
 	$('#config-form input.field').change(function(){ allow_next = false; });
 	$('#dropdb').click(click_dropdb);
+	$('input.gametype').click(click_gametype);
 });
+
+function click_gametype(e) {
+	var me = $(e.target);
+	var modtypes = me.parents('p:eq(0)').next('ul');
+	if (!modtypes.length) {
+		return;
+	}
+	if (me[0].checked) {
+		modtypes.slideDown();
+	} else {
+		modtypes.slideUp();
+	}
+	return;
+}
 
 function click_dropdb() {
 	var row = $('#overwrite-row');

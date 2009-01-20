@@ -21,7 +21,7 @@
 #
 package PS::Award;
 
-use base qw( PS::Debug );
+use base qw( PS::Core );
 use strict;
 use warnings;
 

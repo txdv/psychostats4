@@ -52,6 +52,14 @@ function PS_halflife_cstrike(&$db) {
 	$this->CLAN_MAP_MODTYPES = $this->CLAN_MODTYPES;
 }
 
+function get_clan_modtypes() {
+	return $this->CLAN_MODTYPES;	
+}
+
+function get_clan_map_modtypes() {
+	return $this->CLAN_MAP_MODTYPES;	
+}
+
 // extra map stats specific for the mod
 function add_map_player_list_mod($map, $setup = array()) {
 	global $cms;

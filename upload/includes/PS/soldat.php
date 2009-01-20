@@ -38,7 +38,6 @@ var $CLAN_MODTYPES = array(
 	'bravodeaths'		=> '+',
 	'joinedalpha'		=> '+',
 	'joinedbravo'		=> '+',
-	'joinedspectator'	=> '+',
 	'alphawon'		=> '+',
 	'alphawonpct'		=> array( 'percent2', 'alphawon', 'bravowon' ),
 	'alphalost'		=> '+',
@@ -47,35 +46,26 @@ var $CLAN_MODTYPES = array(
 	'bravolost'		=> '+',
 	
 	'flagscaptured'		=> '+',
-	'pointcaptured'		=> '+',
+	'flagsdefended'		=> '+',
 
-	'bravocaptureblocked'	=> '+',
-	'bravocaptureblockedpct'=> array( 'percent', 'bravocaptureblocked', 'captureblocked' ),
-	'bravopointcaptured'	=> '+',
-	'bravopointcapturedpct'	=> array( 'percent', 'bravopointcaptured', 'pointcaptured' ),
-	'bravoflagsdefended'	=> '+',
-	'bravoflagsdefendedpct'	=> array( 'percent', 'bravoflagsdefended', 'flagsdefended' ),
-	'bravoflagsdropped'	=> '+',
-	'bravoflagspickedup'	=> '+',
 	'bravoflagscaptured'	=> '+',
 	'bravoflagscapturedpct'	=> array( 'percent', 'bravoflagscaptured', 'flagscaptured' ),
+	'bravoflagsdefended'	=> '+',
+	'bravoflagsdefendedpct'	=> array( 'percent', 'bravoflagsdefended', 'flagsdefended' ),
+	'bravoflagspickedup'	=> '+',
 
-	'alphacaptureblocked'	=> '+',
-	'alphacaptureblockedpct'=> array( 'percent', 'alphacaptureblocked', 'captureblocked' ),
-	'alphapointcaptured'	=> '+',
-	'alphapointcapturedpct'	=> array( 'percent', 'alphapointcaptured', 'pointcaptured' ),
-	'alphaflagsdefended'	=> '+',
-	'alphaflagsdefendedpct'	=> array( 'percent', 'alphaflagsdefended', 'flagsdefended' ),
-	'alphaflagsdropped'	=> '+',
-	'alphaflagspickedup'	=> '+',
 	'alphaflagscaptured'	=> '+',
 	'alphaflagscapturedpct'	=> array( 'percent', 'alphaflagscaptured', 'flagscaptured' ),
-
+	'alphaflagsdefended'	=> '+',
+	'alphaflagsdefendedpct'	=> array( 'percent', 'alphaflagsdefended', 'flagsdefended' ),
+	'alphaflagspickedup'	=> '+',
 );
 
 function PS_soldat(&$db) {
 	parent::PS($db);
 	$this->CLAN_MAP_MODTYPES = $this->CLAN_MODTYPES;
+//	$this->soldat_remove_columns = array('headshotkills','headshotkillspct','accuracy','shotsperkill','damage');
+	$this->soldat_remove_columns = array();
 }
 
 function add_map_player_list_mod($map, $setup = array()) {
@@ -84,21 +74,10 @@ function add_map_player_list_mod($map, $setup = array()) {
 	$this->add_map_player_list('flagsdefended', $setup + array('label' => $cms->trans("Most Flags Recovered")) );
 }
 
-// Add or remove columns from maps.php listing
-function maps_table_mod(&$table) {
-	global $cms;
-	$table->insert_columns(
-		array( 
-			'alphawonpct' => array( 'label' => $cms->trans('Wins'), 'tooltip' => $cms->trans("Bravo / Alpha Wins"), 'callback' => array(&$this, 'team_wins') ), 
-		),
-		'rounds',
-		true
-	);
-}
-
 // Add or remove columns from index.php listing
 function index_table_mod(&$table) {
 	global $cms;
+	$table->remove_columns($this->soldat_remove_columns);
 	$table->insert_columns(
 		array( 
 			'flagscaptured' => array( 'label' => $cms->trans('Flags'), 'tooltip' => $cms->trans("Flags captured") ), 
@@ -108,6 +87,42 @@ function index_table_mod(&$table) {
 	);
 }
 
+// Add or remove columns from maps.php listing
+function maps_table_mod(&$table) {
+	global $cms;
+	$table->insert_columns(
+		array( 
+			'bravowonpct' => array( 'label' => $cms->trans('Wins'), 'tooltip' => $cms->trans("Bravo / Alpha Wins"), 'callback' => array(&$this, 'team_wins') ), 
+		),
+		'rounds',
+		true
+	);
+}
+
+function weapons_table_mod(&$table) {
+	$table->remove_columns($this->soldat_remove_columns);
+}
+function weapon_players_table_mod(&$table) {
+	$table->remove_columns($this->soldat_remove_columns);
+}
+
+function clans_table_mod(&$table) {
+	$table->remove_columns($this->soldat_remove_columns);
+}
+
+function clan_weapons_table_mod(&$table) {
+	$table->remove_columns($this->soldat_remove_columns);
+}
+function clan_players_table_mod(&$table) {
+	$table->remove_columns($this->soldat_remove_columns);
+}
+
+function player_sessions_table_mod(&$table) {
+	$table->remove_columns($this->soldat_remove_columns);
+}
+function player_weapons_table_mod(&$table) {
+	$table->remove_columns($this->soldat_remove_columns);
+}
 
 function map_left_column_mod(&$map, &$theme) {
 	// maps and players have the same stats ...
@@ -177,8 +192,8 @@ function team_wins($value, $data) {
 	$bar = dual_bar(array(
 		'pct1'	=> $data['bravowonpct'], 
 		'pct2'	=> $data['alphawonpct'],
-		'title1'=> $data['bravowon'] . " " . $cms->trans("Alpha Wins") . " (" . $data['bravowonpct'] . "%)",
-		'title2'=> $data['alphawon'] . " " . $cms->trans("Bravo Wins") . " (" . $data['alphawonpct'] . "%)",
+		'title1'=> $data['bravowon'] . " " . $cms->trans("Bravo Wins") . " (" . $data['bravowonpct'] . "%)",
+		'title2'=> $data['alphawon'] . " " . $cms->trans("Alpha Wins") . " (" . $data['alphawonpct'] . "%)",
 		'color1'=> 'cc0000',
 		'color2'=> '0000cc',
 	));

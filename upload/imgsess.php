@@ -29,13 +29,14 @@ include(dirname(__FILE__) . "/includes/imgcommon.php");
 include(JPGRAPH_DIR . '/jpgraph_gantt.php');
 
 $plrid = is_numeric($_GET['id']) ? $_GET['id'] : 0;
-$noname = isset($_GET['nn']);
+//$noname = isset($_GET['nn']);
 
 $imgfilename = 'auto';
 $data = array();
 $labels = array();
-$plrname = "Unknown";
+//$plrname = "Unknown";
 
+$styles =& $cms->theme->styles;
 $imgconf = array();
 $s = array();
 
@@ -45,13 +46,11 @@ $showempty = false;
 $max = 14;
 
 if (!isImgCached($imgfilename)) {
-	$imgconf = load_img_conf();
-	$s =& $imgconf['sessimg'];
-	$showempty = (bool)imgdef($s['frame']['@bar']['showempty'], false);
+	$showempty = (bool)$styles->val('image.session.bar.showempty', false, true);
 
-	if (!$noname) {
-		$plrname = $ps->db->fetch_item("SELECT name FROM $ps->t_plr p, $ps->t_plr_profile pp WHERE p.uniqueid=pp.uniqueid AND p.plrid='" . $ps->db->escape($plrid) . "'");
-	}
+	//if (!$noname) {
+	//	$plrname = $ps->db->fetch_item("SELECT name FROM $ps->t_plr p, $ps->t_plr_profile pp WHERE p.uniqueid=pp.uniqueid AND p.plrid='" . $ps->db->escape($plrid) . "'");
+	//}
 	$ps->db->query("SELECT sessionstart,sessionend FROM $ps->t_plr_sessions WHERE plrid='" . $ps->db->escape($plrid) . "' ORDER BY sessionstart DESC");
 	$idx = 1;
 	$d = array();
@@ -101,69 +100,91 @@ if (!isImgCached($imgfilename)) {
 	}
 }
 
+if (!$data) {
+	// fake 1 record so the chart doesn't error
+	$data[] = array(
+		0,
+		date("Y-m-d"),
+		'00:00',
+		'00:00',
+		time()
+	);
+}
+
 // remove any and all output buffers
-while (@ob_end_clean());
+$ps->ob_clean();
 
 $graph = new GanttGraph(0,0,$imgfilename, CACHE_TIMEOUT);
 
-if ($noname) {
-	$graph->setMargin(0,0,0,14);
-}
+$showfooter = (bool)$styles->val('image.session.showfooter', 'image.common.footer.show');
 
-//$graph->SetBackgroundGradient('gray','whitesmoke',GRAD_LEFT_REFLECTION,BGRAD_MARGIN); 
-$graph->SetMarginColor(imgdef($s['@frame']['margin'], '#C4C4C4')); 
-$graph->SetFrame(true,imgdef($s['@frame']['color'], 'gray'), imgdef($s['@frame']['width'], 1)); 
+$top 	= intval($styles->val('image.session.margin.top', 	'image.common.margin.top', true));
+$right 	= intval($styles->val('image.session.margin.right', 	'image.common.margin.right', true));
+$bottom	= intval($styles->val('image.session.margin.bottom', 	'image.common.margin.bottom', true));
+$left 	= intval($styles->val('image.session.margin.left', 	'image.common.margin.left', true));
 
+$graph->setMargin($left,$right,$top,($showfooter and $bottom<14) ? 14 : $bottom);
 $graph->ShowHeaders(GANTT_HHOUR);
 
-if (!$noname) $graph->title->Set($plrname);
+//$graph->SetBackgroundGradient('gray','whitesmoke',GRAD_LEFT_REFLECTION,BGRAD_MARGIN); 
+$graph->SetMarginColor($styles->val('image.session.frame.margin', '#C4C4C4', true)); 
+$graph->SetFrame(true,
+		 $styles->val('image.session.frame.color', 'gray', true),
+		 $styles->val('image.session.frame.width', 1, true)
+); 
+
+//if (!$noname) $graph->title->Set($plrname);
 //$graph->title->SetColor('blue');
 //$graph->subtitle->Set(imgdef($s['frame']['title'], 'Player Sessions'));
 //$graph->subtitle->SetFont(constant(imgdef($s['@frame']['font'], 'FF_FONT0')));
 
 // must override the weekend settings ...
 $graph->scale->UseWeekendBackground(false);
-$graph->scale->day->SetWeekendColor(imgdef($s['frame']['@header']['bgcolor'], 'lightyellow:1.5'));
-$graph->scale->day->SetSundayFontColor(imgdef($s['frame']['@header']['color'], 'black'));
+$graph->scale->day->SetWeekendColor($styles->val('image.session.header.bgcolor','lightyellow:1.5',true));
+$graph->scale->day->SetFontColor($styles->val('image.session.header.color', 'black', true));
+$graph->scale->day->SetSundayFontColor($styles->val('image.session.header.color', 'black', true));
 
 // match the weekend settings ...
-$graph->scale->hour->SetFontColor(imgdef($s['frame']['@header']['color'], 'black')); 
-$graph->scale->hour->SetBackgroundColor(imgdef($s['frame']['@header']['bgcolor'], 'lightyellow:1.5'));
+$graph->scale->hour->SetFontColor($styles->val('image.session.header.color', 'black', true));
+$graph->scale->hour->SetBackgroundColor($styles->val('image.session.header.bgcolor','lightyellow:1.5',true));
 
-$graph->scale->hour->SetFont(FF_FONT1);
-$graph->scale->hour->SetIntervall(2);
-$graph->scale->hour->SetStyle(HOURSTYLE_HM24);
+$graph->scale->hour->SetFont(constant($styles->val('image.session.font', 'FF_FONT0', true)));
+$graph->scale->hour->SetIntervall($styles->val('image.session.interval', 2, true));
+$graph->scale->hour->SetStyle(constant($styles->val('image.session.header.hourstyle', 'HOURSTYLE_H24', true)));
 
 /**
 $graph->scale->actinfo->SetBackgroundColor('lightyellow:1.5');
-$graph->scale->actinfo->SetStyle(0);
-$graph->scale->actinfo->SetFont(FF_FONT1);
-$graph->scale->actinfo->SetColTitles(array("Day"));
+$graph->scale->actinfo->SetFont(FF_FONT0);
+$graph->scale->actinfo->SetColTitles(array(""));
 /**/
 
-$graph->hgrid->Show((bool)imgdef($s['frame']['@hgrid']['show'], true));
-if ((bool)imgdef($s['frame']['@hgrid']['show'], true)) {
+$show = (bool)$styles->val('image.session.hgrid.show', true, true);
+$graph->hgrid->Show($show);
+if ($show) {
 	$graph->hgrid->SetRowFillColor(
-		imgdef($s['frame']['@hgrid']['color1'],'whitesmoke@0.9'),
-		imgdef($s['frame']['@hgrid']['color2'],'darkblue@0.9')
+		$styles->val('image.session.hgrid.color1', 'whitesmoke@0.9', true),
+		$styles->val('image.session.hgrid.color2', 'darkblue@0.9', true)
 	);
 }
 
 for($i=0; $i<count($data); ++$i) {
 	$bar = new GanttBar($data[$i][0],$data[$i][1],$data[$i][2],$data[$i][3]);
 	$bar->SetPattern(
-		constant(imgdef($s['frame']['@bar']['pattern'], 'BAND_RDIAG')),
-		imgdef($s['frame']['@bar']['patternfill'], 'lightblue')
+		constant($styles->val('image.session.bar.pattern', 'BAND_RDIAG', true)),
+		$styles->val('image.session.bar.patternfill', 'lightblue', true)
 	);
-	if (imgdef($s['frame']['@bar']['fill'], 'darkblue') != 'BAND_SOLID') {
-		$bar->SetFillColor(imgdef($s['frame']['@bar']['fill'], 'darkblue'));
+	$bar->SetFillColor($styles->val('image.session.bar.fill', 'BAND_SOLID', true));
+	$shadow = $styles->val('image.session.bar.shadow','', true);
+	if ($shadow) {
+		$bar->SetShadow(true, $shadow);
 	}
-#	$bar->SetShadow(true, 'black@0.5');
 	$graph->Add($bar);
 }
+$graph->SetVMarginFactor($styles->val('image.session.bar.vmargin', 0.4, true));
 
-
-stdImgFooter($graph);
+if ($styles->val('image.session.showfooter', 'image.common.footer.show')) {
+	stdImgFooter($graph);
+}
 $graph->Stroke();
 
 ?>

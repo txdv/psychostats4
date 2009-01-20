@@ -33,6 +33,9 @@ sub _init {
 	my $self = shift;
 	$self->SUPER::_init;
 
+	# load the kill assist calculation. used in plrtrigger().
+	$self->add_calcskill_func('killassist', $self->{conf}->main->calcskill_kill);
+
 	return $self;
 }
 
@@ -47,6 +50,10 @@ sub _init {
 sub mod_event_kill {
 	my ($self, $p1, $p2, $w, $m, $r1, $r2, $props) = @_;
 
+	# used for kill assists
+	$self->{last_kill_weapon} = $w;
+	$self->{last_kill_role} = $r1;
+	
 	my $custom = $props->{customkill};
 	if ($custom) {	# headshot, backstab
 		my $key = ($custom eq 'headshot') ? 'basic' : 'mod';
@@ -62,6 +69,8 @@ sub mod_event_kill {
 		$m->{$key}{$custom  . 'kills'}++;
 		$w->{$key}{$custom  . 'kills'}++;
 	}
+
+	return 0;
 }
 
 sub event_plrtrigger {
@@ -89,10 +98,14 @@ sub event_plrtrigger {
 		$self->{ipcache}{$p1->{uid}} = ip2int($props->{address});
 
 	} elsif ($trigger eq 'kill assist') {
-		@vars = ( $p1->{team} . 'assists', 'assists' );
-		$p1->{mod_roles}{ $r1->{roleid} }{assists}++ if $r1;
-		$self->plrbonus('kill_assist', 'enactor', $p1);
-
+		$p2 = $self->get_plr($plrstr2);
+		if ($p2) {
+			@vars = ( $p1->{team} . 'assists', 'assists' );
+			$p1->{mod_roles}{ $r1->{roleid} }{assists}++ if $r1;
+			$self->plrbonus('kill_assist', 'enactor', $p1);
+			$self->calcskill_killassist_func($p1, $p2, $self->{last_kill_weapon});
+		}
+		
 	} elsif ($trigger eq 'flagevent') {
 		my $props = $self->parseprops($propstr);
 		if ($props->{event} eq "defended") {
@@ -271,6 +284,13 @@ sub event_round {
 		$self->SUPER::event_round($timestamp, $args);
 	}
 
+}
+
+sub event_logstartend {
+	my ($self, $timestamp, $args) = @_;
+	$self->SUPER::event_logstartend($timestamp, $args);
+	$self->{last_kill_weapon} = undef;
+	$self->{last_kill_role} = undef;
 }
 
 sub has_mod_tables { 1 }

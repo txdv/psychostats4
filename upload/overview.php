@@ -28,6 +28,13 @@ $cms->init_theme($ps->conf['main']['theme'], $ps->conf['theme']);
 $ps->theme_setup($cms->theme);
 $cms->theme->page_title('PsychoStats - Stats Overview');
 
+// default pie slice colors (see styles.xml in the theme to change)
+$pie_slice_colors = array(
+	'#0033FF','#00B3FF','#00FFCC','#00FF4D','#CC00FF',
+	'#7A95FF','#FFD83D','#B3FF00','#FF0033','#FFCC00'
+);
+
+
 // collect url parameters ...
 $validfields = array('ip','ofc');
 $cms->theme->assign_request_vars($validfields, true);
@@ -148,8 +155,9 @@ if ($ps->conf['theme']['map']['google_key']) {
 $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 
 function return_ofc_cc() {
-	global $cms, $ps;
-
+	global $cms, $ps, $pie_slice_colors;
+	$styles =& $cms->theme->styles;
+	
 	$max = 8;		// 2 less than the real max (10)
 	$data = array();
 	$labels = array();
@@ -216,14 +224,20 @@ function return_ofc_cc() {
 
 	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
 	$g = new graph();
-	$g->bg_colour = '#C4C4C4';
+	$g->bg_colour = $styles->val('flash.pie.bgcolor', 'flash.bgcolor');
 
-	$g->title($cms->trans('Country Breakdown'), '{font-size: 16px;}');
-	$g->pie(75,'#505050','{font-size: 12px; display: none;}');
+	$g->title(
+		$styles->val('flash.pie.title', $cms->trans('Country Breakdown'), true),
+		'{' . $styles->val('flash.pie.title.style', 'font-size: 16px', true) . '}'
+	);
+	$g->pie(
+		75,
+		$styles->val('flash.pie.slices.border', '#505050', true),
+		'{' . $styles->val('flash.pie.labels.style', 'font-size: 12px; display: none', true) . '}'
+	);
 	$g->pie_values($values, $labels);
-//	$g->pie_slice_colours( array('#3334AD','#C79810','#d01f3c') );
-	$g->pie_slice_colours(array('#0033FF','#00B3FF','#00FFCC','#00FF4D','#CC00FF','#7A95FF','#FFD83D','#B3FF00','#FF0033','#FFCC00'));
-	$g->set_tool_tip('#x_label#<br>#val#%');
+	$g->pie_slice_colours($styles->attr_list('flash.pie.slices.slice', 'color', $pie_slice_colors, true));
+	$g->set_tool_tip($styles->val('flash.pie.tooltip', '#x_label#<br>#val#%', true));
 
 	// display the data
 	print $g->render();
@@ -231,6 +245,7 @@ function return_ofc_cc() {
 
 function return_ofc_24() {
 	global $cms, $ps;
+	$styles =& $cms->theme->styles;
 
 	$hours = array();
 	$labels = array();
@@ -295,9 +310,12 @@ function return_ofc_24() {
 
 	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
 	$g = new graph();
+	$g->bg_colour = $styles->val('flash.last24.bgcolor', 'flash.bgcolor');
 
-	$g->title($cms->trans('Last 24 Hours'), '{font-size: 16px;}');
-	$g->bg_colour = '#C4C4C4';
+	$g->title(
+		$styles->val('flash.last24.title', $cms->trans('Last 24 Hours'), true),
+		'{' . $styles->val('flash.last24.title.style', 'font-size: 16px', true) . '}'
+	);
 
 	$g->set_data($data_avg);
 	$g->set_data($data);
@@ -305,10 +323,28 @@ function return_ofc_24() {
 	$g->set_data($conns);
 	$g->attach_to_y_right_axis(3);
 
-	$g->line(1, '#9999ee', $cms->trans('Average Kills'), 9);
-	$g->line_dot(2, 5, '#5555ff', $cms->trans('Kills'), 9);
-//	$g->line(1, '#666666', 'Average Connections', 9);
-	$g->line_hollow(1, 3, '#000000', $cms->trans('Connections'), 9);
+	$lines = $styles->attr('flash.last24.lines.line');
+	
+	$g->line(
+		coalesce($lines[0]['width'], 1),
+		coalesce($lines[0]['color'], '#9999ee'),
+		coalesce($lines[0]['key'], $cms->trans('Average Kills')), 
+		coalesce($lines[0]['key_size'], $styles->val('flash.last24.lines.key_size'), 9)
+	);
+	$g->line_dot(
+		coalesce($lines[1]['width'], 2),
+		coalesce($lines[1]['dot_size'], 5),
+		coalesce($lines[1]['color'], '#5555ff'),
+		coalesce($lines[1]['key'], $cms->trans('Kills')), 
+		coalesce($lines[1]['key_size'], $styles->val('flash.last24.lines.key_size'), 9)
+	);
+	$g->line_dot(
+		coalesce($lines[2]['width'], 1),
+		coalesce($lines[2]['dot_size'], 3),
+		coalesce($lines[2]['color'], '#000000'),
+		coalesce($lines[2]['key'], $cms->trans('Connections')), 
+		coalesce($lines[2]['key_size'], $styles->val('flash.last24.lines.key_size'), 9)
+	);
 
 	// label each point with its value
 	$g->set_x_labels($labels);
@@ -320,7 +356,11 @@ function return_ofc_24() {
 
 //	$g->set_x_label_style('none');
 #	$g->set_x_label_style( 8, '#000000', 2 );
-	$g->set_inner_background( '#E3F0FD', '#CBD7E6', 90 );
+	$g->set_inner_background(
+		coalesce($styles->val('flash.last24.bg_inner1', 'flash.bg_inner1'), '#E3F0FD'),
+		coalesce($styles->val('flash.last24.bg_inner2', 'flash.bg_inner2'), '#CBD7E6'),
+		coalesce($styles->val('flash.last24.bg_inner_angle', 'flash.bg_inner_angle'), 90)
+	);
 	$g->x_axis_colour( '#eeeeee', '#eeeeee' );
 	$g->y_axis_colour( '#5555ff', '#eeeeee' );
 	$g->y_right_axis_colour( '#000000', '#eeeeee' );
@@ -337,11 +377,19 @@ function return_ofc_24() {
 	$g->set_y_right_min($minlimit);
 	$g->set_y_right_max($maxlimit2);
 */
-	$g->set_y_legend($cms->trans('Kills'),12,'#5555ff');
-	$g->set_y_right_legend($cms->trans('Connections'),12,'#000000');
+	$g->set_y_legend(
+		coalesce($lines[1]['key'], $cms->trans('Kills')),
+		12,
+		coalesce($lines[1]['color'], '#5555ff')
+	);
+	$g->set_y_right_legend(
+		coalesce($lines[2]['key'], $cms->trans('Connections')),
+		12,
+		coalesce($lines[2]['color'], '#000000')
+	);
 //	$g->y_label_steps();
 
-	$g->set_tool_tip( '#key#<br>#val# (#x_label#)' );
+	$g->set_tool_tip($styles->val('flash.last24.tooltip', '#key#<br>#val# (#x_label#)', true));
 
 	// label every 20 (0,20,40,60)
 //	$g->x_label_steps( 2 );
@@ -352,6 +400,7 @@ function return_ofc_24() {
 
 function return_ofc_day() {
 	global $cms, $ps;
+	$styles =& $cms->theme->styles;
 
 	$days = array();
 	$labels = array();
@@ -400,9 +449,12 @@ function return_ofc_day() {
 
 	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
 	$g = new graph();
+	$g->bg_colour = $styles->val('flash.conn.bgcolor', 'flash.bgcolor');
 
-	$g->title($cms->trans('Daily Connections'), '{font-size: 16px;}');
-	$g->bg_colour = '#C4C4C4';
+	$g->title(
+		$styles->val('flash.conn.title', $cms->trans('Daily Connections'), true),
+		'{' . $styles->val('flash.conn.title.style', 'font-size: 16px', true) . '}'
+	);
 
 #	$g->set_data($data_avg);
 #	$g->line(1, '#9999ee', 'Average Connections', 9);
@@ -411,12 +463,22 @@ function return_ofc_day() {
 ##	$g->line_hollow(1, 3, '#5555ff', 'Connections', 9);
 #	$g->bar(75, '#5555ff', 'Connections', 9);
 
-	$avg_line = new line(1, '#999EE');
-	$avg_line->key($cms->trans('Average Connections'), 9);
+	$avg_line = new line($styles->val('flash.conn.line.width'), $styles->val('flash.conn.line.color'));
+	$avg_line->key(
+		$styles->val('flast.conn.line.key', $cms->trans('Average Connections'), true),
+		$styles->val('flash.conn.line.size', 9, true)
+	);
 	$avg_line->data = $data_avg;
 
-	$conn_bar = new bar_3d(75, '#5555ff', '#3333DD');
-	$conn_bar->key($cms->trans('Connections'), 9);
+	$conn_bar = new bar_3d(
+		$styles->val('flash.conn.bar3d.opacity', 75, true),
+		$styles->val('flash.conn.bar3d.color1', '#5555ff', true),
+		$styles->val('flash.conn.bar3d.color2', '#3333DD', true)
+	);
+	$conn_bar->key(
+		$styles->val('flash.conn.bar3d.key', $cms->trans('Connections'), true),
+		$styles->val('flash.conn.bar3d.size', 9, true)
+	);
 	$conn_bar->data = $data;
 /*
 	$keys = array_keys($data);
@@ -428,8 +490,7 @@ function return_ofc_day() {
 	}
 /**/
 
-	$g->set_tool_tip('#x_label#<br>#key#: #val# (' . $cms->trans(Avg) . ': ' . round($data_avg[0]) . ')');
-//	$g->set_tool_tip('#x_label#<br>#tip#');
+	$g->set_tool_tip(sprintf($styles->val('flash.conn.tooltip', '#x_label#<br>#key#: #val# (' . $cms->trans('Avg') . ': %d)', true), round($data_avg[0])));
 
 	$g->data_sets[] = $avg_line;
 	$g->data_sets[] = $conn_bar;
@@ -445,7 +506,11 @@ function return_ofc_day() {
 
 //	$g->set_x_label_style('none');
 #	$g->set_x_label_style( 8, '#000000', 2 );
-	$g->set_inner_background( '#E3F0FD', '#CBD7E6', 90 );
+	$g->set_inner_background(
+		coalesce($styles->val('flash.conn.bg_inner1', 'flash.bg_inner1'), '#E3F0FD'),
+		coalesce($styles->val('flash.conn.bg_inner2', 'flash.bg_inner2'), '#CBD7E6'),
+		coalesce($styles->val('flash.conn.bg_inner_angle', 'flash.bg_inner_angle'), 90)
+	);
 	$g->x_axis_colour('#909090', '#ADB5C7');
 //	$g->x_axis_colour('#eeeeee', '#eeeeee');
 	$g->y_axis_colour('#5555ff', '#eeeeee');
@@ -455,7 +520,11 @@ function return_ofc_day() {
 	$g->set_y_min(0);
 	$g->set_y_max($maxlimit);
 
-	$g->set_y_legend($cms->trans('Connections'),12,'#5555ff');
+	$g->set_y_legend(
+		$styles->val('flash.conn.bar3d.key', $cms->trans('Connections')),
+		12,
+		$styles->val('flash.conn.bar3d.color1', '#5555ff', true)
+	);
 
 	print $g->render();
 }

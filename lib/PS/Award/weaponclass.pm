@@ -52,7 +52,7 @@ sub calc {
 	my ($newest) = $db->get_row_array("SELECT MAX(statdate) FROM $db->{t_plr_weapons}");
 
 	$fields = { 
-		(map { $_ => "SUM(data.$_)" } keys %{$db->tableinfo($db->{t_plr_weapons})}), 
+		(map { $_ => "SUM(data.$_)" } keys %{$db->table_info($db->{t_plr_weapons})}), 
 		skill => "AVG(plr.skill)",
 	};
 	delete @$fields{ qw( dataid plrid weaponid statdate ) };

@@ -23,334 +23,600 @@ package PS::Map;
 
 use strict;
 use warnings;
-use base qw( PS::Debug );
-use POSIX qw( strftime );
-use util qw( :date print_r );
+use base qw( PS::Core );
 
-our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
-our $BASECLASS = undef;
+use PS::SourceFilter;
+use Time::Local;
+use util qw( compacttime );
 
-our $GAMETYPE = '';
-our $MODTYPE = '';
+use overload
+	'""' => 'name',		# this is primarily used in debugging code
+	fallback => 1;
 
-our $TYPES = {
-	dataid		=> '=', 
-	mapid		=> '=',
-	statdate	=> '=',
-	games		=> '+',
-	rounds		=> '+',
-	kills		=> '+',
-	suicides	=> '+',
-	ffkills		=> '+',
-	ffkillspct	=> [ percent => qw( ffkills kills ) ],
-	connections	=> '+',
-	onlinetime	=> '+',	
-	lasttime	=> '>',
-};
 
-our $TYPES_HOURLY = {
-	dataid		=> '=', 
-	mapid		=> '=',
-	statdate	=> '=',
-	hour		=> '=',
-	online		=> '=',		# total players online in the hour
-	games		=> '+',
-	rounds		=> '+',
-	kills		=> '+',
-	connections	=> '+',
-};
+our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
-#our $TYPES_SPATIAL = {
-#	mapid		=> '=',
-#	weaponid	=> '=',
-#	statdate	=> '=',
-#	kid		=> '=',		# killer
-#	kx		=> '=',
-#	ky		=> '=',
-#	kz		=> '=',
-#	vid		=> '=',		# victim
-#	vx		=> '=',
-#	vy		=> '=',
-#	vz		=> '=',
-#};
+# Global fields hash that determines what can be saved in the DB. Fields are
+# created at COMPILE TIME.
+our ($FIELDS, $ALL, $ORDERED);
+BEGIN {
+	$FIELDS = { };
+	$FIELDS->{DATA} = { data => {
+		(map { $_ => '+' } qw(
+			kills
+			headshot_kills	headshot_deaths
+			suicides
+			games 		rounds
+			connections
+			online_time
+		)),
+	}};
+}
+
+# global helper objects for all PS::Map objects (use methods to access)
+our ($DB, $CONF, $OPT);
+
+# cached base classes that have been loaded already
+our $CLASSES = {};
+our $PREPARED = {};
+
+# cached mapid's that have been loaded already
+our $MAPIDS = {};
 
 sub new {
-	my ($proto, $mapname, $conf, $db) = @_;
-	my $baseclass = ref($proto) || $proto;
-	my $self = { debug => 0, class => undef, mapname => $mapname, conf => $conf, db => $db };
+	my $proto = shift;
+	my $name = shift;				# map name
+	my $gametype = shift;				# halflife
+	my $modtype = shift || '';			# cstrike
+	my $timestamp = shift || timegm(localtime);	# timestamp when map was used (game time)
+	if (ref $name) {
+		$gametype = $name->gametype;
+		$modtype  = $name->modtype;
+		$name = $name->name;
+	}
+	my $self = {
+		gametype	=> $gametype,
+		modtype		=> $modtype,
+		type		=> $modtype ? $gametype . '_' . $modtype : $gametype,
+		firstseen	=> $timestamp,	# when player was first seen
+		timestamp	=> $timestamp,	# player timestamp
+
+		mapid		=> 0,		# PRIMARY KEY
+		name		=> '',		# map name
+
+		data		=> {},		# core data stats
+		#map		=> {},		# t_map information (only populated when there's a change)
+		#history		=> {},		# historical stats, keyed on date
+	};
+
 	my $class;
-
-	# determine what kind of player we're going to be using the first time we're created
-	if (!$BASECLASS) {
-		$GAMETYPE = $conf->get('gametype');
-		$MODTYPE = $conf->get('modtype');
-
-		my @ary = ($MODTYPE) ? ($MODTYPE, $GAMETYPE) : ($GAMETYPE);
+	if (exists $CLASSES->{$self->{type}}) {
+		# quickly return the subclass if it was loaded already
+		$class = $CLASSES->{$self->{type}};
+	} else {
+		# Attempt to find a subclass of:
+		# 	PS::Map::GAMETYPE::MODTYPE
+		# 	PS::Map::GAMETYPE
+		my $baseclass = ref($proto) || $proto;
+		my @ary = $modtype ? ($modtype, $gametype) : ($gametype);
 		while (@ary) {
 			$class = join("::", $baseclass, reverse(@ary));
 			eval "require $class";
 			if ($@) {
 				if ($@ !~ /^Can't locate/i) {
-					$::ERR->warn("Compile error in class $class:\n$@\n");
-					return undef;
+					__PACKAGE__->fatal("Compile error in class $class:\n$@\n");
 				} 
 				undef $class;
 				shift @ary;
 			} else {
+				# class found, yeehaw!
+				$CLASSES->{$self->{type}} = $class;
+				$self->{$modtype} = $modtype;
+
+				# prepare specialized statements for the game.
+				# this is only going to happen once.
+				if (!$PREPARED->{$self->{type}}) {
+					__PACKAGE__->init_game_database($gametype, $modtype);
+					__PACKAGE__->prepare_statements($gametype, $modtype);
+				}
+				
 				last;
 			}
 		}
 
-		# still no class? create a basic PS::Map object and return that
-		$class = $baseclass if !$class;
+		# Still no class? Then use PS::Map instead.
+		if (!$class) {
+			$class = $baseclass;
+			$CLASSES->{$self->{type}} = $class;
+		}
 
-	} else {
-		$class = $BASECLASS;
+		# If no suitable class is found then we fatal out
+		if (!$class) {
+			$self->fatal("No suitable " . __PACKAGE__ . " sub-class found. HALTING");
+		}
 	}
-
 	$self->{class} = $class;
 
 	bless($self, $class);
-#	$self->debug($self->{class} . " initializing");
+	return $self->init($name);
+}
 
-	$self->_init;
-
-	if (!$BASECLASS) {
-		$self->_init_table;
-		$BASECLASS = $class;
-	}
-
+sub init {
+	my ($self, $name) = @_;
+	$self->{name} = $name;
 	return $self;
 }
 
-# makes sure the compiled map data table is already setup
-sub _init_table {
-	my $self = shift;
-	my $conf = $self->{conf};
-	my $db = $self->{db};
-	my $basetable = 'map_data';
-	my $table = $db->ctbl($basetable);
-	my $tail = '';
-	my $fields = {};
-	my @order = ();
-	$tail .= "_$GAMETYPE" if $GAMETYPE;
-	$tail .= "_$MODTYPE" if $GAMETYPE and $MODTYPE;
-	return if $db->table_exists($table);
-
-	# get all keys used in the 2 tables so we can combine them all into a single table
-	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
-	if ($tail) {
-		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
-	}
-
-	# remove unwanted/special keys
-	delete @$fields{ qw( statdate ) };
-
-	# add extra keys
-	my $alltypes = $self->get_types;
-	$fields->{$_} = 'date' foreach qw( firstdate lastdate );
-	$fields->{$_} = 'uint' foreach qw( dataid mapid );	# unsigned
-	$fields->{$_} = 'float' foreach grep { ref $alltypes->{$_} } keys %$alltypes;
-
-	# build the full set of keys for the table
-	@order = (qw( dataid mapid firstdate lastdate ), sort grep { !/^((data|map)id|(first|last)date)$/ } keys %$fields );
-
-	$db->create($table, $fields, \@order);
-	$db->create_primary_index($table, 'dataid');
-	$db->create_unique_index($table, 'mapid');
-	$self->info("Compiled table $table was initialized.");
-}
-
-sub _init {
-	my $self = shift;
-
-	return unless $self->{mapname};
-
-	$self->{basic} = {};
-	$self->{mod} = {};
-	$self->{hourly} = {};
-	$self->{spatial} = {};
-
-	$self->{basic}{lasttime} = 0;
-
-	$self->{conf_maxdays} = $self->{conf}->get_main('maxdays');
-	$self->{heatmap_maxdays} = $self->{conf}->get_main('heatmap.maxdays');
-
-	$self->{mapid} = $self->{db}->select($self->{db}->{t_map}, 'mapid', 
-		"uniqueid=" . $self->{db}->quote($self->{mapname})
-	);
-	# map didn't exist so we have to create it
-	if (!$self->{mapid}) {
-		$self->{mapid} = $self->{db}->next_id($self->{db}->{t_map},'mapid');
-		my $res = $self->{db}->insert($self->{db}->{t_map}, { 
-			mapid => $self->{mapid},
-			uniqueid => $self->{mapname},
-		});
-		$self->fatal("Error adding map to database: " . $self->{db}->errstr) unless $res;
-	}
-}
-
-sub name { $_[0]->{mapname} }
-
-sub statdate {
-	return $_[0]->{statdate} if @_ == 1;
-	my $self = shift;
-	my ($d,$m,$y) = (localtime(shift))[3,4,5];
-	$m++;
-	$y += 1900;
-	$self->{statdate} = sprintf("%04d-%02d-%02d",$y,$m,$d);
-}
-
-sub timerstart {
-	my $self = shift;
-	my $timestamp = shift;
-	my $prevtime = 0;
-#	no warnings;						# don't want any 'undef' or 'uninitialized' errors
-
-	# a previous timer was already started, get it's elapsed value
-	if ($self->{firsttime}) {
-		$prevtime = $self->timer; #$self->{basic}{lasttime} - $self->{firsttime};
-	}
-	$self->{firsttime} = $self->{basic}{lasttime} = $timestamp;	# start new timer with current timestamp
-	$self->statdate($timestamp) unless $self->statdate;		# set the statdate if it wasn't set already
-	return $prevtime;
-}
-
-# return the total time that has passed since the timer was started
-sub timer {
-	my $self = shift;
-	return 0 unless $self->{firsttime} and $self->{basic}{lasttime};
-	my $t = $self->{basic}{lasttime} - $self->{firsttime};
-	# If $t is negative then there's a chance that DST "fall back" just occured, so the timestamp is going to be -1 hour.
-	# I try to compensate for this here by fooling the routines into thinking the time hasn't actually changed. this will
-	# cause minor timing issues but the result is better then the player receiving NO time at all.
-	if ($t < 0) {
-		$t += 3600;	# add 1 hour
-	}
-	return $t > 0 ? $t : 0;
-}
-
-sub get_types { $TYPES }
-sub get_types_hourly { $TYPES_HOURLY }
-#sub get_types_spatial { $TYPES_SPATIAL }
-
+# Save accumulated stats
 sub save {
-	my $self = shift;
-	my $db = $self->{db};
-	my $dataid;
-
-	# save compiled stats ...
-	$dataid = $db->save_stats( $db->{c_map_data}, { %{$self->{basic}}, %{$self->{mod}} }, $self->get_types, 
-		[ mapid => $self->{mapid} ], $self->{statdate});
-
-	# save basic and mod history
-	if (diffdays_ymd(strftime("%Y-%m-%d", localtime), $self->{statdate}) <= $self->{conf_maxdays}) {
-		$dataid = $db->save_stats($db->{t_map_data}, $self->{basic}, $TYPES, 
-			[ mapid => $self->{mapid}, statdate => $self->{statdate} ]
-		);
-		if ($dataid and $self->{mod} and $self->has_mod_tables) {
-			$db->save_stats($db->{t_map_data_mod}, $self->{mod}, $self->mod_types, [ dataid => $dataid ]);
-			$self->{mod} = {};
-		}
-	}
-	$self->{basic} = {};
-
-	# save hourly map stats ...
-	if (defined $self->{hourly}) {
-		foreach my $date (keys %{$self->{hourly}}) {
-			foreach my $hour (keys %{$self->{hourly}{$date}}) {
-				$db->save_stats($db->{t_map_hourly}, $self->{hourly}{$date}{$hour}, $self->get_types_hourly, 
-					[ mapid => $self->{mapid}, statdate => $date, hour => $hour ]
-				);
-			}
-		}
-		$self->{hourly} = {};
-	}
-
-	# save spatial stats
-	$self->save_all_spatial;
-
-	return $dataid;
-}
-
-sub save_all_spatial {
 	my ($self) = @_;
-	if (defined $self->{spatial}) {
-		my $today = strftime("%Y-%m-%d", localtime);
-		foreach my $date (keys %{$self->{spatial}}) {
-			# save an entire day all at once
-			if (diffdays_ymd($today, $date) <= $self->{heatmap_maxdays}) {
-				$self->save_spatial($self->{spatial}{$date});
+
+	if (!$self->{mapid}) {
+		# side effect; make sure a MAPID is assigned to this map.
+		$self->id || return undef;
+	}
+
+	# don't save any stats if we don't have a timestamp.
+	return unless $self->{timestamp};
+
+	# calculate the total online time
+	$self->{data}{online_time} = $self->onlinetime;
+
+	# Use the last known timestamp for the statdate.
+	my ($d, $m, $y) = (gmtime($self->{timestamp}))[3,4,5];
+	my $statdate = sprintf('%04u-%02u-%02u', $y+1900, $m+1, $d);
+
+	# NEXT: save stats
+	$self->save_stats($statdate);
+
+	%{$self->{data}} = ();
+
+	# reset the timer start since we've calculated the online time above.
+	$self->{timestart} = $self->{timestamp};
+}
+
+my $_cache = {};
+sub save_stats {
+	my ($self, $statdate) = @_;
+	my $tbl = sprintf('map_data_%s', $self->{type});
+	my ($cmd, $history, $compiled, @bind, @updates);
+	
+	# SAVE COMPILED STATS
+	
+	# find out if a compiled row exists already...
+	$compiled = $_cache->{'data-' . $self->{mapid}}
+		|| $self->db->execute_selectcol('find_c' . $tbl, $self->{mapid});
+
+	if ($compiled) {
+		# UPDATE an existing row
+		@bind = ();
+		@updates = ();
+		foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED->{DATA}}) {
+			push(@updates, $self->db->expr(
+				$key,			# stat key (kills, deaths, etc)
+				$ALL->{DATA}{$key},	# expression '+'
+				$self->{data}{$key},	# actual value
+				\@bind			# arrayref to store bind values
+			));
+		}
+		if (@updates) {
+			$cmd = sprintf('UPDATE %s SET %s WHERE mapid=?',
+				$self->db->ctbl($tbl), join(',', @updates)
+			);
+			if (!$self->db->do($cmd, @bind, $self->{mapid})) {
+				$self->warn("Error updating compiled MAP data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
 			}
 		}
-		$self->{spatial} = {};
+		
+	} else {
+		# INSERT a new row
+		@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
+		$self->db->execute('insert_c' . $tbl, $self->{mapid}, @bind);
+		$_cache->{$self->{mapid}} = 1;
 	}
+
+	# SAVE HISTORICAL STATS
+
+	# get current dataid, if it exists.
+	#$history = $_cache->{$self->{mapid} . '-' . $statdate}
+	#	|| $self->db->execute_selectcol('find_plr_data', $self->{mapid}, $statdate);
+
 }
 
-# spatial stat inserts are optimized to reduce the total inserts that need to be performed.
-sub save_spatial {
-	my ($self, $data) = @_;
-	my ($cmd,$fields,@keys,$hdr);
-	my $db = $self->{db};
-	my $MAX = 1000*1024;		# a little less than 1MB
-	if (ref $data eq 'HASH') {
-		$data = [ { %$data } ];
-	}
+my $_data_dataids = {};
+sub save_data {
+	my ($self, $statdate) = @_;
+	my $fields = $FIELDS->{DATA};
+	my $tbl = 'map_data_' . $self->{type};
 
-	@keys = keys %{$data->[0]};
-	$fields = join(', ', map { $db->qi($_) } @keys);
+	# check if the main data table already exists, if it does, we need its
+	# dataid so the other tables can be related to it.
+	my $dataid = $_data_dataids->{$self->{mapid} . '-' . $statdate}
+		|| $self->db->execute_selectcol('find_map_data', $self->{mapid}, $statdate);
 
-	$hdr = "INSERT INTO $db->{t_map_spatial} ($fields) VALUES ";
-	$cmd = '';
-	foreach my $d (@$data) {
-		if (length($cmd) < $MAX) {
-			$cmd .= "(" . join(', ', map { $db->quote($d->{$_}) } @keys) . "),";
-		} else {
-			# run the query; the max length of $cmd will usually overrun $MAX just a tad, this is ok.
-			$self->{db}->query($hdr.substr($cmd,0,-1));
-			$cmd = '';
+	if (!$dataid) {
+		if (!$self->db->execute('insert_map_data',
+			$self->{mapid},
+			$statdate,
+			$self->{firstseen},
+			$self->{timestamp}	# lastseen
+		)) {
+			# If an error occurs it will be reported by the DB
+			# object. This means we can't continue here, since we
+			# won't have a valid dataid.
+			return undef;
+		}
+		$dataid = $self->db->last_insert_id || return undef;
+
+		# Insert a matching row for the game_mod data. We don't care
+		# if this fails (technically, it never should fail).
+		$self->db->execute('insert_' . $tbl,
+			$dataid,
+			# include all field keys
+			map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}}
+		);
+	} else {
+		# update the tables, using a single query:
+		# map_data, map_data_gametype_modtype
+
+		my $pref = $self->db->{dbtblprefix};
+		my $cmd = sprintf('UPDATE %s%s t1, %smap_data t2 SET lastseen=?', $pref, $tbl, $pref);
+		my @bind = ( $self->{timestamp} );
+		foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED->{DATA}}) {
+			my $expr = $ALL->{DATA}{$key};
+			$cmd .= ",$key=";
+			if ($expr eq '+' || $expr eq '=') {
+				$cmd .= $key . $expr . '?';
+				push(@bind, $self->{data}{$key});
+			} elsif ($expr eq '>') {
+				$cmd .= $self->db->expr_max($key, '?');
+				# expr_max creates two '?' placeholders
+				push(@bind, $self->{data}{$key}, $self->{data}{$key});
+			} elsif ($expr eq '<') {
+				$cmd .= $self->db->expr_min($key, '?');
+				# expr_min creates two '?' placeholders
+				push(@bind, $self->{data}{$key}, $self->{data}{$key});
+			}
+		}
+		$cmd .= ' WHERE t1.dataid=? AND t2.dataid=t1.dataid';
+		push(@bind, $dataid);
+		
+		if (!$self->db->do($cmd, @bind)) {
+			$self->warn("Error updating MAP data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
 		}
 	}
-	# finish up and run the last query
-	if ($cmd) {
-		$self->{db}->query($hdr.substr($cmd,0,-1));
+	$_data_dataids->{$self->{mapid} . '-' . $statdate} = $dataid;
+
+}
+
+# get the unique mapid (read only). If the id is not set yet, the object will
+# attempt to assign one and create a record in the DB.
+sub id {
+	my ($self) = @_;
+	return $self->{mapid} if $self->{mapid};
+	return $self->{mapid} = $MAPIDS->{$self} if $MAPIDS->{$self};
+	my $id = $DB->execute_selectcol('find_mapid', @$self{qw( name gametype modtype )});
+	if (!$id) {
+		$DB->execute('insert_map', @$self{qw( name gametype modtype )});
+		$id = $DB->last_insert_id || 0;
+	}
+	$self->{mapid} = $MAPIDS->{$self} = $id;
+	return $self->{mapid};
+}
+
+# get/set the maps name.
+sub name {
+	my ($self, $new) = @_;
+	if (defined $new) {
+		$self->{name} = $new;
+	}
+	return $self->{name};
+}
+
+# get/set the last action timestamp
+sub timestamp {
+	my ($self, $new) = @_;
+	if (defined $new) {
+		$self->{timestamp} = $new;
+		# set the firstseen and timer timestamps if needed
+		$self->firstseen($new) unless $self->{firstseen};
+		$self->timestart($new) unless $self->{timestart};
+	}
+	return $self->{timestamp};
+}
+
+# get/set the start timestamp (used for onlinetime tracking)
+sub timestart {
+	my ($self, $new) = @_;
+	if (defined $new) {
+		$self->{timestart} = $new;
+	}
+	return $self->{timestart};
+}
+
+# get/set the first seen timestamp
+sub firstseen {
+	my ($self, $new) = @_;
+	if (defined $new) {
+		$self->{firstseen} = $new;
+	}
+	return $self->{firstseen};
+}
+
+# return the total seconds the map has been online
+sub onlinetime {
+	my ($self) = @_;
+	return 0 unless $self->{timestamp};
+	$self->timestart($self->{timestamp}) unless $self->{timestart};
+	return $self->{timestamp} - $self->{timestart};
+}
+
+# a player connected to the map while a game was active.
+sub action_connected {
+	my ($self, $plr, $props) = @_;
+	$self->timestamp($props->{timestamp});
+	if (!$plr->is_bot or !$self->conf->main->ignore_bots_conn) {
+		$self->{data}{connections}++;
+		#$self->hourly('connections', $props->{timestamp});
 	}
 }
 
-# adds an hourly stat to the current hour
-sub hourly {
-	my ($self, $var, $timestamp, $inc) = @_;
-	my ($date, $hour) = split(' ', strftime("%Y-%m-%d %H", localtime($timestamp)));
-	$inc = 1 unless defined $inc;
-	if (ref $var eq 'ARRAY') {
-		$self->{hourly}{$date}{$hour}{$_} += $inc for @$var;
-	} else {
-		$self->{hourly}{$date}{$hour}{$var} += $inc;
+# a player joined a team on the map.
+sub action_joined_team {
+	my ($self, $team, $props) = @_;
+	$self->timestamp($props->{timestamp});
+	
+	$self->{data}{'joined_' . $team}++;
+}
+
+# a player killed someone else... duh.
+sub action_kill {
+	my ($self, $killer, $victim, $weapon, $props) = @_;
+	my $map = $self->name;
+	my $kt = $killer->team;
+	my $vt = $victim->team;
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{kills}++;
+	#warn "Map '$self' has $self->{data}{kills} total kills\n";
+
+	if ($vt) {
+		# killed someone on the other team
+		$self->{data}{'killed_' . $vt}++;
+	}
+	
+	if ($kt) {
+		# kills for your current team
+		$self->{data}{$kt . '_kills'}++;
+
+		if ($vt eq $kt) {	# record a team kill
+			$self->{data}{team_kills}++;
+		}
 	}
 }
 
-# adds a spatial stat to the current date
-sub spatial {
-	my ($self, $game, $p1, $ap, $p2, $vp, $w, $headshot) = @_;
-	return unless defined $ap && defined $vp;
-#	return if 60*60*24*$self->{conf_maxdays} - time > $game->{timestamp};
-	my $set = {
-		mapid		=> $self->{mapid},
-		weaponid	=> $w->{weaponid},
-		statdate	=> strftime("%Y-%m-%d", localtime($game->{timestamp})), 
-		hour		=> $game->{hour},
-		roundtime	=> $game->{roundstart} ? $game->{timestamp} - $game->{roundstart} : 0,
-		kid		=> $p1->{plrid},
-		kteam		=> $p1->{team} || undef,
-		vid		=> $p2->{plrid},
-		vteam		=> $p2->{team} || undef,
-		headshot	=> $headshot ? 1 : 0
-	}; 
-	@$set{qw( kx ky kz )} = ref $ap ? @$ap : split(' ', $ap);
-	@$set{qw( vx vy vz )} = ref $vp ? @$vp : split(' ', $vp);
-	push(@{$self->{spatial}{ $set->{statdate} }}, $set);
+# The map has officially started.
+sub action_mapstarted {
+	my ($self, $props) = @_;
+	#$self->timestamp($props->{timestamp});
+	#warn "Map started '$self'\n\n";
+	
+	$self->{data}{games}++;
 }
 
-sub has_mod_tables { 0 }
+sub action_mapended {
+	my ($self, $props) = @_;
+	#my $time = compacttime($self->onlinetime);
+	#$self->timestamp($props->{timestamp});
+	#warn "Map ended '$self' ($time)\n";
+}
+
+# A new round started.
+sub action_round {
+	my ($self, $props) = @_;
+	
+	$self->{data}{rounds}++;
+
+	# make sure a game is recorded. Logs that do not start with a 'map
+	# started' event will end up having 1 less game recorded than normal
+	# unless we fudge it here.
+	if (!$self->{data}{games}) {
+		$self->{data}{games}++;
+	}
+
+}
+
+# A player committed suicide
+sub action_suicide {
+	my ($self, $victim, $weapon, $props) = @_;
+	
+	# we don't need to record deaths for maps, it'll always equal kills
+	#$self->{data}{deaths}++;
+	
+	$self->{data}{suicides}++;
+}
+
+# generic team win event for any map game.
+sub action_teamwon {
+	my ($self, $trigger, $team, $props) = @_;	
+
+	# terrorist_wins, ct_wins, red_wins, blue_wins, etc...
+	$self->{data}{$team . '_wins'}++;
+}
+
+# generic team lost event for any map game.
+sub action_teamlost {
+	my ($self, $trigger, $team, $props) = @_;	
+	
+	# terrorist_losses, ct_losses, red_losses, blue_losses, etc...
+	$self->{data}{$team . '_losses'}++;
+}
+
+sub gametype { $_[0]->{gametype} }
+sub modtype  { $_[0]->{modtype} }
+
+sub db () { $DB }
+sub conf () { $CONF }
+sub opt () { $OPT }
+
+# Package method to return a $FIELDS hash for database columns
+sub FIELDS {
+	my ($self, $rootkey) = @_;
+	my $group = ($self =~ /^PS::Map::(.+)/)[0];
+	my $root = $FIELDS;
+	$group =~ s/::/_/g;
+	if ($rootkey) {
+		$rootkey =~ s/::/_/g;
+		$FIELDS->{$rootkey} ||= {}; # if !exists $FIELDS->{$rootkey};
+		$root = $FIELDS->{$rootkey};
+
+		# Make sure the sub-key for this root is created ahead of time.
+		$root->{$group} ||= {};
+		#$root->{$group}{data} ||= {};
+	}
+	return $root;
+}
+
+# Package method. 
+# Prepares some SQL statements for use by all objects of this class to speed
+# things up a bit. These statements require a valid PS::Plr object to be created
+# already. This is only called once, per sub-class.
+sub prepare_statements {
+	my ($class, $gametype, $modtype) = @_;
+	my $db = $PS::Map::DB || return undef;
+	my $cpref = $db->{dbtblcompiledprefix};
+	my $pref = $db->{dbtblprefix};
+	my $type = $modtype ? $gametype . '_' . $modtype : $gametype;
+	$PREPARED->{$type} = 1;
+
+	# setup ordered columns for each set of fields, combining the 'data',
+	# 'gametype' and 'modtype' fields into a single list.
+	foreach my $F (sort keys %$FIELDS) {
+		my %uniq;	# filter out unique columns
+		$ORDERED->{$F} = [
+			sort
+			grep { !$uniq{$_}++ }
+			map { keys %$_ }
+			@{$FIELDS->{$F}}{ keys %{$FIELDS->{$F}} }
+		];
+	}
+
+	# setup a list of all columns for each set of stats, so we don't have
+	# to calculate this at each call to save().
+	for my $F (qw( DATA )) {
+		$ALL->{$F} = { map { %{$FIELDS->{$F}{$_}} } keys %{$FIELDS->{$F}} };
+	}
+	
+	# finding a matching mapid based on the uniqueid
+	$db->prepare('find_mapid', 'SELECT mapid FROM t_map WHERE name=? AND gametype=? AND modtype=?')
+		if !$db->prepared('find_mapid');
+	
+	# insert a new map record based on the uniqueid.
+	# mapid is auto_increment.
+	$db->prepare('insert_map', 'INSERT INTO t_map (name, gametype, modtype) VALUES (?,?,?)')
+		if !$db->prepared('insert_map');
+
+	# returns the dataid of the t_map_data table that matches the mapid and
+	# statdate.
+	$db->prepare('find_map_data', 'SELECT dataid FROM t_map_data WHERE mapid=? AND statdate=?')
+		if !$db->prepared('find_map_data');
+
+	# returns mapid (true) if the compiled map ID already exists in the
+	# compiled table.
+	$db->prepare('find_cmap_data_' . $type, 'SELECT mapid FROM ' . $cpref . 'map_data_' . $type . ' WHERE mapid=?')
+		if !$db->prepared('find_cmap_data_' . $type);
+
+	# insert a new map_data row
+	$db->prepare('insert_map_data',
+		'INSERT INTO t_map_data (mapid,statdate,firstseen,lastseen) ' .
+		'VALUES (?,?,?,?)'
+	) if !$db->prepared('insert_map_data');
+
+	if (!$db->prepared('insert_map_data_' . $type)) {
+		$db->prepare('insert_map_data_' . $type, sprintf(
+			'INSERT INTO ' . $pref . 'map_data_' . $type . ' (dataid,%s) ' .
+			'VALUES (?%s)',
+			join(',', @{$ORDERED->{DATA}}),
+			',?' x @{$ORDERED->{DATA}}
+		));
+		#print $db->prepared('insert_map_data_' . $type)->{Statement}, "\n";
+
+		# COMPILED STATS
+		$db->prepare('insert_cmap_data_' . $type, sprintf(
+			'INSERT INTO %smap_data_%s (mapid,%s) ' .
+			'VALUES (?%s)',
+			$cpref, $type,
+			join(',', @{$ORDERED->{DATA}}),
+			',?' x @{$ORDERED->{DATA}}
+		));
+		#print $db->prepared('insert_cmap_data_' . $type)->{Statement}, "\n";
+	}
+
+}
+
+sub _init_table {
+	my ($class, $tbl, $fields, $primary, $order) = @_;
+	my $created = 0;
+	$primary ||= 'dataid';
+	if (!ref $primary) {
+		$primary = { $primary => 'uint' };
+	}
+	$order ||= [ sort keys %$primary ];
+	
+	# FIRST, make sure the data table exists for the game_mod.
+	if (!$DB->table_exists($tbl)) {
+		$class->info("* Creating table $tbl.");
+		# only add the primary key(s) to the table, the rest will be
+		# added afterwards.
+		if (!$DB->create($tbl, $primary, $order)) {
+			$class->fatal("Error creating table $tbl: " . $DB->errstr);
+		}
+		$DB->create_primary_index($tbl, $order);
+		$created = 1;
+	}
+	
+	# NEXT, Add any columns to the table that don't already exist. Note:
+	# It's assumed that existing columns will be the correct type.
+	my %uniq;	# filter out unique columns only
+	my @cols = sort grep { !$uniq{$_}++ } map { keys %$_ } @$fields{ keys %$fields };
+	my $info = $DB->table_info($tbl);
+	my (@add, @missing);
+	foreach my $col (@cols) {
+		if (!exists $info->{$col}) {
+			push(@missing, $col);
+			push(@add, $DB->_type_int($col) . $DB->_attrib_null(0) . $DB->_default_int);
+		}
+	}
+	if (@missing) {
+		$class->info("* Adding " . scalar(@missing) . " missing columns to table $tbl (" . join(', ', @missing) . ")")
+			if !$created;
+		if (!$DB->alter_table_add($tbl, @add)) {
+			$class->fatal("Error updating table $tbl with new columns (" . join(', ', @missing) . "): " . $DB->errstr);
+		}
+	}
+}
+
+# Package method to make sure the database is properly setup for the game and
+# mod specified. This is automatically called once when a new map type is
+# instantiated.
+# ::configure should have already been called with a valid $DB handle to use.
+sub init_game_database {
+	my ($class, $gametype, $modtype) = @_;
+	my $type = $modtype ? $gametype . '_' . $modtype : $gametype;
+
+	$class->_init_table($DB->tbl( 'map_data_' . $type), $FIELDS->{DATA});
+	$class->_init_table($DB->ctbl('map_data_' . $type), $FIELDS->{DATA}, 'mapid');
+}
+
+# setup global helper objects (package method)
+# PS::Plr::configure( ... )
+sub configure {
+	my %args = @_;
+	foreach my $k (keys %args) {
+		no strict 'refs';
+		my $var = __PACKAGE__ . '::' . $k;
+		$$var = $args{$k};
+	}
+}
 
 1;

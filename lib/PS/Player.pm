@@ -28,8 +28,8 @@
 #	PS::Player::{gametype}
 #	PS::Player
 #
-#       The first time a player object is created it's baseclass is saved so all
-#       other player objects will be created in the same way w/o trying to
+#       The first time a player object is created it's base class is saved so
+#       all other player objects will be created in the same way w/o trying to
 #       search for subclasses (small performance gain). This means you can not
 #	load two different game classes in the same program.
 #
@@ -423,6 +423,7 @@ sub plrids {
 	foreach my $column (keys %$newids) {
 		my $var = $newids->{$column};
 		$self->{_plrids}{$column}{$var}{totaluses} += $inc;
+		$self->{_plrids}{$column}{$var}{lastseen} = $self->{game}{timestamp};
 		if (!$self->{_plrids}{$column}{$var}{firstseen}) {
 			$self->{_plrids}{$column}{$var}{firstseen} = $self->{game}{timestamp};
 		}
@@ -440,12 +441,14 @@ sub save_plrids {
 			foreach my $var (keys %{$self->{_plrids}{$column}}) {
 				$self->{db}->do(
 					"INSERT INTO " . $self->{db}{'t_plr_ids_' . $column} . " " .
-					"(plrid,$column,totaluses,firstseen) " . 
+					"(plrid,$column,totaluses,firstseen,lastseen) " . 
 					"VALUES ($self->{plrid}," .
 					$self->{db}->quote($var) .
 					"," . $self->{_plrids}{$column}{$var}{totaluses} . 
-					",FROM_UNIXTIME(" . $self->{_plrids}{$column}{$var}{firstseen} . ")) " . 
-					"ON DUPLICATE KEY UPDATE totaluses=totaluses+" . $self->{_plrids}{$column}{$var}{totaluses}
+					",FROM_UNIXTIME(" . $self->{_plrids}{$column}{$var}{firstseen} . ")" . 
+					",FROM_UNIXTIME(" . $self->{_plrids}{$column}{$var}{lastseen} . ")) " . 
+					"ON DUPLICATE KEY UPDATE totaluses=totaluses+" .
+					$self->{_plrids}{$column}{$var}{totaluses} . ",lastseen=FROM_UNIXTIME($self->{game}{timestamp})" 
 				);
 			}
 		}
@@ -470,9 +473,9 @@ sub _init_table {
 	return if $db->table_exists($table);
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
-	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
-	if ($tail) {
-		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
+	$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable))};
+	if ($self->has_mod_tables and $tail) {
+		$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable . $tail))};
 	}
 
 	# remove unwanted/special keys
@@ -507,9 +510,9 @@ sub _init_table_maps {
 	return if $db->table_exists($table);
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
-	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
-	if ($tail) {
-		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
+	$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable))};
+	if ($self->has_mod_tables and $tail) {
+		$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable . $tail))};
 	}
 
 	# remove unwanted/special keys
@@ -544,10 +547,10 @@ sub _init_table_victims {
 	return if $db->table_exists($table);
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
-	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
+	$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable))};
 # victims do not currently allow for game/modtype extensions
-#	if ($tail) {
-#		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($basetable . $tail)};
+#	if ($self->has_mod_tables and $tail) {
+#		$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable . $tail))};
 #	}
 
 	# remove unwanted/special keys
@@ -583,9 +586,9 @@ sub _init_table_roles {
 	return if $db->table_exists($table);
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
-	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
+	$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable))};
 	if ($self->has_mod_roles and $tail) {
-		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable . $tail))};
+		$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable . $tail))};
 	}
 
 	# remove unwanted/special keys
@@ -621,10 +624,10 @@ sub _init_table_weapons {
 	return if $db->table_exists($table);
 
 	# get all keys used in the 2 tables so we can combine them all into a single table
-	$fields->{$_} = 'int' foreach keys %{$db->tableinfo($db->tbl($basetable))};
+	$fields->{$_} = 'int' foreach keys %{$db->table_info($db->tbl($basetable))};
 # weapons do not currently allow for game/modtype extensions
-#	if ($tail) {
-#		$fields->{$_} = 'int' foreach keys %{$db->tableinfo($basetable . $tail)};
+#	if ($self->has_mod_tables and $tail) {
+#		$fields->{$_} = 'int' foreach keys %{$db->table_info($basetable . $tail)};
 #	}
 
 	# remove unwanted/special keys
@@ -905,7 +908,7 @@ sub most_used_name {
 sub last_used_name {
 	my $self = shift;
 	my $db = $self->{db};
-	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "firstseen DESC");
+	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "lastseen DESC");
 	if (defined $name) {
 		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
 		$self->name($name);
@@ -1042,7 +1045,9 @@ sub save {
 	$self->{basic} = {};
 	$self->{mod} = {};
 	$self->{weapons} = {};
+	$self->{mod_weapons} = {};
 	$self->{victims} = {};
+	$self->{mod_victims} = {};
 	$self->{maps} = {};
 	$self->{mod_maps} = {};
 	$self->{roles} = {};

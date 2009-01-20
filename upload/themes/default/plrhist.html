@@ -45,6 +45,13 @@
 	{ofc url="player.php?ofc=skill&id=`$id`" width=287 height=180}
 </div>
 
+<div id="ps-id-plrsess" class="ps-column-frame{if $shades.s_plrsess} s-closed{/if}">
+<div class="ps-column-header"><a href="" onclick="return false"><span><#Player Session Chart#></span></a></div>
+<div id="s-plrsess" class="ps-column-content" style="text-align: center">
+	<img src="{url _base='imgsess.php' id=$plr.plrid}" alt="[img]" />
+</div>
+</div>
+
 <div class="ps-column-frame">
 <div class="ps-column-header"><a href="" onclick="return false"><span><#Player Rundown#></span></a></div>
 <div id="s-plr-rundown" class="ps-column-content">
@@ -135,9 +142,6 @@
 	</div>
 	<!---->
 
-	<img src="{url _base='imgsess.php' id=$plr.plrid}" />
-
-{*
 	<!--#SESSIONS#-->
 	<a name="sessions"></a>
 	<div class="ps-table-frame">
@@ -148,7 +152,6 @@
 	</div>
 	</div>
 	<!---->
-*}
 
 </div> {* end ps-main-content *}
 </div> {* end ps-main *}

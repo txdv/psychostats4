@@ -651,6 +651,20 @@ img.img-delete { /* editclan.php */
 	background: url(../img/icons/delete.png) no-repeat 0 0;
 }
 
+.ps-debug {
+	font-size: 80%;
+	font-family: Tahoma,Arial,sans-serif;
+	margin: 1em auto 0 auto;
+	width: 80%;
+}
+.ps-debug .error {
+	display: block;
+	font-weight: bold;
+	text-decoration: underline;
+	color: DarkRed;
+}
+.ps-debug .query { }
+
 /* --- weapon 'classes' ------------------- */
 /* not used at the moment 
 .ps-weapon-class-title {

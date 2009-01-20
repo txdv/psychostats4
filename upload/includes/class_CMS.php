@@ -158,7 +158,6 @@ function init_user() {
 // $theme is the name of the theme to use.
 // $conf should be passed with an array of theme options.
 function init_theme($theme, $opts = array()) {
-	ob_start();
 	require_once(dirname(__FILE__) . '/class_theme.php');
 	require_once(dirname(__FILE__) . '/class_lang.php');
 	$conf = array( 'theme' => $theme );
@@ -182,6 +181,7 @@ function init_theme($theme, $opts = array()) {
 	);
 	
 	if (empty($conf['theme_url'])) $conf['theme_url'] = null;
+	if (empty($conf['language'])) $conf['language'] = 'en_US';
 
 //	print "<pre>"; print_r($conf); print "</pre>";
 
@@ -218,6 +218,9 @@ function init_theme($theme, $opts = array()) {
 		$this->theme->theme($conf['theme_default'], $conf['in_db']);
 	}
 
+	// initialize any post filters that were registered.
+//	if (count($this->postfilters)) { }
+
 	$this->theme->assign_by_ref('breadcrumbs', $this->breadcrumbs);
 
 	if ($this->user) {
@@ -244,9 +247,6 @@ function init_theme($theme, $opts = array()) {
 			false
 		);
 	}
-
-	// initialize any post filters that were registered.
-//	if (count($this->postfilters)) { }
 }
 
 // loads a list of plugin files that were found but not installed

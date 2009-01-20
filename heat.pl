@@ -31,7 +31,6 @@ use strict;
 use warnings;
 
 use File::Spec::Functions qw( catfile splitpath );
-use XML::Simple;
 use Digest::SHA1 qw( sha1_hex );
 use PS::CmdLine::Heatmap;
 use PS::DB;
@@ -102,8 +101,32 @@ $ERR = new PS::ErrLog($conf, $db);			# Now all error messages will be logged to 
 # -------------------------------- HEATMAP CODE STARTS HERE -----------------------------------------------------
 
 # read in our map info XML file that defines heatmap dimensions, etc...
-my $mapxml  = $opt->mapinfo || catfile($FindBin::RealBin, 'heat.xml');
-my $mapinfo = XMLin($mapxml, NormaliseSpace => 2, SuppressEmpty => undef)->{map};
+my $mapxml  = $opt->mapinfo || undef; #catfile($FindBin::RealBin, 'heat.xml');
+my $mapinfo;
+
+if ($mapxml) {
+	# load mapinfo from XML file; only 'use' the XML::Simple if needed
+	eval "use XML::Simple";
+	$mapinfo = XMLin($mapxml, NormaliseSpace => 2, SuppressEmpty => undef)->{map};
+} else {
+	# load mapinfo from database
+	$mapinfo = {};
+	my $gametype = $opt->gametype; #$conf->get_main('gametype');
+	my $modtype  = $opt->modtype; #$conf->get_main('modtype');
+	my $cmd = "SELECT * FROM $db->{t_config_overlays} ";
+	if ($gametype and $modtype) {
+		$cmd .= sprintf("WHERE gametype=%s AND modtype=%s ", $db->quote($gametype), $db->quote($modtype));
+	} elsif ($gametype) {
+		$cmd .= sprintf("WHERE gametype=%s ", $db->quote($gametype));
+	} elsif ($modtype) {
+		$cmd .= sprintf("WHERE modtype=%s ", $db->quote($modtype));
+	}
+	my @list = $db->get_rows_hash($cmd);
+	foreach my $m (@list) {
+		$m->{res} = $m->{width} . 'x' . $m->{height};
+		$mapinfo->{$m->{map}} = $m;
+	}
+}
 #use Data::Dumper; print Dumper($mapinfo); exit;
 
 # Create a list of maps to generate heat images for. If no map is specified we assume 'all'
@@ -329,7 +352,8 @@ while (my ($mapname, $mapid) = each(%$maplist)) {
 		maxx		=> $info->{maxx},
 		maxy		=> $info->{maxy},
 		flip_vertical 	=> $info->{flipv},
-		flip_horizontal => $info->{fliph}
+		flip_horizontal => $info->{fliph},
+		rotate		=> $info->{rotate},
 	};
 	my $heat = new PS::Heatmap($heatmap_opts);
 
@@ -391,7 +415,7 @@ sub get_resolution {
 		($res->{width}, $res->{height}) = split(/x/, $info);
 	} else {
 		# if we know where the overlay images are then use Image::Size to determine the size
-		die "Unable to determine resolution for map $map.\n";
+		warn "Unable to determine resolution for map $map.\n";
 	}
 	return $res;
 }

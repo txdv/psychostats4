@@ -22,7 +22,7 @@
  */
 if (!defined("PSYCHOSTATS_INSTALL_PAGE")) die("Unauthorized access to " . basename(__FILE__));
 
-define("PS_INSTALL_VERSION", '3.1');
+define("PS_INSTALL_VERSION", '3.2');
 
 define("PS_ROOTDIR", dirname(dirname(__FILE__)));
 define("PS_INSTALLDIR", dirname(__FILE__));
@@ -110,9 +110,12 @@ $cms->init_theme('default', array(
 	'fetch_compile'	=> false,
 	'compile_id' 	=> 'install',
 	'compile_dir'	=> null,
+	'js_compress'	=> false,
+	'css_compress'	=> false,
 	'template_dir' 	=> dirname(__FILE__) . '/themes',
 	'theme_url'	=> null,
 ));
+$cms->theme->load_styles();
 $cms->theme->assign(array(
 	'SELF'			=> SAFE_PHP_SELF,
 	'install_version'	=> PS_INSTALL_VERSION

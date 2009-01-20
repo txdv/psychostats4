@@ -48,8 +48,8 @@ sub calc {
 	my $modtype = $conf->get_main('modtype');
 	my $allowpartial = $conf->get_main("awards.allow_partial_$range");
 	my $tail = $gametype && $modtype ? "_${gametype}_$modtype" : $gametype ? "_$gametype" : "";
-	my @mainkeys = keys %{$db->tableinfo($db->{t_plr_data})};
-	my @modkeys = $db->table_exists($db->{t_plr_data} . $tail) ? keys %{$db->tableinfo($db->{t_plr_data} . $tail)} : ();
+	my @mainkeys = keys %{$db->table_info($db->{t_plr_data})};
+	my @modkeys = $db->table_exists($db->{t_plr_data} . $tail) ? keys %{$db->table_info($db->{t_plr_data} . $tail)} : ();
 	my ($cmd, $fields);
 
 	my ($newest) = $db->get_row_array("SELECT MAX(statdate) FROM $db->{t_plr_data}");

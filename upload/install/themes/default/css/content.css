@@ -334,6 +334,17 @@ blockquote.fatal {
 	font-style: normal;
 }
 
+#results p.row label.gametype {
+	font-weight: bold;
+}
+#results ul.modtypes {
+	display: block;
+	margin-left: 2em;
+	padding: 0;
+	list-style: none;
+	line-height: 1.25em;
+}
+
 #results p.row span.good {
 	color: green;
 	padding: 1px 0 1px 20px;
@@ -536,3 +547,4 @@ blockquote.fatal {
 	color: blue;
 	text-decoration: underline;
 }
+

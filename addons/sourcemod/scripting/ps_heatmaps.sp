@@ -6,9 +6,6 @@
  *
  * This plugin will add "Spatial" stats to mods (just like TF). This allows
  * Heatmaps and trajectories to be created and viewed in the player stats.
- * This plugin will also 'fix' the game logging so the first map to run on 
- * server restart will log properly (HLDS doesn't log the first map). This
- * will prevent any 'unknown' maps from appearing in your player stats.
  *
  * =============================================================================
  *
@@ -61,16 +58,18 @@ public OnPluginStart()
 
 // grab all log events as they are written to the game logs ...
 public Action:LogEvent(const String:message[]) {
-	// lookout for "killed" and "committed suicide" events
-	// This is not the desired way to do this, but I can't find another way to more accurately do it.
-	// We can't stop a log event from logging within the log event itself, so we have to override it here.
-	if (StrContains(message, ">\" killed \"") > 0 || StrContains(message, "\" committed suicide with \"") > 0) {
+	// lookout for "killed" and "committed suicide" events.
+	// This is not the desired way to do this, but I can't find another way
+	// to more accurately do it. We can't stop a log event from logging
+	// within the log event itself, so we have to override it here.
+	if (StrContains(message, ">\" killed \"") > 0 ||
+	    StrContains(message, "\" committed suicide with \"") > 0) {
 		if (ignoreKill) {
-			// do not log the current event
+			// Do not log the current event.
 			// Event_PlayerDeath will trigger next and log a 'killed' event instead
 			return Plugin_Handled;
 		} else {
-			// ignore the next kill event that comes in
+			// Ignore the next kill event that comes in.
 			ignoreKill = true;
 		}
 	}
@@ -79,6 +78,7 @@ public Action:LogEvent(const String:message[]) {
 
 public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {
+	// Reset our state so we don't ignore the next kill.
 	ignoreKill = false;
 
 	/* Get player IDs */
@@ -93,7 +93,9 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
         new Float:attackerLocation[3];
         new victim = GetClientOfUserId(victimId);
         new attacker = GetClientOfUserId(attackerId);
+
 	if(!attacker) return Plugin_Continue; // World is the attacker
+
         GetClientAbsOrigin(victim, victimLocation);
         GetClientAbsOrigin(attacker, attackerLocation);
 

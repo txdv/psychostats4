@@ -48,14 +48,20 @@ BEGIN { # make sure we're running the minimum version of perl required
 
 BEGIN { # do checks for required modules
 	our %PM_LOADED = ();
-	my @modules = qw( DBI DBD::mysql );
+	my @modules = qw( DBI DBD::mysql Time::Local Time::HiRes Encode DateTime );
+	my %optional = ( DateTime => 1 );
 	my @failed_at_life = ();
+	my @failed_optional = ();
 	my %bad_kitty = ();
 	foreach my $module (@modules) {
 		my $V = '';
 		eval "use $module; \$V = \$${module}::VERSION;";
 		if ($@) {	# module not found
-			push(@failed_at_life, $module);
+			if (exists $optional{$module}) {
+				push(@failed_optional, $module);
+			} else {
+				push(@failed_at_life, $module);
+			}
 		} else {	# module loaded ok; store for later, if -V is used for debugging purposes
 			$PM_LOADED{$module} = $V;
 		}
@@ -68,13 +74,14 @@ BEGIN { # do checks for required modules
 	}
 
 	# if anything failed, kill ourselves, life isn't worth living.
-	if (@failed_at_life or scalar keys %bad_kitty) {
+	if (@failed_at_life or keys %bad_kitty) {
 		print "PsychoStats failed initialization!\n";
 		if (@failed_at_life) {
 			print "The following modules are required and could not be loaded.\n";
 			print "\t" . join("\n\t", @failed_at_life) . "\n";
 			print "\n";
-		} else {
+		}
+		if (keys %bad_kitty) {
 			print "The following modules need to be upgraded to the version shown below\n";
 			print "\t$_ v$bad_kitty{$_} or newer (currently installed: $PM_LOADED{$_})\n" for keys %bad_kitty;
 			print "\n";
@@ -95,83 +102,96 @@ BEGIN { # do checks for required modules
 	}
 }
 
-use POSIX qw( :sys_wait_h setsid );
-use File::Spec::Functions qw(catfile);
+use util qw( compacttime print_r abbrnum );
+use PS::SourceFilter;
 use PS::CmdLine;
-use PS::DB;
-use PS::Config;					# use'd here only for the loadfile() function
-use PS::ConfigHandler;
+use PS::DBI;
+use PS::Conf;
 use PS::ErrLog;
 use PS::Feeder;
 use PS::Game;
-use util qw( :win compacttime );
+use PS::Plr;
+use PS::Map;
+use PS::Role;
+use PS::Weapon;
+
+use POSIX qw( :sys_wait_h setsid );
+use File::Spec::Functions qw( catfile );
+use Time::HiRes qw( time usleep );
 
 # The $VERSION and $PACKAGE_DATE are automatically updated via the packaging script.
-our $VERSION = '3.1.1';
+our $VERSION = '4.0';
 our $PACKAGE_DATE = time;
 our $REVISION = ('$Rev$' =~ /(\d+)/)[0] || '000';
 
 our $DEBUG = 0;					# Global DEBUG level
 our $DEBUGFILE = undef;				# Global debug file to write debug info too
-our $ERR;					# Global Error handler (PS::Debug uses this)
+our $ERR;					# Global Error handler
 our $DBCONF = {};				# Global database config
 our $GRACEFUL_EXIT = 0; #-1;			# (used in CATCH_CONTROL_C)
 
 $SIG{INT} = \&CATCH_CONTROL_C;
 
 my ($opt, $dbconf, $db, $conf);
+
+# verbose tracking/progress variables
 my $starttime = time;
 my $total_logs = 0;
 my $total_lines = 0;
 
-eval { binmode(STDOUT, ":encoding(utf8)"); };
+eval {
+	# I don't think this actually does anything useful
+	binmode(STDOUT, ":utf8");
+	binmode(STDERR, ":utf8");
+};
 
-$opt = new PS::CmdLine;				# Initialize command line paramaters
-$DEBUG = $opt->get('debug') || 0;		# sets global debugging for ALL CLASSES
+$opt = new PS::CmdLine;				# Initialize command line
+$DEBUG = int($ENV{PSYCHOSTATS_DEBUG}) || 0;	# sets global debugging
 
 # display our version and exit
-if ($opt->get('version')) {
+if ($opt->version) {
 	print "PsychoStats version $VERSION (rev $REVISION)\n";
 	print "Packaged on " . scalar(localtime $PACKAGE_DATE) . "\n";
-#	print "Author:  Jason Morriss <stormtrooper\@psychostats.com>\n";
 	print "Website: http://www.psychostats.com/\n";
 	print "Perl version " . sprintf("%vd", $^V) . " ($^O)\n";
 	print "Loaded Modules:\n";
 	my $len = 1;
-	foreach my $pm (keys %PM_LOADED) {	# get max length first, so we can be pretty
+	foreach my $pm (keys %PM_LOADED) {
+		# get max length first, so we can be pretty
 		$len = length($pm) if length($pm) > $len;
 	}
 	$len += 2;
-	foreach my $pm (keys %PM_LOADED) {
+	foreach my $pm (sort { lc $a cmp lc $b } keys %PM_LOADED) {
 		printf("  %-${len}sv%s\n", $pm, $PM_LOADED{$pm});
 	}
 	exit;
 }
 
-if (defined(my $df = $opt->get('debugfile'))) {
+if (defined(my $df = $opt->debugfile)) {
 	$df = 'debug.txt' unless $df;		# if filename is empty
 	$DEBUGFILE = $df;
+	# this won't work, now that the Filter::Simple is used for debugging.
 	$DEBUG = 1 unless $DEBUG;		# force DEBUG on if we're specifying a file
-	$opt->debug("DEBUG START: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE");
+	;;;$ERR->debug("DEBUG START: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE");
 }
 
 # Load the basic stats.cfg for database settings (unless 'noconfig' is specified on the command line)
 # The config filename can be specified on the commandline, otherwise stats.cfg is used. If that file 
 # does not exist then the config is loaded from the __DATA__ block of this file.
 $dbconf = {};
-if (!$opt->get('noconfig')) {
-	if ($opt->get('config')) {
-		PS::Debug->debug("Loading DB config from " . $opt->get('config'));
-		$dbconf = PS::Config->loadfile( $opt->get('config') );
-	} elsif (-e catfile($FindBin::Bin, 'stats.cfg')) {
-		PS::Debug->debug("Loading DB config from stats.cfg");
-		$dbconf = PS::Config->loadfile( catfile($FindBin::Bin, 'stats.cfg') );
+if (!$opt->noconfig) {
+	if ($opt->config) {
+		;;; PS::Core->debug("Loading DB config from " . $opt->config);
+		$dbconf = PS::Conf->loadfile( $opt->config );
+	} elsif (-f catfile($FindBin::Bin, 'stats.cfg')) {
+		;;; PS::Core->debug("Loading DB config from " . catfile($FindBin::Bin, 'stats.cfg'));
+		$dbconf = PS::Conf->loadfile( catfile($FindBin::Bin, 'stats.cfg') );
 	} else {
-		PS::Debug->debug("Loading DB config from __DATA__");
-		$dbconf = PS::Config->loadfile( *DATA );
+		;;; PS::Core->debug("Loading DB config from __DATA__");
+		$dbconf = PS::Conf->loadfile( *DATA );
 	}
 } else {
-	PS::Debug->debug("-noconfig specified, No DB config loaded.");
+	;;; PS::Core->debug("-noconfig specified, No DB config loaded.");
 }
 
 # Initialize the primary Database object
@@ -186,30 +206,396 @@ $DBCONF = {
 	dbtblprefix	=> $opt->dbtblprefix || $dbconf->{dbtblprefix},
 	dbcompress	=> $opt->dbcompress || $dbconf->{dbcompress}
 };
-$db = new PS::DB($DBCONF);
+$db = new PS::DBI($DBCONF);
+$conf = new PS::Conf($db, 'main');
+$ERR = new PS::ErrLog($db, $conf);	# Errors will be logged to the DB
+$ERR->set_verbose($opt->verbose and !$opt->quiet);
 
-$conf = new PS::ConfigHandler($opt, $db);
-my $total = $conf->load(qw( main ));
-$ERR = new PS::ErrLog($conf, $db);			# Now all error messages will be logged to the DB
+# Setup global helpers for important objects. This simplifies the initialization
+# of these objects since they all use the same helpers (for the most part).
+PS::Game::configure  (            CONF => $conf, OPT => $opt );
+PS::Plr::configure   ( DB => $db, CONF => $conf, OPT => $opt );
+PS::Map::configure   ( DB => $db, CONF => $conf, OPT => $opt );
+PS::Role::configure  ( DB => $db, CONF => $conf, OPT => $opt );
+PS::Weapon::configure( DB => $db, CONF => $conf, OPT => $opt );
+PS::Feeder::configure( DB => $db, CONF => $conf, OPT => $opt );
 
-$db->init_tablenames($conf);
-$db->init_database;
+$ERR->info("PsychoStats v$VERSION initialized.");
+
+###### TESTING ..... Making sure save_state and restore_state works for players
+#####my $feed = new PS::Feeder($opt->logsource, $opt->gametype, $opt->modtype, $db);
+#####$ERR->fatal('Error loading logsource (' . $opt->logsource . '): ' . $feed->error) if $feed->error;
+#####$ERR->fatal('Error initialing logsource.') if !$feed->init;
+#####
+#####my $game = new PS::Game($feed->gametype, $feed->modtype, $db);
+#####
+#####$feed->restore_state;
+#####$game->restore_state($feed);
+#####
+#####print_r($game->get_online_plrs);
+#####exit;
+#####
+#####my $p1 = new PS::Plr({
+#####	eventsig=> 'Jason<1><STEAM_ID_PENDING><CT>',
+#####	name	=> 'Jason',
+#####	guid	=> 'STEAM_ID_PENDING',
+#####	ipaddr	=> 0,
+#####	team	=> 'ct',
+#####	uid	=> 1
+#####}, $feed->gametype, $feed->modtype);
+#####my $p2 = new PS::Plr({
+#####	eventsig=> 'Ted<2><STEAM_ID_PENDING><TERRORIST>',
+#####	name	=> 'Ted',
+#####	guid	=> 'STEAM_ID_PENDING',
+#####	ipaddr	=> 0,
+#####	team	=> 'terrorist',
+#####	uid	=> 2
+#####}, $feed->gametype, $feed->modtype);
+#####my $w = new PS::Weapon('mp5navy', $feed->gametype, $feed->modtype);
+#####my $m = new PS::Map('de_dust', $feed->gametype, $feed->modtype);
+#####
+#####$p1->is_dead(0);
+#####$p2->is_dead(0);
+#####
+#####$game->plr_online($p1);
+#####$game->plr_online($p2);
+#####
+#####$p1->action_kill($p2, $w, $m);
+#####$p2->action_death($p1, $w, $m);
+#####
+#####print "$p1 has " . $p1->{data}{kills} . " kills\n";
+#####print "$p2 has " . $p2->{data}{deaths} . " deaths\n";
+######print_r($p1->{maps});
+######print_r($p1->{weapons});
+######print_r($p1->{victims});
+#####
+#####$feed->save_state;
+#####$game->save_state($feed);
+#####
+#####exit;
+
+# setup main loop to process logs (infinite loop)
+while (!$opt->nologs) {
+	my (@streams, @files, @sources);
+	my @logsources = load_logsources();
+	if (@logsources == 0) {
+		$ERR->info("No more log sources to process.");
+		last;
+	}
+
+	# We process a list of streams or non-stream sources, but not both at
+	# the same time, since the logic involved is different for each type.
+	# Processing files is handled synchronously (1 at a time and in order).
+	# Processing streams is handled asynchronously (many at once).
+
+	# separate our logsources into different lists
+	foreach my $s (@logsources) {
+		if ($s->type eq 'stream') {
+			# if -files is specified then all streams are ignored
+			push(@streams, $s) unless $opt->files;
+		} else {
+			# if -streams is specified then all files are ignored
+			push(@files, $s) unless $opt->streams;
+		}
+	}
+
+	# If we have stream and non-stream sources then error out! We can't
+	# handle both at the same time.
+	if (@streams and @files) {
+		$ERR->fatal(
+			"Stream and non-stream logsources can not be processed at the same time!\n" .
+			"Use -files or -streams command line options to limit which type to process.",
+			1 	# don't include a stack trace
+		);
+	}
+
+	# Process the log sources ... 
+	process_streams(@streams) if @streams;
+	process_files(@files) if @files;
+
+	# clear memory used by feeders
+	@streams = ();
+	@files = ();
+
+	last;
+}
+
+# process the list of log streams
+sub process_streams {
+	my (@list) = @_;
+	my (@feeders, %args, $ev, $had_event, $feed, $srv, $game);
+	my $games = {};
+	my $feeds = {};
+	
+	# setup some init parameters for the feeders (generic)
+	$args{verbose}	= $opt->verbose && !$opt->quiet;
+	$args{maxlogs}	= $opt->maxlogs;
+	$args{maxlines}	= $opt->maxlines;
+
+	# stream specific paramaters
+	$args{echo}	= $opt->echo;
+	$args{bindip} 	= $opt->ipaddr;
+	$args{bindport}	= $opt->port;
+
+	# Initialize each stream that is configured
+	foreach my $feed (@list) {
+		if (!$feed->init(%args)) {
+			$ERR->warn("Error initializing logsource $feed: " . $feed->error);
+			next;
+		}
+		# restore the previous state, if there was one for this feed
+		if (!$feed->restore_state) {
+			$ERR->warn("Error loading state for logsource \"$feed\" (this is usually harmless): " . $feed->error);
+			# no need to require -force for streams
+		}
+		push(@feeders, $feed);
+	}
+	
+	# If no Feeders were initialized successfully, then there's no point in
+	# continuing any further.
+	main::exit() if @feeders == 0;
+	
+	# Infinite loop; process streams forever (or ^C is pressed)...
+	while (1) {
+		$had_event = 0;
+		# process an event from each active feeder
+		foreach $feed (@feeders) {
+			next unless $feed->has_event;
+			($ev, $srv) = $feed->next_event(0);
+			next unless $ev;
+			$had_event = 1;
+	
+			if (!exists $games->{$srv}) {
+				# create a new game for the server
+				$games->{$srv} = new PS::Game(
+					$feed->gametype,
+					$feed->modtype,
+					$db->clone		# clone it
+				);
+				$games->{$srv}->restore_state($feed);
+				# keep track of which feed each server is being
+				# processed from.
+				$feeds->{$srv} = $feed;
+			}
+			
+			# process the game event for the server
+			$games->{$srv}->event($ev, $feed);
+			
+			# if ^C was pressed, stop processing.
+			last if $GRACEFUL_EXIT > 0;
+		}
+		last if $GRACEFUL_EXIT > 0;
+
+		# yield the CPU if no events occured, this prevents us from
+		# taking up 100% CPU when no events are pending.
+		usleep(0) unless $had_event;
+	}
+	
+	# Save state for each game. Although, chances are the state of a stream
+	# won't be any good the next time an update is run. But if the script is
+	# simply being restarted then only a couple of seconds will elapse.
+	foreach $srv (keys %$games) {
+		$feeds->{$srv}->save_state;
+		$games->{$srv}->save_state($feeds->{$srv}, $srv);
+	}
+
+	# we're done... don't return to the caller.
+	main::exit();
+}
+
+# process the list of file logsources (file, ftp, sftp)
+sub process_files {
+	my (@list) = @_;
+	my ($ev, $had_event, $srv, $game, %args);
+	my $saved = time;
+	my $save_threshold = 60 * 1;
+
+	# setup some init parameters for the feeders (generic)
+	$args{verbose}	= $opt->verbose && !$opt->quiet;
+	$args{maxlogs}	= $opt->maxlogs;
+	$args{maxlines}	= $opt->maxlines;
+	$args{echo}	= $opt->echo;
+
+	# Loop through each feed individually ...
+	foreach my $feed (@list) {
+		if (!$feed->init(%args)) {
+			$ERR->warn("Error initializing logsource $feed: " . $feed->error);
+			next;
+		}
+		# restore the previous state, if there was one for this feed
+		if (!$feed->restore_state) {
+			$ERR->warn("Error loading state for logsource \"$feed\": " . $feed->error);
+			if (!$opt->force) {
+				$ERR->warn("Use --force to force this logsource to start over.");
+				next;
+			}
+			$feed->reset_state;
+		}
+		
+		# instantiate the game
+		$game = new PS::Game($feed->gametype, $feed->modtype, $db);
+		# restore the game to its previous state for the logsource feed
+		$game->restore_state($feed);
+
+		#&lps_reset;
+		#my $last = time - 3;
+		#my $total = 0;
+		while (defined($ev = $feed->next_event)) {
+			next unless $ev;
+			
+			# process the event for the server
+			$game->event($ev, $feed);
+
+			#&lps_prev($total);
+			#++$total;
+			#lps($total,1);
+			#
+			##print "LPS1=" . lps($total) . "\n";
+			##print "LPS2=" . lps($total) . "\n";
+			## wait until the LPS has lowered below our threshold
+			#while ($opt->lps && lps($total) > $opt->lps) {
+			#	last if $GRACEFUL_EXIT > 0;
+			#	usleep(0); # YIELD
+			#	#if (time - $last > 0.10) {
+			#	#	print "LPS=" . lps($total) . "\n";
+			#	#	$last = time;
+			#	#}
+			#}
+			#if (time - $last > 1) {
+			#	print "LPS=" . lps($total) . "\n";
+			#	$last = time;
+			#}
+
+			last if $GRACEFUL_EXIT > 0;
+
+			# save the game state every X minutes (real-time)
+			if (time - $saved > $save_threshold) {
+				$feed->debug4("Saving game state.", 0);
+				$feed->save_state;
+				$game->save_state($feed, scalar $feed->server);
+				$saved = time;
+			}
+		}
+		
+		# save our logsource and game state
+		$feed->save_state;
+		$game->save_state($feed, scalar $feed->server);
+		
+		last if $GRACEFUL_EXIT > 0;
+	}
+
+	# we're done... don't return to the caller.
+	main::exit();	
+}
+
+# returns a list of log sources
+sub load_logsources {
+	my (@list, @feeders);
+	if ($opt->logsource) {
+		my $log = new PS::Feeder($opt->logsource, $opt->gametype, $opt->modtype, $db);
+		if ($log->error) {
+			$ERR->warn('Error loading logsource (' . $opt->logsource . '): ' . $log->error);
+		} else {
+			# force new logsources from the command line to be
+			# disabled. Also save the logsource to the DB.
+			if (!$log->id) {
+				$log->enabled(0);
+				$log->save;
+			}
+			push(@feeders, $log);
+		}
+	} else {
+		@list = PS::Feeder::get_logsources(1, $db);
+		# instantiate a PS::Feeder for each logsource
+		foreach my $ls (@list) {
+			my $log = new PS::Feeder($ls, $db);
+			if ($log->error) {
+				$ERR->warn("Error loading logsource ($ls): " . $log->error);
+				next;
+			}
+			push(@feeders, $log);
+		}
+	}
+	
+	#my $log = new PS::Feeder({
+	#	type		=> 'stream',
+	#	host		=> 'localhost',
+	#	port		=> '28001',
+	#});
+	#print_r($log);
+	#print_r(@feeders);
+	#exit;
+
+	return wantarray ? @feeders : \@feeders;
+}
+
+{ # enclose local scope
+	my $lasttime = time;
+	my $prev = 0;
+	sub lps {
+		my ($total, $inctime) = @_;
+		my $time_diff = time - $lasttime;
+		my $line_diff = $total - $prev;
+		my $lps = $time_diff ? sprintf('%0.2f', $line_diff / $time_diff) : $line_diff;
+		$lasttime = time if $inctime;
+		#$prev = $total;
+		return $lps;
+	}
+	sub lps_prev  { $prev = shift }
+	sub lps_reset { $lasttime = time; $prev = 0 }
+}
+
+# catch ^C so we can exit gracefully w/o losing any in-memory data
+sub CATCH_CONTROL_C {
+	$GRACEFUL_EXIT++;
+	if ($GRACEFUL_EXIT == 0) {		# WONT HAPPEN (GRACEFUL_EXIT defaults to 0 now)
+		if ($opt->daemon) {
+		        $GRACEFUL_EXIT++;
+			goto C_HERE;
+		} 
+		syswrite(STDERR, "Caught ^C -- Are you sure? One more will attempt a gracefull exit.\n");
+	} elsif ($GRACEFUL_EXIT == 1) {
+		C_HERE:
+		syswrite(STDERR, "Caught ^C -- Please wait while I try to exit gracefully.\n");
+	} else {
+		syswrite(STDERR, "Caught ^C -- Alright! I'm done!!! (some data may have been lost)\n");
+		main::exit();
+	}
+	$SIG{INT} = \&CATCH_CONTROL_C;
+}
+
+# PS::ErrLog points to this to actually exit on a fatal error, incase I need to
+# do some cleanup.
+sub main::exit { 
+	CORE::exit(@_);
+}
+
+END {
+	$ERR->info("PsychoStats v$VERSION exiting (elapsed: " . compacttime(time-$starttime) . ", logs: $total_logs, lines: $total_lines)") if defined $ERR;
+	;;;$ERR->debug("DEBUG END: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE") if $DEBUGFILE and defined $opt;
+	$db->disconnect if $db;
+}
+
+
+##############################################################################
+__END__
+
 
 # if a gametype was specified update the config
 my $confupdated = 0;
-if (defined $opt->get('gametype') and $conf->getconf('gametype','main') ne $opt->get('gametype')) {
+if (defined $opt->gametype and $conf->getconf('gametype','main') ne $opt->gametype) {
 	my $old = $conf->getconf('gametype', 'main');
-	$db->update($db->{t_config}, { value => $opt->get('gametype') }, [ conftype => 'main', section => undef, var => 'gametype' ]);
-	$conf->set('gametype', $opt->get('gametype'), 'main');
+	$db->update($db->{t_config}, { value => $opt->gametype }, [ conftype => 'main', section => undef, var => 'gametype' ]);
+	$conf->set('gametype', $opt->gametype, 'main');
 	$ERR->info("Changing gametype from '$old' to '" . $conf->getconf('gametype') . "' (per command line)");
 	$confupdated = 1;
 }
 
 # if a modtype was specified update the config
-if (defined $opt->get('modtype') and $conf->getconf('modtype','main') ne $opt->get('modtype')) {
+if (defined $opt->modtype and $conf->getconf('modtype','main') ne $opt->modtype) {
 	my $old = $conf->getconf('modtype', 'main');
-	$db->update($db->{t_config}, { value => $opt->get('modtype') }, [ conftype => 'main', section => undef, var => 'modtype' ]);
-	$conf->set('modtype', $opt->get('modtype'), 'main');
+	$db->update($db->{t_config}, { value => $opt->modtype }, [ conftype => 'main', section => undef, var => 'modtype' ]);
+	$conf->set('modtype', $opt->modtype, 'main');
 	$ERR->info("Changing modtype from '$old' to '" . $conf->getconf('modtype') . "' (per command line)");
 	$confupdated = 1;
 }
@@ -221,10 +607,10 @@ if ($confupdated) {
 }
 
 # handle a 'stats reset' request
-if (defined $opt->get('reset')) {
+if (defined $opt->reset) {
 	my $game = new PS::Game($conf, $db);
-	my $res = $opt->get('reset');
-	my $all = (index($opt->get('reset'),'all') >= 0);
+	my $res = $opt->reset;
+	my $all = (index($opt->reset,'all') >= 0);
 	my %del = (
 		players 	=> ($all || (index($res,'player') >= 0)),
 		clans   	=> ($all || (index($res,'clan') >= 0)),
@@ -232,7 +618,7 @@ if (defined $opt->get('reset')) {
 		heatmaps	=> ($all || (index($res,'heat') >= 0)),
 	);
 	$game->reset(%del);
-	&main::exit;
+	&main::exit();
 }
 
 $ERR->debug2("$total config settings loaded.");
@@ -240,15 +626,15 @@ $ERR->fatal("No 'gametype' configured.") unless $conf->get_main('gametype');
 $ERR->info("PsychoStats v$VERSION initialized.");
 
 # if -unknown is specified, temporarily enable report_unknown
-if ($opt->get('unknown')) {
+if ($opt->unknown) {
 	$conf->set('errlog.report_unknown', 1, 'main');
 }
 
-# ---------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # rescan clantags
-if (defined $opt->get('scanclantags')) {
+if (defined $opt->scanclantags) {
 	my $game = new PS::Game($conf, $db);
-	my $all = lc $opt->get('scanclantags') eq 'all' ? 1 : 0;
+	my $all = lc $opt->scanclantags eq 'all' ? 1 : 0;
 	$::ERR->info("Rescanning clantags for ranked players.");
 	if ($all) {
 		$::ERR->info("Removing ALL player to clan relationships.");
@@ -259,18 +645,18 @@ if (defined $opt->get('scanclantags')) {
 	$game->rescan_clans;
 
 	# force a daily 'clans' update to verify what clans rank
-	$opt->set('daily', ($opt->get('daily') || '') . ',clans');
+	$opt->set('daily', ($opt->daily || '') . ',clans');
 }
 
-# ------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # PERFORM DAILY OPERATIONS and exit if we did any (no logs should be processed)
-if ($opt->get('daily')) {
-	&main::exit if do_daily($opt->get('daily'));
+if ($opt->daily) {
+	&main::exit() if do_daily($opt->daily);
 }
 
-# ------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # process log sources ... the endless while loop is a placeholder.
-my $more_logs = !$opt->get('nologs');
+my $more_logs = !$opt->nologs;
 while ($more_logs) { # infinite loop
 	my $logsource = load_logsources();
 	if (!defined $logsource or @$logsource == 0) {
@@ -287,50 +673,37 @@ while ($more_logs) { # infinite loop
 		my $type = $feeder->init;	# 1=wait; 0=error; -1=nowait;
 		next unless $type;		# ERROR
 
-		if ($type == 1) { 		# WAIT
-			$conf->setinfo('stats.lastupdate', time) unless $conf->get_info('stats.lastupdate');
-			@total = $game->process_feed($feeder);
-			$total_logs  += $total[0];
-			$total_lines += $total[1];
-			$conf->setinfo('stats.lastupdate', time);
-			$feeder->done;
-		} elsif ($type == -1) {		# NOWAIT
-			# TODO: we need to allow for non-waiting log sources (ie: log streams)
-			# we need to start the current process and then continue with any other 
-			# sources simultaneously. 
-			# if there is more than 1 source then each NOWAIT source needs it's own 
-			# $game, $conf and $db objects, otherwise they will mess each other up.
-			my $d = @$logsource > 1 ? new PS::DB($DBCONF) : $db;
-			my $c = @$logsource > 1 ? new PS::ConfigHandler($opt, $d) : $conf;
-			my $g = @$logsource > 1 ? new PS::Game($c, $d) : $game;
-			# fork off a process to handle this source
-			# ... 
-			$conf->setinfo('stats.realtime_update', time);
-		}
+		$conf->setinfo('stats.lastupdate', time) unless $conf->get_info('stats.lastupdate');
+		@total = $game->process_feed($feeder);
+		$total_logs  += $total[0];
+		$total_lines += $total[1];
+		$conf->setinfo('stats.lastupdate', time);
+		$feeder->done;
 
 		last if $GRACEFUL_EXIT > 0;
 	}
-	&main::exit if $GRACEFUL_EXIT > 0;
+	&main::exit() if $GRACEFUL_EXIT > 0;
 
 	last;
 }
 
 # check to make sure we don't need to do any daily updates before we exit
-check_daily($conf) unless $opt->get('nodaily');
+check_daily($conf) unless $opt->nodaily;
 
 END {
 	$ERR->info("PsychoStats v$VERSION exiting (elapsed: " . compacttime(time-$starttime) . ", logs: $total_logs, lines: $total_lines)") if defined $ERR;
 	$opt->debug("DEBUG END: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE") if $DEBUGFILE and defined $opt;
+	$db->disconnect if $db;
 }
 
-# ------- FUNCTIONS ---------------------------------------------------------------------------------------------------
+# ------- FUNCTIONS ------------------------------------------------------------
 
 # returns a list of log sources
 sub load_logsources {
 	my $list = [];
-	if ($opt->get('logsource')) {
+	if ($opt->logsource) {
 		my $game = new PS::Game($conf, $db);
-		my $log = new PS::Feeder($opt->get('logsource'), $game, $conf, $db);
+		my $log = new PS::Feeder($opt->logsource, $game, $conf, $db);
 		if (!$log) {
 			$ERR->fatal("Error loading logsource from command line.");
 		}
@@ -350,7 +723,7 @@ sub check_daily {
 
 sub do_daily {
 	my ($daily) = @_;
-	$daily = lc $opt->get('daily') unless defined $daily;
+	$daily = lc $opt->daily unless defined $daily;
 	return 0 unless $daily;
 
 	my %valid = map { $_ => 0 } @PS::Game::DAILY;
@@ -419,7 +792,7 @@ sub main::exit {
 sub CATCH_CONTROL_C {
 	$GRACEFUL_EXIT++;
 	if ($GRACEFUL_EXIT == 0) {		# WONT HAPPEN (GRACEFUL_EXIT defaults to 0 now)
-		if ($opt->get('daemon')) {
+		if ($opt->daemon) {
 		        $GRACEFUL_EXIT++;
 			goto C_HERE;
 		} 
@@ -429,7 +802,7 @@ C_HERE:
 		syswrite(STDERR, "Caught ^C -- Please wait while I try to exit gracefully.\n");
 	} else {
 		syswrite(STDERR, "Caught ^C -- Alright! I'm done!!! (some data may have been lost)\n");
-		&main::exit;
+		&main::exit();
 	}
 	$SIG{INT} = \&CATCH_CONTROL_C;
 }

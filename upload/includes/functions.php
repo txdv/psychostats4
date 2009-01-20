@@ -738,19 +738,58 @@ function elapsedtime($seconds, $start = 0, $wantarray = false) {
 	if ($wantarray) {
 		return array($years,$months,$weeks,$days,$hours,$minutes,$seconds);
 	} else {
-		// TODO: provide a way to translate these strings
-		$vars = array('years','months','weeks','days','hours','minutes','seconds');
-		$str = '';
-		for ($i = 0, $j = count($vars)-1; $i <= $j; $i++) {
-			$var = ${$vars[$i]};
-			if ($var == 0) continue;			// ignore values of 0
-			$word = $vars[$i];
-			if ($var == 1) $word = substr($word,0,-1);	// remove the 's' if its 1
-			$str .= "$var $word";
-			if ($i != $j) $str .= ", ";
-		}
+		$str = elapsedtime_str(array($years,$months,$weeks,$days,$hours,$minutes,$seconds));
 		return $str;
 	}
+}
+
+// helper function for array results from elapsedtime(). This mainly allows
+// for translations to be done on the strings.
+function elapsedtime_str($elapsed, $max = 7, $plural = array(), $singular = array(), $and = ' and') {
+	// note the leading spaces on each word
+	static $static_singular = array(' year',' month',' week',' day',' hour',' minute',' second');
+	static $static_plural   = array(' years',' months',' weeks',' days',' hours',' minutes',' seconds');
+
+	// static vars are assigned once if the arrays are specfied, so any
+	// successive call to this function can use the new statics w/o having
+	// to pass the arrays each time.
+	if (empty($plural)) {
+		$plural = $static_plural;
+	} else {
+		$static_plural = $plural;
+	}
+	if (empty($singular)) {
+		$singular = $static_singular;
+	} else {
+		$static_singular = $singular;
+	}
+	
+	$str = '';
+	for ($i = 0, $j = count($plural)-1; $i <= $j; $i++) {
+		$var = $elapsed[$i];
+		if ($var == 0) continue;			// ignore values of 0
+		$word = $var == 1 ? $singular[$i] : $plural[$i];
+		$str .= $var . $word;
+		if (--$max <= 0) break;
+		if ($i != $j) $str .= ", ";
+	}
+	if ($str) {
+		if (substr($str,-2) == ", ") {	// remove trailing comma
+			$str = substr($str, 0, -2);
+		}
+		$p = strrpos($str, ',');
+		if ($p !== false) {
+			// replace the last comma with the word 'and'
+			$str = substr($str, 0, $p) . $and . substr($str, $p+1);
+		}
+	}
+	
+	if ($str == '') {
+		$str = "0" . $plural[ count($plural)-1 ];
+	}
+	
+	return $str;
+	
 }
 
 // Concatenate file path parts together always using / as the directory separator.
@@ -876,9 +915,9 @@ function array2xml($data, $key_prefix = 'key_', $depth = 0) {
 
 // dumps all output buffers, sends a content-type, prints the xml
 function print_xml($data, $clear_ob = true, $send_ct = true, $do_exit = true) {
-	if ($clear_ob) while (@ob_end_clean());
-	if ($send_ct) @header("Content-Type: text/xml; charset=utf-8");
-#	print XML_serialize($data);
+	global $ps;
+	if ($clear_ob) $ps->ob_restart();
+	if ($send_ct) @header("Content-Type: text/xml; charset=utf-8", true);
 	print array2xml($data);
 	if ($do_exit) exit();
 }
@@ -961,13 +1000,13 @@ function mkdir_recursive($path, $mode = 0777) {
     * @return mixed
 */
 function coalesce() {
-    $args = func_get_args();
-    foreach ($args as $arg) {
-        if (!empty($arg)) {
-            return $arg;
-        }
-    }
-    return $args[0];
+	$args = func_get_args();
+	foreach ($args as $arg) {
+	    if (!empty($arg)) {
+		return $arg;
+	    }
+	}
+	return $args[0];
 }
 
 /*
@@ -983,14 +1022,13 @@ function query_to_tokens($string) {
 		return false;
 	}
 
-	// tokenize string into individual characters
 	$x = trim($string);
-
 	// short circuit if the string is empty
 	if (empty($x)) {
 		return array();
 	}
        
+	// tokenize string into individual characters
 	$chars = mb_str_split($x);
 	$mode = 'normal';
 	$token = '';
@@ -1060,9 +1098,115 @@ function mb_str_split($str, $length = 1) {
 	return $result;
 }
 
+if (!function_exists('str_split')) {	// str_split is PHP5 only
+	function str_split($string,$string_length=1) {
+		if ($string >= 1) {
+			do {
+				$c = strlen($string);
+				$parts[] = substr($string,0,$string_length);
+				$string = substr($string,$string_length);
+			} while($string !== false);
+		} else {
+			$parts = false;
+		}
+		return $parts;
+	}
+}
+
 // returns true if the variable given is not empty. Used as a callback function.
 function not_empty($i) {
 	return !empty($i);
+}
+
+/**
+ * @get distance from latitude and longitute
+ * @param float $lat_from
+ * @param float $long_from
+ * @param float $lat_to
+ * @param float *long_to
+ * @param $unit options k, m, n, Default k
+ * @return float
+ * @credit http://www.phpro.org/examples/Get-Riemann-Distance.html
+ */
+function getEarthDistance($lat_from, $long_from, $lat_to, $long_to, $unit='k') {
+	/*** distance unit ***/
+	switch ($unit) {
+		/*** miles ***/
+		case 'm':
+		   $unit = 3963;
+		   break;
+		/*** nautical miles ***/
+		case 'n':
+		   $unit = 3444;
+		   break;
+		default:
+		   /*** kilometers ***/
+		   $unit = 6371;
+	}
+	
+	/*** 1 degree = 0.017453292519943 radius ***/
+	$degreeRadius = deg2rad(1);
+	
+	/*** convert longitude and latitude to radians ***/
+	$lat_from  *= $degreeRadius;
+	$long_from *= $degreeRadius;
+	$lat_to    *= $degreeRadius;
+	$long_to   *= $degreeRadius;
+	
+	/*** apply the Great Circle Distance Formula ***/
+	$dist = sin($lat_from) * sin($lat_to) +
+		cos($lat_from) * cos($lat_to) *
+		cos($long_from - $long_to);
+	
+	/*** radius of earth * arc cosine ***/
+	return ($unit * acos($dist));
+}
+
+// substitute for json_encode if it's not defined already (PHP5.2.1)
+// http://us2.php.net/manual/en/function.json-encode.php
+if (!function_exists('json_encode')) {
+	function json_encode($a=false) {
+		if (is_null($a)) return 'null';
+		if ($a === false) return 'false';
+		if ($a === true) return 'true';
+		if (is_scalar($a)) {
+			if (is_float($a)) {
+				// Always use "." for floats.
+				return floatval(str_replace(",", ".", strval($a)));
+			}
+		
+			if (is_string($a)) {
+				static $jsonReplaces = array(
+					array("\\", "/", "\n", "\t", "\r", "\b", "\f", '"'),
+					array('\\\\', '\\/', '\\n', '\\t', '\\r', '\\b', '\\f', '\"')
+				);
+				return '"' . str_replace($jsonReplaces[0], $jsonReplaces[1], $a) . '"';
+			}
+			
+			return $a;
+		}
+
+		$isList = true;
+		for ($i = 0, reset($a); $i < count($a); $i++, next($a)) {
+			if (key($a) !== $i) {
+				$isList = false;
+				break;
+			}
+		}
+		
+		$result = array();
+		if ($isList) {
+			foreach ($a as $v) {
+				$result[] = json_encode($v);
+			}
+			return '[' . join(',', $result) . ']';
+		} else {
+			foreach ($a as $k => $v) {
+				$result[] = json_encode($k) . ':' . json_encode($v);
+			}
+			return '{' . join(',', $result) . '}';
+		}
+	}
 }
 
 ?>

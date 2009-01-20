@@ -64,7 +64,7 @@ for ($i=0; $i < count($weapons); $i++) {
 for ($i=0; $i < count($weapons); $i++) {
 	foreach ($keys as $k) {
 		if ($max[$k]) {
-			$weapons[$i][$k.'pct'] = ceil($weapons[$i][$k] / $max[$k] * 100);
+			$weapons[$i]['scaled'.$k.'pct'] = ceil($weapons[$i][$k] / $max[$k] * 100);
 		}
 		if ($stats[$k]) {
 			$weapons[$i]['real'.$k.'pct'] = ceil($weapons[$i][$k] / $stats[$k] * 100);
@@ -113,6 +113,7 @@ $table->columns(array(
 	'kills'			=> array( 'label' => $cms->trans("Kills"), 'modifier' => 'commify' ),
 	'headshotkills'		=> array( 'label' => $cms->trans("HS"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Headshot Kills") ),
 	'headshotkillspct'	=> array( 'label' => $cms->trans("HS%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Headshot Kills Percentage") ),
+//	'_headshotkillspct'	=> array( 'nolabel' => true, 'callback' => 'headshotkills_pct' ),
 	'ffkills'		=> array( 'label' => $cms->trans("FF"), 'modifier' => 'commify', 'tooltip' => $cms->trans("Friendly Fire Kills") ),
 	'ffkillspct'		=> array( 'label' => $cms->trans("FF%"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Friendly Fire Kills Percentage") ),
 	'accuracy'		=> array( 'label' => $cms->trans("Acc"), 'modifier' => '%s%%', 'tooltip' => $cms->trans("Accuracy") ),
@@ -122,6 +123,7 @@ $table->columns(array(
 $table->column_attr('uniqueid', 'class', 'first');
 $table->column_attr('_killspct', 'width', '50');
 $table->header_attr('kills', 'colspan', '2');
+//$table->header_attr('headshotkillspct', 'colspan', '2');
 $ps->weapons_table_mod($table);
 $cms->filter('weapons_table_object', $table);
 
@@ -144,8 +146,20 @@ $cms->full_page($basename, $basename, $basename.'_header', $basename.'_footer');
 function kills_pct($name, $weapon) {
 	global $cms, $max;
 	return pct_bar(array(
-		'pct'		=> $weapon['killspct'],
+		'pct'		=> $weapon['scaledkillspct'],
 		'title'		=> $cms->trans('Overall kills percentage') . ' (' . $weapon['realkillspct'] . '%)',
+		'color1'	=> 'cc0000',
+		'color2'	=> '00cc00',
+//		'width'		=> 100
+	));
+}
+
+
+function headshotkills_pct($name, $weapon) {
+	global $cms, $max;
+	return pct_bar(array(
+		'pct'		=> $weapon['scaledheadshotkillspct'],
+		'title'		=> $cms->trans('Overall headshot kills percentage') . ' (' . $weapon['realheadshotkillspct'] . '%)',
 		'color1'	=> 'cc0000',
 		'color2'	=> '00cc00',
 //		'width'		=> 100

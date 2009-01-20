@@ -27,17 +27,14 @@ use base qw( PS::Game::halflife );
 
 use util qw( :net );
 
-our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
-
-sub _init { 
-	my $self = shift;
-	$self->SUPER::_init;
-
-#	$self->{cs_hostages} = {};
-
-	return $self;
-}
+#sub init { 
+#	my $self = shift;
+#	$self->SUPER::init;
+##	$self->{cs_hostages} = {};
+#	return $self;
+#}
 
 # cstrike doesn't have character roles (classes) so just return a false value
 sub get_role { undef }
@@ -51,93 +48,87 @@ sub event_logstartend {
 	return unless lc $startedorclosed eq 'started';
 
 	# reset some tracking vars
-	map { undef $self->{$_} } qw( cs_bombplanter cs_spawned_with_bomb cs_vip );
-#	$self->{cs_hostages} = {};
+	undef $self->{$_} for qw( cs_bombplanter cs_bombspawner cs_vip );
 }
 
 sub event_plrtrigger {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $trigger, $propstr) = @$args;
-	my $p1 = $self->get_plr($plrstr) || return;
-	$self->_do_connected($timestamp, $p1) unless $p1->{_connected};
-	return if $self->isbanned($p1);
-
-	$p1->{basic}{lasttime} = $timestamp;
-	return unless $self->minconnected;
+	my $p = $self->get_plr($plrstr) || return;
 	my $m = $self->get_map;
+	my $props = $self->parseprops($propstr);
+
+	#return if $self->isbanned($p);
+	#return unless $self->minconnected;
 
 	$trigger = lc $trigger;
-	$self->plrbonus($trigger, 'enactor', $p1);
+	$self->plrbonus($trigger, 'enactor', $p);
 	if ($trigger eq 'weaponstats' or $trigger eq 'weaponstats2') {
 		$self->event_weaponstats($timestamp, $args);
 
-	} elsif ($trigger eq 'address') {	# PIP 'address' (ipaddress) events
-		my $props = $self->parseprops($propstr);
-		return unless $p1->{uid} and $props->{address};
-		$self->{ipcache}{$p1->{uid}} = ip2int($props->{address});
+	} elsif ($trigger eq 'address') {			# PIP 'address' (ipaddress) events
+		$self->add_ipcache($p->uid, ip2int($props->{address}), $timestamp);
 
 	} elsif ($trigger =~ /^(killed|touched|rescued)_a_hostage/) {
-		$p1->{mod_maps}{ $m->{mapid} }{$1.'hostages'}++;
-		$p1->{mod}{$1.'hostages'}++;
-		$m->{mod}{$1.'hostages'}++;
+		$p->action_hostage($1, $m, $props);
+		$m->action_hostage($1, $p, $props);
 
-	} elsif ($trigger =~ /^begin_bomb_defuse/) {						# ignore: _with_kit, _without_kit
-		$p1->{mod_maps}{ $m->{mapid} }{bombdefuseattempts}++;
-		$p1->{mod}{bombdefuseattempts}++;
-		$m->{mod}{bombdefuseattempts}++;
+	} elsif ($trigger =~ /^begin_bomb_defuse/) {		# ignore: _with_kit, _without_kit
+		$p->action_bomb('defuse_attempts', $m, $props);
+		$m->action_bomb('defuse_attempts', $p, $props);
 
 	} elsif ($trigger =~ /^(planted|defused|spawned_with|got|dropped)_the_bomb/) {
-		if ($1 eq 'planted') {
-			$p1->{mod_maps}{ $m->{mapid} }{bombplanted}++;
-			$p1->{mod}{bombplanted}++;
-			$m->{mod}{bombplanted}++;
-			$self->{cs_bombplanter} = $p1;						# keep track of who planted bomb
+		my $action = $1;
+		$p->action_bomb($action, $m, $props);
+		$m->action_bomb($action, $p, $props);
 
-		} elsif ($1 eq 'defused') {
-			$p1->{mod_maps}{ $m->{mapid} }{bombdefused}++;
-			$p1->{mod}{bombdefused}++;
-			$m->{mod}{bombdefused}++;
-			 # bomb planter should lose points
-			$self->plrbonus($trigger, 'victim', $self->{cs_bombplanter}) if $self->{cs_bombplanter};
+		if ($action eq 'planted') {
+			# keep track of who planted bomb
+			$self->{cs_bombplanter} = $p;
 
-		} elsif ($1 eq 'spawned_with') {
-			$p1->{mod_maps}{ $m->{mapid} }{bombspawned}++;
-			$p1->{mod}{bombspawned}++;
-			$self->{cs_spawned_with_bomb} = $p1;					# keep track of spawned bomber
-#			print "DEBUG: BOMB SPAWNED\n";
-
-		} elsif ($1 eq 'dropped') {
-			no warnings;
-			if ($self->{cs_spawned_with_bomb} and $self->{cs_spawned_with_bomb}->{plrid} eq $p1->{plrid}) {
-#				print "DEBUG: BOMB DROPPED\n";
-				$self->{cs_spawned_with_bomb} = undef;
+		} elsif ($action eq 'defused') {
+			# bomb planter should lose points
+			if (ref $self->{cs_bombplanter}) {
+				$self->plrbonus($trigger, 'victim', $self->{cs_bombplanter});
 			}
+
+		# 'spawned_with_the_bomb' is not logged by the source engine.
+		# so I'm not going to track the bomb_runner anymore.
+		#} elsif ($action eq 'spawned_with') {
+		#	# keep track of who spawned with the bomb
+		#	$self->{cs_bombspawner} = $p;
+		#
+		#} elsif ($action eq 'dropped' or $action eq 'got') {
+		#	# if the bomb dropped the spawner is no longer valid
+		#	$self->{cs_bombspawner} = undef;
 		}
 
 	} elsif ($trigger =~ /^(became|escaped_as|assassinated_the)_vip/) {
-		if ($1 eq 'became') {
-			$p1->{mod_maps}{ $m->{mapid} }{vip}++;
-			$p1->{mod}{vip}++;
-			$self->{cs_vip} = $p1;							# keep track of current CT VIP
-		} elsif ($1 eq 'escaped_as') {
-			$p1->{mod_maps}{ $m->{mapid} }{vipescaped}++;
-			$p1->{mod}{vipescaped}++;
-			$m->{mod}{vipescaped}++;
-		} else {
-			$p1->{mod_maps}{ $m->{mapid} }{vipkilled}++;
-			$p1->{mod}{vipkilled}++;
-			$m->{mod}{vipkilled}++;
-			$self->plrbonus($trigger, 'victim', $self->{cs_vip});			# VIP should lose points (also clears current VIP)
-		}
+		# VIP games are a thing of the past. No one plays them anymore.
+		#my $action = $1;
+		#$action = (split '_', $action, 2)[0];	# remove '_as' or '_the'
+		#$action = 'killed' if $action eq 'assassinated';
+		#
+		#$p->action_vip($action, $m, $props);
+		#$m->action_vip($action, $p, $props);
+		#
+		#if ($action eq 'became') {
+		#	$self->{cs_vip} = $p;			# keep track of current CT VIP
+		#
+		#} elsif ($action eq 'killed') {
+		#	# VIP should lose points
+		#	$self->plrbonus($trigger, 'victim', $self->{cs_vip}) if ref $self->{cs_vip};
+		#	$self->{cs_vip} = undef;
+		#}
 
 	} elsif ($trigger eq 'terrorist_escaped') {
-
-	# extra statsme / amx triggers
-	} elsif ($trigger =~ /^(time|latency|amx_|game_idle_kick)/) {
-		# The time trigger might be usefull...
-	} elsif ($trigger eq 'camped') {
-		# I'm not sure what plugin provides this trigger...
-
+		# no one plays these maps anymore, they suck. and HL2 doesn't
+		# have this mode of play anymore.
+		
+	} elsif ($trigger =~ /^(time|latency|amx_|game_idle_kick|camped)/) {
+		# extra statsme / amx triggers
+		$p->action_misc($trigger, $props);
+		
 	} else {
 		if ($self->{report_unknown}) {
 			$self->warn("Unknown player trigger '$trigger' from src $self->{_src} line $self->{_line}: $self->{_event}");
@@ -146,151 +137,107 @@ sub event_plrtrigger {
 
 }
 
+# reset cstrike tracking var(s) at the start of each round.
+sub event_round {
+	my $self = shift;
+	undef $self->{cs_bombplanter};
+	$self->SUPER::event_round(@_);
+}
 
 sub event_teamtrigger {
 	my ($self, $timestamp, $args) = @_;
-	my ($team, $trigger, $props) = @$args;
-	return unless $self->minconnected;
+	my ($team, $trigger, $propstr) = @$args;
 	my $m = $self->get_map;
-	my $ct = $self->get_team('ct', 1);
-	my $terr = $self->get_team('terrorist', 1);
-	my ($p1, $p2, $ctvar, $terrvar, $enactor_team, $victim_team);
+	my $ct = $self->get_online_plrs('ct');
+	my $terr = $self->get_online_plrs('terrorist');
+	my $props = $self->parseprops($propstr);
+	my ($winners, $losers, $bombed);
+	return unless $self->minconnected;
 
-	$team = lc $team;
-	$team =~ tr/ /_/;				# convert spaces to _ on team names (some mods are known to do this)
-	$team =~ tr/a-z0-9_//cs;			# remove all non-alphanumeric characters
+	$team = $self->team_normal($team);
 	$trigger = lc $trigger;
 
-	if ($trigger eq 'target_bombed') {
-TARGET_BOMBED:
-		$terrvar  = 'terroristwon';
-		$ctvar = 'ctlost';
-		$enactor_team = $terr;
-		$victim_team = $ct;
+	# bonuses for the teams are assigned at the end...
+	
+	if ($trigger eq 'terrorists_win' ||
+	    $trigger eq 'target_bombed' ||
+	    $trigger eq 'hostages_not_rescued' ||
+	    $trigger eq 'terrorists_escaped' ||
+	    $trigger eq 'vip_assassinated' ||
+	    $trigger eq 'vip_not_escaped') {
+		
+		$winners = $terr;
+		$losers = $ct;
 
-		$p1 = $self->{cs_bombplanter};
-		if (defined $p1) {
-			$self->{cs_bombplanter} = undef;
-			$m->{mod}{bombexploded}++;
-			$p1->{mod}{bombexploded}++;
-			$p1->{mod_maps}{ $m->{mapid} }{bombexploded}++;
-			$self->plrbonus($trigger, 'enactor', $p1);
-			undef $self->{cs_bombplanter};
-		}
+		# make sure to count the 'target_bombed' event even though the
+		# round ended before it actually occured.
+		$bombed = 1 if ref $self->{cs_bombplanter} &&
+			($trigger eq 'target_bombed' ||
+			 $trigger eq 'terrorists_win');
 
-		$p2 = $self->{cs_spawned_with_bomb};
-		undef $self->{cs_spawned_with_bomb};
-#		print "DEBUG: P1=$p1->{plrid} P2=" . ($p2->{plrid}||'') . "\n";
-		if (defined($p1 && $p2) and ($p1->{plrid} eq $p2->{plrid})) {	# if planter matches the spawner then bombrunner++ 
-#			print "DEBUG: BOMBRUNNER++\n";
-			$m->{mod}{bombrunner}++;
-			$p2->{mod}{bombrunner}++;
-			$p2->{mod_maps}{ $m->{mapid} }{bombrunner}++;
-			$self->plrbonus('bomb_runner', 'enactor', $p1);
-		}
+	} elsif ($trigger eq 'cts_win' ||
+		 $trigger eq 'bomb_defused' ||
+		 $trigger eq 'target_saved' ||
+		 $trigger eq 'all_hostages_rescued' ||
+		 $trigger eq 'vip_escaped' ||
+		 $trigger eq 'cts_preventescape' ||
+		 $trigger eq 'terrorists_not_escaped') {
+		
+		$winners = $ct;
+		$losers = $terr;
+		
+	#} elsif ($trigger eq 'intermission_win_limit') {
+	#	# TF2 trigger when a round time limit is reached the team with
+	#	# the highest score wins the round.
+	#	# ignore for now.
+	#	return;
 
-	} elsif ($trigger eq "hostages_not_rescued") {
-		$terrvar  = 'terroristwon';
-		$ctvar = 'ctlost';
-		$enactor_team = $terr;
-		$victim_team = $ct;
-
-	} elsif ($trigger eq "vip_assassinated") {
-		$terrvar  = 'terroristwon';
-		$ctvar = 'ctlost';
-		$enactor_team = $terr;
-		$victim_team = $ct;
-
-	} elsif ($trigger eq "vip_not_escaped") {
-		$terrvar  = 'terroristwon';
-		$ctvar = 'ctlost';
-		$enactor_team = $terr;
-		$victim_team = $ct;
-
-	} elsif ($trigger eq "terrorists_win") {
-		$terrvar  = 'terroristwon';
-		$ctvar = 'ctlost';
-		$enactor_team = $terr;
-		$victim_team = $ct;
-		# make sure to count the 'explosion' even though the round ended before it actually did.
-		goto TARGET_BOMBED if $self->{cs_bombplanter};
-
-	} elsif ($trigger eq "terrorists_escaped") {
-		$terrvar  = 'terroristwon';
-		$ctvar = 'ctlost';
-		$enactor_team = $terr;
-		$victim_team = $ct;
-
-	} elsif ($trigger eq "terrorists_not_escaped") {
-		$terrvar  = 'terroristlost';
-		$ctvar = 'ctwon';
-		$enactor_team = $ct;
-		$victim_team = $terr;
-
-	} elsif ($trigger eq "all_hostages_rescued") {
-		$terrvar  = 'terroristlost';
-		$ctvar = 'ctwon';
-		$enactor_team = $ct;
-		$victim_team = $terr;
-
-	} elsif ($trigger eq "bomb_defused") {
-		$terrvar  = 'terroristlost';
-		$ctvar = 'ctwon';
-		$enactor_team = $ct;
-		$victim_team = $terr;
-
-	} elsif ($trigger eq "target_saved") {
-		$terrvar  = 'terroristlost';
-		$ctvar = 'ctwon';
-		$enactor_team = $ct;
-		$victim_team = $terr;
-
-	} elsif ($trigger eq "vip_escaped") {
-		$terrvar  = 'terroristlost';
-		$ctvar = 'ctwon';
-		$enactor_team = $ct;
-		$victim_team = $terr;
-
-	} elsif ($trigger eq "cts_preventescape") {
-		$terrvar  = 'terroristlost';
-		$ctvar = 'ctwon';
-		$enactor_team = $ct;
-		$victim_team = $terr;
-
-	} elsif ($trigger eq "cts_win") {
-		$terrvar  = 'terroristlost';
-		$ctvar = 'ctwon';
-		$enactor_team = $ct;
-		$victim_team = $terr;
-
-	} elsif ($trigger eq 'intermission_win_limit') {
-		# uhm.... what?
-		return;
 	} else {
 		if ($self->{report_unknown}) {
-			$self->warn("Unknown team trigger '$trigger' from src $self->{_src} line $self->{_line}: $self->{_event}");
+			$self->warn("Unknown team trigger '$trigger' from source $self->{_src} line $self->{_line}: $self->{_event}");
 		}
 		return;		# return here so we don't calculate the 'won/lost' points below
 	}
 
-	$self->plrbonus($trigger, 'enactor_team', $enactor_team, 'victim_team', $victim_team);
+	# Assign bonus points to all team members based on specific trigger
+	$self->plrbonus($trigger, 'enactor_team', $winners, 'victim_team', $losers);
+	
+	if ($trigger ne 'terrorists_win' and $trigger ne 'cts_win') {
+		# allow both teams to receive points for a generic win event as
+		# well as the more specific trigger above.
+		$self->plrbonus($trigger, 'enactor_team', $winners, 'victim_team', $losers);
+	}
 
-	# assign won/lost points ...
-	$m->{mod}{$ctvar}++;
-	$m->{mod}{$terrvar}++;
-	foreach (@$ct) {
-		$_->{mod}{$ctvar}++;
-		$_->{mod_maps}{ $m->{mapid} }{$ctvar}++;		
+	# make sure the bomb exploding event is triggered if needed
+	if ($bombed) {
+		my $p = $self->{cs_bombplanter};
+		if (ref $p) {
+			$p->action_bomb('exploded', $m, $props);
+			$m->action_bomb('exploded', $p, $props);
+			# give the bomber some bonus points
+			$self->plrbonus('target_bombed',
+				'enactor', $p,
+				'enactor_team', $winners,
+				'victim_team', $losers
+			);
+			undef $self->{cs_bombplanter};
+		}
 	}
-	foreach (@$terr) {
-		$_->{mod}{$terrvar}++;
-		$_->{mod_maps}{ $m->{mapid} }{$terrvar}++;		
-	}
+	
+	# update map stats
+	$m->action_teamwon( $trigger, $team, $props);
+	$m->action_teamlost($trigger, $team, $props);
+
+	# update stats for online players
+	$_->action_teamwon( $trigger, $team, $m, $props) for @$winners;
+	$_->action_teamlost($trigger, $team, $m, $props) for @$losers;
+
 }
 
 sub event_cs_teamscore {
 	my ($self, $timestamp, $args) = @_;
 	my ($team, $score, $totalplrs, $props) = @$args;
+	return;
 
 #	$self->info("$team scored $score with $totalplrs players\n");
 }

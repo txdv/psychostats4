@@ -115,24 +115,24 @@ sub event_teamtrigger {
 	my ($team, $trigger, $props) = @$args;
 	return unless $self->minconnected;
 	my $m = $self->get_map;
-	my $ct = $self->get_team('ct', 1);
-	my $terr = $self->get_team('terrorist', 1);
-	my ($p1, $p2, $ctvar, $terrvar, $enactor_team, $victim_team);
+	my $alphateam = $self->get_team('alpha', 1);
+	my $bravoteam = $self->get_team('bravo', 1);
+	my ($p1, $p2, $alphavar, $bravovar, $enactor_team, $victim_team);
 
 	$team = $self->team_normal($team);
 	$trigger = lc $trigger;
 
 	if ($trigger eq "terrorists_win" or $trigger eq "bravo_wins") {
-		$terrvar  = 'bravowon';
-		$ctvar = 'alphalost';
-		$enactor_team = $terr;
-		$victim_team = $ct;
+		$bravovar  = 'bravowon';
+		$alphavar = 'alphalost';
+		$enactor_team = $bravoteam;
+		$victim_team = $alphateam;
 
 	} elsif ($trigger eq "cts_win" or $trigger eq "alpha_wins") {
-		$terrvar  = 'bravolost';
-		$ctvar = 'alphawon';
-		$enactor_team = $ct;
-		$victim_team = $terr;
+		$bravovar  = 'bravolost';
+		$alphavar = 'alphawon';
+		$enactor_team = $alphateam;
+		$victim_team = $bravoteam;
 
 	} else {
 		if ($self->{report_unknown}) {
@@ -144,15 +144,15 @@ sub event_teamtrigger {
 	$self->plrbonus($trigger, 'enactor_team', $enactor_team, 'victim_team', $victim_team);
 
 	# assign won/lost points ...
-	$m->{mod}{$ctvar}++;
-	$m->{mod}{$terrvar}++;
-	foreach (@$ct) {
-		$_->{mod}{$ctvar}++;
-		$_->{mod_maps}{ $m->{mapid} }{$ctvar}++;		
+	$m->{mod}{$alphavar}++;
+	$m->{mod}{$bravovar}++;
+	foreach (@$alphateam) {
+		$_->{mod}{$alphavar}++;
+		$_->{mod_maps}{ $m->{mapid} }{$alphavar}++;		
 	}
-	foreach (@$terr) {
-		$_->{mod}{$terrvar}++;
-		$_->{mod_maps}{ $m->{mapid} }{$terrvar}++;		
+	foreach (@$bravoteam) {
+		$_->{mod}{$bravovar}++;
+		$_->{mod_maps}{ $m->{mapid} }{$bravovar}++;		
 	}
 }
 

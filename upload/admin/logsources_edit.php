@@ -84,8 +84,9 @@ $form->field('password2');			// does not get saved ...
 $form->field('recursive', 'numeric');
 $form->field('depth', 'positive');
 $form->field('skiplast', 'numeric');
+$form->field('skiplastline', 'numeric');
 $form->field('delete', 'numeric');
-//$form->field('options');
+$form->field('options');
 $form->field('defaultmap', 'blank');
 $form->field('enabled', 'numeric');
 //$form->field('idx');
@@ -193,17 +194,18 @@ if ($submit) {
 		$form->input['password2'] = '';
 	}
 	if ($type == 'stream') {
-		$form->field('path',null);
 		$form->input['path'] = '';
 		$form->input['username'] = '';
-		$form->input['host'] = 'localhost';
 	}
+
 	// update some fields so they're required if the log source is remote
 	if ($type == 'ftp' or $type == 'sftp') {
 		$form->field('host', 'blank,hostname');
 		$form->field('port', 'numeric');
 	} elseif ($type == 'stream') {
+		$form->field('host', 'blank,hostname');
 		$form->field('port', 'blank,numeric');
+		$form->field('path',null);
 	}
 
 	$form->validate();

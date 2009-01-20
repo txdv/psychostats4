@@ -54,10 +54,17 @@ class PsychoTheme extends Smarty {
 var $buffer 		= '';
 var $theme_url		= null;
 var $theme 		= '';
+var $styles 		= array();
+var $parent_styles	= null;
 var $language 		= 'en_US';
+var $language_open	= '<#';
+var $language_close	= '#>';
+var $language_regex	= '/(?:<!--)?%s(.+?)%s(?:-->(.+?)<!---->)?/ms';
 var $template_dir	= null;
 var $css_links		= array();
+var $css_compress	= true;
 var $js_sources		= array();
+var $js_compress	= true;
 var $meta_tags		= array();
 var $loaded_themes	= array();
 var $parent_themes	= array();
@@ -79,13 +86,19 @@ function PsychoTheme(&$cms, $args = array()) {
 		'template_dir'	=> null,
 		'theme_url'	=> null,
 		'compile_dir'	=> '.',
-		'compile_id'	=> ''
+		'compile_id'	=> '',
+		'js_compress'	=> false,
+		'css_compress'	=> false
 	);
+	if (empty($args['language'])) {
+		$args['language'] = 'en_US';
+	}
 	$this->template_dir($args['template_dir']);
 	$this->language($args['language']);
 	$this->theme_url = $args['theme_url'];
 	$this->fetch_compile = ($args['fetch_compile']);
-//	if ($args['theme']) $this->theme($args['theme'], $args['in_db']);
+	$this->js_compress = $args['js_compress'] ? true : false;
+	$this->css_compress = $args['css_compress'] ? true : false;
 
 	// Force themes to be compiled if debugging is enabled
 	if (defined("PS_THEME_DEV") and PS_THEME_DEV == true) {
@@ -146,14 +159,14 @@ function assign_request_vars($list, $globalize = false) {
 }
 
 // allows pages to insert extra CSS links within the overall_header.
-// $url is a relative URL to the css file (within the current theme_url).
+// $href is a relative URL to the css file (within the current theme_url).
 // $media is the media type to use (optional).
-function add_css($url, $media='screen,projection,print') {
-	$this->css_links[$url] = array( 'url' => $url, 'media' => $media );
+function add_css($href, $media='screen,projection,print') {
+	$this->css_links[$href] = array( 'href' => $href, 'media' => $media );
 }
 
-function add_js($url) {
-	$this->js_sources[$url] = array( 'url' => $url );
+function add_js($src) {
+	$this->js_sources[$src] = array( 'src' => $src );
 }
 
 function add_meta($values) {
@@ -180,16 +193,87 @@ function meta_tags() {
 	return $out;
 }
 
+// returns true for '1' or 'true' and false for anything else
+function is_true($val) {
+	switch (strtolower($val)) {
+		case '1':
+		case 'true': return true;
+		default: return false;
+	}
+}
+
 // SMARTY: template routine to print out the CSS links in the overall_header
 function css_links($theme = null) {
 	if (!is_array($this->css_links)) return '';
 	if (empty($theme)) $theme = $this->theme();
 	$out = '';
-	foreach ($this->css_links as $css) {
-		$out .= sprintf("\t<link rel='stylesheet' type='text/css' media='%s' href='%s' />\n", 
-			$css['media'], $this->url($theme) . '/' . $css['url']
-		);
+	$first = array();
+	$last = array();
+	$csslist = $this->styles->val('theme.css');
+	if ($csslist and (!is_array($csslist) or !$csslist[0])) $csslist = array( $csslist );
+	
+	// collect the css files defined in styles.xml
+	if ($csslist) {
+		foreach ($csslist as $c) {
+			$css = array();
+			if (is_array($c)) {
+				if ($c['@attributes']['href']) {
+					$css['href'] = $c['@attributes']['href'];
+				} elseif ($c['@attributes']['@content']) {
+					$css['style'] = $c['@attributes']['@content'];
+				}
+
+				// ignore block if there's no href or content
+				if ($css) {
+					// add media if present
+					if ($c['@attributes']['media']) {
+						$css['media'] = $c['@attributes']['media'];
+					}
+					// add loadlast if present
+					if ($c['@attributes']['loadlast']) {
+						$css['loadlast'] = $c['@attributes']['loadlast'];
+					}
+				}
+			} elseif ($c) {
+				// block is stright script, no src
+				$css['style'] = trim($c);
+			}
+			if ($css) {
+				if ($css['loadlast']) {
+					$last[] = $css;
+				} else {
+					$first[] = $css;
+				}
+			}
+		}
 	}
+	$list = array_merge($first, $this->css_links, $last);
+	
+	// output any external or embedded styles
+	$files = array();
+	foreach ($list as $css) {
+		if (substr($css['href'], 0, 4) == 'http') {
+			// ignore fully qualified sources and output them as
+			// their own <link> tag, regardless.
+			$out .= sprintf("<link rel='stylesheet' type='text/css' media='%s' href='%s' />\n", 
+				$css['media'] ? $css['media'] : 'screen,projection,print', $css['href']
+			);
+		} elseif ($css['style']) {
+			// embedded styles
+			$out .= "<style>" . $css['style'] . "</style>\n";
+		} else {
+			// css file
+			$res = $this->template_found($css['href'], false, false);
+			if ($res and $res['resource_name']) {
+				//$files[] = $res['resource_name'];
+				$out .= sprintf("<link rel='stylesheet' type='text/css' media='%s' href='%s' />\n", 
+					$css['media'] ? $css['media'] : 'screen,projection,print',
+					$this->url($res['resource_theme']) . '/' . $css['href']
+				);
+			}
+		}
+	}
+
 	return $out;
 }
 
@@ -198,11 +282,66 @@ function js_sources($theme = null) {
 	if (!is_array($this->js_sources)) return '';
 	if (empty($theme)) $theme = $this->theme();
 	$out = '';
-	foreach ($this->js_sources as $js) {
-		$out .= sprintf("\t<script src='%s%s' type='text/javascript'></script>\n", 
-			substr($js['url'], 0, 4) == 'http' ? '' : $this->url($theme) . '/',
-			$js['url']
-		);
+	$list = array();
+	$script = $this->styles->val('theme.script');
+	if ($script and (!is_array($script) or !$script[0])) $script = array( $script );
+
+	// collect the various scripts defined in styles.xml
+	if ($script) {
+		foreach ($script as $s) {
+			$js = array();
+			if (is_array($s)) {
+				// ignore block if there's no src
+				if ($s['@attributes']['src']) {
+					$js['src'] = $s['@attributes']['src'];
+				} elseif ($s['@attributes']['@content']) {
+					$js['script'] = $s['@attributes']['@content'];
+				}
+			} elseif ($s) {
+				// block is stright script, no src
+				$js['script'] = $s;
+			}
+			if ($js) $list[] = $js;
+		}
+	}
+	$list = array_merge($list, $this->js_sources);
+
+	// output any external or embedded scripts
+	$files = array();
+	foreach ($list as $js) {
+		if (substr($js['src'], 0, 4) == 'http') {
+			// ignore fully qualified sources and output them as
+			// their own <script> tag, regardless.
+			$out .= sprintf("<script src='%s' type='text/javascript'></script>\n",  $js['src']);
+		} elseif ($js['script']) {
+			// embedded JS
+			$out .= "<script type='text/javascript'>" . $js['script'] . "</script>\n";
+		} else {
+			// javascript file
+			$res = $this->template_found($js['src'], false, false);
+			if ($res and $res['resource_name']) {
+				$files[] = $res['resource_name'];
+			}
+		}
+	}
+
+	// combine and output all local scripts into a single request
+	if ($files) {
+		if ($this->js_compress) {
+			// combine all sources into a single request
+			if ($files) {
+				$src = implode(',', $files);
+				$out .= sprintf("<script src='%s' type='text/javascript'></script>\n",
+					ps_url_wrapper(array( '_base' => 'script.php', 'src' => $src))
+				);
+			}
+		} else {
+			foreach ($files as $f) {
+				$out .= sprintf("<script src='%s' type='text/javascript'></script>\n",
+					$this->theme_url . '/' . $f
+				);
+			}
+		}
 	}
 	return $out;
 }
@@ -336,12 +475,21 @@ function theme($new = null, $in_db = true) {
 				$class = "PsychoLanguage_" . $this->parent_themes[$new] . "_" . $this->language();
 				$file = catfile($this->language_dir($this->parent_themes[$new]), $this->language() . '.php');
 			}
-			ob_start();
-			$ok = (include_once $file);
-			$err = ob_get_clean();
-			if ($ok and !$err) {
-				$this->lang = new $class();
-			} else {
+			
+			// load the language file if it's available
+			$ok = false;
+			if (is_readable($file) and !class_exists($class)) {
+				ob_start();
+				$ok = (include_once $file);
+				$err = ob_get_clean();
+				if ($ok and !$err) {
+					$this->lang = new $class();
+				}
+			}
+			
+			// if no language file can be loaded then create an
+			// empty language instance to avoid undefined errors.
+			if (!$ok) {
 				if (defined("PS_THEME_DEV") and PS_THEME_DEV == true) {
 					trigger_error("Error loading language class $class. <strong>Using default instead.</strong> See the errors and/or warnings below for more information", E_USER_WARNING);
 					print $err;
@@ -363,9 +511,16 @@ function theme($new = null, $in_db = true) {
 	}
 }
 
+// returns true if the theme is a child of another parent
 function is_child($theme = null) {
 	if (!isset($theme)) $theme = $this->theme();
 	return isset($this->parent_themes[$theme]) ? $this->parent_themes[$theme] : false;
+}
+
+// returns true if the theme is a parent
+function is_parent($theme = null) {
+	if (!isset($theme)) $theme = $this->theme();
+	return isset($this->loaded_themes[$theme]['parent']) ? false : $this->loaded_themes[$theme];
 }
 
 // returns the full path to the theme(=true) if the theme name specified is a valid directory within our template_dir
@@ -540,55 +695,69 @@ function _compile_resource($resource_name, $compile_path) {
 }
 
 // returns the relative template filename if the template file is found within a loaded theme 
-function template_found($tpl_file, $update_theme = true, $get_source = false) {
-	if (strpos($tpl_file, '.html') === false and strpos($tpl_file, '.xml') === false) $tpl_file .= ".html";
+function template_found($filename, $update_theme = true, $get_source = false, $theme_name = null) {
+	// if a dot is near the end of the file then assume an extension is present
+	// and its not just part of the filename (ie: class.filename.ext)
+	$pos = strrpos($filename, '.');
+	$len = strlen($filename);
+	if (!$pos || $len - $pos > 5) $filename .= ".html";
 	$params = array('quiet' => true, 'get_source' => $get_source);
 	foreach ($this->loaded_themes as $name => $theme) {
-#		print "checking $name\n";
-		$params['resource_name'] = $name . '/' . $tpl_file;
+		if ($theme_name and $name != $theme_name) {
+			continue;
+		}
+		$params['resource_name'] = $name . '/' . $filename;
 		if ($this->_fetch_resource_info($params)) {
-#			print "template_found($tpl_file); name=$name\n"; print_r($params);
+			$params['resource_theme'] = $name;
 			if ($update_theme) $this->theme = $name;
 			return $params;
 		}
 	}
-#	print "no template_found($tpl_file)\n";
 	return false;
 }
 
-function fetch($tpl_file, $cache_id = null, $compile_id = null, $display = false) {
-#	print "fetch($tpl_file)\n";
-	$res = $this->template_found($tpl_file);
+// fetch a template. Compiles the template if needed first.
+function fetch($tpl, $cache_id = null, $compile_id = null, $display = false) {
+	$res = is_array($tpl) ? $tpl : $this->template_found($tpl);
 	$compile_id = $this->language() . '-' . $this->compile_id; 
 	if ($res) {
 		$tpl_file = $res['resource_name'];
 		$compile_id = $this->theme . '-' . $compile_id;
+	} else {
+		$tpl_file = is_array($tpl) ? $tpl['resource_name'] : $tpl;
 	}
 	return parent::fetch($tpl_file, $cache_id, $compile_id, $display);
 }
 
-// fetch a template without saving to disk. This is not usually recommended due to performance issues.
-function fetch_eval($tpl_file) {
-	$_params = $this->template_found($tpl_file, true, true);
-	if (!$_params) {
+// fetch a template without saving to disk.
+// this is not usually recommended due to performance issues.
+function fetch_eval($tpl) {
+	$res = is_array($tpl) ? $tpl : $this->template_found($tpl, true, true);
+	if (!$res) {
 		return '';
 	}
 
-        $_source_content = $_params['source_content'];
+	$source = $res['source_content'];
+	$compiled = '';
 
-	$_var_compiled = '';
-	$this->_compile_source('eval-template', $_source_content, $_var_compiled);
+	$this->_compile_source('eval-template', $source, $compiled);
+
 	ob_start();
-	$this->_eval('?>' . $_var_compiled);
-	$_contents = ob_get_contents();
+	$this->_eval('?>' . $compiled);
+	$contents = ob_get_contents();
 	ob_end_clean();
-	return $_contents;
+
+	return $contents;
 }
 
 // Parses the template filename and appends it to the current buffer for output
 // returns the output from the parsed template.
 function parse($filename, $append_buffer = true) {
-	if (strpos($filename, '.html') === false and strpos($filename, '.xml') === false) $filename .= ".html";
+	// if a dot is near the end of the file then assume an extension is present
+	// and its not just part of the filename (ie: class.filename.ext)
+	$pos = strrpos($filename, '.');
+	$len = strlen($filename);
+	if (!$pos || $len - $pos > 5) $filename .= ".html";
 	$orig = $this->theme();
 #	print "parse($filename) orig=$orig\n";
 	$out = $this->fetch_compile ? $this->fetch($filename) : $this->fetch_eval($filename);
@@ -604,12 +773,30 @@ function showpage($output = null, $showtimer = true) {
 	if ($TIMER and $showtimer) {
 		$output = str_replace('<!--PAGE_BENCHMARK-->', $TIMER->timediff(), $output);
 	}
+
+	// show debugging information if enabled... 
+	if (defined('PS_DEBUG') and PS_DEBUG) {
+		ps_debug($output);
+	}
+
 	print $output;
 }
 
+// changes the open and closing tags for filtering language strings in a template.
+// @return array original values
+function language_tags($open, $close = null) {
+	$orig = array( $this->language_open, $this->language_close);
+	if (is_array($open)) {
+		list($open, $close) = $open;
+	}
+	if ($open) $this->language_open = $open;
+	if ($close) $this->language_close = $close;
+	return $orig;
+}
+
 function prefilter_language($tpl_source, &$smarty) {
-	// Now replace the matched language strings with the entry in the file
-	return preg_replace_callback('/(?:<!--)?<#(.+?)#>(?:-->(.+?)<!---->)?/ms', array(&$this, "_compile_lang"), $tpl_source);
+	$regex = sprintf($this->language_regex, $this->language_open, $this->language_close);
+	return preg_replace_callback($regex, array(&$this, "_compile_lang"), $tpl_source);
 }
 
 function _compile_lang($key) {
@@ -703,6 +890,192 @@ function page_title($str, $append = false) {
 	}
 }
 
+// loads a styles.xml file relative to the child and parent themes.
+function load_styles($file = 'styles.xml', $theme = null) {
+	if ($theme === null) {
+		$theme = $this->theme();
+	}
+	$s = new PsychoThemeStyles();
+	if (!$file) {
+		$this->styles = $s;
+		return $s;
+	}
+	
+	$res = $this->template_found($file, false, false, $theme);
+	if (!$res) {
+		$this->styles = $s;
+		return $s;
+	}
+
+	$orig = $this->language_tags('{#', '#}');
+	$orig_theme = $this->theme($theme);
+	$s->load($this->fetch_compile ? $this->fetch($res) : $this->fetch_eval($res), 'styles');
+	$this->theme($orig_theme);
+	$this->language_tags($orig);
+
+	$this->styles = $s;
+	//if ($this->is_parent($theme)) {
+	//	$this->styles['parent'] = $s;
+	//} else {
+	//	$this->styles['child'] = $s;
+	//	if ($this->is_child($theme)) {
+	//		// load the parent theme if its present
+	//		$this->load_styles($file, $this->is_child($theme));
+	//	}
+	//}
+	
+	return $s;
+}
+
 } // end of PsychoTheme
+
+// basic styles class for loaded theme styles.
+// allows for easy navigation and defaults for styles.
+class PsychoThemeStyles {
+var $xml = '';
+var $styles = array();
+var $def = null;
+
+function PsychoThemeStyles($xml = null, $root = 'styles') {
+	if ($xml) {
+		return $this->load($xml, $root);
+	}
+	return false;
+}
+
+function load($xml, $root = 'styles') {
+	$this->xml = $xml;
+	require_once(PS_ROOTDIR . '/includes/class_simplexml.php');
+	$this->sxml = new simplexml;
+	$this->styles = $this->sxml->xml_load_string($xml, 'array');
+	return $this->styles;
+}
+
+// specifies the default key to use when searching for a default value
+function default_val($key) {
+	if (!$this->styles) {
+		return false;
+	}
+	$this->def = $this->_key($key);
+	return $this->def;
+}
+
+// returns the value of a key (scalar or array). If the key is not found
+// the $default is returned instead.
+function val($key, $default = null, $literal = false, $ignore_content = false) {
+	$k = $this->_key($key);
+	if (is_null($k) || $k == '') {
+		// if no default was given but a global default is available use it...
+		if (is_null($default) and !is_null($this->def)) {
+			$default = $this->def;
+			$literal = true;
+		}
+		$k = $literal ? $default : $this->_key($default);
+	}
+	if (is_array($k) and !$ignore_content) {
+		if (array_key_exists('@content', $k)) {
+			$k = $k['@content'];
+		}
+	}
+	return $k == '' ? null : $k;
+}
+
+// returns the attribute of a key (scalar or array). If the key is not found
+// the $default is returned instead.
+function attr($key, $default = null, $literal = false) {
+	$k = $this->val($key, $default, $literal, true);
+	$attr = null;
+	//if (!$k) {
+	//	$parts = explode('.', $key);
+	//	$attr = array_pop($parts);
+	//	$key = implode('.', $parts);
+	//	$k = $this->val($key, $default, $literal, true);
+	//}
+	if ($k) {
+		// make a numerically indexed array of elements
+		$list = (array_key_exists(0, $k)) ? $k : array( $k );
+		$newk = array();
+		for ($i=0, $j=count($list); $i<$j; $i++) {
+			if (array_key_exists('@attributes', $list[$i])) {
+				if ($attr) {
+					$newk[] = $list[$i]['@attributes'][$attr];
+				} else {
+					$newk[] = $list[$i]['@attributes'];
+				}
+			}
+		}
+		$k = $newk ? $newk : null;
+	}
+	return $k == '' ? null : $k;
+}
+
+// returns an array of attribute values from a node
+function attr_list($key, $attr, $default = null, $literal = false) {
+	$k = $this->val($key, $default, $literal, true);
+	if ($k) {
+		$list = array();
+		for ($i=0, $j=count($k); $i<$j; $i++) {
+			if ($k[$i]['@attributes']) {
+				$list[] = $k[$i]['@attributes'][$attr];
+			}
+		}
+		$k = $list;
+	}
+	return $k;
+}
+
+// Private: returns a pointer to the array that the $key points to.
+function _key($key, $root = null) {
+	$k = null;
+	if (!$key) {
+		return $k;
+	}
+	// separate the key into nodes
+	$nodes = is_array($key) ? $key : explode('.', $key);
+
+	if (!$root) {
+		$root =& $this->styles;
+	}
+	
+	// loop through nodes to create a path to the final element
+	$found = true;
+	while (count($nodes) > 1) {
+		$node = array_shift($nodes);
+		if (array_key_exists($node, $root)) {
+			$root =& $root[$node];
+		} else {
+			$found = false;
+			break;
+		}
+	}
+	
+	if ($found) {
+		$var = $nodes[0];
+		// if the key exists then the node is another array pointing
+		// to some content (or is a scalar string)
+		if (array_key_exists($var, $root)) {
+			if (is_array($root[$var])) {
+				$k = $root[$var];
+			} else {
+				$k = $root[$var];
+			}
+		} elseif (array_key_exists('@attributes', $root)) {
+			// the var doesn't exist, so we check attributes
+			if (array_key_exists($var, $root['@attributes'])) {
+				$k = $root['@attributes'][$var];
+			}
+		} elseif (array_key_exists('@content', $root)) {
+			if (array_key_exists($var, $root['@content'])) {
+				$k = $root['@content'][$var];
+			}
+		} else {
+			// ... 
+		}
+	}
+	
+	return $k;
+}
+
+} // end of class PsychoThemeStyles
 
 ?>

@@ -134,6 +134,15 @@ function query_info($ip=NULL) {
 	return FALSE;
 }
 
+function query_rules() {
+	// no support	
+}
+
+function query_ping($ip) {
+	$q = $this->query_info($ip);
+	return $q['ping'];
+}
+
 // internal function to send a non-authoritative query to a quake3 server (NOT RCON COMMANDS)
 function _sendquery($ipport, $cmd) {
 	list($ip,$port) = explode(':', $ipport);

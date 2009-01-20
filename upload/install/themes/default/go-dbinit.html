@@ -11,9 +11,27 @@
 <p class="h3">
 	Multiple games and mod support can be added to the database, but only one game:mod can be used at a time.
 </p>
+{foreach name="gs" from=$gamesupport key='type' item='mod'}
+<p class="row">
+	<input class="gametype" name="gametype[]" id="{$type}" value="{$type}" type="checkbox"{if in_array($type, $gametype)} checked{/if} />
+	<label class="for gametype" for="{$type}">{$gametypes[$type]|escape}</label>
+</p>
+	{if $mod}
+	<ul class="modtypes"{if !in_array($type, $gametype)} style="display: none"{/if}>
+		{foreach from=$mod item='m'}
+		<li>
+			<input id="{$type}-{$m}" name="modtype[]" value="{$m}" type="checkbox" />
+			<label for="{$type}-{$m}" class="for">{$modtypes[$m]|escape}</label>
+		</li> 
+		{/foreach}
+	</ul>
+	{/if}
+{/foreach}
+
+{*
 <p class="row">
 	<label><#Game Type#>:</label>
-	<select name="gametype[]" multiple="multiple" size="1">
+	<select name="gametype[]" multiple="multiple" size="3">
 {foreach from=$gametypes key='type' item='label'}
 		<option value="{$type}"{if in_array($type, $gametype)} selected{/if}>{$label}</option>
 {/foreach}
@@ -29,6 +47,7 @@
 		</optgroup>
 	</select>
 </p>
+*}
 
 <h3><#Initialization Options#></h3>
 <p class="h3">

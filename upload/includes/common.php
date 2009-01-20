@@ -25,15 +25,15 @@
  *      All pages must include this file first and foremost.
 **/
 
-
 // verify the page was viewed from a valid entry point.
 if (!defined("PSYCHOSTATS_PAGE")) die("Unauthorized access to " . basename(__FILE__));
 
+//define("PS_DEBUG", true);
 //define("PS_THEME_DEV", true);
 
 // Global PsychoStats version and release date. 
 // These are updated automatically by the release packaging script 'rel.pl'.
-define("PS_VERSION", '3.x');
+define("PS_VERSION", '3.2');
 define("PS_RELEASE_DATE", 'today');
 
 // define the directory where we live. Since this file is always 1 directory deeper
@@ -48,6 +48,10 @@ set_magic_quotes_runtime(0);
 ini_set('display_errors', 'On');
 ini_set('log_errors', 'On');
 /**/
+
+// disable automatic compression since we allow the admin specify this with
+// our own handler.
+ini_set('zlib.output_compression', 'Off');
 
 // setup global timer so we can show the 0.0000 benchmark on pages.
 $TIMER = null;
@@ -72,6 +76,7 @@ require_once(PS_ROOTDIR . "/includes/class_PS.php");
 require_once(PS_ROOTDIR . "/includes/class_CMS.php");
 
 // load the basic config
+$dbtype = $dbhost = $dbport = $dbname = $dbuser = $dbpass = $dbtblprefix = '';
 require_once(PS_ROOTDIR . "/config.php");
 
 // Initialize our global variables for PsychoStats. 

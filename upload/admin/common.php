@@ -28,15 +28,16 @@ $opts = array(
 	'theme_opt'	=> 'admin_theme',
 	'force_theme'	=> true,
 	'in_db' 	=> false,				// the admin theme is not in the database
-	'fetch_compile'	=> $ps->conf['theme']['fetch_compile'],
-	'compile_dir'	=> $ps->conf['theme']['compile_dir'],
 	'template_dir' 	=> dirname(__FILE__) . '/themes', 	// force the admin theme here
 	'theme_url'	=> 'themes',				// force the url here too
 	'compile_id' 	=> 'admin' 				// set an id for admin pages
 );
-// at all costs, the admin page should never break due to file permissions.
-// safe-guard. If the compile directory is not writable we fallback to not saving compiled themes to disk
-// which is slower. But shouldn't be a big problem since only a single person is usually accessing the admin page.
+$opts = array_merge($ps->conf['theme'], $opts);
+
+// At all costs the admin page should never break due to file permissions. If
+// the compile directory is not writable we fallback to not saving compiled
+// themes to disk which is slower. But shouldn't be a big problem since only a
+// single person is usually accessing the admin page.
 if ($opts['fetch_compile'] and !is_writable($opts['compile_dir'])) {
 	$opts['fetch_compile'] = false;
 }
@@ -54,8 +55,8 @@ if (!$cms->user->admin_logged_in()) {
 	}
 }
 
-// set flag if the install directory (go script) is still readable by the webserver. 
-// admins need to remove the install directory after installation.
+// Set flag if the install directory (go script) is still readable by the
+// webserver. Admins need to remove the install directory after installation.
 if (is_readable(catfile(dirname(dirname(__FILE__)), 'install', 'go.php'))) {
 	$cms->theme->assign(array(
 		'install_dir_insecure' 	=> true,

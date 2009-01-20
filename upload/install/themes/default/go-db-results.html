@@ -84,7 +84,7 @@
 	<p class="h3">The errors below should help indicate why any tests above failed.</p>
 	<ul>
 	{foreach from=$db_errors item='e'}
-	<li>{$e|escape}</li>
+	<li>{$e.error|escape}</li>
 	{/foreach}
 	</ul>
 </div>

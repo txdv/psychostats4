@@ -72,6 +72,7 @@ sub init {
 	return undef unless $self->_readdir;
 
 	$self->{state} = $self->load_state;
+	$self->{_pos} = $self->{state}{pos};
 
 	# we have a previous state to deal with. We must "fast-forward" to the log we ended with.
 	if ($self->{state}{file}) {
@@ -80,7 +81,7 @@ sub init {
 		while (scalar @{$self->{_logs}}) {
 			my $cmp = $self->{game}->logcompare($self->{_logs}[0], $statelog);
 			if ($cmp == 0) { # ==
-				$self->_opennextlog;
+				$self->_opennextlog(1);
 				# finally: fast-forward to the proper line
 				if (int($self->{state}{pos} || 0) > 0) {	# FAST forward quickly
 					seek($FH, $self->{state}{pos}, 0);
@@ -112,7 +113,7 @@ sub init {
 		}
 	}
 
-	return scalar @{$self->{_logs}} ? 1 : 0;
+	return scalar @{$self->{_logs}} ? $self->{type} : 0;
 }
 
 # reads the contents of the current directory
@@ -132,7 +133,11 @@ sub _readdir {
 	if (scalar @{$self->{_logs}}) {
 		$self->{_logs} = $self->{game}->logsort($self->{_logs});
 	}
-	pop(@{$self->{_logs}}) if $self->{logsource}{skiplast};
+	# skip the last log in the directory
+	if ($self->{logsource}{skiplast}) {
+		my $log = pop(@{$self->{_logs}});
+		$::ERR->verbose("Last log '$log' in '$self->{_dir}' will be skipped.");
+	}
 	$::ERR->verbose(scalar(@{$self->{_logs}}) . " logs found in $self->{_dir}");
 	return scalar @{$self->{_logs}};
 }
@@ -250,7 +255,8 @@ sub _get_callback {
 
 sub _opennextlog {
 	my $self = shift;
-
+	my $fastforward = shift;
+	
 	# delete previous log if we had one, and we have 'delete' enabled in the config
 	if ($self->{logsource}{delete} and $self->{_curlog}) {
 		$self->debug2("Deleting log $self->{_curlog}");
@@ -263,12 +269,19 @@ sub _opennextlog {
 	undef $FH;						# close the previous log, if there was one
 	return undef if !scalar @{$self->{_logs}};		# no more logs or directories to scan
 
-	$self->{_curlog} = shift @{$self->{_logs}};
-	$self->{_curline} = 0;	
 	$self->{_offsetbytes} = 0;
-	$self->{_filesize} = 0;
 	$self->{_lastprint} = time;
 	$self->{_lastprint_bytes} = 0;
+
+	# we're done if the maximum number of logs has been reached
+	if (!$fastforward and $self->{_maxlogs} and $self->{_totallogs} >= $self->{_maxlogs}) {
+		$self->save_state;
+		return undef;
+	}
+
+	$self->{_curlog} = shift @{$self->{_logs}};
+	$self->{_curline} = 0;	
+	$self->{_filesize} = 0;
 
 	# keep trying logs until we get one that works (however, chances are if 1 log fails to load they all will)
 	while (!$FH) {
@@ -315,6 +328,7 @@ sub _opennextlog {
 	}
 	
 	if ($FH) {
+		$self->{_totallogs}++ unless $fastforward;
 		$self->{_filesize} = (stat $FH)[7];
 	}
 
@@ -325,8 +339,11 @@ sub next_event {
 	my $self = shift;
 	my $line;
 
+	$self->idle;
+	
 	# User is trying to ^C out, try to exit cleanly (save our state)
-	if ($::GRACEFUL_EXIT > 0) {
+	# Or we've reached our maximum allowed lines
+	if ($::GRACEFUL_EXIT > 0 or ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines})) {
 		$self->save_state;
 		return undef;
 	}
@@ -334,14 +351,32 @@ sub next_event {
 	# No current loghandle? Get the next log in the queue
 	if (!$FH) {
 		$self->_opennextlog;
-		return undef unless $FH;
+		if ($FH) {
+			$self->echo_processing;
+		} else {
+			$self->save_state;
+			return undef;
+		}
 	}
 
 	# read the next line, if it's undef (EOF), get the next log in the queue
 	while (!defined($line = <$FH>)) {
 		$self->_opennextlog;
-		return undef unless $FH;
+		if ($FH) {
+			$self->echo_processing;
+		} else {
+			$self->save_state;
+			return undef;
+		}
 	}
+	# skip the last line if we're at EOF and there are no more logs in the directory
+	# do not increment the line counter, etc.
+	if ($self->{logsource}{skiplastline} and eof($FH) and !scalar @{$self->{_logs}}) {
+		$self->save_state;
+		return undef;
+	}
+	$self->{_curline}++;
+	$self->{_pos} = tell($FH);
 
 	if ($self->{_verbose}) {
 		$self->{_totallines}++;
@@ -359,7 +394,7 @@ sub next_event {
 
 	$self->save_state if time - $self->{_last_saved} > 60;
 
-	my @ary = ( $self->{_curlog}, $line, ++$self->{_curline} );
+	my @ary = ( $self->{_curlog}, $line, $self->{_curline} );
 	return wantarray ? @ary : [ @ary ];
 }
 
@@ -368,7 +403,7 @@ sub save_state {
 
 	$self->{state}{file} = $self->{_curlog};
 	$self->{state}{line} = $self->{_curline};
-	$self->{state}{pos}  = defined $FH ? tell($FH) : undef;
+	$self->{state}{pos}  = $self->{_pos};
 
 	$self->{_last_saved} = time;
 

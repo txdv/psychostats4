@@ -205,6 +205,7 @@ function PS(&$db) {
 	$this->t_config_clantags 	= $this->tblprefix . 'config_clantags';
 	$this->t_config_events 		= $this->tblprefix . 'config_events';
 	$this->t_config_logsources 	= $this->tblprefix . 'config_logsources';
+	$this->t_config_overlays 	= $this->tblprefix . 'config_overlays';
 	$this->t_config_plrbans 	= $this->tblprefix . 'config_plrbans';
 	$this->t_config_plrbonuses 	= $this->tblprefix . 'config_plrbonuses';
 	$this->t_config_servers 	= $this->tblprefix . 'config_servers';
@@ -213,6 +214,9 @@ function PS(&$db) {
 	$this->t_geoip_cc		= $this->tblprefix . 'geoip_cc';
 	$this->t_geoip_ip		= $this->tblprefix . 'geoip_ip';
 	$this->t_heatmaps 		= $this->tblprefix . 'heatmaps';
+	$this->t_live_entities		= $this->tblprefix . 'live_entities';
+	$this->t_live_events		= $this->tblprefix . 'live_events';
+	$this->t_live_games		= $this->tblprefix . 'live_games';
 	$this->t_map 			= $this->tblprefix . 'map';
 	$this->t_map_data 		= $this->tblprefix . 'map_data';
 	$this->t_map_hourly 		= $this->tblprefix . 'map_hourly';
@@ -578,7 +582,7 @@ function get_player($args = array(), $minimal = false) {
 		$plr['totalmaps'] 	= $this->db->count($this->c_plr_maps, '*', "plrid='$id'");
 		$plr['totalweapons'] 	= $this->db->count($this->c_plr_weapons, '*', "plrid='$id'");
 		$plr['totalroles'] 	= $this->db->count($this->c_plr_roles, '*', "plrid='$id'");
-		$plr['totalids'] 	= $this->db->count($this->t_plr_ids, '*', "plrid='$id'");
+		//$plr['totalids'] 	= $this->db->count($this->t_plr_ids, '*', "plrid='$id'");
 		$plr['totalsessions'] 	= $this->db->count($this->t_plr_sessions, '*', "plrid='$id'");
 		$plr['totalawards'] 	= $this->db->count($this->t_awards, '*', "topplrid='$id'");
 	}
@@ -1150,6 +1154,8 @@ function get_player_list($args = array()) {
 		$cmd .= "AND (pp.name LIKE '$f') ";
 	}
 	
+	$list = array();
+	// limit list to search results
 	$results = $args['results'];
 	if ($args['search']) {
 		$results = $this->get_search($args['search']);
@@ -1158,11 +1164,17 @@ function get_player_list($args = array()) {
 //		$args['start'] = 0;	// override start since we sliced the array
 //		$plrids = array_slice(explode(',',$results['results']), $args['start'], $args['limit']);
 		$plrids = explode(',',$results['results']);
-		$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
+		if (count($plrids)) {
+			$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
+		}
 	}
-	$cmd .= $this->getsortorder($args);
-	
-	$list = $this->db->fetch_rows(1, $cmd);
+
+	// only do a query if we are not searching or if our current search
+	// actually has some data to return.
+	if (!$results or $results['results']) {
+		$cmd .= $this->getsortorder($args);
+		$list = $this->db->fetch_rows(1, $cmd);
+	}
 	return $list;
 }
 
@@ -1210,7 +1222,8 @@ function get_basic_player_list($args = array()) {
 	if (trim($args['filter']) != '') {
 		$cmd .= " AND (pp.name LIKE '%" . $this->db->escape(trim($args['filter'])) . "%') ";		
 	}
-	
+
+	$list = array();	
 	// limit list to search results
 	$results = $args['results'];
 	if ($args['search']) {
@@ -1220,11 +1233,17 @@ function get_basic_player_list($args = array()) {
 //		$args['start'] = 0;	// override start since we sliced the array
 //		$plrids = array_slice(explode(',',$results['results']), $args['start'], $args['limit']);
 		$plrids = explode(',',$results['results']);
-		$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
+		if (count($plrids)) {
+			$cmd .= "AND plr.plrid IN (" . join(',', $plrids) . ") ";
+		}
 	}
-	$cmd .= $this->getsortorder($args);
 
-	$list = $this->db->fetch_rows(1, $cmd);
+	// only do a query if we are not searching or if our current search
+	// actually has some data to return.
+	if (!$results or $results['results']) {
+		$cmd .= $this->getsortorder($args);
+		$list = $this->db->fetch_rows(1, $cmd);
+	}
 	return $list;
 }
 
@@ -2032,6 +2051,62 @@ function theme_setup(&$theme) {
 		false
 	);
 
+	$theme->load_styles();
+	if ($cms->input['loggedin'] and $cms->user->logged_in()) {
+		$theme->add_js('js/loggedin.js');
+	}
+
+	// setup the elapsedtime_str static vars once, so all other calls to
+	// it will automatically use the translated strings.
+	// we ignore the return value.
+	elapsedtime_str(array(),0,
+			// note the leading space on each word
+			array(
+				$cms->trans(' years'),
+				$cms->trans(' months'),
+				$cms->trans(' weeks'),
+				$cms->trans(' days'),
+				$cms->trans(' hours'),
+				$cms->trans(' minutes'),
+				$cms->trans(' seconds')
+			),
+			array(
+				$cms->trans(' year'),
+				$cms->trans(' month'),
+				$cms->trans(' week'),
+				$cms->trans(' day'),
+				$cms->trans(' hour'),
+				$cms->trans(' minute'),
+				$cms->trans(' second')
+			),
+			' ' . $cms->trans('and')
+	);
+	
+	$this->ob_start();
+}
+
+// Start the output buffer only if headers have not been sent. If the headers
+// have been sent that indicates some sort of error occurred and I don't want
+// anything to be obfuscated due to buffering.
+function ob_start() {
+	if (!headers_sent()) {
+		if ($this->conf['theme']['enable_gzip']) {
+			ob_start('ps_ob_gzhandler');
+		} else {
+			ob_start('ps_ob_handler');
+		}
+	}
+}
+
+// Erase all output buffers and discard them
+function ob_clean() {
+	while (@ob_end_clean());
+}
+
+// Erase and restart the output buffer
+function ob_restart() {
+	$this->ob_clean();
+	$this->ob_start();
 }
 
 // returns the noun used to describe the 'worldid' for players.
@@ -2216,11 +2291,14 @@ function mapimg($m, $args = array()) {
 
 		'urlonly'	=> false,	// if true, only the URL is returned
 		'_dir'		=> $this->conf['theme']['maps_dir'],
-		'_url'		=> $this->conf['theme']['maps_url']
+		'_url'		=> $this->conf['theme']['maps_url'],
+		
+		'gametype'	=> NULL,
+		'modtype'	=> NULL
 	);
 	$path = !empty($args['path']) ? $args['path'] : '';
-	$gametype = is_object($args['pq']) ? $args['pq']->gametype() : $this->conf['main']['gametype'];
-	$modtype = is_object($args['pq']) ? $args['pq']->modtype() : $this->conf['main']['modtype'];
+	$gametype = is_object($args['pq']) ? $args['pq']->gametype() : coalesce($args['gametype'], $this->conf['main']['gametype']);
+	$modtype = is_object($args['pq']) ? $args['pq']->modtype() : coalesce($args['modtype'], $this->conf['main']['modtype']);
 	$basedir = catfile($args['_dir'], $gametype, $modtype, $path);
 	$baseurl = catfile($args['_url'], $gametype, $modtype, $path);
 
@@ -2375,6 +2453,31 @@ function flagimg($cc, $args = array()) {
 	$img = "<img src='$url' title='$label' alt='$alt'$attrs />";
 
 	return $img;
+}
+
+// returns information for a single overlay (used in heatmaps and psycholive)
+function get_overlay($map, $gametype = false, $modtype = false) {
+	if ($gametype === false) {
+		$gametype = $this->gametype();
+	}
+	if ($modtype === false) {
+		$modtype = $this->modtype();
+	}
+	if ($modtype == 'tf') {
+		$modtype = 'tf2';
+	}
+	$cmd = "SELECT * FROM $this->t_config_overlays WHERE gametype=" . $this->db->escape($gametype, true);
+	if ($modtype) {
+		$cmd .= " AND modtype=" . $this->db->escape($modtype, true);
+	} else {
+		$cmd .= " AND modtype IS NULL";
+	}
+	$cmd .= " AND map=" . $this->db->escape($map, true);
+	$overlay = $this->db->fetch_row(1, $cmd);
+	if ($overlay) {
+		$overlay['image_url'] = $this->overlayimg($overlay['map'], array( 'gametype' => $gametype, 'modtype' => $modtype));
+	}
+	return $overlay;
 }
 
 // resets the map stats

@@ -38,7 +38,7 @@ if ($cancel) {
 
 // try and determine bonus ID by the id string (non-numeric)
 if (!empty($id) and !is_numeric($id)) {
-	list($exists) = $ps->db->fetch_list("SELECT id FROM $ps->t->config_plrbonuses WHERE eventname=" . $ps->db->escape($id, true));
+	list($exists) = $ps->db->fetch_list("SELECT id FROM $ps->t_config_plrbonuses WHERE eventname=" . $ps->db->escape($id, true));
 	if ($exists) {
 		$id = $exists;
 	}

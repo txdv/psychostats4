@@ -262,6 +262,23 @@ div.warning ul, div.warning ul li {
 #error p {
 	font-size: 120%;
 }
+#warning {
+	width: 400px;
+	margin: 0.5em auto;
+	background: lightyellow;
+	border: 2px solid orange;
+	padding: 1em;
+	text-align: left;
+}
+#warning h1 {
+	color: orange;
+	font-size: 120%;
+	border-bottom: 3px solid orange;
+	margin-bottom: 0;
+}
+#error p {
+	font-size: 120%;
+}
 
 div.insecure {
 	padding: 0.5em 0.5em 0.5em 30px;

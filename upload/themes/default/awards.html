@@ -54,19 +54,21 @@
 	</div>
 {/foreach}
 
+{if $awards.weaponclass}
 	<div class="award-hdr">
 		<p><#Weapon Class Awards#></p>
 	</div>
-{foreach from=$awards.weaponclass item='a'}
+	{foreach from=$awards.weaponclass item='a'}
 	<div class="award{if $a.negative}-neg{/if}{if $plrid and $a.topplrid == $plrid} selected-plr{/if}">
 		<h2>{award_phrase award=$a}</h2>
 		<p>{award_phrase award=$a desc=1}</p>
 	</div>
-{foreachelse}
+	{foreachelse}
 	<div class="award-none">
 		<p><#No weapon class awards on this date#></p>
 	</div>
-{/foreach}
+	{/foreach}
+{/if}
 
 	<div class="award-hdr">
 		<p><#Individual Weapon Awards#></p>

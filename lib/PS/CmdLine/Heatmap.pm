@@ -53,6 +53,10 @@ sub _getOptions {
 		'sql'			=> \$self->{param}{sql},
 		'xmlpath=s'		=> \$self->{param}{xmlpath},
 
+		# GAME OVERLAY TYPE
+		'gametype=s'		=> \$self->{param}{gametype},
+		'modtype=s'		=> \$self->{param}{modtype},
+
 		# WHERE CLAUSE SETTINGS
 		'headshot:s'		=> \$self->{param}{headshot}, 
 		'statdate|start=s'	=> \$self->{param}{statdate},

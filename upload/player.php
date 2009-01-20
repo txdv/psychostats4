@@ -42,7 +42,8 @@ $validfields = array(
 $cms->theme->assign_request_vars($validfields, true);
 
 if ($cms->input['ofc']) {
-	return_ofc_data();
+	$styles = $cms->theme->load_styles();
+	return_ofc_data($styles);
 	exit;
 }
 
@@ -363,7 +364,7 @@ function session_skill($val, $sess) {
 }
 
 
-function return_ofc_data() {
+function return_ofc_data($styles) {
 	global $cms, $ps;
 
 	$ofc = $cms->input['ofc'];
@@ -401,15 +402,29 @@ function return_ofc_data() {
 
 	include_once(PS_ROOTDIR . '/includes/ofc/open-flash-chart.php');
 	$g = new graph();
-
-//	$g->title('Quick History', '{font-size: 12px;}');
-	$g->bg_colour = '#C4C4C4';
+	$g->bg_colour = $styles->val('flash.plrskill.bgcolor', 'flash.bgcolor');
+	$g->title(
+		$styles->val('flash.plrskill.title'),
+		'{' . $styles->val('flash.plrskill.title.style', 'font-size: 12px', true) . '}'
+	);
 
 	$g->set_data($data_avg);
 	$g->set_data($data);
 
-	$g->line(1, '#9999ee', $cms->trans('Avg'), 9);
-	$g->line(2, '#5555ff', $cms->trans('Skill'), 9);
+	$lines = $styles->attr('flash.plrskill.lines.line');
+
+	$g->line(
+		coalesce($lines[0]['width'], 1),
+		coalesce($lines[0]['color'], '#9999ee'),
+		coalesce($lines[0]['key'], $cms->trans('Average')), 
+		coalesce($lines[0]['key_size'], $styles->val('flash.plrskill.lines.key_size'), 9)
+	);
+	$g->line(
+		coalesce($lines[1]['width'], 1),
+		coalesce($lines[1]['color'], '#9999ee'),
+		coalesce($lines[1]['key'], $cms->trans('Skill')), 
+		coalesce($lines[1]['key_size'], $styles->val('flash.plrskill.lines.key_size'), 9)
+	);
 
 	// label each point with its value
 	$g->set_x_labels($labels);
@@ -420,7 +435,11 @@ function return_ofc_data() {
 
 //	$g->set_x_label_style('none');
 	$g->set_x_label_style( 8, '#000000', 2 );
-	$g->set_inner_background( '#E3F0FD', '#CBD7E6', 90 );
+	$g->set_inner_background(
+		coalesce($styles->val('flash.plrskill.bg_inner1', 'flash.bg_inner1'), '#E3F0FD'),
+		coalesce($styles->val('flash.plrskill.bg_inner2', 'flash.bg_inner2'), '#CBD7E6'),
+		coalesce($styles->val('flash.plrskill.bg_inner_angle', 'flash.bg_inner_angle'), 90)
+	);
 	$g->x_axis_colour( '#eeeeee', '#eeeeee' );
 	$g->y_axis_colour( '#eeeeee', '#eeeeee' );
 //	$g->set_x_offset( false );

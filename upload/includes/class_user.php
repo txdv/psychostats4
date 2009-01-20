@@ -352,7 +352,7 @@ function get_user_list($join_plr = false, $filter = array()) {
 	$where = "";
 	if ($filter['username']) {
 		if (!$where) $where .= "WHERE ";
-		$where .= "username LIKE '%" . $this->db->escape($filter['username']). "%' ";
+		$where .= "username LIKE '%" . $this->db->escape($filter['username']) . "%' ";
 	}
 
 	if ($filter['confirmed'] != null and $filter['confirmed'] > -1) {
@@ -366,8 +366,8 @@ function get_user_list($join_plr = false, $filter = array()) {
 	}
 
 
-	$cmd .= $where;
-	$cmd .= $this->db->sortorder($args);
+	$cmd .= " " . $where;
+	$cmd .= " " . $this->db->sortorder($filter);
 	$list = $this->db->fetch_rows(1, $cmd);
 	return $list;
 }

@@ -134,7 +134,9 @@ function _getchallenge($ip=NULL) {
 	if (!$ip) $ip = $this->ipaddr();
 	if (!$ip) return '';
 	if (!$this->challenge_id) {
-		$res = $this->_sendquery($ip, 'W');
+		// fix for recent change to HLDS HL1 servers. 10/31/2008.
+		//$res = $this->_sendquery($ip, 'W');
+		$res = $this->_sendquery($ip, 'U' . pack("V", -1));
 		if (!$res) return $this->challenge_id;
 		if ($this->raw != '') {
 			$this->raw = substr($this->raw, 5);		// strip off response header bytes
@@ -196,6 +198,7 @@ function _parse_info_halflife1() {
 	$this->data['modsize']		= $this->_getlong();
 	$this->data['modserveronly']	= $this->_getbyte();
 	$this->data['modclientdll']	= $this->_getbyte();
+	$this->data['serversecure'] 	= $this->_getbyte();
 	return $this->data;
 }
 

@@ -101,12 +101,20 @@ sub event_teamtrigger {
 		my $props = $self->parseprops($props);
 		my $plrs = ref $props->{player} ? $props->{player} : [ $props->{player} ];
 		if (@$plrs) {
+			my $list;
 			foreach my $plrstr (@$plrs) {
 				my $p1 = $self->get_plr($plrstr) || next;
 				$p1->{mod_maps}{ $m->{mapid} }{$p1->{team} . 'flagscaptured'}++;
 				$p1->{mod_maps}{ $m->{mapid} }{'flagscaptured'}++;
 				$p1->{mod}{$p1->{team} . 'flagscaptured'}++;
 				$p1->{mod}{'flagscaptured'}++;
+				push(@$list, $p1);
+			}
+			if (@$list) {
+				# Tracked under 'dod_control_point' to be
+				# consistant in how it used to be tracked in the
+				# original halflife::dod.
+				$self->plrbonus('dod_control_point', 'enactor', $list);
 			}
 			$m->{mod}{'flagscaptured'}++;
 			$m->{mod}{$self->team_normal($team) . 'flagscaptured'}++;

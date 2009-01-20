@@ -419,4 +419,108 @@ if (!function_exists('ps_user_plrid')) {
 	}
 }
 
+if (!function_exists('ps_ob_gzhandler')) {
+	/**
+	 * Output handler for all HTML based content. Default behavior will
+	 * detect GZIP or DEFLATE support on the client and encode the HTML
+	 * accordingly. A proper 'content-length' header is also sent to allow
+	 * for persistent HTTP connections (PHP's built in ob_gzhandler does
+	 * not send a content-length).
+	 */
+	function ps_ob_gzhandler($buffer, $flags) {
+		// don't do anything if the buffer isn't being closed or if
+		// headers were already sent.
+		if (($flags & PHP_OUTPUT_HANDLER_END != PHP_OUTPUT_HANDLER_END) || headers_sent() || empty($buffer)) {
+			return false;
+		}
+
+		$zipped = '';
+		$original_length = strlen($buffer);
+		$encoding = false;
+		// build an array of accepted encodings
+		$accept = (array)explode(",", str_replace(" ", "", strtolower($_SERVER['HTTP_ACCEPT_ENCODING'])));
+		if (in_array("gzip", $accept)) {		// GZIP
+			$zipped = gzencode($buffer);
+			$encoding = 'gzip';
+		} elseif (in_array('deflate', $accept)) {	// DEFLATE
+			$zipped = gzcompress($buffer);
+			$encoding = 'deflate';
+		} else {
+			$zipped =& $buffer;
+		}
+		$length = strlen($zipped);
+		
+		// don't send compressed output if the zipped length is
+		// greater than the original (only occurs on small output)
+		if ($length > $original_length) {
+			$zipped = false;
+			$length = strlen($buffer);
+		}
+		
+		// provide content-length to allow HTTP persistent connections.
+		// PHP's built in ob_gzhandler does not send this header
+		header("Content-Length: " . $length, true);
+		
+		if ($zipped) {
+			header("Vary: Accept-Encoding", true); 	// handle proxies
+			header("Content-Encoding: " . $encoding, true);
+			// add an information value showing how much compression we actually achieved.
+			header("X-Compression: " . sprintf("%d/%d (%.02f%%)", $length, $original_length, abs($length / $original_length * 100 - 100)), true);
+			return $zipped;
+		} else {
+			return $buffer;
+		}
+	}
+}
+
+if (!function_exists('ps_ob_handler')) {
+	/**
+	 * Output handler for all HTML based content. No compression.
+	 * A proper 'content-length' header is also sent to allow
+	 * for persistent HTTP connections.
+	 */
+	function ps_ob_handler($buffer, $flags) {
+		// don't do anything if the buffer isn't being closed or if
+		// headers were already sent.
+		if (($flags & PHP_OUTPUT_HANDLER_END != PHP_OUTPUT_HANDLER_END) || headers_sent() || empty($buffer)) {
+			return false;
+		}
+
+		// provide content-length to allow HTTP persistent connections.
+		// PHP's built in ob_gzhandler does not send this header
+		header("Content-Length: " . strlen($buffer), true);
+		header("Vary: Accept-Encoding", true); 	// handle proxies
+
+		return false; //$buffer;
+	}
+}
+
+if (!function_exists('ps_debug')) {
+	/**
+	 * DEBUG handler. Outputs as much debugging information possible
+	 * somewhere within the current theme output. 
+	 */
+	function ps_debug(&$buffer) {
+		global $cms, $ps;
+		$str = '';
+		
+		// output all queries sent
+		$str .= "<ul class='ps-debug'>\n";
+		foreach ($ps->db->queries as $q) {
+			$str .= "<li>" . ps_escape_html($q) . "</li>\n";
+		}
+		$str .= "</ul>\n";
+		
+		// output any errors that occured
+		if ($ps->db->errors) {
+			$str .= "<ul class='ps-debug'>\n";
+			foreach ($ps->db->errors as $e) {
+				$str .= "\t<li><span class='error'>" . $e['error'] . "</span>\n\t<span class='query'>" . $e['query'] . "</span></li>\n";
+			}
+			$str .= "</ul>\n";
+		}
+		$buffer = str_replace('</body>', $str . '</body>', $buffer);
+	}
+}
+
 ?>

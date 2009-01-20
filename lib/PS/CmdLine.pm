@@ -19,41 +19,43 @@
 #
 #	$Id$
 #
-#       PS::CmdLine initializes and collects all command line options passed to
-#       the main script (stats.pl). This is always the very first object created
-#       in PS3. This object will then be passed to the PS::Config object 
-#       in order to allow the PS::Config object to hand out config values based
-#       on command line or config loaded values. Command line documentation is
-#       located in the __DATA__ block of this file in POD format.
 package PS::CmdLine;
 
 use strict;
 use warnings;
-use base qw( PS::Debug );
+use base qw( PS::Core );
 
 use Carp;
 use Getopt::Long;
 use Pod::Usage;
 use util qw( :win );
 
-our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/) || '000')[0];
-our $AUTOLOAD;
+our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/) || '000')[0];
 our @OPTS = ();
 
+our $SINGLETON = {};
+
 sub new {
-	my $class = shift;
+	my ($class, $skip_constant) = @_;
+	return $SINGLETON->{$class} if exists $SINGLETON->{$class};
+	
 	my $self = { debug => 0, class => $class };
 	$self->{param} = {};
 	bless($self, $class);
-
-#	$self->debug($self->{class} . " initializing");
+	$SINGLETON->{$class} = $self;
+	
+	# alias debug since the -debug paramater will override the inherited
+	# debug() function from PS::Core.
+	*_debug = \&PS::Core::debug;
 
 	Getopt::Long::Configure(qw( no_ignore_case auto_abbrev ));
 
-	my @oldARGV = @main::ARGV;		# don't let Getopt::Long clobber the ARGV array
+	# don't let Getopt::Long clobber the ARGV array
+	my @oldARGV = @main::ARGV;
 	$self->_getOptions;
 	@main::ARGV = @oldARGV;
 	$self->_sanitize;
+	$self->_make_constant unless $skip_constant;
 
 	return $self;
 }
@@ -78,8 +80,12 @@ sub _getOptions {
 		'reset:s'	=> \$self->{param}{reset},
 		'unknown'	=> \$self->{param}{unknown},
 		'v|verbose'	=> \$self->{param}{verbose},
-		'V|version'	=> \$self->{param}{version},
+		'V|ver|version'	=> \$self->{param}{version},
+		'echo'		=> \$self->{param}{echo}, # stream logsource
 		'quiet'		=> \$self->{param}{quiet},
+
+		# PERFORMANCE OPTIONS
+		'lps=f'		=> \$self->{param}{lps},	# Lines per second maximum processing speed
 
 		# DEBUGGING OPTIONS
 		'd|debug:i'	=> \$self->{param}{debug},
@@ -93,6 +99,11 @@ sub _getOptions {
 		'passive|pasv'	=> \$self->{param}{passive},	# FTP logsource's
 		'maxlogs=s'	=> \$self->{param}{maxlogs},	# maximum logs to process before exiting
 		'maxlines=s'	=> \$self->{param}{maxlines},	# maximum lines ...
+		'ipaddr=s'	=> \$self->{param}{ipaddr},	# Stream logsource's (bind ip)
+		'port=i'	=> \$self->{param}{port},	# Stream logsources' (bind port)
+		'files'		=> \$self->{param}{files},	# only process non-stream sources
+		'streams'	=> \$self->{param}{streams},	# only process stream sources
+		'force'		=> \$self->{param}{force},	# ignore invalid previous states
 
 		# DAEMON OPTIONS
 		'daemon'	=> \$self->{param}{daemon},
@@ -115,7 +126,7 @@ sub _getOptions {
 		'dbinit'	=> \$self->{param}{dbinit},
 		'dbtype=s'	=> \$self->{param}{dbtype},
 		'dbhost=s'	=> \$self->{param}{dbhost},
-		'dbport=s'	=> \$self->{param}{dbpost},
+		'dbport=s'	=> \$self->{param}{dbport},
 		'dbname=s'	=> \$self->{param}{dbname},
 		'dbuser=s'	=> \$self->{param}{dbuser},
 		'dbpass=s'	=> \$self->{param}{dbpass},
@@ -127,7 +138,7 @@ sub _getOptions {
 	);
 
 	# default verbose to on if we're under windows
-	if (iswindows() and !$self->{param}{verbose}) {
+	if (iswindows and !$self->{param}{verbose}) {
 		$self->{param}{verbose} = 1;
 	}
 
@@ -170,6 +181,44 @@ sub _sanitize {
 	}
 }
 
+# "functionizes" each paramater as a constant sub-routine for easy/fast access.
+# The paramater functions are optimized to constants by the perl pre-processor.
+# For this reason the SETTER method is separate since most options are never
+# changed once loaded.
+# Benchmark results: A function constant is roughly 700% faster than using
+# ->get() and 400% faster than accessing the ->{param}{...} hash directly.
+# WARNING: The only problem with this is you can not use set() and then use
+# a constant sub to get the new value. You have to use get() after any calls
+# to set().
+sub _make_constant {
+	my ($self) = @_;
+	my $code = '';
+	foreach my $key (keys %{$self->{param}}) {
+		my $val = 'undef';
+		if (defined $self->{param}{$key}) {
+			$val = $self->{param}{$key};
+			if ($val !~ /^\d$/) {
+				# sanitize the string (quotes and slashes)
+				$val =~ s/\\/\\\\/g;
+				$val =~ s/'/\\'/g;
+				$val = "'$val'";
+			}
+		}
+		
+		# GETTER (eval'ed into a constant sub-routine)
+		$code .= "sub $key () { $val }\n";
+
+		# non-constant GETTER
+		$code .= "sub get_$key { \$_[0]->{param}{$key} }\n";
+		
+		# non-constant SETTER
+		$code .= "sub set_$key { \$_[0]->{param}{$key} = \$_[1] }\n";
+	}
+	#print $code;
+	eval $code;
+	return $self;
+}
+
 # returns true if the parameter given actually exists
 sub exists {
 	my $self = shift;
@@ -209,24 +258,19 @@ sub pop_opt { return pop @OPTS }
 sub shift_opt { return shift @OPTS }
 sub OPTIONS { return @OPTS }
 
-# autloaded method to allow get/set'ing of command line parameters from $self->{param}
-# If an parameter doesn't exist it simply returns undef w/o creating the key in the hash.
+our $AUTOLOAD;
 sub AUTOLOAD {
-	my $self = shift;
+	my $self = ref($_[0]) =~ /::/ ? shift : undef;
 	my $var = $AUTOLOAD;
 	$var =~ s/.*:://;
 	return if $var eq 'DESTROY';
 
-	# no object? Then we're trying to call a normal function somewhere in this class file
-	if (!defined $self) {
-		my ($pkg,$filename,$line) = caller;
-		die("Undefined subroutine $var called at $filename line $line.\n");
-	}
-
-	return undef unless exists $self->{param}{$var};
-	return @_ ? $self->set($var, @_) : $self->get($var);
+	# Define a function for this option since it doesn't exist. This will
+	# prevent AUTOLOAD from being called again for the same option.
+	eval "sub $var () { undef }";
+	#goto &$var;
+	return undef;
 }
-
 
 1;
 
@@ -318,6 +362,11 @@ queried and is not normally recommended.
 All debug output is written to a debug.txt file in the current directory.
 If a filename is specified its name is used instead. Using this implies
 "-debug 1" if no debug was specified.
+
+=item B<-echo>
+
+B<For STREAM log sources only.> The stream feeder will echo all log events
+to STDOUT.
 
 =item B<-gametype> <type>
 

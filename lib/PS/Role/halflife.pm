@@ -25,7 +25,25 @@ use strict;
 use warnings;
 use base qw( PS::Role );
 
-our $VERSION = '1.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
+BEGIN {
+	#my $fields = __PACKAGE__->SUPER::FIELDS('DATA');
+	#%{$fields->{halflife}} = (
+	#	(map { $_ => '+' } qw(
+	#		team_kills
+	#		damage
+	#		damage_absorbed
+	#		hits shots
+	#		hit_head	dmg_head
+	#		hit_leftarm	dmg_leftarm
+	#		hit_rightarm	dmg_rightarm
+	#		hit_chest	dmg_chest
+	#		hit_stomach	dmg_stomach
+	#		hit_leftleg	dmg_leftleg
+	#		hit_rightleg	dmg_rightleg
+	#	 ))
+	#);
+}
 
 1;
