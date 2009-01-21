@@ -54,6 +54,10 @@ my ($opt, $dbconf, $db);
 $opt = new PS::CmdLine;				# Initialize command line
 $DEBUG = int($ENV{PSYCHOSTATS_DEBUG}) || 0;	# sets global debugging
 
+if (!$opt->gametype and !$opt->modtype) {
+	die "No Gametype or Modtype specified! Use -gametype and/or -modtype parameters to add support.\n";
+}
+
 $dbconf = {};
 if (!$opt->noconfig) {
 	if ($opt->config) {
