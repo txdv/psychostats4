@@ -82,7 +82,8 @@ sub init {
 	my $main = $self->conf->main;
 
 	# prepare any queries we'll be running repeatedly...
-	$db->prepare('get_clantags', 	'SELECT * FROM t_config_clantags WHERE type=? ORDER BY idx');
+	#$db->prepare('get_clantags', 	'SELECT * FROM t_config_clantags WHERE type=? ORDER BY idx');
+	$db->prepare('get_clantags', 	'SELECT clantag,alias,pos,type,blacklist FROM t_config_clantags ORDER BY idx');
 	$db->prepare('get_plr_alias', 	'SELECT alias FROM t_plr_aliases WHERE uniqueid=? LIMIT 1');
 	$db->prepare('get_locked_clan', 'SELECT locked FROM t_clan WHERE clanid=? LIMIT 1');
 	$db->prepare('get_clanid', 	'SELECT clanid FROM t_clan WHERE clantag=? LIMIT 1');
@@ -158,37 +159,61 @@ sub init {
 sub load_clantags {
 	my ($self) = @_;
 	my $db = $self->{db};
+	my $clantags = $db->execute_fetchall('get_clantags');
 	
-	$self->{clantags}{plain} = $db->execute_fetchall('get_clantags', 'plain');
-	$self->{clantags}{regex} = $db->execute_fetchall('get_clantags', 'regex');
+	$self->{clantags}{plain} = [
+		map { [ @$_{qw(clantag pos alias)} ] } 
+		grep { $_->{type} eq 'plain' and !$_->{blacklist} }
+		@$clantags
+	];
+	$self->{clantags}{plain_blacklist} = [
+		map { [ @$_{qw(clantag pos)} ] } 
+		grep { $_->{type} eq 'plain' and $_->{blacklist} }
+		@$clantags
+	];
+	$self->{clantags}{regex} = [
+		map { [ @$_{qw(clantag alias)} ] } 
+		grep { $_->{type} eq 'regex' and !$_->{blacklist} }
+		@$clantags
+	];
+	$self->{clantags}{regex_blacklist} = [
+		map { [ @$_{qw(clantag)} ] } 
+		grep { $_->{type} eq 'regex' and $_->{blacklist} }
+		@$clantags
+	];
+	print_r($self->{clantags});
 	
 	# build a sub-routine to scan the player for matching clantag regex's
-	undef $self->{clantags_regex_func};
-	if (@{$self->{clantags}{regex}}) {
+	$self->{clantags_regex_func} = $self->add_clantag_regex_func($self->{clantags}{regex});
+}
+
+sub add_clantag_regex_func {
+	my ($self, $list) = @_;
+	my $sub;
+	if (@$list) {
 		my $code = '';
 		my $idx = 0;
 		my $env = new Safe;
-		foreach my $ct (@{$self->{clantags}{regex}}) {
-			my $regex = $ct->{clantag};
-
+		foreach my $ct (@$list) {
+			my $regex = $ct->[0];
+			
 			# perform sanity check on user configured regex
 			$env->reval("/$regex/");
 			if ($@) {
-				$self->warn("Error in clantag definition #$ct->{id} (/$regex/): $@");
+				$self->warn("Error in clantag definition: /$regex/: $@");
 				next;
 			}
 
 			$code .= "  return [ $idx, \\\@m ] if \@m = (\$_[0] =~ /$regex/);\n";
 			$idx++;
 		}
-		#print "sub {\n  my \@m = ();\n$code  return undef;\n}\n";
-		$self->{clantags_regex_func} = eval "sub { my \@m = (); $code return undef }";
+		print "sub {\n  my \@m = ();\n$code  return undef;\n}\n";
+		$sub = eval "sub { my \@m = (); $code return undef }";
 		if ($@) {
 			$self->fatal("Error in clantag regex function: $@");
 		}
-	} else {
-		$self->{clantags_regex_func} = sub { undef };
 	}
+	return $sub || sub { undef };
 }
 
 # creates a skill function based on the type and configured function.
@@ -244,7 +269,7 @@ sub add_calcskill_func {
 
 	{ 	# LOCALIZE BLOCK
 		# make an alias in the object for the skill function. This way,
-		# we don't have to constantly dereference a varaible to call the
+		# we don't have to constantly dereference a variable to call the
 		# function in the 'event_kill' routine.
 		# $self->calcskill_kill_func will now work
 		no strict 'refs';
@@ -314,18 +339,20 @@ sub del_plrcache {
 	}
 }
 
-# get a list of all players currently cached. The cache is pruned frequently
-# enough so its safe to assume any player in the cache is currently active.
+# get a list of all unique players currently cached.
 sub get_plrcache {
 	my ($self) = @_;
 	my %uniq;
 	my @list;
+	#@list = (
+	#	grep { !$uniq{\$_}++ }		# REF is unique
+	#	map { $self->{c_eventsig}{$_} } 
+	#	keys %{$self->{c_eventsig}}
+	#);
 	@list = (
-		grep { !$uniq{\$_}++ }
-		map { $self->{c_eventsig}{$_} } 
-		keys %{$self->{c_eventsig}}
+		grep { !$uniq{\$_}++ }		# REF is unique
+		values %{$self->{c_eventsig}}
 	);
-	#@list = map { $self->{c_active}{$_} } keys %{$self->{c_active}};
 	return wantarray ? @list : \@list;
 }
 
@@ -735,8 +762,9 @@ sub _build_regex_func {
 	return eval "sub { my \@parms = (); $code return (undef,undef) }";
 }
 
-# abstact event method. All sub classes must override.
+# abstract event method. All sub classes must override.
 sub event { $_[0]->fatal($_[0]->{class} . " has no 'event' method implemented. HALTING.") }
+sub event_ignore { }
 
 # Loads the player bonuses config for the current game. May be called several
 # times to overload previous values.
@@ -901,8 +929,12 @@ sub save_state {
 	# load the current game state for the feeder
 	$st = $db->prepare('SELECT game_state FROM t_state WHERE id=?');
 	$st->execute($id) or return 0;
-	$str = $st->fetchrow;
+	$st->bind_columns(\$str);
+	$st->fetch;
 	$st->finish;
+
+	# Must decode string as UTF8
+	$str = Encode::decode_utf8($str);
 
 	# unserialize the game state into a real variable
 	$curstate = unserialize($str);
@@ -910,7 +942,7 @@ sub save_state {
 
 	# add our local state to the saved state and re-serialize it.
 	$curstate->{$srv} = $state;
-	
+
 	# serialize the new state
 	$newstate = serialize($curstate);
 
@@ -938,8 +970,12 @@ sub restore_state {
 	# load the current game state for the feeder
 	$st = $db->prepare('SELECT game_state FROM t_state WHERE id=?');
 	$st->execute($id) or return 0;	# SQL error ...
-	$str = $st->fetchrow;
+	$st->bind_columns(\$str);
+	$st->fetch;
 	$st->finish;
+
+	# Must decode string as UTF8
+	$str = Encode::decode_utf8($str);
 
 	# unserialize the game state into a real variable
 	$state = $str ? unserialize($str) : {};
@@ -1018,6 +1054,74 @@ sub plrbonus {
 #			printf("\t%-32s received %3d points for %s ($type)\n", $p->name, $val, $trigger);
 		}
 	}
+}
+
+# Assigns a rank to all players based on their skill.
+sub update_plr_ranks {
+	my ($self, $timestamp) = @_;
+	my $db = $self->{db};
+	my ($plrid, $rank, $rank_prev, $rank_time, $skill);
+	my ($get, $set, $newrank, $prevskill, $cmd);
+	$timestamp ||= $self->{timestamp} || timegm(localtime);
+
+	# first flag all players that are not allowed to rank
+	# TODO ...
+	
+	# prepare the query that will fetch the player list
+	if (!defined($get = $db->prepared('get_plr_ranks'))) {
+		# TODO: Allow this query to be customizable so different ranking
+		# calculations can be done.
+		$get = $db->prepare('get_plr_ranks',
+			#'SELECT plrid,rank,rank_prev,rank_time,skill FROM t_plr ' .
+			'SELECT plrid,rank,skill FROM t_plr ' .
+			'WHERE rank IS NOT NULL AND skill IS NOT NULL ' .
+			'AND gametype=? AND modtype=? ' .
+			'ORDER BY skill DESC'
+		);
+	}
+	if (!$get->execute(@$self{qw( gametype modtype )})) {
+		$@ = "Error executing DB query:\n$get->{Statement}\n" . $db->errstr;
+		return undef;
+	}
+
+	# prepare the query that will update a player rank
+	if (!defined($set = $db->prepared('set_plr_rank'))) {
+		$set = $db->prepare('set_plr_rank',
+			'UPDATE t_plr SET ' .
+			#'rank_prev=IF(DATE(FROM_UNIXTIME(?)) > DATE(FROM_UNIXTIME(rank_time)), rank, rank_prev), ' .
+			#'rank_time=IF(rank_prev = rank, ?, rank_time), ' . 
+			'rank=? ' . 
+			'WHERE plrid=?'
+		);
+	}
+
+	;;;use util qw( bench );
+
+	# Loop through all ranked players and set their new rank. Note; this
+	# loop does not scale well and its speed depends on total players.
+	# Players with the same value will have the same rank.
+	$newrank = 0;
+	;;;bench('update_plr_ranks');
+	#$get->bind_columns(\($plrid, $rank, $rank_prev, $rank_time, $skill));
+	$get->bind_columns(\($plrid, $rank, $skill));
+	while ($get->fetch) {
+		++$newrank if !defined $prevskill or $prevskill != $skill;
+		#if (!$set->execute($timestamp, $timestamp, $newrank, $plrid)) {
+		if ($rank != $newrank) {
+			if (!$set->execute($newrank, $plrid)) {
+				$self->warn("Error updating player ranks: CMD=$set->{Statement}; ERR=" . $set->errstr);
+				last;
+			}
+		}
+		#my $cmd = $set->{Statement};
+		#$cmd =~ s/\?/$_/e foreach ($timestamp, $timestamp, $newrank, $plrid);
+		#print "$cmd\n";
+
+		$prevskill = $skill;
+	}
+	;;;bench('update_plr_ranks');
+	
+	return 1;
 }
 
 # daily process for awards
@@ -1113,52 +1217,6 @@ sub daily_awards {
 
 	$self->conf->setinfo('daily_awards.lastupdate', time);
 	$self->info("Daily process completed: 'awards' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
-}
-
-# daily process for updating player ranks. Assigns a rank to each player based
-# on their skill ... this should be updated to allow for different criteria to
-# be used to determine rank.
-sub daily_ranks {
-	my $self = shift;
-	my $db = $self->{db};
-	my $lastupdate = $self->conf->getinfo('daily_ranks.lastupdate') || 0;
-	my $start = time;
-	my ($sth, $cmd);
-
-	$self->info(sprintf("Daily 'ranks' process running (Last updated: %s)", 
-		$lastupdate ? scalar localtime $lastupdate : 'never'
-	));
-
-	$cmd = "SELECT plrid,rank,skill FROM $db->{t_plr} WHERE allowrank ORDER BY skill DESC";
-	if (!($sth = $db->query($cmd))) {
-		$db->fatal("Error executing DB query:\n$cmd\n" . $db->errstr . "\n--end of error--");
-	}
-
-	$db->begin;
-
-	my $newrank = 0;
-	my $prevskill = -999999;
-	# This will allow players with the SAME skill to receive the SAME rank. But this is slower
-	while (my ($id,$rank,$skill) = $sth->fetchrow_array) {
-		$cmd = "UPDATE $db->{t_plr} SET prevrank=rank, rank=" . ($prevskill == $skill ? $newrank : ++$newrank) . " WHERE plrid=$id";
-		$db->query($cmd) if $rank ne $newrank;
-		$prevskill = $skill;
-	}
-	$db->update($db->{t_plr}, { rank => 0 }, [ allowrank => 0 ]);
-
-	# this is mysql specific and also does not allow same skill players to receive the same rank (but it's fast)
-#	if ($db->type eq 'mysql') {
-#		$db->query("SET \@newrank := 0");
-#		$db->query("UPDATE $db->{t_plr} SET prevrank=rank, rank=IF(allowrank, \@newrank:=\@newrank+1, 0) ORDER BY skill DESC");
-#	} elsif ($db->type eq 'sqlite') {
-#
-#	}
-
-	$db->commit;
-
-	$self->conf->setinfo('daily_ranks.lastupdate', time);
-
-	$self->info("Daily process completed: 'ranks' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
 }
 
 # updates the decay of all players
@@ -1390,8 +1448,10 @@ sub daily_players {
 		if (!$allowed and $::DEBUG) {
 			$self->info("Player failed to rank \"$row->{name}\" " . ($self->{uniqueid} ne 'name' ?  "($row->{uniqueid})" : "") . "=> " . 
 				join(', ', 
-					map { "$_: " . $row->{$_} . " < " . $rules->{"player_min_$_"} } grep { $row->{$_} < $rules->{"player_min_$_"} } @min,
-					map { "$_: " . $row->{$_} . " > " . $rules->{"player_max_$_"} } grep { $row->{$_} > $rules->{"player_max_$_"}} @max
+					map { "$_: " . $row->{$_} . " < " . $rules->{"player_min_$_"} }
+					grep { $row->{$_} < $rules->{"player_min_$_"} } @min,
+					map { "$_: " . $row->{$_} . " > " . $rules->{"player_max_$_"} }
+					grep { $row->{$_} > $rules->{"player_max_$_"}} @max
 				)
 			);
 		}
@@ -2192,7 +2252,11 @@ sub save {
 	
 	# SAVE PLAYERS
 	foreach $o ($self->get_plrcache) {
-		$o->save;
+		$o->save || next;
+		# Scan each player for a clan if they don't have one already.
+		# this is only done if the player was saved properly (thus, they
+		# have a valid plrid).
+		
 	}
 
 	# SAVE MAPS
@@ -2223,7 +2287,6 @@ sub save {
 sub minconnected { 
 	my ($self) = @_;
 	return 1 if $self->conf->main->minconnected == 0;
-	#my $list = $self->get_plrcache;
 	my $list = $self->get_online_plrs;
 	return @$list >= $self->conf->main->minconnected ? scalar @$list : 0;
 }
@@ -2246,12 +2309,6 @@ sub configure {
 		$$var = $args{$k};
 	}
 }
-
-
-sub has_mod_tables { 0 }
-sub has_roles { 0 }
-
-sub event_ignore { }
 
 1;
 

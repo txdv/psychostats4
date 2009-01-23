@@ -49,6 +49,11 @@ sub init {
 	$self->{min} = undef;
 	$self->{hour} = undef;
 	$self->{day} = undef;
+	
+	$self->{rank_time} = time;
+	$self->{rank_kills} = 0;
+	$self->{rank_time_threshold} = 30;	# TODO: make these configurable
+	$self->{rank_kills_threshold} = 5000;	# TODO: ...
 
 	# keep track of when a round started.
 	$self->{roundstart} = 0;
@@ -98,12 +103,6 @@ sub event {
 	$self->{_src} = $feed->curlog;
 	$self->{_line} = $feed->curline;
 
-	#;;;if (time - $last >= 5) {
-	#;;;	print "MINCONNECTED = " . $self->minconnected . "\n";
-	#;;;	$self->show_plrcache;
-	#;;;	$last = time;
-	#;;;}
-
 	# Avoid performing the prefix regex as much as possible (potential
 	# performance gain). In busy logs the timestamp won't change for several
 	# events per second.
@@ -132,11 +131,6 @@ sub event {
 		$self->{day} = $2;
 	}
 	$self->{timestamp} = $timestamp;
-	#print "PREF  = $prefix\n";
-	#print "TS    = $timestamp (" . $feed->gmt_offset . ")\n";
-	#print "UTC   = " . gmtime($timestamp) . "\n";
-	#print "SOURCE= " . gmtime($timestamp + $feed->gmt_offset) . "\n";
-	#return undef;
 
 	# SEARCH FOR A MATCH ON THE EVENT USING OUR LIST OF REGEX'S
 	# If a match is found we dispatch the event to the proper event method
@@ -151,7 +145,6 @@ sub event {
 		$self->warn("Unknown event was ignored from source " . $feed->curlog . " line " . $feed->curline . ": $event");
 	}
 
-	# do some extra processing ...
 =pod
 	if (defined $self->{last_min} and $self->{last_min} != $self->{min}) {
 		# every minute collect some player data
@@ -168,137 +161,6 @@ sub event {
 		$self->{last_day} = $self->{day};
 	}
 =cut
-}
-
-# parses the player signature string and returns the player object matching it.
-# if an invalid player string is given then undef is returned.
-sub get_plr {
-	my ($self, $plrsig) = @_;
-	my ($p,$str,$team,$guid,$uid,$name,$ipaddr);
-
-	#print_r([ map { $self->{c_eventsig}{$_}{ids} } keys %{$self->{c_eventsig}} ]);
-
-	# Return the cached player via the player sig, if previously cached.
-	if ($p = $self->plrcached($plrsig)) {
-		#warn "* CACHE(eventsig): \"$p\"\n"; # == \"" . $p->eventsig . "\"\n";
-		return $p;
-	}
-
-	# make a copy, since we'll be striping it apart
-	$str = $plrsig;
-
-	# using multiple substr calls to fetch each piece of the player sig is
-	# faster then using a single regular expression.
-	# start from the end of the string and move back.
-	$team = substr($str, rindex($str,'<'), 128, '');
-	$team = $self->team_normal(substr($team, 1, -1));
-
-	# Note: steamid could be STEAM_ID_PENDING or BOT
-	$guid = substr($str, rindex($str,'<'), 128, '');
-	$guid = substr($guid, 1, -1);
-
-	# completely ignore the HLTV client.
-	if ($guid eq 'HLTV') {
-		return undef;
-	}
-
-	# UID is unique to each player until a server restarts
-	$uid = substr($str, rindex($str,'<'), 128, '');
-	$uid = substr($uid, 1, -1);
-	
-	# ignore any players with an UID of -1 or no STEAMID
-	# treat $uid as a string to avoid numerical errors due to invalid events
-	if (!$guid or $uid eq '-1') {
-		;;; $self->debug1("Ignoring invalid player identifier from logsource '$self->{_src}' line $self->{_line}: '$plrsig'",0);
-		return undef;
-	}
-
-	# The rest of the string is the full player name. Trim the string, since
-	# the HLDS engine doesn't do it.
-	$name = $str;
-	$name =~ s/^\s+//;
-	$name =~ s/\s+$//;
-	$name = 'unnamed' if $name eq '';	# do not allow blank names
-	
-	# try to determine this player's current IP address based on their UID
-	# which was cached in the "connect" event.
-	$ipaddr = $self->ipcached($uid) || 0;
-
-	# For BOTS: replace STEAMID's with the player name otherwise all bots
-	# will be combined into the same STEAMID
-	if ($guid eq 'BOT') {
-		return undef if $self->conf->main->ignore_bots;
-		# limit the total characters (128 - 4)
-		$guid = "BOT_" . uc substr($name, 0, 124);
-	}
-
-	# lookup the alias for the player guid
-	#if ($self->{uniqueid} eq 'worldid') {
-	#	$guid = $self->get_plr_alias($guid);
-	#} elsif ($self->{uniqueid} eq 'name') {
-	#	$name = $self->get_plr_alias($name);
-	#} elsif ($self->{uniqueid} eq 'ipaddr') {
-	#	$ipaddr = ip2int($self->get_plr_alias(int2ip($ipaddr)));
-	#}
-
-	# If we get to this point the player signature did not match a current
-	# player in memory so we need to try and figure out if they are really a
-	# new player or a known player that changed their name, teams or has
-	# reconnected within the same log file.
-
-	# * The signature potentially identifies a unique player in the DB
-	my $sig = {
-		name => $name,		# *
-		guid => $guid,		# *
-		ipaddr => $ipaddr,	# *
-		eventsig => $plrsig,
-		team => $team,
-		uid => $uid
-	};
-	
-	# based on their UID the player already existed (something in their
-	# signature changed since their last event)
-	if ($p = $self->plrcached($uid, 'uid')) {
-		$self->del_plrcache($p);	# remove old cached signature
-		$p->name($name);
-		$p->guid($sig->{$self->{uniqueid}});
-		$p->ipaddr($ipaddr);
-		$p->team($team);
-		$self->add_plrcache($p);	# recache with new signature
-
-	#} elsif ($p = $self->plrcached($sig->{$self->{uniqueid}}, 'guid')) {
-		# the only time the UIDs won't match is when a player has extra
-		# events that follow a disconnect event. this happens with a
-		# couple of minor events like dropping the bomb in CS. The bomb
-		# drop event is triggered after the player disconnect event and
-		# thus causes confusion with internal routines. So I cache the
-		# uniqueid of the player and then fix the 'uid' if needed
-		# here...
-		#if ($p->uid ne $uid) {
-		#	$p->team($team);
-		#	#$p->plrids($plrids);
-		#	$self->delcache($p->uid($uid), 'uid');
-		#	$self->delcache($p->signature($plrsig), 'signature');
-		#	$self->addcache($p, $p->uid, 'uid');
-		#	$self->addcache($p, $p->signature, 'signature');
-		#}
-
-	} else {
-		# Create a new player using the event signature
-		$p = new PS::Plr($sig, @$self{qw( gametype modtype timestamp )});
-		if (my $p1 = $self->plrcached($p->id, 'plrid')) {
-			# make sure this player isn't in memory already
-			#warn "* CACHE: plr cached after new: '$p' == '$p1'\n";
-			$self->del_plrcache($p);
-			undef $p;
-			$p = $p1;
-		}
-
-		$self->add_plrcache($p);
-		#$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
-	}
-
-	return $p;
 }
 
 # "Player<uid><STEAM_ID><TEAM>" attacked "Player<uid><STEAM_ID><TEAM>" with "weapon" (properties...)
@@ -426,7 +288,6 @@ sub event_connected {
 	my $ip = lc((split(/:/,$ipstr,2))[0]);
 	my $m = $self->get_map;
 	return unless ref $p;
-	#warn "$p connected with IP $ip\n";
 
 	# normalize the IP and make sure its a real IP.
 	$ip = '127.0.0.1' if $ip !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
@@ -517,81 +378,40 @@ sub event_kill {
 
 	my $m = $self->get_map;
 	my $w = $self->get_weapon($weapon);
-	#my $kr = $self->get_role($k->role, $k->team);
-	#my $vr = $self->get_role($v->role, $v->team);
+	my $kr = $self->get_role($k->role);
+	my $vr = $self->get_role($v->role);
 	my $props = $self->parseprops($propstr);
-	
+
 	$k->action_kill( $v, $w, $m, $props);	# record a kill for the KILLER
 	$w->action_kill( $k, $v, $m, $props);	# record a kill for the WEAPON
-	$m->action_kill( $k, $v, $w, $props);	# record a kill on the MAP
+	$m->action_kill( $k, $v, $w, $props);	# record a kill for the MAP
 	$v->action_death($k, $w, $m, $props);	# record a death for the VICTIM
+
+	my $skill_handled = 0;
+	if ($self->can('mod_event_kill')) {
+		$skill_handled = $self->mod_event_kill($k, $v, $w, $m, $kr, $vr, $props);
+	}
+	$self->calcskill_kill_func($k, $v, $w) unless $skill_handled;
 
 	#if ($self->conf->main->save_plr_on_kill) {
 	#	# if we're configured for up-to-the-second real-time stats
 	#	# then we need to quick save these players.
 	#	$k->quick_save;
-	#	$v->quick_save;
+	#       $v->quick_save;
 	#}
 
-	return;
+	# automatically update player ranks after X number of kills or X game
+	# time minutes have elapsed.
+	if (++$self->{rank_kills} >= $self->{rank_kills_threshold} or
+	    time - $self->{rank_time} >= $self->{rank_time_threshold}) {
+		$self->debug3("Updating player ranks...", 0);
+		$self->update_plr_ranks;
+		$self->{rank_kills} = 0;
+		$self->{rank_time} = time;
+	}
+	
 
 =pod
-	
-	$k->update_streak('kills', 'deaths');
-	$k->{basic}{kills}++;
-	$k->{mod}{ $k->{team} . "kills"}++ if $k->{team};		# Kills while ON the team
-	#$k->{mod}{ $v->{team} . "kills"}++;				# Kills against the team
-	$k->{mod_maps}{ $m->{mapid} }{ $k->{team} . "kills"}++ if $k->{team};
-	$k->{weapons}{ $w->{weaponid} }{kills}++;
-	$k->{maps}{ $m->{mapid} }{kills}++;
-	$k->{roles}{ $kr->{roleid} }{kills}++ if $kr;
-	$k->{victims}{ $v->{plrid} }{kills}++;
-
-	$v->{isdead} = 1;
-	$v->update_streak('deaths', 'kills');
-	$v->{basic}{deaths}++;
-	$v->{mod}{ $v->{team} . "deaths"}++ if $v->{team};		# Deaths while ON the team
-	#$v->{mod}{ $k->{team} . "deaths"}++;				# Deaths against the team
-	$v->{mod_maps}{ $m->{mapid} }{ $v->{team} . "deaths"}++ if $v->{team};
-	$v->{weapons}{ $w->{weaponid} }{deaths}++;
-	$v->{maps}{ $m->{mapid} }{deaths}++;
-	$v->{roles}{ $vr->{roleid} }{deaths}++ if $vr;
-	$v->{victims}{ $k->{plrid} }{deaths}++;
-	#$v->{roundtime} = $self->{roundstart} ? $timestamp - $self->{roundstart} : undef;
-
-	# most mods have a headshot property
-	if ($props->{headshot}) {
-		$k->{victims}{ $v->{plrid} }{headshotkills}++;
-		$v->{victims}{ $k->{plrid} }{headshotdeaths}++;
-		$kr->{basic}{headshotkills}++ if $kr;
-	}
-
-	$m->{basic}{lasttime} = $timestamp;
-	$m->{basic}{kills}++;
-	$m->{mod}{ $k->{team} . 'kills'}++ if $k->{team};		# kills on the team
-	$m->hourly('kills', $timestamp);
-
-	$w->{basic}{kills}++;
-	$kr->{basic}{kills}++ if $kr;
-	$vr->{basic}{deaths}++ if $kr;
-
-	# friendly-fire kills
-	if (($k->{team} and $v->{team}) and ($k->{team} eq $v->{team})) {
-		$k->{maps}{ $m->{mapid} }{ffkills}++;
-		$k->{weapons}{ $w->{weaponid} }{ffkills}++;
-		$k->{basic}{ffkills}++;
-
-		$v->{weapons}{ $w->{weaponid} }{ffdeaths}++;
-		$v->{maps}{ $m->{mapid} }{ffdeaths}++;
-		$v->{basic}{ffdeaths}++;
-
-		$m->{basic}{ffkills}++;
-		$w->{basic}{ffkills}++;
-		$kr->{basic}{ffkills}++ if $kr;
-
-		$self->plrbonus('ffkill', 'enactor', $k);
-	}
-
 	# check for spatial stats on this event
 	if ($props->{attacker_position}) {
 		$m->spatial(
@@ -602,13 +422,6 @@ sub event_kill {
 		);
 	}
 
-	## allow mods to add their own stats for kills
-	#my $skill_handled = 0;
-	#if ($self->can('mod_event_kill')) {
-	#	$skill_handled = $self->mod_event_kill($k, $v, $w, $m, $kr, $vr, $props);
-	#}
-	## calculate new skill values for the players
-	#$self->calcskill_kill_func($k, $v, $w) unless $skill_handled;
 =cut
 }
 
@@ -664,6 +477,7 @@ sub event_round {
 	my $m = $self->get_map;
 	my $props = $self->parseprops($propstr);
 	$trigger = lc $trigger;
+	;;; $self->debug7("ROUND STARTED.", 0);
 
 	#my $plrs = $self->get_online_plrs;
 	#;;; warn @$plrs . " players are online\n";
@@ -802,6 +616,139 @@ sub event_pingkick {
 sub event_ffkick {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr) = @$args;
+}
+
+# parses the player signature string and returns the player object matching it.
+# if an invalid player string is given then undef is returned.
+sub get_plr {
+	my ($self, $plrsig) = @_;
+	my ($p,$str,$team,$guid,$uid,$name,$ipaddr);
+
+	#print_r([ map { $self->{c_eventsig}{$_}{ids} } keys %{$self->{c_eventsig}} ]);
+
+	# Return the cached player via the player sig, if previously cached.
+	if ($p = $self->plrcached($plrsig)) {
+		#warn "* CACHE(eventsig): \"$p\"\n"; # == \"" . $p->eventsig . "\"\n";
+		return $p;
+	}
+
+	# make a copy, since we'll be striping it apart
+	$str = $plrsig;
+
+	# using multiple substr calls to fetch each piece of the player sig is
+	# faster then using a single regular expression.
+	# start from the end of the string and move back.
+	$team = substr($str, rindex($str,'<'), 128, '');
+	$team = $self->team_normal(substr($team, 1, -1));
+
+	# Note: steamid could be STEAM_ID_PENDING or BOT
+	$guid = substr($str, rindex($str,'<'), 128, '');
+	$guid = substr($guid, 1, -1);
+
+	# completely ignore the HLTV client.
+	if ($guid eq 'HLTV') {
+		return undef;
+	}
+
+	# UID is unique to each player until a server restarts
+	$uid = substr($str, rindex($str,'<'), 128, '');
+	$uid = substr($uid, 1, -1);
+	
+	# ignore any players with an UID of -1 or no STEAMID
+	# treat $uid as a string to avoid numerical errors due to invalid events
+	if (!$guid or $uid eq '-1') {
+		;;; $self->debug1("Ignoring invalid player identifier from logsource '$self->{_src}' line $self->{_line}: '$plrsig'",0);
+		return undef;
+	}
+
+	# The rest of the string is the full player name. Trim the string, since
+	# the HLDS engine doesn't do it.
+	$name = $str;
+	$name =~ s/^\s+//;
+	$name =~ s/\s+$//;
+	$name = 'unnamed' if $name eq '';	# do not allow blank names
+	
+	# try to determine this player's current IP address based on their UID
+	# which was cached in the "connect" event.
+	$ipaddr = $self->ipcached($uid) || 0;
+
+	# For BOTS: replace STEAMID's with the player name otherwise all bots
+	# will be combined into the same STEAMID
+	if ($guid eq 'BOT') {
+		return undef if $self->conf->main->ignore_bots;
+		# limit the total characters (128 - 4)
+		$guid = "BOT_" . uc substr($name, 0, 124);
+	}
+
+	# lookup the alias for the player guid
+	#if ($self->{uniqueid} eq 'worldid') {
+	#	$guid = $self->get_plr_alias($guid);
+	#} elsif ($self->{uniqueid} eq 'name') {
+	#	$name = $self->get_plr_alias($name);
+	#} elsif ($self->{uniqueid} eq 'ipaddr') {
+	#	$ipaddr = ip2int($self->get_plr_alias(int2ip($ipaddr)));
+	#}
+
+	# If we get to this point the player signature did not match a current
+	# player in memory so we need to try and figure out if they are really a
+	# new player or a known player that changed their name, teams or has
+	# reconnected within the same log file.
+
+	# * The signature potentially identifies a unique player in the DB
+	my $sig = {
+		name => $name,		# *
+		guid => $guid,		# *
+		ipaddr => $ipaddr,	# *
+		eventsig => $plrsig,
+		team => $team,
+		uid => $uid
+	};
+	
+	# based on their UID the player already existed (something in their
+	# signature changed since their last event)
+	if ($p = $self->plrcached($uid, 'uid')) {
+		$self->del_plrcache($p);	# remove old cached signature
+		$p->name($name);
+		$p->guid($sig->{$self->{uniqueid}});
+		$p->ipaddr($ipaddr);
+		$p->team($team);
+		$self->add_plrcache($p);	# recache with new signature
+
+	#} elsif ($p = $self->plrcached($sig->{$self->{uniqueid}}, 'guid')) {
+		# the only time the UIDs won't match is when a player has extra
+		# events that follow a disconnect event. this happens with a
+		# couple of minor events like dropping the bomb in CS. The bomb
+		# drop event is triggered after the player disconnect event and
+		# thus causes confusion with internal routines. So I cache the
+		# uniqueid of the player and then fix the 'uid' if needed
+		# here...
+		#if ($p->uid ne $uid) {
+		#	$p->team($team);
+		#	#$p->plrids($plrids);
+		#	$self->delcache($p->uid($uid), 'uid');
+		#	$self->delcache($p->signature($plrsig), 'signature');
+		#	$self->addcache($p, $p->uid, 'uid');
+		#	$self->addcache($p, $p->signature, 'signature');
+		#}
+
+	} else {
+		# Create a new player using the event signature
+		$p = new PS::Plr($sig, @$self{qw( gametype modtype timestamp )});
+		if (my $p1 = $self->plrcached($p->id, 'plrid')) {
+			# make sure this player isn't in memory already
+			#warn "* CACHE: plr cached after new: '$p' == '$p1'\n";
+			$self->del_plrcache($p);
+			undef $p;
+			$p = $p1;
+		} else {
+			$p->skill( $self->conf->main->baseskill );
+		}
+
+		$self->add_plrcache($p);
+		#$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
+	}
+
+	return $p;
 }
 
 sub parseprops {

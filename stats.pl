@@ -26,8 +26,7 @@ BEGIN { # FindBin isn't going to work on systems that run the stats.pl as SETUID
 	use warnings;
 
 	use FindBin; 
-	use lib $FindBin::Bin;
-	use lib $FindBin::Bin . "/lib";
+	use lib ( $FindBin::Bin, $FindBin::Bin . "/lib" );
 }
 
 BEGIN { # make sure we're running the minimum version of perl required
@@ -173,12 +172,13 @@ if (defined(my $df = $opt->debugfile)) {
 	$DEBUGFILE = $df;
 	# this won't work, now that the Filter::Simple is used for debugging.
 	$DEBUG = 1 unless $DEBUG;		# force DEBUG on if we're specifying a file
-	;;;$ERR->debug("DEBUG START: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE");
+	;;; PS::Core->debug("DEBUG START: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE");
 }
 
-# Load the basic stats.cfg for database settings (unless 'noconfig' is specified on the command line)
-# The config filename can be specified on the commandline, otherwise stats.cfg is used. If that file 
-# does not exist then the config is loaded from the __DATA__ block of this file.
+# Load the basic stats.cfg for database settings (unless 'noconfig' is specified
+# on the command line) The config filename can be specified on the commandline,
+# otherwise stats.cfg is used. If that file does not exist then the config is
+# loaded from the __DATA__ block of this file.
 $dbconf = {};
 if (!$opt->noconfig) {
 	if ($opt->config) {
@@ -208,6 +208,8 @@ $DBCONF = {
 	dbcompress	=> $opt->dbcompress || $dbconf->{dbcompress}
 };
 $db = new PS::DBI($DBCONF);
+$db->do('SET time_zone = \'+00:00\'');	# Make sure Mysql treats all times as UTC/GMT
+
 $conf = new PS::Conf($db, 'main');
 $ERR = new PS::ErrLog($db, $conf);	# Errors will be logged to the DB
 $ERR->set_verbose($opt->verbose and !$opt->quiet);
@@ -223,59 +225,7 @@ PS::Feeder::configure( DB => $db, CONF => $conf, OPT => $opt );
 
 $ERR->info("PsychoStats v$VERSION initialized.");
 
-###### TESTING ..... Making sure save_state and restore_state works for players
-#####my $feed = new PS::Feeder($opt->logsource, $opt->gametype, $opt->modtype, $db);
-#####$ERR->fatal('Error loading logsource (' . $opt->logsource . '): ' . $feed->error) if $feed->error;
-#####$ERR->fatal('Error initialing logsource.') if !$feed->init;
-#####
-#####my $game = new PS::Game($feed->gametype, $feed->modtype, $db);
-#####
-#####$feed->restore_state;
-#####$game->restore_state($feed);
-#####
-#####print_r($game->get_online_plrs);
-#####exit;
-#####
-#####my $p1 = new PS::Plr({
-#####	eventsig=> 'Jason<1><STEAM_ID_PENDING><CT>',
-#####	name	=> 'Jason',
-#####	guid	=> 'STEAM_ID_PENDING',
-#####	ipaddr	=> 0,
-#####	team	=> 'ct',
-#####	uid	=> 1
-#####}, $feed->gametype, $feed->modtype);
-#####my $p2 = new PS::Plr({
-#####	eventsig=> 'Ted<2><STEAM_ID_PENDING><TERRORIST>',
-#####	name	=> 'Ted',
-#####	guid	=> 'STEAM_ID_PENDING',
-#####	ipaddr	=> 0,
-#####	team	=> 'terrorist',
-#####	uid	=> 2
-#####}, $feed->gametype, $feed->modtype);
-#####my $w = new PS::Weapon('mp5navy', $feed->gametype, $feed->modtype);
-#####my $m = new PS::Map('de_dust', $feed->gametype, $feed->modtype);
-#####
-#####$p1->is_dead(0);
-#####$p2->is_dead(0);
-#####
-#####$game->plr_online($p1);
-#####$game->plr_online($p2);
-#####
-#####$p1->action_kill($p2, $w, $m);
-#####$p2->action_death($p1, $w, $m);
-#####
-#####print "$p1 has " . $p1->{data}{kills} . " kills\n";
-#####print "$p2 has " . $p2->{data}{deaths} . " deaths\n";
-######print_r($p1->{maps});
-######print_r($p1->{weapons});
-######print_r($p1->{victims});
-#####
-#####$feed->save_state;
-#####$game->save_state($feed);
-#####
-#####exit;
-
-# setup main loop to process logs (infinite loop)
+# infinite main loop to process logs
 while (!$opt->nologs) {
 	my (@streams, @files, @sources);
 	my @logsources = load_logsources();
@@ -403,6 +353,7 @@ sub process_streams {
 	# won't be any good the next time an update is run. But if the script is
 	# simply being restarted then only a couple of seconds will elapse.
 	foreach $srv (keys %$games) {
+		$feeds->{$srv}->save;
 		$feeds->{$srv}->save_state;
 		$games->{$srv}->save;	# save current stats first
 		$games->{$srv}->save_state($feeds->{$srv}, $srv);
@@ -494,6 +445,7 @@ sub process_files {
 		}
 		
 		# save our logsource and game state
+		$feed->save;
 		$feed->save_state;
 		$game->save; 	# save current stats first.
 		$game->save_state($feed, scalar $feed->server);
@@ -589,7 +541,7 @@ sub main::exit {
 
 END {
 	$ERR->info("PsychoStats v$VERSION exiting (elapsed: " . compacttime(time-$starttime) . ", logs: $total_logs, events: " . commify($total_events) . ")") if defined $ERR;
-	;;;$ERR->debug("DEBUG END: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE") if $DEBUGFILE and defined $opt;
+	;;; PS::Core->debug("DEBUG END: " . scalar(localtime) . " (level $DEBUG) File: $DEBUGFILE") if $DEBUGFILE and defined $opt;
 	$db->disconnect if $db;
 }
 

@@ -242,6 +242,4 @@ sub event_cs_teamscore {
 #	$self->info("$team scored $score with $totalplrs players\n");
 }
 
-sub has_mod_tables { 1 }
-
 1;

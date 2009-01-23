@@ -81,14 +81,13 @@ sub _getOptions {
 		'unknown'	=> \$self->{param}{unknown},
 		'v|verbose'	=> \$self->{param}{verbose},
 		'V|ver|version'	=> \$self->{param}{version},
-		'echo'		=> \$self->{param}{echo}, # stream logsource
 		'quiet'		=> \$self->{param}{quiet},
 
 		# PERFORMANCE OPTIONS
 		'lps=f'		=> \$self->{param}{lps},	# Lines per second maximum processing speed
 
 		# DEBUGGING OPTIONS
-		'd|debug:i'	=> \$self->{param}{debug},
+		'd|debug:i'	=> \$self->{param}{debug},	# ENV{PSYCHOSTATS_DEBUG} replaces this
 		'debugfile:s'	=> \$self->{param}{debugfile},
 		'dumpevents'	=> \$self->{param}{dumpevents},
 		'dumpbonuses'	=> \$self->{param}{dumpbonuses},
@@ -96,21 +95,23 @@ sub _getOptions {
 		# LOG OPTIONS
 		'logsource=s'	=> \$self->{param}{logsource},
 		'nologsource'	=> \$self->{param}{nologs},
+		'files'		=> \$self->{param}{files},	# only process non-stream sources
+		'streams'	=> \$self->{param}{streams},	# only process stream sources
 		'passive|pasv'	=> \$self->{param}{passive},	# FTP logsource's
 		'maxlogs=s'	=> \$self->{param}{maxlogs},	# maximum logs to process before exiting
 		'maxlines=s'	=> \$self->{param}{maxlines},	# maximum lines ...
 		'ipaddr=s'	=> \$self->{param}{ipaddr},	# Stream logsource's (bind ip)
 		'port=i'	=> \$self->{param}{port},	# Stream logsources' (bind port)
-		'files'		=> \$self->{param}{files},	# only process non-stream sources
-		'streams'	=> \$self->{param}{streams},	# only process stream sources
+		'echo'		=> \$self->{param}{echo},	# Stream logsource's
 		'force'		=> \$self->{param}{force},	# ignore invalid previous states
 
 		# DAEMON OPTIONS
 		'daemon'	=> \$self->{param}{daemon},
 
 		# DAILY OPTIONS
-		'daily:s'	=> \$self->{param}{daily},
-		'nodaily'	=> \$self->{param}{nodaily},
+		'update=s'	=> \$self->{param}{update},
+		#'daily:s'	=> \$self->{param}{daily},
+		#'nodaily'	=> \$self->{param}{nodaily},
 
 		# AWARD OPTIONS
 		'award:s'	=> \$self->{param}{award},
@@ -118,7 +119,7 @@ sub _getOptions {
 		'end=s'		=> \$self->{param}{end},
 
 		# CLAN OPTIONS
-		'scanclantags:s'=> \$self->{param}{scanclantags},	# SCAN clans; matching players to clantags
+		'scanclantags|clantags:s' => \$self->{param}{scanclantags},	# SCAN clans; matching players to clantags
 #		'deleteclans'	=> \$self->{param}{deleteclans},	# DELETE clans; plr.clanid=0 (profiles remain intact)
 #		'resetclans'	=> \$self->{param}{resetclans},		# RESET clans; set rank=0; and all plr.clanid=0
 

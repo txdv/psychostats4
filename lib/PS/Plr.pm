@@ -29,7 +29,7 @@ use overload
 	'""' => 'signature',	# this is primarily used in debugging code
 	fallback => 1;
 
-use util qw( deep_copy print_r );
+use util qw( deep_copy print_r int2ip );
 use PS::SourceFilter;
 use Time::Local;
 
@@ -136,10 +136,10 @@ sub new {
 		weapon		=> '',		# current weapon
 		uid		=> 0,		# current UID
 
-		skill		=> 0,		# current skill
+		skill		=> undef,	# current skill
 		dead		=> 1,		# DEAD flag
 		
-		#plr		=> {},		# t_plr information (only populated when there's a change)
+		#plr		=> {},		# t_plr information (only defined once loaded)
 		ids		=> {},		# track plr_ids_* usage
 		data		=> {},		# core data stats
 		weapons		=> {},		# weapon stats
@@ -273,18 +273,41 @@ sub init {
 	return $self;
 }
 
+# Initializes the basic t_plr information for the current player. But only if a
+# valid plrid can be determined first. This is only called when certain stats
+# need to be calculated (like during a kill; so the plr's current skill can be
+# known and used in calculations).
+sub init_plr {
+	my ($self, $reset) = @_;
+	return 1 if $self->{plr} and !$reset;
+	if (!$self->{plrid}) {
+		# determine our plrid, if possible. If we can't determine it
+		# then we can't initialize the player yet.
+		$self->assign_plrid or return undef;
+	}
+	$self->{plr} ||= {};
+	my $plr = $self->db->execute_fetchrow('get_plr_basic', $self->{plrid});
+	%{$self->{plr}} = %$plr if $plr;
+	
+	# assign the loaded skill to our public key for use
+	$self->{skill} = ($plr and defined $self->{plr}{skill})
+		? $self->{plr}{skill} : $self->conf->main->baseskill;
+	
+	return $self->{plr};
+}
+
 # Save accumulated stats and player information
 sub save {
 	my ($self) = @_;
 	my $uniqueid = $self->{ $self->conf->main->uniqueid };
 	
-	# FIRST: we need a new PLRID if this player doesn't already have one.
-	# If a PLRID can not be assigned then no data will be saved.
+	# First, we need a new PLRID if this player doesn't already have one.
+	# If a PLRID can not be assigned then no data will be saved yet.
 	if (!$self->{plrid}) {
 		$self->assign_plrid || return undef;
 	}
 
-	# NEXT: Make sure a profile exists for this player
+	# Make sure a profile exists for this player
 	if (!$self->{has_profile} and !$self->db->execute_selectcol('plr_profile_exists', $uniqueid)) {
 		if (!$self->db->execute('insert_plr_profile', $uniqueid, $self->{name})) {
 			# not the end of the world if a profile didn't insert.
@@ -293,7 +316,7 @@ sub save {
 		}
 	}
 	
-	# NEXT: Save all plr_ids used by this player.
+	# Save all plr_ids used by this player.
 	foreach my $type (qw( guid ipaddr name )) {
 		foreach my $id (keys %{$self->{ids}{$type}}) {
 			$self->save_plr_id($type, $id, $self->{ids}{$type}{$id});
@@ -301,10 +324,25 @@ sub save {
 	}
 	$self->{ids} = {};	# reset plr_ids in memory
 
-	# NEXT: Save player chat messages, if enabled.
-	if ($self->{chat}) {
+	# Save player chat messages, if enabled.
+	if (defined $self->{chat}) {
 		$self->save_plr_chat($self->{chat});
 		$self->trim_plr_chat;
+	}
+
+	# Update the player profile name [first, last, most] used as configured...
+	if ($self->conf->main->plr_primary_name ne 'first') {
+		my $pp = $self->db->execute_fetchrow('get_plr_profile_basic', $uniqueid);
+		if ($pp and !$pp->{name_locked}) {
+			my $name = Encode::decode_utf8($pp->{name});
+			my $stname = sprintf('get_plr_%s_used_names', $self->conf->main->plr_primary_name);
+			my ($newname) = $self->db->execute_selectall($stname, $self->{plrid}, 1);
+			$newname = Encode::decode_utf8($newname);
+			if ($name ne $newname) {
+				#;;; warn "Changing PLRID $self->{plrid} name from \"$name\" TO \"$newname\"\n";
+				$self->db->execute('update_plr_profile_name', $newname, $uniqueid);
+			}
+		}
 	}
 
 	# don't save any stats if the player doesn't have a timestamp.
@@ -320,18 +358,44 @@ sub save {
 	# calculate the current online time for this player
 	$self->{data}{online_time} = $self->onlinetime;
 
-	# NEXT: save stats
-	$self->save_stats($statdate, 'data');
-	$self->save_stats($statdate, 'maps');
-	$self->save_stats($statdate, 'roles');
-	$self->save_stats($statdate, 'weapons');
-	$self->save_stats($statdate, 'victims');
-	
-	# reset in-memory stats that were saved
-	%{$self->{$_}} = () for qw( data maps roles weapons victims );
+	# finally, save stats
+	for (qw( data maps roles weapons victims )) {
+		$self->save_stats($statdate, $_);
+		# reset in-memory stats that were saved (keeping the same
+		# reference is faster than assigning a new hash {})
+		%{$self->{$_}} = ();
+	}
 	
 	# reset the timer start since we've calculated the online time above.
 	$self->{timestart} = $self->{timestamp};
+}
+
+# Set the player's profile name to be the name that has currently been used the
+# most. This function does not check the 'namelocked' player profile variable.
+sub most_used_name {
+	my $self = shift;
+	my $db = $self->{db};
+	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "totaluses DESC");
+	if (defined $name) {
+		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
+		$self->name($name);
+#		$self->clanid(0);
+	}
+	return $name;
+}
+
+# Sets the players profile name to be the name that was last used.
+# this function does not check the 'namelocked' player profile variable.
+sub last_used_name {
+	my $self = shift;
+	my $db = $self->{db};
+	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "lastseen DESC");
+	if (defined $name) {
+		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
+		$self->name($name);
+#		$self->clanid(0);
+	}
+	return $name;
 }
 
 # Quick save any stats that are pending.
@@ -482,9 +546,13 @@ sub save_stats {
 					\@bind			# arrayref to store bind values
 				));
 			}
+
+			# Make sure the player has a default skill assigned
+			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
 			
-			# update the lastseen column in ps_plr too.
+			# update a couple of columns in ps_plr too
 			push(@updates, $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind));
+			push(@updates, $self->db->expr('skill', '=', $self->{skill}, \@bind));
 			
 			$cmd = sprintf('UPDATE %s d, %s p SET %s WHERE d.plrid=? AND p.plrid=d.plrid',
 				$self->db->ctbl($tbl),
@@ -631,6 +699,8 @@ sub save_plr_chat {
 		push(@bind, $self->{plrid}, map { $m->{$_} } qw( timestamp message team team_only dead ));
 	}
 	$st->execute(@bind);
+	$st->finish;
+	return $st;
 }
 
 # trim the player chat messages to the configured limit.
@@ -652,6 +722,8 @@ sub trim_plr_chat {
 		);
 	}
 	$st->execute($self->{plrid}, $total - $max);
+	$st->finish;
+	return $st;
 }
 
 # save "plr_plr_ids" usage.
@@ -672,7 +744,7 @@ sub save_plr_id {
 # Note: halflife subclass overrides this to prevent uniqueid's of
 # STEAM_ID_PENDING or STEAM_ID_LAN from being used.
 sub assign_plrid {
-	my ($self) = @_;
+	my ($self, $check_only) = @_;
 	return $self->{plrid} if $self->{plrid};
 	my $uniqueid = $self->{ $self->conf->main->uniqueid };
 	
@@ -680,12 +752,16 @@ sub assign_plrid {
 	return $self->{plrid} if $self->{plrid};
 	
 	# create a new PLR record for this player since they don't exist yet.
-	if ($self->db->execute('insert_plr', $uniqueid, @$self{qw(gametype modtype firstseen timestamp)})) {
-		$self->{plrid} = $self->db->last_insert_id;
-	} else {
-		$self->warn("Error inserting new player record for $self");
+	unless ($check_only) {
+		if ($self->db->execute('insert_plr', $uniqueid,
+			@$self{qw(gametype modtype firstseen timestamp)},
+			$self->conf->main->baseskill)) {
+			$self->{plrid} = $self->db->last_insert_id;
+		} else {
+			$self->warn("Error inserting new player record for $self");
+		}
 	}
-	
+
 	return $self->{plrid};
 }
 
@@ -833,8 +909,9 @@ sub role {
 # get/set the player's skill value
 sub skill {
 	my ($self, $new) = @_;
-	if (defined $new and $self->{skill} ne $new) {
+	if (defined $new and $self->{skill} || '' ne $new) {
 		$self->{skill} = $new;
+		#push(@{$self->{skill_changes}}, $new);
 	}
 	return $self->{skill};
 }
@@ -887,7 +964,7 @@ sub action_attacked {
 	my $m = $map->id;
 	my $dmg = $props->{damage} || 0;
 	my $absorbed = int($props->{damage_armor}) || 0;
-	;;; $self->debug5("$self attacked $victim for $dmg dmg", 0);
+	;;; $self->debug7("$self attacked $victim for $dmg dmg", 0);
 	$self->timestamp($props->{timestamp});
 
 	# this is overridden in the halflife subclass to provide more detail.
@@ -908,7 +985,7 @@ sub action_attacked {
 # The player changed their name
 sub action_changed_name {
 	my ($self, $name, $props) = @_;
-	#;;; $self->debug5("$self changed name to $name", 0);
+	;;; $self->debug7("$self changed name to $name", 0);
 	$self->timestamp($props->{timestamp});
 	$self->name($name);
 }
@@ -921,7 +998,7 @@ sub action_chat {
 
 	$self->{chat} ||= [];
 	# add the new message to the FRONT of the array, so its easier to
-	# shrink the array if its too large by lobing off the oldest ones.
+	# shrink the array if its too large by lopping off the oldest ones.
 	unshift(@{$self->{chat}}, {
 		timestamp 	=> $props->{timestamp},
 		message 	=> $msg,
@@ -941,7 +1018,7 @@ sub action_chat {
 # information about the player.
 sub action_connected {
 	my ($self, $ip, $props) = @_;
-	;;; $self->debug5("$self connected with IP $ip", 0);
+	;;; $self->debug7("$self connected with IP " . int2ip($ip), 0);
 	$self->timestamp($props->{timestamp});
 	#$self->timestart($props->{timestamp});
 	
@@ -959,8 +1036,9 @@ sub action_death {
 	my $w = $weapon->id;
 	my $k = $killer->id;
 	$self->timestamp($props->{timestamp});
-	;;; $self->debug5("$self was killed with '$weapon'" . ($props->{headshot} ? ' (headshot)' : ''), 0);
+	;;; $self->debug7("$self was killed with '$weapon'" . ($props->{headshot} ? ' (headshot)' : ''), 0);
 
+	$self->init_plr;
 	$self->is_dead(1);
 
 	# overall deaths
@@ -1003,7 +1081,7 @@ sub action_death {
 # the player disconnected from the server fully. They are no longer in the game.
 sub action_disconnect {
 	my ($self, $map, $props) = @_;
-	;;; $self->debug5("$self disconnected", 0);
+	;;; $self->debug7("$self disconnected", 0);
 	$self->timestamp($props->{timestamp});
 
 	$self->end_streaks;
@@ -1019,7 +1097,7 @@ sub action_entered {
 	my $m = $map->id;
 	$self->firstseen(0);	# reset firstseen
 	$self->timestamp($props->{timestamp});
-	;;; $self->debug5("$self entered the game (map $map)", 0);
+	;;; $self->debug7("$self entered the game (map $map)", 0);
 	
 	# track how many games this player has played.
 	$self->{data}{games}++;
@@ -1043,7 +1121,7 @@ sub action_injured {
 	my $dmg = int($props->{damage}) || 0;
 	my $absorbed = int($props->{damage_armor}) || 0;
 	$self->timestamp($props->{timestamp});
-	;;; $self->debug5("$self was injured by $killer for $dmg dmg ($absorbed absorbed)", 0);
+	;;; $self->debug7("$self was injured by $killer for $dmg dmg ($absorbed absorbed)", 0);
 	
 	$self->{data}{damage_taken} += $dmg;	
 	$self->{data}{damage_mitigated} += $absorbed;
@@ -1062,7 +1140,7 @@ sub action_injured {
 sub action_joined_team {
 	my ($self, $team, $map, $props) = @_;
 	my $m = $map->id;
-	;;; $self->debug5("$self joined team $team", 0);
+	;;; $self->debug7("$self joined team $team", 0);
 	$self->timestamp($props->{timestamp});
 	
 	$self->team($team);
@@ -1080,7 +1158,9 @@ sub action_kill {
 	my $w = $weapon->id;
 	my $v = $victim->id;
 	$self->timestamp($props->{timestamp});
-	;;; $self->debug5("$self killed $victim with '$weapon'" . ($props->{headshot} ? ' (headshot)' : ''), 0);
+	;;; $self->debug7("$self killed $victim with '$weapon'" . ($props->{headshot} ? ' (headshot)' : ''), 0);
+
+	$self->init_plr;
 
 	# overall kills ...
 	$self->{data}{kills}++;
@@ -1145,7 +1225,7 @@ sub action_suicide {
 	my $m = $map->id;
 	my $w = $weapon->id;
 	$self->timestamp($props->{timestamp});
-	;;; $self->debug5("$self committed suicide with '$weapon'", 0);
+	;;; $self->debug7("$self committed suicide with '$weapon'", 0);
 
 	$self->{data}{deaths}++;
 	$self->{data}{suicides}++;
@@ -1311,9 +1391,13 @@ sub prepare_statements {
 	$db->prepare('find_plrid', 'SELECT plrid FROM t_plr WHERE uniqueid=? AND gametype=? AND modtype=?')
 		if !$db->prepared('find_plrid');
 
+	# fetch the basic player information matching the plrid
+	$db->prepare('get_plr_basic', 'SELECT clanid,skill,rank,activity FROM t_plr WHERE plrid=?')
+		if !$db->prepared('get_plr_basic');
+
 	# insert a new player record based on their uniqueid.
 	# plrid is auto_increment.
-	$db->prepare('insert_plr', 'INSERT INTO t_plr (uniqueid,gametype,modtype,firstseen,lastseen) VALUES (?,?,?,?,?)')
+	$db->prepare('insert_plr', 'INSERT INTO t_plr (uniqueid,gametype,modtype,firstseen,lastseen,skill) VALUES (?,?,?,?,?,?)')
 		if !$db->prepared('insert_plr');
 
 	# update_plr_ids_guid, update_plr_ids_ipaddr, update_plr_ids_name
@@ -1325,10 +1409,28 @@ sub prepare_statements {
 			'ON DUPLICATE KEY UPDATE totaluses=totaluses+?, lastseen=FROM_UNIXTIME(?)'
 		);
 	}
+
+	# fetch the names most used for the plrid
+	$db->prepare('get_plr_most_used_names',
+		     'SELECT name FROM t_plr_ids_name WHERE plrid=? ORDER BY totaluses DESC, lastseen DESC LIMIT ?')
+		if !$db->prepared('get_plr_most_used_names');
+
+	# fetch the names most used for the plrid
+	$db->prepare('get_plr_last_used_names',
+		     'SELECT name FROM t_plr_ids_name WHERE plrid=? ORDER BY lastseen DESC, totaluses DESC LIMIT ?')
+		if !$db->prepared('get_plr_last_used_names');
 	
+	# fetch the basic player profile information matching the uniqueid
+	$db->prepare('get_plr_profile_basic', 'SELECT name,name_locked,cc FROM t_plr_profile WHERE uniqueid=?')
+		if !$db->prepared('get_plr_profile_basic');
+
 	# insert a new player profile record based on their uniqueid 
 	$db->prepare('insert_plr_profile', 'INSERT INTO t_plr_profile (uniqueid,name) VALUES (?,?)')
 		if !$db->prepared('insert_plr_profile');
+
+	# update a player profile name
+	$db->prepare('update_plr_profile_name', 'UPDATE t_plr_profile SET name=? WHERE uniqueid=?')
+		if !$db->prepared('update_plr_profile_name');
 	
 	# returns 1 if the plr_profile record exists based on the uniqueid
 	$db->prepare('plr_profile_exists', 'SELECT 1 FROM t_plr_profile WHERE uniqueid=?')

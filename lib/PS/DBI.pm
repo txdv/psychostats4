@@ -41,7 +41,11 @@ sub new {
 		dbh
 		dbtype dbhost dbport dbname dbuser dbpass
 		dbtblprefix dbcompress
+		fatal
 	));
+
+	# if true, any query that fails will die
+	$self->{fatal} = 1 unless defined $self->{fatal};
 	
 	# sanitize connection paramaters
 	$self->{dbtype} = 'mysql' unless defined $self->{dbtype};
@@ -220,9 +224,18 @@ sub execute_fetchall {
 sub execute_fetchrow {
 	my ($self, $name, @bind) = @_;
 	my $st = $self->execute($name, @bind) || return undef;
-	my $row = $st->fetchrow_hashref({});
+	my $row = $st->fetchrow_hashref;
 	$st->finish;
 	return wantarray ? %$row : $row;
+}
+
+# executes a prepared statement and fetches all columns into a single array
+sub execute_selectall {
+	my ($self, $name, @bind) = @_;
+	my $st = $self->execute($name, @bind) || return undef;
+	my @rows = map { @$_ } @{$st->fetchall_arrayref};
+	$st->finish;
+	return wantarray ? @rows : \@rows;
 }
 
 # executes a prepared statement and fetches the first column of the first row.
@@ -300,7 +313,7 @@ sub expr_min {
 sub expr {
 	my ($self, $key, $expr, $val, $bind) = @_;
 	my $cmd .= "$key=";
-	if ($expr eq '+' || $expr eq '=') {
+	if ($expr eq '+') {
 		$cmd .= $key . $expr . '?';
 		push(@$bind, $val) if $bind;
 	} elsif ($expr eq '>') {
@@ -309,6 +322,9 @@ sub expr {
 	} elsif ($expr eq '<') {
 		$cmd .= $self->expr_min($key, '?');
 		push(@$bind, $val, $val) if $bind;
+	} elsif ($expr eq '=') {
+		$cmd .= '?';
+		push(@$bind, $val) if $bind;
 	}
 	return $cmd;
 }
@@ -733,7 +749,7 @@ sub query {
 	do {
 		$sth = ref $cmd ? $cmd : $self->{dbh}->prepare($cmd);
 		if (!$sth) {
-			$self->fatal_safe("Error preparing DB query:\n$cmd\n" . $self->errstr . "\n--end--");
+			return $self->fatal_safe("Error preparing DB query:\n$cmd\n" . $self->errstr . "\n--end--");
 		} 
 
 		$attempts++;
@@ -759,7 +775,7 @@ sub query {
 					$self->connect;
 				} while (!ref $self->{dbh} and $connect_attempts <= 10);
 				if (!ref $self->{dbh}) {
-					$self->fatal_safe("Error re-connecting to database using dsn \"$self->{dsn}\":\n" . $DBI::errstr);
+					return $self->fatal_safe("Error re-connecting to database using dsn \"$self->{dsn}\":\n" . $DBI::errstr);
 				}
 			} else {
 				# don't try to reconnect on most errors
@@ -770,10 +786,9 @@ sub query {
 
 	if ($rv) {
 		# do nothing, allow caller to work with the statement handle directly ....
-		#$self->debug5(join(" ", split(/\s*\015?\012\s*/, $cmd)),20) if $::DEBUG;
-		$self->debug($cmd, 5, 20);
+		;;; $self->debug9(join(" ", split(/\s*\015?\012\s*/, $cmd)),20);
 	} else {
-		$self->fatal_safe("Error executing DB query:\n$cmd\n" . $self->errstr . "\n--end of error--");
+		return $self->fatal_safe("Error executing DB query:\n$cmd\n" . $self->errstr . "\n--end of error--");
 	}
 	
 	return $self->{sth} = $sth;
@@ -783,7 +798,7 @@ sub query {
 sub do {
 	my ($self, $cmd, @bind) = @_;
 	$self->{lastcmd} = $cmd;
-	$self->debug($cmd, 5, 20);
+	;;; $self->debug9($cmd, 20);
 	return $self->{dbh}->do($cmd, undef, @bind);
 }
 
@@ -982,6 +997,17 @@ sub quote { $_[0]->{dbh}->quote($_[1]) }
 sub err { $_[0]->{dbh}->err || $DBI::err }
 sub errstr { $_[0]->{dbh}->errstr || $DBI::errstr }
 sub lasterr { $_[0]->{lasterr} || '' }
+
+sub fatal_safe {
+	my $self = shift;
+	if ($self->{fatal}) {
+		$self->SUPER::fatal_safe(@_);
+	} else {
+		#$self->SUPER::warn_safe(@_);
+		$self->{lasterr} = shift;
+	}
+	return '';
+}
 
 1;
 

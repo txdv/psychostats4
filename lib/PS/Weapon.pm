@@ -309,6 +309,15 @@ sub name {
 	return $self->{name};
 }
 
+# get/set the weapons weight.
+sub weight {
+	my ($self, $new) = @_;
+	if (defined $new) {
+		$self->{weight} = $new;
+	}
+	return $self->{weight};
+}
+
 # get/set the last action timestamp
 sub timestamp {
 	my ($self, $new) = @_;
