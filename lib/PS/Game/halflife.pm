@@ -25,8 +25,8 @@ use strict;
 use warnings;
 use base qw( PS::Game );
 
-use Encode qw( encode decode );
-use Time::Local qw( timelocal timelocal_nocheck timegm timegm_nocheck );
+use Encode qw( encode decode encode_utf8 decode_utf8 );
+use Time::Local qw( timegm timegm_nocheck );
 
 use util qw( :net :date );
 use PS::SourceFilter;
@@ -85,7 +85,8 @@ sub event {
 	my ($event, $feed) = @_;
 	my ($prefix, $timestamp);
 
-	$event = decode('UTF-8',$event);	# HL logs are UTF-8 encoded
+	#$event = decode('UTF-8',$event);	# HL logs are UTF-8 encoded
+	$event = decode_utf8($event);		# HL logs are UTF-8 encoded
 
 	# Ignore lines that are not complete (no newline). An incomplete line
 	# usually means the last line of the log file is corrupt (server
@@ -184,25 +185,6 @@ sub event_attacked {
 	$w->action_attacked($k, $v, $m, $props);
 	$k->action_attacked($v, $w, $m, $props);
 	$v->action_injured( $k, $w, $m, $props);
-	#$m->timestamp($timestamp);
-
-=pod
-	no warnings;
-	my $dmg = int($props->{damage} + $props->{damage_armor});
-
-	if ($r1) {
-		$r1->{basic}{shots}++;
-		$r1->{basic}{hits}++;
-		$r1->{basic}{damage} += $dmg;
-	}
-	if ($r2) {
-		$r2->{basic}{shots}++;
-		$r2->{basic}{hits}++;
-		$r2->{basic}{damage} += $dmg;
-	}
-
-=cut
-
 }
 
 sub event_changed_name {
@@ -276,6 +258,7 @@ sub event_chat {
 	#return if $self->isbanned($p1);
 
 	#$msg = encode('UTF-8', $msg);
+	#$msg = encode_utf8($msg);
 	$p->action_chat($msg, $teamonly, $props);
 }
 
@@ -322,14 +305,24 @@ sub event_disconnected {
 	
 	$p->action_disconnect($self->get_map, $props);
 
-	# remove the player from our cache since they're no longer online and
-	# save any pending stats they might have.
+	# remove the player from our cache since they're no longer online
 	$self->del_plrcache($p);
+
+	# scan the player for a valid clantag
+	if ($self->conf->main->clantag_detection and !$p->clanid) {
+		my ($tag, $clan) = $self->scan_for_clantag($p);
+		if ($tag and $clan->{clanid}) {
+			$p->clanid($clan->{clanid});
+		}
+	}
+
+	# save any pending stats they might have.
 	$p->save;
 
 	# mark this player offline
 	$self->plr_offline($p);
-	
+
+	# free memory	
 	undef $p;
 }
 

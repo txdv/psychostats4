@@ -32,6 +32,7 @@ use overload
 use util qw( deep_copy print_r int2ip );
 use PS::SourceFilter;
 use Time::Local;
+use Encode qw( encode_utf8 decode_utf8 );
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
@@ -198,9 +199,9 @@ sub new {
 	return $self->init($signature);
 }
 
-# returns a hash that allows this player's stateful information to be saved.
-# states are not included, unless the player doesn't have a 'plrid' yet.
-# use: $plr = PS::Plr->unfreeze($state); to reverse freezing.
+# Returns a hash that allows this player's stateful information to be saved.
+# Stats are not included, unless the player doesn't have a 'plrid' yet.
+# To unfreeze: $plr = PS::Plr->unfreeze($state);
 sub freeze {
 	my ($self) = @_;
 	my $state = {
@@ -296,6 +297,14 @@ sub init_plr {
 	return $self->{plr};
 }
 
+# Save basic t_plr information.
+sub save_plr {
+	my ($self, $plr) = @_;
+	return undef unless $self->id;
+	$plr ||= $self->{plr};
+	# TODO: ...
+}
+
 # Save accumulated stats and player information
 sub save {
 	my ($self) = @_;
@@ -322,7 +331,7 @@ sub save {
 			$self->save_plr_id($type, $id, $self->{ids}{$type}{$id});
 		}
 	}
-	$self->{ids} = {};	# reset plr_ids in memory
+	%{$self->{ids}} = ();	# reset plr_ids in memory
 
 	# Save player chat messages, if enabled.
 	if (defined $self->{chat}) {
@@ -334,10 +343,10 @@ sub save {
 	if ($self->conf->main->plr_primary_name ne 'first') {
 		my $pp = $self->db->execute_fetchrow('get_plr_profile_basic', $uniqueid);
 		if ($pp and !$pp->{name_locked}) {
-			my $name = Encode::decode_utf8($pp->{name});
+			my $name = decode_utf8($pp->{name});
 			my $stname = sprintf('get_plr_%s_used_names', $self->conf->main->plr_primary_name);
 			my ($newname) = $self->db->execute_selectall($stname, $self->{plrid}, 1);
-			$newname = Encode::decode_utf8($newname);
+			$newname = decode_utf8($newname);
 			if ($name ne $newname) {
 				#;;; warn "Changing PLRID $self->{plrid} name from \"$name\" TO \"$newname\"\n";
 				$self->db->execute('update_plr_profile_name', $newname, $uniqueid);
@@ -379,7 +388,6 @@ sub most_used_name {
 	if (defined $name) {
 		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
 		$self->name($name);
-#		$self->clanid(0);
 	}
 	return $name;
 }
@@ -393,7 +401,6 @@ sub last_used_name {
 	if (defined $name) {
 		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
 		$self->name($name);
-#		$self->clanid(0);
 	}
 	return $name;
 }
@@ -799,6 +806,17 @@ sub id {
 	return $self->{plrid} || $self->assign_plrid || 0;
 }
 
+# get/set the player's clanid. This will actually update the DB for every SET
+sub clanid {
+	my ($self, $new) = @_;
+	$self->init_plr || return 0 unless defined $self->{plr};
+	if (@_ >= 2) {
+		$self->{plr}{clanid} = $new;
+		$self->db->execute('update_plr_clanid', $new, $self->id);
+	}
+	return $self->{plr}{clanid};
+}
+
 # get/set the player's active guid (steamid)
 # setting a new guid will increase the usage counter for it.
 sub guid {
@@ -806,9 +824,9 @@ sub guid {
 	if (defined $new) {
 		$self->{guid} = $new;
 		$self->{ids}{guid}{$new}[IDS_TOTALUSES]++;
-		$self->{ids}{guid}{$new}[IDS_LASTSEEN] = $timestamp || $self->{timestamp} || time;
+		$self->{ids}{guid}{$new}[IDS_LASTSEEN] = $timestamp || $self->{timestamp} || timegm(localtime);
 		if (!$self->{ids}{guid}{$new}[IDS_FIRSTSEEN]) {
-			$self->{ids}{guid}{$new}[IDS_FIRSTSEEN] = $timestamp || $self->{timestamp} || time;
+			$self->{ids}{guid}{$new}[IDS_FIRSTSEEN] = $timestamp || $self->{timestamp} || timegm(localtime);
 		}
 	}
 	return $self->{guid};
@@ -821,9 +839,9 @@ sub name {
 	if (defined $new) {
 		$self->{name} = $new;
 		$self->{ids}{name}{$new}[IDS_TOTALUSES]++;
-		$self->{ids}{name}{$new}[IDS_LASTSEEN] = $timestamp || $self->{timestamp} || time;
+		$self->{ids}{name}{$new}[IDS_LASTSEEN] = $timestamp || $self->{timestamp} || timegm(localtime);
 		if (!$self->{ids}{name}{$new}[IDS_FIRSTSEEN]) {
-			$self->{ids}{name}{$new}[IDS_FIRSTSEEN] = $timestamp || $self->{timestamp} || time;
+			$self->{ids}{name}{$new}[IDS_FIRSTSEEN] = $timestamp || $self->{timestamp} || timegm(localtime);
 		}
 	}
 	return $self->{name};
@@ -838,9 +856,9 @@ sub ipaddr {
 		if ($new ne '0') {
 			# we don't record ip addresses that are 0
 			$self->{ids}{ipaddr}{$new}[IDS_TOTALUSES]++;
-			$self->{ids}{ipaddr}{$new}[IDS_LASTSEEN] = $timestamp || $self->{timestamp} || time;
+			$self->{ids}{ipaddr}{$new}[IDS_LASTSEEN] = $timestamp || $self->{timestamp} || timegm(localtime);
 			if (!$self->{ids}{ipaddr}{$new}[IDS_FIRSTSEEN]) {
-				$self->{ids}{ipaddr}{$new}[IDS_FIRSTSEEN] = $timestamp || $self->{timestamp} || time;
+				$self->{ids}{ipaddr}{$new}[IDS_FIRSTSEEN] = $timestamp || $self->{timestamp} || timegm(localtime);
 			}
 		}
 	}
@@ -1400,6 +1418,12 @@ sub prepare_statements {
 	$db->prepare('insert_plr', 'INSERT INTO t_plr (uniqueid,gametype,modtype,firstseen,lastseen,skill) VALUES (?,?,?,?,?,?)')
 		if !$db->prepared('insert_plr');
 
+	# update a specific t_plr variable.
+	for (qw( clanid )) {	# update_plr_clanid
+		$db->prepare('update_plr_' . $_, 'UPDATE t_plr SET ' . $_ . '=? WHERE plrid=?')
+			if !$db->prepared('update_plr_' . $_);
+	}
+	
 	# update_plr_ids_guid, update_plr_ids_ipaddr, update_plr_ids_name
 	for (qw( guid ipaddr name )) {
 		next if $db->prepared('update_plr_ids_' . $_);

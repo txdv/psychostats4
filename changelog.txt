@@ -10,6 +10,11 @@ same time.
 when not debugging (small performance increase).
 * DB schema has changed to support multiple games within the same database and
 to include several tweaks for performance.
+* Re-implemented clantag support. 'plain' and 'regex' clantags are scanned in 
+the order configured. Blacklisted clantags can be defined to prevent certain
+patterns from becoming a clan. UTF8 encoded tags should now work properly too. 
+Currently a player is scanned for a clantag when they disconnect. This method 
+of checking may be changed in the future to reduce overhead.
 
 Version 3.2 (only available via SVN)
 * Fixed halflife::parseprops to properly parse player names in event parameters 

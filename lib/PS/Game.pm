@@ -31,8 +31,9 @@ use File::Spec::Functions;
 use POSIX qw(floor strftime mktime);
 use Time::Local;
 use Safe;
+use Encode qw( encode_utf8 decode_utf8 );
 
-use util qw( :date :time :numbers :net print_r deep_copy );
+use util qw( :date :time :numbers :net print_r deep_copy is_regex );
 use serialize;
 use PS::SourceFilter;
 use PS::Award;
@@ -83,10 +84,11 @@ sub init {
 
 	# prepare any queries we'll be running repeatedly...
 	#$db->prepare('get_clantags', 	'SELECT * FROM t_config_clantags WHERE type=? ORDER BY idx');
-	$db->prepare('get_clantags', 	'SELECT clantag,alias,pos,type,blacklist FROM t_config_clantags ORDER BY idx');
+	$db->prepare('get_clantags', 	'SELECT id,clantag,alias,pos,type,blacklist FROM t_config_clantags ORDER BY idx');
+	$db->prepare('get_clan', 	'SELECT clanid,locked,rank,firstseen FROM t_clan WHERE clantag=? LIMIT 1');
+	$db->prepare('insert_clan', 	'INSERT INTO t_clan (clantag, firstseen) VALUES (?,?)');
+	$db->prepare('insert_clan_profile', 'INSERT INTO t_clan_profile SET clantag=?');
 	$db->prepare('get_plr_alias', 	'SELECT alias FROM t_plr_aliases WHERE uniqueid=? LIMIT 1');
-	$db->prepare('get_locked_clan', 'SELECT locked FROM t_clan WHERE clanid=? LIMIT 1');
-	$db->prepare('get_clanid', 	'SELECT clanid FROM t_clan WHERE clantag=? LIMIT 1');
 
 	# initialize game event pattern matching ...
 	$self->{evconf} = {};
@@ -128,6 +130,9 @@ sub init {
 	$self->{_plraliases} = {};		# stores a cache of player aliases fetched from the database
 	$self->{_plraliases_age} = time;
 
+	$self->{_clans} = {};			# load clan cache
+	$self->{_clans_age} = time;
+
 	$self->{banned}{worldid} = {};
 	$self->{banned}{ipaddr} = {};
 	$self->{banned}{name} = {};
@@ -156,64 +161,161 @@ sub init {
 	return $self;
 }
 
+# load configured clantags and prepare a compiled list for scanning through.
 sub load_clantags {
 	my ($self) = @_;
 	my $db = $self->{db};
 	my $clantags = $db->execute_fetchall('get_clantags');
-	
-	$self->{clantags}{plain} = [
-		map { [ @$_{qw(clantag pos alias)} ] } 
-		grep { $_->{type} eq 'plain' and !$_->{blacklist} }
-		@$clantags
-	];
-	$self->{clantags}{plain_blacklist} = [
-		map { [ @$_{qw(clantag pos)} ] } 
-		grep { $_->{type} eq 'plain' and $_->{blacklist} }
-		@$clantags
-	];
-	$self->{clantags}{regex} = [
-		map { [ @$_{qw(clantag alias)} ] } 
-		grep { $_->{type} eq 'regex' and !$_->{blacklist} }
-		@$clantags
-	];
-	$self->{clantags}{regex_blacklist} = [
-		map { [ @$_{qw(clantag)} ] } 
-		grep { $_->{type} eq 'regex' and $_->{blacklist} }
-		@$clantags
-	];
-	print_r($self->{clantags});
-	
-	# build a sub-routine to scan the player for matching clantag regex's
-	$self->{clantags_regex_func} = $self->add_clantag_regex_func($self->{clantags}{regex});
-}
 
-sub add_clantag_regex_func {
-	my ($self, $list) = @_;
-	my $sub;
-	if (@$list) {
-		my $code = '';
-		my $idx = 0;
-		my $env = new Safe;
-		foreach my $ct (@$list) {
-			my $regex = $ct->[0];
-			
-			# perform sanity check on user configured regex
-			$env->reval("/$regex/");
-			if ($@) {
-				$self->warn("Error in clantag definition: /$regex/: $@");
+	$self->{clantags} = [];
+	$self->{clantags_blacklist} = [];
+
+	# shown warnings for any invalid regex's that will be ignored...
+	foreach my $ct (@$clantags) {
+		$ct->{$_} = decode_utf8($ct->{$_}) for qw( clantag alias );
+		
+		if ($ct->{type} eq 'regex') {
+			if (!is_regex($ct->{clantag})) {
+				$self->warn("Error in clantag #$ct->{id} definition: /$ct->{clantag}/: $@");
 				next;
 			}
-
-			$code .= "  return [ $idx, \\\@m ] if \@m = (\$_[0] =~ /$regex/);\n";
-			$idx++;
+			# compile the regex
+			$ct->{regex} = qr/$ct->{clantag}/;
+		} elsif ($ct->{type} eq 'plain') {
+			if ($ct->{clantag} eq '') {
+				$self->warn("Empty clantag #$ct->{id} will be ignored.");
+				next;
+			}
 		}
-		print "sub {\n  my \@m = ();\n$code  return undef;\n}\n";
-		$sub = eval "sub { my \@m = (); $code return undef }";
-		if ($@) {
-			$self->fatal("Error in clantag regex function: $@");
+		if ($ct->{blacklist}) {
+			push(@{$self->{clantags_blacklist}}, [ @$ct{qw( type clantag regex pos )} ]);
+		} else {
+			push(@{$self->{clantags}}, [ @$ct{qw( type clantag regex pos alias )} ]);
 		}
 	}
-	return $sub || sub { undef };
+	#print_r($self->{clantags});
+	#print_r($self->{clantags_blacklist});
+}
+
+my $clantag_debug = 0;
+# Returns the clantag match if the name matches one of clantag definitions.
+# Returns undef if no match.
+sub clantag_match {
+	my ($self, $name, $list, $blacklist) = @_;
+	my ($type, $tag, $regex, $pos, $alias, $match, $idx);
+	$idx = 0;
+	foreach my $ct (@$list) {
+		($type, $tag, $regex, $pos, $alias) = @$ct;
+		;;; warn "  Checking $type: $tag\n" if $clantag_debug;
+		if ($type eq 'regex') {
+			if (my @m = ($name =~ $regex)) {
+				# only use grouping $1 for match
+				$match = defined $alias ? $alias : $1; #join('', @m);
+				$match = '' unless defined $match;
+				;;; warn "    regex matched '$match'\n" if $clantag_debug;
+			}
+		} elsif ($type eq 'plain') {
+			if ($pos eq 'left') {
+				$match = defined $alias ? $alias : $tag
+					if index($name, $tag) == 0;
+			} else { # right
+				$match = defined $alias ? $alias : $tag
+					if index(scalar reverse($name), scalar reverse($tag)) == 0;
+			}
+		}
+
+		# make sure the match isn't actually blacklisted
+		if (defined $match) {
+			if ($blacklist) {
+				;;; warn "  Checking blacklist for $match\n" if $clantag_debug;
+				if (defined $self->clantag_match($name, $blacklist)) {
+					;;; warn "    $match IS blacklisted\n" if $clantag_debug;
+				} else {
+					# make sure the clan isn't locked
+					my $clan = $self->get_clan($match, 1);
+					last if !$clan or !$clan->{locked};
+					;;; warn "    $match is locked\n" if $clantag_debug;
+				}
+			} else {
+				# make sure the clan isn't locked
+				my $clan = $self->get_clan($match, 1);
+				last if !$clan or !$clan->{locked};
+				;;; warn "    $match is locked\n" if $clantag_debug;
+			}
+			$match = undef;
+		}
+		++$idx;
+	}
+	if (wantarray) {
+		return defined $match ? ($match, [ $idx, @{$list->[$idx]} ]) : undef;
+	} else {
+		return $match;
+	}
+}
+
+# scans the given player name for a matching clantag from the database. Creates
+# a new clan+profile if it's a new tag. $p is either a PS::Plr object, or a
+# plain scalar string to match. Returns the matching clanid or undef.
+# In array context it returns the tag, and a clan hashref of information.
+sub scan_for_clantag {
+	my ($self, $p) = @_;
+	my $name = ref $p ? $p->name : $p;
+	my ($match, $ct, $tag, $clan);
+	
+	;;; warn "Scanning \"$name\" for clantags.\n" if $clantag_debug;
+	($match, $ct) = $self->clantag_match($name, @$self{qw( clantags clantags_blacklist )});
+	# $match = matched clantag string
+	# $ct    = [ index, type, clantag, regex, pos, alias ]
+	if (defined $match) {
+		;;; warn "  Matches: $match\n" if $clantag_debug;
+		$tag = defined $ct->[5] ? $ct->[5] : $match;		# use alias if defined
+		if (wantarray) {
+			return ($tag, $self->get_clan($tag));
+		} else {
+			return $tag;
+		}
+	}
+	return undef;
+}
+
+# returns the basic clan info based on the clantag given. Creates a new clan
+# record if it doesn't already exist (unless $check_only is true)
+sub get_clan {
+	my ($self, $clantag, $check_only) = @_;
+	my $clan;
+	if (time - $self->{_clans_age} > 60*10) {
+		# clear the cache after X minutes ... 
+		%{$self->{_clans}} = ();
+		$self->{_clans_age} = time;
+	}
+	
+	$clan = $self->{_clans}{$clantag}
+		|| $self->{db}->execute_fetchrow('get_clan', $clantag);
+	if ($clan or $check_only) {
+		return $self->{_clans}{$clantag} = $clan;
+	}
+
+	my $time = $self->{timestamp} || timegm(localtime);
+	# create the clan record
+	if (!$self->{db}->execute('insert_clan', $clantag, $time)) {
+		$self->warn("Error inserting clan '$clantag' into DB: " . $self->{db}->lasterr);
+		return undef;
+	}
+
+	# create the current record in memory (clanid is auto_increment)
+	$clan = $self->{_clans}{$clantag} = {
+		clanid => $self->{db}->last_insert_id,
+		locked => 0,
+		rank => 0,
+		firstseen => $time
+	};
+
+	# create the clan profile. This will silently ignore duplicate entries
+	if (!$self->{db}->execute('insert_clan_profile', $clantag)) {
+		$self->warn("Error inserting clan profile for '$clantag' into DB: " . $self->{db}->lasterr);
+	}
+	
+	return $clan;
 }
 
 # creates a skill function based on the type and configured function.
@@ -619,94 +721,6 @@ sub isbanned {
 	return 0;
 }
 
-# scans the given player name for a matching clantag from the database. creates
-# a new clan+profile if it's a new tag. $p is either a PS::Player object, or a
-# plain scalar string to match. if a PS::Player object is given it's updated
-# directly. the clanid is always returned if a match is found.
-sub scan_for_clantag {
-	my ($self, $p) = @_;
-	my ($ct, $tag, $id);
-	my $name = ref $p ? $p->name : $p;
-
-	# scan PLAIN clantags first (since they're faster and more specific)
-	my $m = $self->clantags_plain_func($name);
-	if ($m) {
-		$ct = $self->{clantags}{plain}->[ $m->[0] ];
-		$tag = defined $ct->{alias} ? $ct->{alias} : $m->[1];
-		$id = $self->get_clanid($tag);
-		# if the matching clan is not locked then add the player to it.
-		if (!$self->{db}->execute_selectcol('get_locked_clan', $id)) {
-			$p->clanid($id) if ref $p;
-			return $id;
-		}
-	}
-
-	# scan REGEX clantags if we didn't find a match above ...
-	$m = &{$self->{clantags_regex_func}}($name);
-	if ($m) {
-		$ct = $self->{clantags}{regex}->[ $m->[0] ];
-		$tag = defined $ct->{alias} ? $ct->{alias} : join('', @{$m->[1]});
-		$id = $self->get_clanid($tag);
-		# if the matching clan is not locked then add the player to it.
-		if (!$self->{db}->execute_selectcol('get_locked_clan', $id)) {
-			$p->clanid($id) if ref $p;
-			return $id;
-		}
-	}
-	return undef;
-}
-
-# returns the clanid based on the clantag given. If no clan exists it is created.
-sub get_clanid {
-	my ($self, $tag) = @_;
-	my $id = $self->{db}->execute_selectcol('get_clanid', $tag);
-	
-	# create the clan if it didn't exist
-#	$self->{db}->begin;
-	if (!$id) {
-		$id = $self->{db}->next_id($self->{db}->{t_clan}, 'clanid');
-		$self->{db}->insert($self->{db}->{t_clan}, { clanid => $id, clantag => $tag, allowrank => 0 });
-	}
-
-	# create the clan profile if it didn't exist
-	if (!$self->{db}->select($self->{db}->{t_clan_profile}, 'clantag', [ clantag => $tag ])) {
-		$self->{db}->insert($self->{db}->{t_clan_profile}, { clantag => $tag, logo => '' });
-	}
-#	$self->{db}->commit;
-
-
-	return $id;
-}
-
-sub clantags_plain_func {
-	my ($self, $name) = @_;
-	my $idx = -1;
-	my $tag = undef;
-	foreach my $ct (@{$self->{clantags}{plain}}) {
-		$idx++;
-		if ($ct->{pos} eq 'left') {
-			if (index($name, $ct->{clantag}) == 0) {
-				$tag = $ct->{clantag};
-				last;
-			}
-		} else {	# right
-			# reverse the name and clantag so that index() can
-			# accurately determine if the tag ONLY starts at the END
-			# of the name. rindex could otherwise potentially find
-			# matching tags in the middle of the player name
-			# instead. which is not what we want here.
-			my $revtag  = reverse scalar $ct->{clantag};
-			my $revname = reverse scalar $name;
-			if (index($revname, $revtag) == 0) {
-				$tag = $ct->{clantag};
-				last;
-			}
-		}
-	}
-	return undef unless $tag;
-	return wantarray ? ( $idx, $tag ) : [ $idx, $tag ];
-}
-
 # prepares the EVENT patterns for fast matching
 sub init_events {
 	my $self = shift;
@@ -934,7 +948,7 @@ sub save_state {
 	$st->finish;
 
 	# Must decode string as UTF8
-	$str = Encode::decode_utf8($str);
+	$str = decode_utf8($str);
 
 	# unserialize the game state into a real variable
 	$curstate = unserialize($str);
@@ -975,7 +989,7 @@ sub restore_state {
 	$st->finish;
 
 	# Must decode string as UTF8
-	$str = Encode::decode_utf8($str);
+	$str = decode_utf8($str);
 
 	# unserialize the game state into a real variable
 	$state = $str ? unserialize($str) : {};
@@ -2246,7 +2260,7 @@ sub reset {
 # having to wait for a player to disconnect, or a map to change, etc...
 sub save {
 	my ($self, $end) = @_;
-	my ($id, $o);
+	my ($id, $tag, $clan, $o);
 	
 	$self->{last_saved} = time;
 	
@@ -2254,9 +2268,12 @@ sub save {
 	foreach $o ($self->get_plrcache) {
 		$o->save || next;
 		# Scan each player for a clan if they don't have one already.
-		# this is only done if the player was saved properly (thus, they
-		# have a valid plrid).
-		
+		#next if $o->clanid;
+		#($tag, $clan) = $self->scan_for_clantag($o);
+		#if ($tag and $clan->{clanid}) {
+		#	# ->clanid instantly updates the t_plr record.
+		#	$o->clanid($clan->{clanid});
+		#}
 	}
 
 	# SAVE MAPS

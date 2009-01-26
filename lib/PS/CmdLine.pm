@@ -121,7 +121,6 @@ sub _getOptions {
 		# CLAN OPTIONS
 		'scanclantags|clantags:s' => \$self->{param}{scanclantags},	# SCAN clans; matching players to clantags
 #		'deleteclans'	=> \$self->{param}{deleteclans},	# DELETE clans; plr.clanid=0 (profiles remain intact)
-#		'resetclans'	=> \$self->{param}{resetclans},		# RESET clans; set rank=0; and all plr.clanid=0
 
 		# DATABASE OPTIONS
 		'dbinit'	=> \$self->{param}{dbinit},
