@@ -31,7 +31,7 @@ use Data::Dumper;
   
 require Exporter;
 
-our $VERSION = '1.20.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERSION = '1.25.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 our @ISA = qw(Exporter);
 
@@ -41,7 +41,7 @@ our %EXPORT_TAGS = (
 		&abbrnum &commify &deep_copy
 		&date &diffdays_ymd &ymd2time &time2ymd &daysinmonth &isleapyear &dayofyear
 		&compacttime
-		&simple_interpolate &expandlist &trim
+		&simple_interpolate &expandlist &trim &is_regex
 		&iswindows
 		&bench &print_r
 	) ],
@@ -57,7 +57,7 @@ our %EXPORT_TAGS = (
 
 	# :strings exports functions dealing with strings
 	'strings' => [ qw(
-		&simple_interpolate &expandlist &trim
+		&simple_interpolate &expandlist &trim &is_regex
 	) ],
 
 	# :numbers exports functions dealing with numbers
@@ -415,6 +415,13 @@ sub trim {
 	$str =~ s/^\s+//;
 	$str =~ s/\s+$//;
 	return $str;
+}
+
+# returns true if the string given is a valid regex. Sets $@ on failure.
+sub is_regex {
+	my ($str) = @_;
+	eval { no re 'eval'; qr/$str/ };
+	return $@ ? 0 : 1;
 }
 
 {
