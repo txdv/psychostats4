@@ -33,8 +33,6 @@ use Time::Local;
 use Safe;
 use Encode qw( encode_utf8 decode_utf8 );
 
-use util qw( :date :time :numbers :net print_r deep_copy is_regex );
-use serialize;
 use PS::SourceFilter;
 use PS::Award;
 use PS::Conf;
@@ -42,6 +40,8 @@ use PS::Map;
 use PS::Plr;
 use PS::Role;
 use PS::Weapon;
+use util qw( :date :time :numbers :net print_r deep_copy is_regex bench );
+use serialize;
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
@@ -595,17 +595,6 @@ sub get_role {
 	return $self->{roles}{$name} = new PS::Role($name, $team, @$self{qw( gametype modtype timestamp )});
 }
 
-# returns all player references on a certain team that are not dead.
-# if $all is true then dead players are included.
-sub get_team {
-	my ($self, $team, $all) = @_;
-	my (@list, @ids);
-	@ids = grep { $self->{c_plrid}{$_}->active and $self->{c_plrid}{$_}->{team} eq $team } keys %{$self->{c_plrid}};
-	@ids = grep { !$self->{c_plrid}{$_}->{isdead} } @ids unless $all;
-	@list = map { $self->{c_plrid}{$_} } @ids;
-	return wantarray ? @list : \@list;
-}
-
 # Add's a player BAN to the database. 
 # Does nothing If the ban already exists unless $overwrite is true
 # ->addban(plr, {extra})
@@ -730,12 +719,12 @@ sub init_events {
 		sort { $self->{evconf}{$a}{idx} <=> $self->{evconf}{$b}{idx} }
 		keys %{$self->{evconf}}
 	];
-	$self->{evregex} = $self->_build_regex_func;
+	$self->{evregex} = $self->create_event_regex_func;
 }
 
 # returns a sub ref for a function that returns a pattern match against the
 # game events configured for fast pattern matching.
-sub _build_regex_func {
+sub create_event_regex_func {
 	my $self = shift;
 	my $code = '';
 	my $env = new Safe;
@@ -904,22 +893,6 @@ sub get_plr_alias {
 	return (defined $alias and $alias ne '') ? $alias : $uniqueid;
 }
 
-# returns an array of all connected players (only active by default)
-sub get_plr_list { 
-	my ($self, $active_only) = @_;
-	$active_only = 1 unless defined $active_only;
-	my @list;
-	if ($active_only) {
-		@list = map { $self->{c_plrid}{$_} }
-			grep { $self->{c_plrid}{$_}->active }
-			keys %{$self->{c_plrid}};
-	} else {
-		@list = map { $self->{c_plrid}{$_} }
-			keys %{$self->{c_plrid}};
-	}
-	return wantarray ? @list : \@list;
-}
-
 # saves the current game state which is associated with the $feed.
 sub save_state {
 	my ($self, $feed, $srv, $db) = @_;
@@ -931,10 +904,10 @@ sub save_state {
 	$srv ||= $feed->server;
 
 	# collect stateful game variables ...
-	$state->{timestamp}		= $self->{timestamp};
-	$state->{curmap}		= $self->{curmap};
-	$state->{ipcache}		= $self->get_ipcache;
-	$state->{players}		= [];
+	$state->{timestamp}	= $self->{timestamp};
+	$state->{curmap}	= $self->{curmap};
+	$state->{ipcache}	= $self->get_ipcache;
+	$state->{players}	= [];
 
 	foreach my $p ($self->get_online_plrs) {
 		push(@{$state->{players}}, $p->freeze);
@@ -1038,12 +1011,6 @@ sub restore_state {
 	return 1;
 }
 
-# resets the isdead status of all players
-sub reset_isdead {
-	my ($self, $isdead) = @_;
-	map { $self->{c_plrid}{$_}->is_dead($isdead || 0) } keys %{$self->{c_plrid}};
-}
-
 # assign bonus points to players
 # ->plrbonus('trigger', 'enactor type', $PLR/LIST, ... )
 sub plrbonus {
@@ -1070,6 +1037,48 @@ sub plrbonus {
 	}
 }
 
+# Updates all players that are allowed to rank based on their current stats.
+sub update_allowed_plr_ranks {
+	my ($self) = @_;
+	my ($st, @min, @max, $where);
+	my $rules = $self->conf->main->ranking->VARS;
+	my $db = $self->{db};
+	my $cpref = $db->{dbtblcompiledprefix};
+	my $type = $self->{modtype} ? $self->{gametype} . '_' . $self->{modtype} : $self->{gametype};
+
+	# prepare the queries if they haven't been already
+	if (!($st = $db->prepared('update_allowed_plr_ranks_' . $type))) {
+		# collect min/max rule keys
+		@min = ( map { s/^player_min_//; $_ } grep { /^player_min_/ && $rules->{$_} ne '' } keys %$rules );
+		@max = ( map { s/^player_max_//; $_ } grep { /^player_max_/ && $rules->{$_} ne '' } keys %$rules );
+	
+		# build where clause to match players that meet requirements
+		$where = join(' AND ', 
+			(map { $_ . ' >= ' . $rules->{'player_min_' . $_} } @min),
+			(map { $_ . ' <= ' . $rules->{'player_max_' . $_} } @max)
+		);
+		$self->debug3("Ranking rules for players: $where", 0);
+		$where = '1' unless $where;	# force all if no rules are defined
+
+		# query to update rank flag for all players based on rules
+		$st = $db->prepare('update_allowed_plr_ranks_' . $type, 
+			"UPDATE t_plr p, ${cpref}plr_data_${type} c SET rank=IF($where, IF(rank,rank,0), NULL) " .
+			"WHERE p.plrid=c.plrid"
+		);
+	}
+
+	;;;bench('update_allowed_plr_ranks');
+	$st = $db->prepared('update_allowed_plr_ranks_' . $type);
+	if (!$st->execute) {
+		$self->warn("Error updating allowed ranks for players: " . $st->errstr);
+	} else {
+		my $affected = $st->rows;
+		$self->debug3("$affected player rank flags updated.", 0) if $affected;
+	}
+	;;;bench('update_allowed_plr_ranks');
+
+}
+
 # Assigns a rank to all players based on their skill.
 sub update_plr_ranks {
 	my ($self, $timestamp) = @_;
@@ -1079,7 +1088,7 @@ sub update_plr_ranks {
 	$timestamp ||= $self->{timestamp} || timegm(localtime);
 
 	# first flag all players that are not allowed to rank
-	# TODO ...
+	$self->update_allowed_plr_ranks;
 	
 	# prepare the query that will fetch the player list
 	if (!defined($get = $db->prepared('get_plr_ranks'))) {
@@ -1109,8 +1118,6 @@ sub update_plr_ranks {
 		);
 	}
 
-	;;;use util qw( bench );
-
 	# Loop through all ranked players and set their new rank. Note; this
 	# loop does not scale well and its speed depends on total players.
 	# Players with the same value will have the same rank.
@@ -1118,6 +1125,7 @@ sub update_plr_ranks {
 	;;;bench('update_plr_ranks');
 	#$get->bind_columns(\($plrid, $rank, $rank_prev, $rank_time, $skill));
 	$get->bind_columns(\($plrid, $rank, $skill));
+	;;;my $affected = 0;
 	while ($get->fetch) {
 		++$newrank if !defined $prevskill or $prevskill != $skill;
 		#if (!$set->execute($timestamp, $timestamp, $newrank, $plrid)) {
@@ -1126,6 +1134,7 @@ sub update_plr_ranks {
 				$self->warn("Error updating player ranks: CMD=$set->{Statement}; ERR=" . $set->errstr);
 				last;
 			}
+			;;;++$affected;
 		}
 		#my $cmd = $set->{Statement};
 		#$cmd =~ s/\?/$_/e foreach ($timestamp, $timestamp, $newrank, $plrid);
@@ -1133,6 +1142,7 @@ sub update_plr_ranks {
 
 		$prevskill = $skill;
 	}
+	;;;$self->debug3("$affected players changed ranks.", 0) if $affected;
 	;;;bench('update_plr_ranks');
 	
 	return 1;
@@ -1407,91 +1417,6 @@ sub daily_activity {
 	$self->conf->setinfo('daily_activity.lastupdate', time);
 
 	$self->info("Daily process completed: 'activity' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
-}
-
-# daily process for updating players. This should be run before daily_clans
-# Toggles players from being displayed based on the players config settings.
-sub daily_players {
-	my $self = shift;
-	my $db = $self->{db};
-	my $lastupdate = $self->conf->getinfo('daily_players.lastupdate');
-	my $start = time;
-	my $last = time;
-	my $types = PS::Player->get_types;
-	my ($cmd, $sth, $sth2, $rules, @min, @max, $allowed, $fields);
-
-	return 0 unless $db->table_exists($db->{c_plr_data});
-
-	$self->info(sprintf("Daily 'players' process running (Last updated: %s)", 
-		$lastupdate ? scalar localtime $lastupdate : 'never'
-	));
-
-	# gather our min/max rules ...
-	$rules = { %{$self->conf->main->ranking || {}} };
-	delete @$rules{ qw(IDX SECTION) };
-	@min = ( map { s/^player_min_//; $_ } grep { /^player_min_/ && $rules->{$_} ne '' } keys %$rules );
-	@max = ( map { s/^player_max_//; $_ } grep { /^player_max_/ && $rules->{$_} ne '' } keys %$rules );
-
-        # add extra fields to our query that match values in our min/max arrays
-	my %uniq = ( plrid => 1, uniqueid => 1, skill => 1 );
-	$fields = join(', ', grep { !$uniq{$_}++ } (@min,@max));
-
-	# first remove players (and their profile) that don't actually have any compiled stats	
-	$cmd  = "DELETE FROM p, pp USING ($db->{t_plr} p, $db->{t_plr_profile} pp) ";
-	$cmd .= "LEFT JOIN $db->{c_plr_data} c ON c.plrid=p.plrid WHERE c.plrid IS NULL AND p.uniqueid=pp.uniqueid";
-	$db->query($cmd);	# don't care if it fails ...
-
-	# load player list
-	$cmd  = "SELECT plr.*, pp.name, $fields ";
-	$cmd .= "FROM $db->{t_plr} plr, $db->{t_plr_profile} pp, $db->{c_plr_data} data ";
-	$cmd .= "WHERE pp.uniqueid=plr.uniqueid AND data.plrid=plr.plrid ";
-#	print "$cmd\n";
-	if (!($sth = $db->query($cmd))) {
-		$db->fatal("Error executing DB query:\n$cmd\n" . $db->errstr . "\n--end of error--");
-	}
-
-	$db->begin;
-	my (@rank,@norank);
-	while (my $row = $sth->fetchrow_hashref) {
-		# does the plr meet all the requirements for ranking?
-		$allowed = (
-			((grep { ($row->{$_}||0) < $rules->{'player_min_'.$_} } @min) == 0) 
-			&& 
-			((grep { ($row->{$_}||0) > $rules->{'player_max_'.$_} } @max) == 0)
-		) ? 1 : 0;
-		if (!$allowed and $::DEBUG) {
-			$self->info("Player failed to rank \"$row->{name}\" " . ($self->{uniqueid} ne 'name' ?  "($row->{uniqueid})" : "") . "=> " . 
-				join(', ', 
-					map { "$_: " . $row->{$_} . " < " . $rules->{"player_min_$_"} }
-					grep { $row->{$_} < $rules->{"player_min_$_"} } @min,
-					map { "$_: " . $row->{$_} . " > " . $rules->{"player_max_$_"} }
-					grep { $row->{$_} > $rules->{"player_max_$_"}} @max
-				)
-			);
-		}
-
-		# update the plr if their allowrank flag has changed
-		if ($allowed != $row->{allowrank}) {
-			# SQLite doesn't like it when i try to read/write to the database at the same time
-			if ($db->type eq 'sqlite') {
-				if ($allowed) {
-					push(@rank, $row->{plrid});
-				} else {
-					push(@norank, $row->{plrid});
-				}
-			} else {
-				$db->update($db->{t_plr}, { allowrank => $allowed }, [ plrid => $row->{plrid} ]);
-			}
-		}
-	}
-	undef $sth;
-	$db->query("UPDATE $db->{t_plr} SET allowrank=1 WHERE plrid IN (" . join(',', @rank) . ")") if @rank;
-	$db->query("UPDATE $db->{t_plr} SET allowrank=0 WHERE plrid IN (" . join(',', @norank) . ")") if @norank;
-	$db->commit;
-
-	$self->conf->setinfo('daily_players.lastupdate', time);
-
-	$self->info("Daily process completed: 'players' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
 }
 
 sub _delete_stale_players {

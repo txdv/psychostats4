@@ -32,12 +32,12 @@ package PS::SourceFilter;
 use Filter::Simple;
 BEGIN {
         Filter::Simple::FILTER {
-		unless (defined $ENV{PSYCHOSTATS_DEBUG}) {
+		unless ($ENV{PSYCHOSTATS_DEBUG}) {
 			# remove any line that starts with 3 semicolons or
 			# looks like a debug call. WARNING: This assumes all
 			# $self->debug() calls are a single line, if its on
 			# multiple lines then this will break the code.
-			s/^\s*(?:;;;|\$self->debug).+$//gm;
+			s/^\s*(?:;;;|\$self->debug).*$//gm;
 
 			#s/^\s*;;;.+$//gm;
 			#s/^\s*\$self->debug.+$//gm;

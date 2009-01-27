@@ -25,12 +25,11 @@ use strict;
 use warnings;
 use base qw( PS::Game );
 
-use Encode qw( encode decode encode_utf8 decode_utf8 );
-use Time::Local qw( timegm timegm_nocheck );
-
 use util qw( :net :date );
 use PS::SourceFilter;
 use PS::Plr;
+use Encode qw( encode_utf8 decode_utf8 );
+use Time::Local qw( timegm timegm_nocheck );
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/) || '000')[0];
 

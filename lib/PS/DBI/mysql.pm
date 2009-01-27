@@ -48,6 +48,9 @@ sub init {
 		$self->{dsn} .= ';port=' . $self->{dbport} if defined $self->{dbport};
 		$self->{dsn} .= ';mysql_socket=' . $socket if defined $socket;
 		$self->{dsn} .= ';mysql_compression=' . $self->{dbcompress} if $self->{dbcompress};
+		# mysql_client_found_rows=0 changes non-select queries so they
+		# return the total rows updated, not all matched rows.
+		$self->{dsn} .= ';mysql_client_found_rows=0';
 		#$self->{dsn} .= ';' . $self->{dbopts} if defined $self->{dbopts};
 		$self->connect;
 		$self->fatal("Error connecting to database using dsn \"$self->{dsn}\":\n" . $DBI::errstr) unless ref $self->{dbh};
