@@ -569,7 +569,7 @@ sub unserialize_sub {
 	# Perhaps your data was unexpectedly truncated or mutilated?
 
 	serialize_dbg("> unserialize_sub ran out of chars when it was expecting more.");
-	die("unserialize_sub() ran out of characters when it was expecting more.");
+	#die("unserialize_sub() ran out of characters when it was expecting more.");
 	
 	return 0;
 }
