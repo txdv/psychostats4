@@ -1127,7 +1127,7 @@ sub update_plr_ranks {
 	$get->bind_columns(\($plrid, $rank, $skill));
 	;;;my $affected = 0;
 	while ($get->fetch) {
-		++$newrank if !defined $prevskill or $prevskill != $skill;
+		++$newrank if !defined($prevskill) || $prevskill != $skill;
 		#if (!$set->execute($timestamp, $timestamp, $newrank, $plrid)) {
 		if ($rank != $newrank) {
 			if (!$set->execute($newrank, $plrid)) {
@@ -1138,6 +1138,7 @@ sub update_plr_ranks {
 		}
 		#my $cmd = $set->{Statement};
 		#$cmd =~ s/\?/$_/e foreach ($timestamp, $timestamp, $newrank, $plrid);
+		#$cmd =~ s/\?/$_/e foreach ($newrank, $plrid);
 		#print "$cmd\n";
 
 		$prevskill = $skill;
