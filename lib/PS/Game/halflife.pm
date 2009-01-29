@@ -396,8 +396,7 @@ sub event_kill {
 	# time minutes have elapsed.
 	if (++$self->{rank_kills} >= $self->{rank_kills_threshold} or
 	    time - $self->{rank_time} >= $self->{rank_time_threshold}) {
-		$self->debug3("Updating player ranks...", 0);
-		$self->update_plr_ranks;
+		$self->update_plrs;
 		$self->{rank_kills} = 0;
 		$self->{rank_time} = time;
 	}

@@ -1037,17 +1037,83 @@ sub plrbonus {
 	}
 }
 
-# Updates all players that are allowed to rank based on their current stats.
+# wrapper to update current players by checking ranking rules, assigning rank
+# and activity values, etc.
+sub update_plrs {
+	my ($self, $quiet) = @_;
+	$self->debug3("Updating player activity...", 0) unless $quiet;
+	$self->update_plr_activity;
+	$self->debug3("Updating player rank flags...", 0) unless $quiet;
+	$self->update_allowed_plr_ranks;
+	$self->debug3("Updating player ranks...", 0) unless $quiet;
+	$self->update_plr_ranks;
+}
+
+# Updates the activity percentage for all players. If $force_all is defined
+# (a value between 0-100) all player activity will be set to that value instead
+# of calculating it for each player.
+sub update_plr_activity {
+	my ($self, $force_all) = @_;
+	my $db = $self->{db};
+	my ($st, $lastseen);
+
+	return unless $self->conf->main->plr_min_activity or defined $force_all;
+	
+	$lastseen = $db->max($db->{t_plr}, 'lastseen');
+	return unless $lastseen;
+
+	if (defined $force_all) {
+		$force_all = ($force_all =~ /(\d+)/)[0] || 0;
+		$st = $db->prepare("UPDATE t_plr SET activity=$force_all, activity_updated=$lastseen");
+	} else {
+		my $min_act = abs($self->conf->main->plr_min_activity) * 60*60*24;
+		# I believe it'll be faster to no longer use the
+		# activity_updated field since mysql will ignore rows where
+		# the activity value doesn't change.
+		$st = $db->prepare(
+			"UPDATE t_plr SET " . 
+			#"activity_updated = $lastseen, " . 
+			"activity = IF($min_act > $lastseen - lastseen, " . 
+			"LEAST(100, 100 / $min_act * ($min_act - ($lastseen - lastseen)) ), 0) " . 
+			#"WHERE activity_updated < $lastseen" .
+			""
+		);
+	}
+	#print $st->{Statement}, "\n";
+
+	;;;bench('update_plr_activity');
+	if (!$st->execute) {
+		$self->warn("Error updating player activity values: " . $st->errstr);
+	} else {
+		my $affected = $st->rows;
+		$self->debug3("$affected player activity values updated.", 0) if $affected;
+	}
+	;;;bench('update_plr_activity');
+}
+
+# Updates all players that are allowed to rank based on their current stats. If
+# $force_all is defined then the configured rules are ignored and all players
+# are set to be ranked based on the value of $force_all (either 0 or 1)
 sub update_allowed_plr_ranks {
-	my ($self) = @_;
+	my ($self, $force_all) = @_;
 	my ($st, @min, @max, $where);
 	my $rules = $self->conf->main->ranking->VARS;
 	my $db = $self->{db};
 	my $cpref = $db->{dbtblcompiledprefix};
 	my $type = $self->{modtype} ? $self->{gametype} . '_' . $self->{modtype} : $self->{gametype};
 
-	# prepare the queries if they haven't been already
-	if (!($st = $db->prepared('update_allowed_plr_ranks_' . $type))) {
+	if (defined $force_all) {
+		# force all players
+		$force_all = $force_all ? 1 : 0;
+		if ($force_all) {	# everyone ranks
+			$st = $db->prepare('UPDATE t_plr p SET rank=1 WHERE rank IS NULL');
+		} else {		# no one ranks
+			$st = $db->prepare('UPDATE t_plr p SET rank=0 WHERE rank IS NOT NULL');
+		}
+		
+	} elsif (!($st = $db->prepared('update_allowed_plr_ranks_' . $type))) {
+		# prepare the queries if they haven't been already
+	
 		# collect min/max rule keys
 		@min = ( map { s/^player_min_//; $_ } grep { /^player_min_/ && $rules->{$_} ne '' } keys %$rules );
 		@max = ( map { s/^player_max_//; $_ } grep { /^player_max_/ && $rules->{$_} ne '' } keys %$rules );
@@ -1068,7 +1134,6 @@ sub update_allowed_plr_ranks {
 	}
 
 	;;;bench('update_allowed_plr_ranks');
-	$st = $db->prepared('update_allowed_plr_ranks_' . $type);
 	if (!$st->execute) {
 		$self->warn("Error updating allowed ranks for players: " . $st->errstr);
 	} else {
@@ -1079,7 +1144,9 @@ sub update_allowed_plr_ranks {
 
 }
 
-# Assigns a rank to all players based on their skill.
+# Assigns a rank to all players based on their skill.update_allowed_plr_ranks()
+# should be called before this in order to properly rank players based on the
+# current rules.
 sub update_plr_ranks {
 	my ($self, $timestamp) = @_;
 	my $db = $self->{db};
@@ -1087,9 +1154,6 @@ sub update_plr_ranks {
 	my ($get, $set, $newrank, $prevskill, $cmd);
 	$timestamp ||= $self->{timestamp} || timegm(localtime);
 
-	# first flag all players that are not allowed to rank
-	$self->update_allowed_plr_ranks;
-	
 	# prepare the query that will fetch the player list
 	if (!defined($get = $db->prepared('get_plr_ranks'))) {
 		# TODO: Allow this query to be customizable so different ranking
@@ -1143,7 +1207,7 @@ sub update_plr_ranks {
 
 		$prevskill = $skill;
 	}
-	;;;$self->debug3("$affected players changed ranks.", 0) if $affected;
+	;;;$self->debug3("$affected players changed rank.", 0) if $affected;
 	;;;bench('update_plr_ranks');
 	
 	return 1;
