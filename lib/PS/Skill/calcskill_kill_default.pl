@@ -39,6 +39,7 @@ sub calcskill_kill_default {
 	$kskill += $kbonus;
 	$vskill -= $vbonus;
 
+	$k->points($kbonus);
 	$k->skill($kskill);
 	$v->skill($vskill);
 }

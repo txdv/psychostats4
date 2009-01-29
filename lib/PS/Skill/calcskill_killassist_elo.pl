@@ -34,5 +34,6 @@ sub calcskill_killassist_elo {
 	# assistant gets 1/3 of the normal skill points given
 	$kskill += $kbonus / 3;
 
+	$k->points($kbonus);
 	$k->skill($kskill);
 }

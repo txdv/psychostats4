@@ -23,5 +23,6 @@ sub calcskill_killassist_default {
 
 	$kskill += $kbonus;
 
+	$k->points($kbonus);
 	$k->skill($kskill);
 }

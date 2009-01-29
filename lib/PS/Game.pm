@@ -777,8 +777,8 @@ sub load_bonuses {
 	my $self = shift;
 	my ($gametype, $modtype) = @_;
 	my $db = $self->{db};
-	my $g = defined $gametype ? $gametype : $self->conf->main->gametype;
-	my $m = defined $modtype  ? $modtype  : $self->conf->main->modtype;
+	my $g = defined $gametype ? $gametype : $self->{gametype}; #$self->conf->main->gametype;
+	my $m = defined $modtype  ? $modtype  : $self->{modtype};  #$self->conf->main->modtype;
 	my $match = '';
 	my @bonuses = ();
 
@@ -1016,23 +1016,24 @@ sub restore_state {
 sub plrbonus {
 	my $self = shift;
 	my $trigger = shift;
-	return unless exists $self->{bonuses}{$trigger};		# bonus trigger doesn't exist
+	my ($newskill, $type, $entity, $val, $list);
 
-#	print "plrbonus: $trigger:\n";
+	# do nothing if the bonus trigger doesn't exist
+	return unless exists $self->{bonuses}{$trigger};
+
 	while (@_) {
-		my $type = shift;
-		my $entity = shift || next;
-		my $val = $self->{bonuses}{$trigger}{$type} || next;
-		my $list = (ref $entity eq 'ARRAY') ? $entity : [ $entity ];
-#		print "plrbonus: $type\n";
+		$type = shift;
+		next unless exists $self->{bonuses}{$trigger}{$type};
+		$entity = shift || next;
+		$val = $self->{bonuses}{$trigger}{$type};
+		$list = (ref $entity eq 'ARRAY') ? $entity : [ $entity ];
 
 		# assign bonus to players in our list
-		my $newskill;
 		foreach my $p (@$list) {
 			next unless defined $p;
-			$p->data('totalbonus', $val);
-			$p->data('skill', $val);
-#			printf("\t%-32s received %3d points for %s ($type)\n", $p->name, $val, $trigger);
+			$p->points($val) if $val > 0;	# add to points
+			$p->skill($val, 1);		# add to skill
+			#printf("%-32s received %3d points for %s (%s)\n", $p->name, $val, $trigger, $type);
 		}
 	}
 }

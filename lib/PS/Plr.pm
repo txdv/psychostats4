@@ -138,6 +138,7 @@ sub new {
 		uid		=> 0,		# current UID
 
 		skill		=> undef,	# current skill
+		points		=> 0,		# total points accumulated
 		dead		=> 1,		# DEAD flag
 		
 		#plr		=> {},		# t_plr information (only defined once loaded)
@@ -209,7 +210,7 @@ sub freeze {
 		qw(
 			gametype modtype firstseen timestamp
 			plrid eventsig guid name ipaddr team role uid
-			skill dead
+			skill points dead
 		)
 	};
 	
@@ -237,7 +238,7 @@ sub unfreeze {
 	return unless ref $state eq 'HASH';
 	my $plr = $class->new($state, @$state{qw( gametype modtype timestamp )});
 	
-	$plr->{$_} = $state->{$_} for qw( plrid firstseen role skill dead );
+	$plr->{$_} = $state->{$_} for qw( plrid firstseen role skill points dead );
 
 	$plr->{$_} = deep_copy($state->{$_}) for
 		grep { defined $state->{$_} }
@@ -293,6 +294,8 @@ sub init_plr {
 	# assign the loaded skill to our public key for use
 	$self->{skill} = ($plr and defined $self->{plr}{skill})
 		? $self->{plr}{skill} : $self->conf->main->baseskill;
+	#$self->{points} = ($plr and $self->{plr}{points})
+	#	? $self->{plr}{points} : 0;
 	
 	return $self->{plr};
 }
@@ -377,6 +380,9 @@ sub save {
 	
 	# reset the timer start since we've calculated the online time above.
 	$self->{timestart} = $self->{timestamp};
+	
+	# reset points since they were saved in save_stats
+	$self->{points} = 0;
 }
 
 # Set the player's profile name to be the name that has currently been used the
@@ -557,18 +563,21 @@ sub save_stats {
 			# Make sure the player has a default skill assigned
 			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
 			
-			# update a couple of columns in ps_plr too
+			# update some columns in ps_plr
 			push(@updates, $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind));
 			push(@updates, $self->db->expr('skill', '=', $self->{skill}, \@bind));
+			push(@updates, $self->db->expr('points', '+', $self->{points}, \@bind));
 			
 			$cmd = sprintf('UPDATE %s d, %s p SET %s WHERE d.plrid=? AND p.plrid=d.plrid',
 				$self->db->ctbl($tbl),
 				$self->db->{t_plr},
 				join(',', @updates)
 			);
-			if (!$self->db->do($cmd, @bind, $self->{plrid})) {
+			push(@bind, $self->{plrid});
+			if (!$self->db->do($cmd, @bind)) {
 				$self->warn("Error updating compiled PLR data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
 			}
+			#;;;warn "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
 			
 		} else {
 			# INSERT a new row
@@ -576,16 +585,21 @@ sub save_stats {
 			$self->db->execute('insert_c' . $tbl, $self->{plrid}, @bind);
 			$_cache->{$stats_key . '-' . $self->{plrid}} = 1;
 
-			# Update the 'lastseen' column in ps_plr since it'll
-			# almost always be different from firstseen
+			# Make sure the player has a default skill assigned
+			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
+
 			@bind = ();
-			my $lastseen = $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind);
+			# update some columns in ps_plr
+			push(@updates, $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind));
+			push(@updates, $self->db->expr('skill', '=', $self->{skill}, \@bind));
+			push(@updates, $self->db->expr('points', '+', $self->{points}, \@bind));
+
 			push(@bind, $self->{plrid});
 			$self->db->do(sprintf('UPDATE %s SET %s WHERE plrid=?',
 				$self->db->{t_plr},
-				$lastseen
+				join(',', @updates)
 			), @bind);
-			#print "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
+			#;;;warn "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
 		}
 
 		# SAVE HISTORICAL STATS
@@ -924,14 +938,26 @@ sub role {
 	return $self->{role};
 }
 
-# get/set the player's skill value
+# get/set the player's skill value.
+# If $inc is true the new value is added to the current, else $new is absolute
 sub skill {
-	my ($self, $new) = @_;
-	if (defined $new and $self->{skill} || '' ne $new) {
-		$self->{skill} = $new;
-		#push(@{$self->{skill_changes}}, $new);
+	my ($self, $new, $inc) = @_;
+	if (defined $new and (($self->{skill} || '' ne $new) || $inc)) {
+		$self->{skill} = $inc ? $self->{skill} + $inc : $new;
 	}
 	return $self->{skill};
+}
+
+# get/set the player's points value
+# if $abs is true then $new is an absolute value, else its added to the curent.
+sub points {
+	my ($self, $new, $abs) = @_;
+	#$self->init_plr || return 0 unless defined $self->{plr};
+	if (defined $new and ($self->{points} != $new || !$abs)) {
+		$new = $self->{points} + $new unless $abs;
+		$self->{points} = sprintf('%.0f', $new);
+	}
+	return $self->{points};
 }
 
 # get/set the last action timestamp
@@ -1410,7 +1436,7 @@ sub prepare_statements {
 		if !$db->prepared('find_plrid');
 
 	# fetch the basic player information matching the plrid
-	$db->prepare('get_plr_basic', 'SELECT clanid,skill,rank,activity FROM t_plr WHERE plrid=?')
+	$db->prepare('get_plr_basic', 'SELECT clanid,skill,points,rank,activity FROM t_plr WHERE plrid=?')
 		if !$db->prepared('get_plr_basic');
 
 	# insert a new player record based on their uniqueid.

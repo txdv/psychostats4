@@ -41,6 +41,7 @@ sub calcskill_kill_elo {
 	$kskill += $kbonus;
 	$vskill -= $vbonus;
 
+	$k->points($kbonus);
 	$k->skill($kskill);
 	$v->skill($vskill);
 }
