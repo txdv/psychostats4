@@ -213,7 +213,10 @@ sub event_changed_name {
 		# start a new player entity using the original as the base.
 		# stats are not cloned/transfered to the new entity.
 		my $p2 = $p->clone;
+		$p2->reset_ids;		# do not carry over player ids from clone
 		$p2->name($name);	# change players name
+		$p2->ipaddr($p->ipaddr);
+		$p2->guid($p->guid);
 
 		# remove the original player from memory
 		$self->del_plrcache($p);
@@ -222,8 +225,6 @@ sub event_changed_name {
 		# cache the new player into memory
 		$self->add_plrcache($p2);
 		$self->plr_online($p2);		# mark new player ONLINE
-
-		#$self->scan_for_clantag($p2) if $self->{clantag_detection} and !$p2->clanid;
 
 	} else {
 		$self->del_plrcache($p);
@@ -702,8 +703,6 @@ sub get_plr {
 	# Based on their UID the player already existed (something in their
 	# signature changed since their last event)
 	if ($p = $self->plrcached($uid, 'uid')) {
-		#;;;warn "\"$p\" signature is changing to \"$plrsig\"\n";
-		my $old = "$p";
 		$self->del_plrcache($p);	# remove old cached signature
 		$p->eventsig($plrsig);		# save new sig for caching
 		$p->name($name);
@@ -711,24 +710,6 @@ sub get_plr {
 		$p->ipaddr($ipaddr);
 		$p->team($team);
 		$self->add_plrcache($p);	# recache with new signature
-		#;;;warn "\"$old\" changed to \"$p\".\n" if $old ne $p and $old !~ /PENDING/;
-
-	#} elsif ($p = $self->plrcached($sig->{$self->{uniqueid}}, 'guid')) {
-		# the only time the UIDs won't match is when a player has extra
-		# events that follow a disconnect event. this happens with a
-		# couple of minor events like dropping the bomb in CS. The bomb
-		# drop event is triggered after the player disconnect event and
-		# thus causes confusion with internal routines. So I cache the
-		# uniqueid of the player and then fix the 'uid' if needed
-		# here...
-		#if ($p->uid ne $uid) {
-		#	$p->team($team);
-		#	#$p->plrids($plrids);
-		#	$self->delcache($p->uid($uid), 'uid');
-		#	$self->delcache($p->signature($plrsig), 'signature');
-		#	$self->addcache($p, $p->uid, 'uid');
-		#	$self->addcache($p, $p->signature, 'signature');
-		#}
 
 	} else {
 		# Create a new player using the event signature
@@ -744,7 +725,6 @@ sub get_plr {
 		}
 
 		$self->add_plrcache($p);
-		#$self->scan_for_clantag($p) if $self->{clantag_detection} and !$p->clanid;
 	}
 
 	return $p;

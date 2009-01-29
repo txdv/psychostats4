@@ -879,6 +879,7 @@ sub get_plr_alias {
 		$alias = $self->{_plraliases}{$uniqueid};
 	} else {
 		$alias = $self->{db}->execute_selectcol('get_plr_alias', $uniqueid);
+		$alias = decode_utf8($alias);
 		$self->{_plraliases}{$uniqueid} = $alias;
 		;;;# debugging
 		;;;if (defined $alias) {
@@ -2252,14 +2253,7 @@ sub save {
 	
 	# SAVE PLAYERS
 	foreach $o ($self->get_plrcache) {
-		$o->save || next;
-		# Scan each player for a clan if they don't have one already.
-		#next if $o->clanid;
-		#($tag, $clan) = $self->scan_for_clantag($o);
-		#if ($tag and $clan->{clanid}) {
-		#	# ->clanid instantly updates the t_plr record.
-		#	$o->clanid($clan->{clanid});
-		#}
+		$o->save;
 	}
 
 	# SAVE MAPS

@@ -888,6 +888,13 @@ sub used_ids {
 	}
 }
 
+# reset the in-memory player {ids} 
+sub reset_ids {
+	my ($self, @ids) = @_;
+	@ids = qw( guid name ipaddr ) unless @ids;
+	%{$self->{ids}{$_}} = () for @ids;
+}
+
 # get/set the player's active event signature. This is how the player was last
 # seen from an event). This is not always the same as ->signature, and is
 # useful for caching a player based on the event signature from the logs.
