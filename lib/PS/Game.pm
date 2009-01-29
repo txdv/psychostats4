@@ -88,7 +88,7 @@ sub init {
 	$db->prepare('get_clan', 	'SELECT clanid,locked,rank,firstseen FROM t_clan WHERE clantag=? LIMIT 1');
 	$db->prepare('insert_clan', 	'INSERT INTO t_clan (clantag, firstseen) VALUES (?,?)');
 	$db->prepare('insert_clan_profile', 'INSERT INTO t_clan_profile SET clantag=?');
-	$db->prepare('get_plr_alias', 	'SELECT alias FROM t_plr_aliases WHERE uniqueid=? LIMIT 1');
+	$db->prepare('get_plr_alias', 	'SELECT to_uniqueid FROM t_config_plraliases WHERE from_uniqueid=? LIMIT 1');
 
 	# initialize game event pattern matching ...
 	$self->{evconf} = {};
@@ -404,7 +404,6 @@ sub init_plrcache {
 	$self->{c_guid} = {};		# players keyed on their GUID
 	$self->{c_uid} = {};		# players keyed on UID
 	$self->{c_plrid} = {};		# players keyed on plrid
-	$self->{c_active} = {};		# players keyed on PS::Plr reference (unique)
 }
 
 # add a plr to the cache
@@ -420,7 +419,6 @@ sub add_plrcache {
 		$self->{c_guid}{$p->guid} = $p if $p->guid;
 		$self->{c_uid}{$p->uid} = $p if $p->uid;
 		$self->{c_plrid}{$p->id} = $p if $p->id;
-		#$self->{c_active}{\$p} = $p;
 	}
 }
 
@@ -437,7 +435,6 @@ sub del_plrcache {
 		delete $self->{c_guid}{$sig->guid} if $sig->guid;
 		delete $self->{c_uid}{$sig->uid} if $sig->uid;
 		delete $self->{c_plrid}{$sig->id} if $sig->id;
-		#delete $self->{c_active}{\$sig};
 	}
 }
 
@@ -446,11 +443,6 @@ sub get_plrcache {
 	my ($self) = @_;
 	my %uniq;
 	my @list;
-	#@list = (
-	#	grep { !$uniq{\$_}++ }		# REF is unique
-	#	map { $self->{c_eventsig}{$_} } 
-	#	keys %{$self->{c_eventsig}}
-	#);
 	@list = (
 		grep { !$uniq{\$_}++ }		# REF is unique
 		values %{$self->{c_eventsig}}
@@ -475,8 +467,7 @@ sub show_plrcache {
 		scalar keys %{$self->{'c_eventsig'}},
 		scalar keys %{$self->{'c_guid'}},
 		scalar keys %{$self->{'c_uid'}},
-		scalar keys %{$self->{'c_plrid'}},
-		scalar keys %{$self->{'c_active'}}
+		scalar keys %{$self->{'c_plrid'}}
 	);
 }
 
@@ -876,11 +867,11 @@ sub load_events {
 
 # returns the 'alias' for the uniqueid given.
 # If no alias exists the same uniqueid given is returned.
-# caches results to speed things up.
 sub get_plr_alias {
 	my ($self, $uniqueid) = @_;
 	my $alias;
-	if (time - $self->{_plraliases_age} > 60*15) {		# clear the aliases cache after 15 mins (real-time)
+	if (time - $self->{_plraliases_age} > 60*15) {
+		# clear the aliases cache after 15 mins (real-time)
 		$self->{_plraliases} = {};
 		$self->{_plraliases_age} = time;
 	}
@@ -889,6 +880,10 @@ sub get_plr_alias {
 	} else {
 		$alias = $self->{db}->execute_selectcol('get_plr_alias', $uniqueid);
 		$self->{_plraliases}{$uniqueid} = $alias;
+		;;;# debugging
+		;;;if (defined $alias) {
+		;;;	$self->debug3("ALIAS: $uniqueid  =>  $alias", 0);
+		;;;}
 	}
 	return (defined $alias and $alias ne '') ? $alias : $uniqueid;
 }

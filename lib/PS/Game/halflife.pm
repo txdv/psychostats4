@@ -609,19 +609,28 @@ sub event_ffkick {
 	my ($plrstr) = @$args;
 }
 
+;;;my ($get_plr_miss,$get_plr_hit,$get_plr_time) = (0,0,time);	# debugging
 # parses the player signature string and returns the player object matching it.
 # if an invalid player string is given then undef is returned.
 sub get_plr {
 	my ($self, $plrsig) = @_;
 	my ($p,$str,$team,$guid,$uid,$name,$ipaddr);
 
-	#print_r([ map { $self->{c_eventsig}{$_}{ids} } keys %{$self->{c_eventsig}} ]);
-
+	# debugging show cache hit rate
+	;;;if (time - $get_plr_time >= 5) {
+	;;;	$self->debug3(sprintf("get_plr() cache hit rate: %.2f%%\n", ($get_plr_miss+$get_plr_hit) ? $get_plr_hit / ($get_plr_miss+$get_plr_hit) * 100 : 0), 0);
+	;;;	$get_plr_time = time;
+	;;;	$get_plr_hit = 0;
+	;;;	$get_plr_miss = 0;
+	;;;}
+	
 	# Return the cached player via the player sig, if previously cached.
 	if ($p = $self->plrcached($plrsig)) {
 		#warn "* CACHE(eventsig): \"$p\"\n"; # == \"" . $p->eventsig . "\"\n";
+		;;;++$get_plr_hit;
 		return $p;
 	}
+	;;;++$get_plr_miss;
 
 	# make a copy, since we'll be striping it apart
 	$str = $plrsig;
@@ -671,19 +680,14 @@ sub get_plr {
 		$guid = "BOT_" . uc substr($name, 0, 124);
 	}
 
-	# lookup the alias for the player guid
-	#if ($self->{uniqueid} eq 'worldid') {
-	#	$guid = $self->get_plr_alias($guid);
-	#} elsif ($self->{uniqueid} eq 'name') {
-	#	$name = $self->get_plr_alias($name);
-	#} elsif ($self->{uniqueid} eq 'ipaddr') {
-	#	$ipaddr = ip2int($self->get_plr_alias(int2ip($ipaddr)));
-	#}
-
-	# If we get to this point the player signature did not match a current
-	# player in memory so we need to try and figure out if they are really a
-	# new player or a known player that changed their name, teams or has
-	# reconnected within the same log file.
+	# lookup the alias for the player uniqueid
+	if ($self->{uniqueid} eq 'guid') {
+		$guid = $self->get_plr_alias($guid);
+	} elsif ($self->{uniqueid} eq 'name') {
+		$name = $self->get_plr_alias($name);
+	} elsif ($self->{uniqueid} eq 'ipaddr') {
+		$ipaddr = ip2int($self->get_plr_alias(int2ip($ipaddr)));
+	}
 
 	# * The signature potentially identifies a unique player in the DB
 	my $sig = {
@@ -695,15 +699,19 @@ sub get_plr {
 		uid => $uid
 	};
 	
-	# based on their UID the player already existed (something in their
+	# Based on their UID the player already existed (something in their
 	# signature changed since their last event)
 	if ($p = $self->plrcached($uid, 'uid')) {
+		#;;;warn "\"$p\" signature is changing to \"$plrsig\"\n";
+		my $old = "$p";
 		$self->del_plrcache($p);	# remove old cached signature
+		$p->eventsig($plrsig);		# save new sig for caching
 		$p->name($name);
-		$p->guid($sig->{$self->{uniqueid}});
+		$p->guid($guid);
 		$p->ipaddr($ipaddr);
 		$p->team($team);
 		$self->add_plrcache($p);	# recache with new signature
+		#;;;warn "\"$old\" changed to \"$p\".\n" if $old ne $p and $old !~ /PENDING/;
 
 	#} elsif ($p = $self->plrcached($sig->{$self->{uniqueid}}, 'guid')) {
 		# the only time the UIDs won't match is when a player has extra

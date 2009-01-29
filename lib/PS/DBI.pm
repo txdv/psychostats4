@@ -53,12 +53,16 @@ sub new {
 	$self->{dbtblprefix} = '' unless defined $self->{dbtblprefix};
 	$self->{dbcompress} = $self->{dbcompress} ? 1 : 0;
 
+	# compile prefix
+	$self->{dbtblcompiledprefix} = $self->{dbtblprefix} . "c_";
+
 	# A hash of named prepared statement handles
 	$self->{prepared} = {};
 
 	$self->{totalwarnings} = 0;
 
-	$class .= "::" . $self->{dbtype};		# Change the base class that we're creating
+	# Change the base class that we're creating
+	$class .= "::" . $self->{dbtype};
 	$self->{class} = $class;
 
 	# load subclass
@@ -72,13 +76,13 @@ sub new {
 		awards awards_plrs
 		clan clan_profile
 		config config_awards config_clantags config_events
-		config_logsources config_overlays config_plrbans
-		config_plrbonuses
+		config_logsources config_overlays
+		config_plraliases config_plrbans config_plrbonuses
 		errlog
 		heatmaps
 		geoip_cc geoip_ip
 		map map_data map_hourly map_statial
-		plr plr_aliases plr_bans plr_chat plr_data
+		plr plr_bans plr_chat plr_data
 		plr_ids_ipaddr plr_ids_name plr_ids_guid
 		plr_maps plr_profile plr_roles plr_sessions
 		plr_victims plr_weapons
@@ -88,6 +92,11 @@ sub new {
 		sessions
 		state themes user
 		weapon weapon_data
+	)];
+
+	$self->{compiled_tables} = [qw(
+		plr_data plr_maps plr_roles plr_victims plr_weapons
+		map_data role_data weapon_data
 	)];
 
 	bless($self, $class);
@@ -100,15 +109,7 @@ sub new {
 		#$code .= "sub t_$_ () { '$self->{dbtblprefix}$_' }\n" unless $self->can("t_$_");
 	}
 
-	# compile prefix
-	$self->{dbtblcompiledprefix} = $self->{dbtblprefix} . "c_";
-
-	$self->{compiled_tables} = [qw(
-		plr_data plr_maps plr_roles plr_victims plr_weapons
-		map_data role_data weapon_data
-	)];
-
-	# initialise compiled table names
+	# initialize compiled table names
 	foreach (@{$self->{compiled_tables}}) {
 		$self->{'c_' . $_} = $self->{dbtblcompiledprefix} . $_;
 		#$code .= "sub c_$_ () { '$self->{dbtblprefix}c_$_' }\n" unless $self->can("c_$_");
