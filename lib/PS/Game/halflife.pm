@@ -257,8 +257,6 @@ sub event_chat {
 	# hell, let banned players chat it up!
 	#return if $self->isbanned($p1);
 
-	#$msg = encode('UTF-8', $msg);
-	#$msg = encode_utf8($msg);
 	$p->action_chat($msg, $teamonly, $props);
 }
 
@@ -617,14 +615,14 @@ sub get_plr {
 	my ($self, $plrsig) = @_;
 	my ($p,$str,$team,$guid,$uid,$name,$ipaddr);
 
-	# debugging show cache hit rate
+	# debugging: show cache hit rate
 	;;;if (time - $get_plr_time >= 5) {
 	;;;	$self->debug3(sprintf("get_plr() cache hit rate: %.2f%%\n", ($get_plr_miss+$get_plr_hit) ? $get_plr_hit / ($get_plr_miss+$get_plr_hit) * 100 : 0), 0);
 	;;;	$get_plr_time = time;
 	;;;	$get_plr_hit = 0;
 	;;;	$get_plr_miss = 0;
 	;;;}
-	
+
 	# Return the cached player via the player sig, if previously cached.
 	if ($p = $self->plrcached($plrsig)) {
 		#warn "* CACHE(eventsig): \"$p\"\n"; # == \"" . $p->eventsig . "\"\n";
@@ -704,6 +702,28 @@ sub get_plr {
 	# signature changed since their last event)
 	if ($p = $self->plrcached($uid, 'uid')) {
 		$self->del_plrcache($p);	# remove old cached signature
+		
+		# special care must be taken (when we're tracking by name) for
+		# signatures that have a different name. I'm not sure how this
+		# anomaly occurs. It might be due to dropped streaming packets
+		# that cause 'changed_name' events to be missed.
+		if ($self->{uniqueid} eq 'name' and $p->name ne $name) {
+			# mark the original player offline and mark the new
+			# player signature as online (see event_changed_name for
+			# details).
+			$p->action_disconnect($self->get_map, scalar $self->parseprops);
+			$p->save;
+
+			my $p2 = $p->clone;
+			$p2->reset_ids;
+	
+			$self->plr_offline($p);		# Original plr offline
+			$self->plr_online($p2);		# New plr online
+
+			undef $p;
+			$p = $p2;
+		}
+		
 		$p->eventsig($plrsig);		# save new sig for caching
 		$p->name($name);
 		$p->guid($guid);
