@@ -142,8 +142,6 @@ sub _getOptions {
 		$self->{param}{verbose} = 1;
 	}
 
-	$self->{param}{debug} = 1 if defined $self->{param}{debug} and $self->{param}{debug} < 1;
-
 	if (!$optok) {
 #		die("Invalid parameters given. Insert help page");
 		pod2usage({ -input => \*DATA, -verbose => 1 });
@@ -158,6 +156,14 @@ sub _getOptions {
 # private: Cleans up (sanitizes) the options loaded from the command line.
 sub _sanitize {
 	my $self = shift;
+
+	# Debugging must be enabled using the ENV{PSYCHOSTATS_DEBUG} variable.
+	# Warn the user to inform them of this if -debug is used.
+	if (defined $self->{param}{debug}) {
+		warn "Depreciated paramater ignored (-debug).\nSet the " . 
+			"environment variable PSYCHSTATS_DEBUG to the debug " . 
+			"level desired (1-9).\n";
+	}
 
 	# lowercase the following
 	my @list = qw( daily gametype modtype scanclantags );
@@ -174,6 +180,11 @@ sub _sanitize {
 	# if daily is specified but it's blank or 0 default it to "all"
 	if (defined $self->{param}{daily} and !$self->{param}{daily}) {
 		$self->{param}{daily} = 'all';
+	}
+
+	# if update is specified but it's blank or 0 default it to "all"
+	if (defined $self->{param}{update} and !$self->{param}{update}) {
+		$self->{param}{update} = 'all';
 	}
 
 	if (defined $self->{param}{scanclantags}) {
@@ -351,17 +362,11 @@ The password to connect to the database server. Defaults to NULL.
 The table prefix string to use for all tables within the PsychoStats
 database. Defaults to 'ps_'. 
 
-=item B<-debug> [1,2,3,4,5]
-
-Enables Debug output. If no numberic value is given it defaults to 1. The 
-higher the value the more debug output shown. 5 will show all SQL commands
-queried and is not normally recommended.
-
 =item B<-debugfile> <filename>
 
 All debug output is written to a debug.txt file in the current directory.
-If a filename is specified its name is used instead. Using this implies
-"-debug 1" if no debug was specified.
+If a filename is specified its name is used instead. The environment variable
+PSYCHOSTATS_DEBUG must be set in order for any debug output to be logged.
 
 =item B<-echo>
 
