@@ -697,17 +697,26 @@ sub get_plr {
 		team => $team,
 		uid => $uid
 	};
+
+	return $self->_get_plr($sig, $plrsig);
+}
+
+# internal method for get_plr. Returns an actual PS::Plr object based on the
+# signature given.
+sub _get_plr {
+	my ($self, $sig, $plrsig) = @_;
+	my $p;
 	
 	# Based on their UID the player already existed (something in their
 	# signature changed since their last event)
-	if ($p = $self->plrcached($uid, 'uid')) {
+	if ($p = $self->plrcached($sig->{uid}, 'uid')) {
 		$self->del_plrcache($p);	# remove old cached signature
 		
 		# special care must be taken (when we're tracking by name) for
 		# signatures that have a different name. I'm not sure how this
 		# anomaly occurs. It might be due to dropped streaming packets
 		# that cause 'changed_name' events to be missed.
-		if ($self->{uniqueid} eq 'name' and $p->name ne $name) {
+		if ($self->{uniqueid} eq 'name' and $p->name ne $sig->{name}) {
 			# mark the original player offline and mark the new
 			# player signature as online (see event_changed_name for
 			# details).
@@ -725,10 +734,10 @@ sub get_plr {
 		}
 		
 		$p->eventsig($plrsig);		# save new sig for caching
-		$p->name($name);
-		$p->guid($guid);
-		$p->ipaddr($ipaddr);
-		$p->team($team);
+		$p->name($sig->{name});
+		$p->guid($sig->{guid});
+		$p->ipaddr($sig->{ipaddr});
+		$p->team($sig->{team});
 		$self->add_plrcache($p);	# recache with new signature
 
 	} else {
@@ -746,7 +755,6 @@ sub get_plr {
 
 		$self->add_plrcache($p);
 	}
-
 	return $p;
 }
 
