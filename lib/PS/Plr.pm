@@ -49,7 +49,7 @@ BEGIN {
 	$FIELDS = {};
 	$FIELDS->{DATA} = { data => {
 		(map { $_ => '+' } qw(
-			kills 		headshot_kills
+			kills		headshot_kills
 			deaths 		headshot_deaths 	suicides
 			games 		rounds
 			connections	online_time
@@ -58,6 +58,7 @@ BEGIN {
 		kill_streak	=> '>',
 		death_streak	=> '>',
 	}};
+
 	$HISTORY->{DATA} = { data => {}
 		
 	};
@@ -70,7 +71,7 @@ BEGIN {
 	#	accuracy		=> [ percent 		=> qw( hits shots ) 		],
 	#	shots_per_kill		=> [ ratio 		=> qw( shots kills ) 		],
 	#};
-	
+
 	$FIELDS->{MAPS} = { data => {
 		# maps store the same as basic stats (almost)
 		%{$FIELDS->{DATA}{data}},
@@ -79,28 +80,35 @@ BEGIN {
 	}};
 	# remove some extra stats that are not saved to maps
 	delete @{$FIELDS->{MAPS}{data}}{ qw( bonus_points kill_streak death_streak ) };
-	
+
 	$FIELDS->{ROLES} = { data => {
-		#(map { $_ => '+' } qw(
-		#	kills 		headshot_kills
-		#	deaths		headshot_deaths
-		#)),
+		(map { $_ => '+' } qw(
+			kills 		headshot_kills
+			deaths		headshot_deaths		suicides
+		)),
 	}};
-		
+
+	$FIELDS->{SESSIONS} = { data => {
+		(map { $_ => '+' } qw(
+			kills		headshot_kills
+			deaths		headshot_deaths		suicides
+		)),
+	}};
+
 	$FIELDS->{VICTIMS} = { data => {
 		(map { $_ => '+' } qw(
 			kills 		headshot_kills
 			deaths		headshot_deaths
 		)),
 	}};
-		
+
 	$FIELDS->{WEAPONS} = { data => {
 		(map { $_ => '+' } qw(
 			kills 		headshot_kills
-			deaths 		headshot_deaths
+			deaths 		headshot_deaths	suicides
 		)),
 	}};
-		
+
 	# each gametype and gametype::modtype combination will create
 	# their own tree of fields under each root key shown above.
 	#'gametype' => {},
@@ -310,7 +318,7 @@ sub save_plr {
 
 # Save accumulated stats and player information
 sub save {
-	my ($self) = @_;
+	my ($self, $game) = @_;
 	my $uniqueid = $self->{ $self->conf->main->uniqueid };
 	
 	# First, we need a new PLRID if this player doesn't already have one.
@@ -350,7 +358,7 @@ sub save {
 			my $stname = sprintf('get_plr_%s_used_names', $self->conf->main->plr_primary_name);
 			my ($newname) = $self->db->execute_selectall($stname, $self->{plrid}, 1);
 			$newname = decode_utf8($newname);
-			if ($name ne $newname) {
+			if (defined $newname and $name ne $newname) {
 				#;;; warn "Changing PLRID $self->{plrid} name from \"$name\" TO \"$newname\"\n";
 				$self->db->execute('update_plr_profile_name', $newname, $uniqueid);
 			}
@@ -370,6 +378,9 @@ sub save {
 	# calculate the current online time for this player
 	$self->{data}{online_time} = $self->onlinetime;
 
+	# save session stats if a game object is passed in
+	$self->save_session($game) if $game;
+
 	# finally, save stats
 	for (qw( data maps roles weapons victims )) {
 		$self->save_stats($statdate, $_);
@@ -385,38 +396,78 @@ sub save {
 	$self->{points} = 0;
 }
 
-# Set the player's profile name to be the name that has currently been used the
-# most. This function does not check the 'namelocked' player profile variable.
-sub most_used_name {
-	my $self = shift;
-	my $db = $self->{db};
-	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "totaluses DESC");
-	if (defined $name) {
-		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
-		$self->name($name);
-	}
-	return $name;
-}
+# Save the current stats for the player as part of a game session.
+# Automatically adds the current stats to a previous session if the time
+# difference is not that far apart.
+sub save_session {
+	my ($self, $game, $threshold) = @_;
+	my $plrid = $self->id || return undef;
+	my $m = $game->get_map->id;
 
-# Sets the players profile name to be the name that was last used.
-# this function does not check the 'namelocked' player profile variable.
-sub last_used_name {
-	my $self = shift;
-	my $db = $self->{db};
-	my ($name) = $db->select($db->{t_plr_ids_name}, 'name', [ plrid => $self->plrid ], "lastseen DESC");
-	if (defined $name) {
-		$db->update($db->{t_plr_profile}, { name => $name }, [ uniqueid => $self->uniqueid ]);
-		$self->name($name);
+	return unless $self->conf->main->plr_sessions_max > 0 && $self->{timestamp};
+	return unless $self->onlinetime;
+
+	$threshold = $self->conf->main->plr_sessions_time unless defined $threshold;
+	$threshold ||= 60*15;	# default to 15 minutes if nothing is configured
+
+	# get most recent session
+	my ($dataid, $start, $end) = $self->db->execute_selectall('find_plr_session', $plrid, $m);
+	if ($dataid and ($self->{timestamp} - $end > $threshold)) {
+		$dataid = 0;
 	}
-	return $name;
+
+	if (!$dataid) {
+		# insert a new session
+		$self->db->execute('insert_plr_sessions',
+			$self->{plrid},
+			$m,
+			$self->{timestart},
+			$self->{timestamp},
+			$self->skill
+		);
+		$dataid = $self->db->last_insert_id;
+		$self->db->execute('insert_plr_sessions_' . $self->{type}, $dataid,
+			map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 }
+			@{$ORDERED->{SESSIONS}}
+		);
+	} else {
+		# update the session stats
+		my (@bind, @updates);
+
+		foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED->{SESSIONS}}) {
+			push(@updates, $self->db->expr(
+				$key,			# stat key (kills, deaths, etc)
+				$ALL->{SESSIONS}{$key},	# expression '+'
+				$self->{data}{$key},	# actual value
+				\@bind			# arrayref to store bind values
+			));
+		}
+
+		# update some columns in ps_plr_sessions
+		push(@updates, $self->db->expr('session_end', '>', $self->{timestamp}, \@bind));
+		push(@updates, $self->db->expr('skill', '=', $self->{skill}, \@bind));
+		
+		my $tbl = sprintf('plr_sessions_%s', $self->{type});
+		my $cmd = sprintf('UPDATE %s d, %s s SET %s WHERE d.dataid=? AND s.dataid=d.dataid',
+			$self->db->tbl($tbl),
+			$self->db->{t_plr_sessions},
+			join(',', @updates)
+		);
+		push(@bind, $dataid);
+		if (!$self->db->do($cmd, @bind)) {
+			$self->warn("Error updating PLR session for \"$self\": " .
+				    $self->db->errstr . "\nCMD=$cmd");
+		}
+	}
+
 }
 
 # Quick save any stats that are pending.
 # This will only save basic stats (kills, deaths, etc). This allows for a quick
-# saving of basic stats to be seen in-game or online w/o waiting for the
-# player to fully disconnect.
+# saving of basic stats to be seen in-game or online w/o waiting for the player
+# to fully disconnect.
 sub quick_save {
-	my ($self) = @_;
+	my ($self, $game) = @_;
 	# don't save if we don't have a timestamp
 	return unless $self->{timestamp};
 
@@ -429,6 +480,9 @@ sub quick_save {
 
 	# calculate the current online time for this player
 	$self->{data}{online_time} = $self->onlinetime;
+
+	# save session stats if a game object is passed in
+	$self->save_session($game) if $game;
 
 	$self->save_stats($statdate, 'data');
 	
@@ -707,7 +761,7 @@ sub save_plr_chat {
 	my ($self, $messages) = @_;
 	my ($st, @bind);
 	return unless $self->{plrid} and defined $messages and @$messages;
-	# Build an optimized insert state that inserts 1..N messages with a
+	# Build an optimized insert statement that inserts 1..N messages with a
 	# single query. The statement is cached so its only prepared once.
 	if (!defined($st = $self->db->prepared('insert_plr_chat_' . @$messages))) {
 		my $cmd = 'INSERT INTO t_plr_chat VALUES ';
@@ -769,7 +823,8 @@ sub assign_plrid {
 	return $self->{plrid} if $self->{plrid};
 	my $uniqueid = $self->{ $self->conf->main->uniqueid };
 	
-	$self->{plrid} = $self->db->execute_selectcol('find_plrid', $uniqueid, @$self{qw(gametype modtype)}) || 0;
+	$self->{plrid} = $self->db->execute_selectcol('find_plrid', $uniqueid,
+						      @$self{qw(gametype modtype)}) || 0;
 	return $self->{plrid} if $self->{plrid};
 	
 	# create a new PLR record for this player since they don't exist yet.
@@ -782,7 +837,7 @@ sub assign_plrid {
 			$self->warn("Error inserting new player record for $self");
 		}
 	}
-
+	
 	return $self->{plrid};
 }
 
@@ -1009,7 +1064,7 @@ sub onlinetime {
 # contain hitgroup information on where they hit the victim on their body.
 # This is not a kill.
 sub action_attacked {
-	my ($self, $victim, $weapon, $map, $props) = @_;
+	my ($self, $game, $victim, $weapon, $map, $props) = @_;
 	my $v = $victim->id;
 	my $w = $weapon->id;
 	my $m = $map->id;
@@ -1035,15 +1090,24 @@ sub action_attacked {
 
 # The player changed their name
 sub action_changed_name {
-	my ($self, $name, $props) = @_;
+	my ($self, $game, $name, $props) = @_;
 	;;; $self->debug7("$self changed name to $name", 0);
 	$self->timestamp($props->{timestamp});
 	$self->name($name);
 }
 
+# The player changed their role
+sub action_changed_role {
+	my ($self, $game, $role, $props) = @_;
+	;;; $self->debug7("$self changed role to $role", 0);
+	$self->timestamp($props->{timestamp});
+	$self->role($role->name);
+	$self->{roles}{$role->id}{joined}++;
+}
+
 # The player said something
 sub action_chat {
-	my ($self, $msg, $teamonly, $props) = @_;
+	my ($self, $game, $msg, $teamonly, $props) = @_;
 	my $max = ($self->conf->main->plr_chat_max || 1) - 1;
 	$self->timestamp($props->{timestamp});
 
@@ -1068,7 +1132,7 @@ sub action_chat {
 # actively in the game yet. This is only useful to record some initial
 # information about the player.
 sub action_connected {
-	my ($self, $ip, $props) = @_;
+	my ($self, $game, $ip, $props) = @_;
 	;;; $self->debug7("$self connected with IP " . int2ip($ip), 0);
 	$self->timestamp($props->{timestamp});
 	#$self->timestart($props->{timestamp});
@@ -1080,58 +1144,57 @@ sub action_connected {
 # The player was killed (either by another player or suicide)
 # $self == victim
 sub action_death {
-	my ($self, $killer, $weapon, $map, $props) = @_;
+	my ($self, $game, $killer, $weapon, $map, $props) = @_;
 	my $vt = $self->team;
 	my $kt = $killer->team;
 	my $m = $map->id;
 	my $w = $weapon->id;
 	my $k = $killer->id;
+	my $role = $game->get_role($self->role, $self->team);
+	my $r = $role ? $role->id : undef;	# victim role (optional)
 	$self->timestamp($props->{timestamp});
 	;;; $self->debug7("$self was killed with '$weapon'" . ($props->{headshot} ? ' (headshot)' : ''), 0);
 
 	$self->init_plr;
 	$self->is_dead(1);
 
-	# overall deaths
 	$self->{data}{deaths}++;
-	$self->{data}{headshot_deaths}++ if $props->{headshot};
-
-	# track player map stats
 	$self->{maps}{$m}{deaths}++;
-
-	# track who this player was killed by
+	$self->{roles}{$r}{deaths}++ if $r;
 	$self->{victims}{$k}{deaths}++;
-
-	# track player weapon usage
 	$self->{weapons}{$w}{deaths}++;
+
+	if ($props->{headshot}) {
+		$self->{data}{headshot_deaths}++;
+		$self->{maps}{$m}{headshot_deaths}++;
+		$self->{roles}{$r}{headshot_deaths}++ if $r;
+		$self->{victims}{$k}{headshot_deaths}++;
+		$self->{weapons}{$w}{headshot_deaths}++;
+	}
 
 	# track the death streak for this player
 	$self->end_streak('kill_streak');
 	$self->inc_streak('death_streak');
 
-	if ($kt) {
-		# died from someone on the other team
-		$self->{data}{'killedby_' . $kt}++;
-		$self->{maps}{$m}{'killedby_' . $kt}++;
-	}
-	
-	if ($vt) {
-		# deaths on your current team
-		$self->{data}{$vt . '_deaths'}++;
-		$self->{maps}{$m}{$vt . '_deaths'}++;
-
-		if ($kt eq $vt) {	# record a team death
-			$self->{data}{team_deaths}++;
-			$self->{maps}{$m}{team_deaths}++;
-			$self->{victims}{$k}{team_deaths}++;
-			$self->{weapons}{$w}{team_deaths}++;
-		}
+	# track team based stats if possible
+	return unless $vt && $kt;
+	my @vars = (
+		'deathsby_' . $kt,	# victim was killed by the opposing team
+		$vt . '_deaths',	# victim deaths while on his team
+	);
+	push(@vars, 'team_deaths') if $vt eq $kt;	# friendly fire
+	for (@vars) {
+		$self->{data}{$_}++;
+		$self->{maps}{$m}{$_}++;
+		$self->{roles}{$r}{$_}++ if $r;
+		$self->{victims}{$k}{$_}++;
+		$self->{weapons}{$w}{$_}++;
 	}
 }
 
 # the player disconnected from the server fully. They are no longer in the game.
 sub action_disconnect {
-	my ($self, $map, $props) = @_;
+	my ($self, $game, $map, $props) = @_;
 	;;; $self->debug7("$self disconnected", 0);
 	$self->timestamp($props->{timestamp});
 
@@ -1144,7 +1207,7 @@ sub action_disconnect {
 
 # The player entered the game.
 sub action_entered {
-	my ($self, $map, $props) = @_;
+	my ($self, $game, $map, $props) = @_;
 	my $m = $map->id;
 	$self->firstseen(0);	# reset firstseen
 	$self->timestamp($props->{timestamp});
@@ -1165,7 +1228,7 @@ sub action_entered {
 # The player was injured by another player
 # $self = victim
 sub action_injured {
-	my ($self, $killer, $weapon, $map, $props) = @_;
+	my ($self, $game, $killer, $weapon, $map, $props) = @_;
 	my $k = $killer->id;
 	my $w = $weapon->id;
 	my $m = $map->id;
@@ -1189,7 +1252,7 @@ sub action_injured {
 }
 
 sub action_joined_team {
-	my ($self, $team, $map, $props) = @_;
+	my ($self, $game, $team, $map, $props) = @_;
 	my $m = $map->id;
 	;;; $self->debug7("$self joined team $team", 0);
 	$self->timestamp($props->{timestamp});
@@ -1202,56 +1265,52 @@ sub action_joined_team {
 # The player killed another player. This action should work for most mod's w/o
 # needing to be overidden.
 sub action_kill {
-	my ($self, $victim, $weapon, $map, $props) = @_;
+	my ($self, $game, $victim, $weapon, $map, $props) = @_;
 	my $kt = $self->team;
 	my $vt = $victim->team;
 	my $m = $map->id;
 	my $w = $weapon->id;
 	my $v = $victim->id;
+	my $role = $game->get_role($self->role, $self->team);
+	my $r = $role ? $role->id : undef;	# killer role (optional)
 	$self->timestamp($props->{timestamp});
 	;;; $self->debug7("$self killed $victim with '$weapon'" . ($props->{headshot} ? ' (headshot)' : ''), 0);
 
 	$self->init_plr;
 
-	# overall kills ...
 	$self->{data}{kills}++;
-	$self->{data}{headshot_kills}++ if $props->{headshot};
-
-	# track player map stats ...
 	$self->{maps}{$m}{kills}++;
-
-	# track victims for the killer ...
+	$self->{roles}{$r}{kills}++ if $r;
 	$self->{victims}{$v}{kills}++;
-
-	# track player weapon usage ...
 	$self->{weapons}{$w}{kills}++;
+
+	# track headshot kills
+	if ($props->{headshot}) {
+		$self->{data}{headshot_kills}++;
+		$self->{maps}{$m}{headshot_kills}++;
+		$self->{roles}{$r}{headshot_kills}++ if $r;
+		$self->{victims}{$v}{headshot_kills}++;
+		$self->{weapons}{$w}{headshot_kills}++;
+	}
 
 	# track the kill streak for this player
 	$self->end_streak('death_streak');
 	$self->inc_streak('kill_streak');
 	
-	# track team based stats ...
-	if ($vt) {
-		# killed someone on another team
-		$self->{data}{'killed_' . $vt}++;
-		$self->{maps}{$m}{'killed_' . $vt}++;
+	# track team based stats if possible
+	return unless $vt && $kt;
+	my @vars = (
+		'killed_' . $vt,	# killer killed the opposing team
+		$kt . '_kills',		# killer kills while on his team
+	);
+	push(@vars, 'team_kills') if $vt eq $kt;	# friendly fire
+	for (@vars) {
+		$self->{data}{$_}++;
+		$self->{maps}{$m}{$_}++;
+		$self->{roles}{$r}{$_}++ if $r;
+		$self->{victims}{$v}{$_}++;
+		$self->{weapons}{$w}{$_}++;
 	}
-	
-	if ($kt) {
-		# kills for your current team
-		$self->{data}{$kt . '_kills'}++;
-		$self->{maps}{$m}{$kt . '_kills'}++;
-
-		if ($vt eq $kt) {
-			# killed a team mate (friendly fire)
-			$self->{data}{team_kills}++;
-			$self->{maps}{$m}{team_kills}++;
-			$self->{victims}{$v}{team_kills}++;
-			$self->{weapons}{$w}{team_kills}++;
-		}
-	}
-
-	#$k->{roles}{ $kr->{roleid} }{kills}++ if $kr;
 }
 
 # Misc action that will be used for odd-ball events (mainly from 3rd party plugins)
@@ -1259,7 +1318,7 @@ sub action_misc { }
 
 # occurs for each player at the start of every round.
 sub action_round {
-	my ($self, $map, $props) = @_;
+	my ($self, $game, $map, $props) = @_;
 	my $m = $map->id;
 	$self->timestamp($props->{timestamp});
 	
@@ -1272,9 +1331,10 @@ sub action_round {
 
 # The player commited suicide... oops!
 sub action_suicide {
-	my ($self, $map, $weapon, $props) = @_;
+	my ($self, $game, $map, $weapon, $props) = @_;
 	my $m = $map->id;
 	my $w = $weapon->id;
+	#my $r = $self->role ? $self->get_role($self->role, $self->team) : undef;
 	$self->timestamp($props->{timestamp});
 	;;; $self->debug7("$self committed suicide with '$weapon'", 0);
 
@@ -1294,7 +1354,7 @@ sub action_suicide {
 
 # generic team win event for any map game.
 sub action_teamwon {
-	my ($self, $trigger, $team, $map, $props) = @_;	
+	my ($self, $game, $trigger, $team, $map, $props) = @_;	
 	my $m = $map->id;
 	
 	# terrorist_wins, ct_wins, red_wins, blue_wins, etc...
@@ -1304,7 +1364,7 @@ sub action_teamwon {
 
 # generic team lost event for any map game.
 sub action_teamlost {
-	my ($self, $trigger, $team, $map, $props) = @_;	
+	my ($self, $game, $trigger, $team, $map, $props) = @_;	
 	my $m = $map->id;
 	
 	# terrorist_losses, ct_losses, red_losses, blue_losses, etc...
@@ -1434,7 +1494,7 @@ sub prepare_statements {
 
 	# setup a list of all columns for each set of stats, so we don't have
 	# to calculate this at each call to save().
-	for my $F (qw( DATA MAPS ROLES WEAPONS VICTIMS )) {
+	for my $F (qw( DATA MAPS ROLES SESSIONS WEAPONS VICTIMS )) {
 		$ALL->{$F} = { map { %{$FIELDS->{$F}{$_}} } keys %{$FIELDS->{$F}} };
 	}
 
@@ -1462,9 +1522,14 @@ sub prepare_statements {
 		next if $db->prepared('update_plr_ids_' . $_);
 		$db->prepare('update_plr_ids_' . $_,
 			'INSERT INTO t_plr_ids_' . $_ . 
-			' VALUES (?,?,?,FROM_UNIXTIME(?),FROM_UNIXTIME(?)) ' .
-			'ON DUPLICATE KEY UPDATE totaluses=totaluses+?, lastseen=FROM_UNIXTIME(?)'
+			' VALUES (?,?,?,?,?) ' .
+			'ON DUPLICATE KEY UPDATE totaluses=totaluses+?, lastseen=?'
 		);
+		#$db->prepare('update_plr_ids_' . $_,
+		#	'INSERT INTO t_plr_ids_' . $_ . 
+		#	' VALUES (?,?,?,FROM_UNIXTIME(?),FROM_UNIXTIME(?)) ' .
+		#	'ON DUPLICATE KEY UPDATE totaluses=totaluses+?, lastseen=FROM_UNIXTIME(?)'
+		#);
 	}
 
 	# fetch the names most used for the plrid
@@ -1519,6 +1584,15 @@ sub prepare_statements {
 		#print $db->prepared('find_cplr_' . $_ . 's_' . $type)->{Statement}, "\n";
 	}
 
+	# returns the latest session info for the plrid given...
+	if (!$db->prepared('find_plr_session')) {
+		$db->prepare('find_plr_session', 
+			"SELECT dataid,session_start,session_end FROM $db->{t_plr_sessions} " .
+			"WHERE plrid=? AND mapid=? " . 
+			"ORDER BY session_end DESC LIMIT 1"
+		);
+	}
+
 	# insert a new plr_data row
 	$db->prepare('insert_plr_data',
 		'INSERT INTO t_plr_data (plrid,statdate,firstseen,lastseen) ' .
@@ -1559,7 +1633,6 @@ sub prepare_statements {
 				'VALUES (?,?,?,?,?)',
 				$t, $t
 			));
-			#print $db->prepared($name)->{Statement}, "\n";
 		}
 
 		# insert a new plr_*_gametype_modtype row
@@ -1573,7 +1646,7 @@ sub prepare_statements {
 					join(',', @{$ORDERED->{$F}}),
 					',?' x @{$ORDERED->{$F}}
 				));
-				#print $db->prepared($name)->{Statement}, "\n";
+				#print "$name: ", $db->prepared($name)->{Statement}, "\n";
 
 				# COMPILED STATS
 				$db->prepare($cname, sprintf(
@@ -1583,9 +1656,31 @@ sub prepare_statements {
 					join(',', @{$ORDERED->{$F}}),
 					',?' x @{$ORDERED->{$F}}
 				));
-				#print $db->prepared($cname)->{Statement}, "\n";
+				#print "$cname: ", $db->prepared($cname)->{Statement}, "\n";
 			}
 		}
+	}
+
+	# insert a new plr_sessions row
+	$db->prepare('insert_plr_sessions',
+		'INSERT INTO t_plr_sessions ' . #(plrid,mapid,session_start,session_end,skill) ' .
+		'VALUES (NULL,?,?,?,?,?)'
+	) if !$db->prepared('insert_plr_sessions');
+	#print $db->prepared('insert_plr_sessions')->{Statement}, "\n";
+
+	if (!$db->prepared('insert_plr_sessions_' . $type)) {
+		$db->prepare('insert_plr_sessions_' . $type, sprintf(
+			#'INSERT INTO %splr_sessions_%s (dataid,%s) ' .
+			#'VALUES (?%s)',
+			#$pref, $type, 
+			#join(',', @{$ORDERED->{SESSIONS}}),
+			#',?' x @{$ORDERED->{SESSIONS}}
+			'INSERT INTO %splr_sessions_%s ' .
+			'VALUES (?%s)',
+			$pref, $type, 
+			',?' x @{$ORDERED->{SESSIONS}}
+		));
+		#print $db->prepared('insert_plr_sessions_'.$type)->{Statement}, "\n";
 	}
 
 }
@@ -1641,8 +1736,9 @@ sub init_game_database {
 	my $type = $modtype ? $gametype . '_' . $modtype : $gametype;
 
 	# init all game_mod stat tables for the player
-	for my $t (qw( data maps roles weapons victims )) {
+	for my $t (qw( data maps roles sessions weapons victims )) {
 		$class->_init_table($DB->tbl('plr_' . $t . '_' . $type), $FIELDS->{uc $t});
+		next if $t eq 'sessions';
 
 		my $primary = { plrid => 'uint' };
 		if ($t eq 'data') {

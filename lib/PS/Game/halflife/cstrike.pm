@@ -24,7 +24,7 @@ package PS::Game::halflife::cstrike;
 use strict;
 use warnings;
 use base qw( PS::Game::halflife );
-
+use PS::SourceFilter;
 use util qw( :net );
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
@@ -38,6 +38,7 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 # cstrike doesn't have character roles (classes) so just return a false value
 sub get_role { undef }
+sub role_normal { '' }
 
 # override default event so we can reset per-log variables
 sub event_logstartend {
@@ -70,17 +71,17 @@ sub event_plrtrigger {
 		$self->add_ipcache($p->uid, ip2int($props->{address}), $timestamp);
 
 	} elsif ($trigger =~ /^(killed|touched|rescued)_a_hostage/) {
-		$p->action_hostage($1, $m, $props);
-		$m->action_hostage($1, $p, $props);
+		$p->action_hostage($self, $1, $m, $props);
+		$m->action_hostage($self, $1, $p, $props);
 
 	} elsif ($trigger =~ /^begin_bomb_defuse/) {		# ignore: _with_kit, _without_kit
-		$p->action_bomb('defuse_attempts', $m, $props);
-		$m->action_bomb('defuse_attempts', $p, $props);
+		$p->action_bomb($self, 'defuse_attempts', $m, $props);
+		$m->action_bomb($self, 'defuse_attempts', $p, $props);
 
 	} elsif ($trigger =~ /^(planted|defused|spawned_with|got|dropped)_the_bomb/) {
 		my $action = $1;
-		$p->action_bomb($action, $m, $props);
-		$m->action_bomb($action, $p, $props);
+		$p->action_bomb($self, $action, $m, $props);
+		$m->action_bomb($self, $action, $p, $props);
 
 		if ($action eq 'planted') {
 			# keep track of who planted bomb
@@ -109,8 +110,8 @@ sub event_plrtrigger {
 		#$action = (split '_', $action, 2)[0];	# remove '_as' or '_the'
 		#$action = 'killed' if $action eq 'assassinated';
 		#
-		#$p->action_vip($action, $m, $props);
-		#$m->action_vip($action, $p, $props);
+		#$p->action_vip($self, $action, $m, $props);
+		#$m->action_vip($self, $action, $p, $props);
 		#
 		#if ($action eq 'became') {
 		#	$self->{cs_vip} = $p;			# keep track of current CT VIP
@@ -127,7 +128,7 @@ sub event_plrtrigger {
 		
 	} elsif ($trigger =~ /^(time|latency|amx_|game_idle_kick|camped)/) {
 		# extra statsme / amx triggers
-		$p->action_misc($trigger, $props);
+		$p->action_misc($self, $trigger, $props);
 		
 	} else {
 		if ($self->{report_unknown}) {
@@ -212,8 +213,8 @@ sub event_teamtrigger {
 	if ($bombed) {
 		my $p = $self->{cs_bombplanter};
 		if (ref $p) {
-			$p->action_bomb('exploded', $m, $props);
-			$m->action_bomb('exploded', $p, $props);
+			$p->action_bomb($self, 'exploded', $m, $props);
+			$m->action_bomb($self, 'exploded', $p, $props);
 			# give the bomber some bonus points
 			$self->plrbonus('target_bombed',
 				'enactor', $p,
@@ -225,12 +226,12 @@ sub event_teamtrigger {
 	}
 	
 	# update map stats
-	$m->action_teamwon( $trigger, $team, $props);
-	$m->action_teamlost($trigger, $team, $props);
+	$m->action_teamwon($self,  $trigger, $team, $props);
+	$m->action_teamlost($self, $trigger, $team, $props);
 
 	# update stats for online players
-	$_->action_teamwon( $trigger, $team, $m, $props) for @$winners;
-	$_->action_teamlost($trigger, $team, $m, $props) for @$losers;
+	$_->action_teamwon($self,  $trigger, $team, $m, $props) for @$winners;
+	$_->action_teamlost($self, $trigger, $team, $m, $props) for @$losers;
 
 }
 

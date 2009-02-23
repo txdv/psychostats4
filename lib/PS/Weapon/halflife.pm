@@ -35,7 +35,7 @@ BEGIN {
 			team_kills
 			damage
 			damage_absorbed
-			hits shots
+			hits 		shots
 			hit_head	dmg_head
 			hit_leftarm	dmg_leftarm
 			hit_rightarm	dmg_rightarm
@@ -49,7 +49,7 @@ BEGIN {
 
 # a player attacked someone
 sub action_attacked {
-	my ($self, $killer, $victim, $map, $props) = @_;
+	my ($self, $game, $killer, $victim, $map, $props) = @_;
 	my $dmg = $props->{damage} || 0;
 	my $absorbed = $props->{damage_armor} || 0;
 	$self->timestamp($props->{timestamp});
@@ -71,28 +71,28 @@ sub action_attacked {
 
 # a player killed someone
 sub action_kill {
-	my ($self, $killer, $victim, $map, $props) = @_;
+	my ($self, $game, $killer, $victim, $map, $props) = @_;
 	my $kt = $killer->team;
 	my $vt = $victim->team;
 	$self->timestamp($props->{timestamp});
 	
 	$self->{data}{kills}++;
 	
-	if ($kt and $vt and $kt eq $vt) {
+	if (($kt and $vt) and ($kt eq $vt)) {
 		$self->{data}{team_kills}++;
 	}
 }
 
 # assign 'weaponstats' and 'weaponstats2' stats
 sub action_weaponstats {
-	my ($self, $trigger, $player, $props) = @_;
+	my ($self, $game, $trigger, $player, $props) = @_;
 	no warnings;
 
 	if ($trigger eq 'weaponstats') {
 		for (qw( hits shots damage headshots )) {
 			$self->{data}{$_} += int(exists $props->{$_} ? $props->{$_} : 0);
 		}
-	} else {
+	} else { # $trigger eq 'weaponstats2'
 		for (qw( head chest stomach leftarm rightarm leftleg rightleg )) {
 			$self->{data}{'hit_' . $_} += int(exists $props->{$_} ? $props->{$_} : 0);
 		}

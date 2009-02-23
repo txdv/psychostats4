@@ -33,10 +33,10 @@ BEGIN {
 	%{$fields->{halflife_cstrike}} = (
 		(map { $_ => '+' } qw(
 			team_kills		team_deaths
-			killed_terrorist 	killed_ct 
-			terrorist_kills 	ct_kills 
-			killedby_terrorist 	killedby_ct 
-			terrorist_deaths	ct_deaths
+			terrorist_kills		terrorist_deaths
+			ct_kills		ct_deaths
+			killed_terrorist	deathsby_terrorist
+			killed_ct 		deathsby_ct 
 			joined_terrorist	joined_ct
 			terrorist_wins		ct_wins
 			terrorist_losses	ct_losses
@@ -51,6 +51,7 @@ BEGIN {
 
 	$fields = __PACKAGE__->SUPER::FIELDS('MAPS');
 	%{$fields->{halflife_cstrike}} = (
+		# use the same fields as 'DATA'
 		%{__PACKAGE__->SUPER::FIELDS('DATA')->{halflife_cstrike}},
 		(map { $_ => '+' } qw(
 		 ))
@@ -62,6 +63,14 @@ BEGIN {
 	#	(map { $_ => '+' } qw(
 	#	 ))
 	#);
+
+	$fields = __PACKAGE__->SUPER::FIELDS('SESSIONS');
+	%{$fields->{halflife_cstrike}} = (
+		(map { $_ => '+' } qw(
+			terrorist_wins		ct_wins
+			terrorist_losses	ct_losses
+		 ))
+	);
 
 	$fields = __PACKAGE__->SUPER::FIELDS('WEAPONS');
 	%{$fields->{halflife_cstrike}} = (
@@ -96,7 +105,7 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 #}
 
 sub action_bomb {
-	my ($self, $action, $map, $props) = @_;
+	my ($self, $game, $action, $map, $props) = @_;
 	my $m = $map->id;
 	my $var = 'bomb_' . $action;
 	$self->timestamp($props->{timestamp});
@@ -108,7 +117,7 @@ sub action_bomb {
 
 # The player did something to a hostage (killed, touched, rescued)
 sub action_hostage {
-	my ($self, $action, $map, $props) = @_;
+	my ($self, $game, $action, $map, $props) = @_;
 	my $m = $map->id;
 	my $var = 'hostages_' . $action;
 	#warn "$self $action a hostage!!\n";
@@ -119,7 +128,7 @@ sub action_hostage {
 }
 
 sub action_vip {
-	my ($self, $action, $map, $props) = @_;
+	my ($self, $game, $action, $map, $props) = @_;
 	my $m = $map->id;
 	my $var = 'vip_' . $action;
 	$self->timestamp($props->{timestamp});

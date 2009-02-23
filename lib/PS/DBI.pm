@@ -212,6 +212,18 @@ sub execute {
 	return $ok ? $self->{prepared}{$name} : undef;
 }
 
+# same as ->execute, but the command is printed as well (with all bind values)
+sub execute_debug {
+	my ($self, $name, @bind) = @_;
+	my $ok = $self->execute($name, @bind);
+	;;;if (exists $self->{prepared}{$name}) {
+	;;;	my $q = $self->{prepared}{$name}{Statement};
+	;;;	$q =~ s/\?/$_/e for map { $self->{dbh}->quote($_) } @bind;
+	;;;	$self->debug1($q,0);
+	;;;}
+	return $ok;
+}
+
 # executes a prepared statement and fetches an array of hash rows
 sub execute_fetchall {
 	my ($self, $name, @bind) = @_;

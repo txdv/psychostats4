@@ -19,25 +19,38 @@
 #
 #	$Id$
 #
-package PS::Role::halflife::tf;
+package PS::Weapon::halflife::tf;
 
 use strict;
 use warnings;
-use base qw( PS::Role );	# NOTE: NOT SUBCLASSING 'halflife'
+
+use base qw( PS::Weapon::halflife );
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 BEGIN {
 	my $fields = __PACKAGE__->SUPER::FIELDS('DATA');
-	%{$fields->{halflife}} = (
+	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
-			assists
-			dominations
-			backstabs
-			structures_built
-			structures_destroyed
+			custom_kills
+			backstab_kills
 		 ))
 	);
+}
+
+# a player killed someone
+sub action_kill {
+	my $self = shift;
+	my ($game, $killer, $victim, $map, $props) = @_;
+	$self->SUPER::action_kill(@_);
+	
+	return unless exists $props->{customkill};
+	
+	# track custom kills
+	my @customs = ( 'custom_kills', $props->{customkill} . '_kills' );
+	for (@customs) {
+		$self->{data}{$_}++;
+	}
 }
 
 1;

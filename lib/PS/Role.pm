@@ -38,8 +38,7 @@ BEGIN {
 	$FIELDS->{DATA} = { data => {
 		(map { $_ => '+' } qw(
 			kills 		headshot_kills
-			deaths		headshot_deaths
-			suicides
+			deaths		headshot_deaths		suicides
 		)),
 	}};
 }
@@ -57,6 +56,7 @@ our $ROLEIDS = {};
 sub new {
 	my $proto = shift;
 	my $name = shift;			# role name 'm4a1', 'awp', etc...
+	my $team = shift;			# role team (can be undef)
 	my $gametype = shift;			# halflife
 	my $modtype = shift || '';		# cstrike
 	my $timestamp = shift || gmtime;	# timestamp when role was used (game time)
@@ -74,6 +74,7 @@ sub new {
 
 		roleid		=> 0,		# PRIMARY KEY
 		name		=> '',		# role name
+		team		=> $team,
 
 		data		=> {},		# core data stats
 		#role		=> {},		# t_role information (only populated when there's a change)
@@ -194,7 +195,7 @@ sub save_stats {
 		
 	} else {
 		# INSERT a new row
-		@bind = role { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
+		@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
 		$self->db->execute('insert_c' . $tbl, $self->{roleid}, @bind);
 		$_cache->{$self->{roleid}} = 1;
 	}
@@ -315,6 +316,30 @@ sub firstseen {
 	return $self->{firstseen};
 }
 
+# a player role was killed by someone
+sub action_death {
+	my ($self, $game, $victim, $killer, $weapon, $map, $props) = @_;
+	$self->timestamp($props->{timestamp});
+	
+	$self->{data}{deaths}++;
+	$self->{data}{headshot_deaths}++ if $props->{headshot};
+}
+
+# a player role killed someone
+sub action_kill {
+	my ($self, $game, $killer, $victim, $weapon, $map, $props) = @_;
+	$self->timestamp($props->{timestamp});
+	
+	$self->{data}{kills}++;
+	$self->{data}{headshot_kills}++ if $props->{headshot};
+}
+
+sub action_player_became {
+	my ($self, $game, $p, $props) = @_;
+	$self->timestamp($props->{timestamp});
+	$self->{data}{joined}++;
+}
+
 sub gametype { $_[0]->{gametype} }
 sub modtype  { $_[0]->{modtype} }
 
@@ -342,8 +367,8 @@ sub FIELDS {
 
 # Package method. 
 # Prepares some SQL statements for use by all objects of this class to speed
-# things up a bit. These statements require a valid PS::Plr object to be created
-# already. This is only called once, per sub-class.
+# things up a bit. These statements require a valid PS::Role object to be
+# created already. This is only called once, per sub-class.
 sub prepare_statements {
 	my ($class, $gametype, $modtype) = @_;
 	my $db = $PS::Role::DB || return undef;

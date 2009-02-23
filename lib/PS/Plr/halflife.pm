@@ -38,7 +38,7 @@ BEGIN {
 			damage_absorbed
 			damage_mitigated
 			damage_taken
-			hits shots
+			hits 		shots
 			hit_head	dmg_head
 			hit_leftarm	dmg_leftarm
 			hit_rightarm	dmg_rightarm
@@ -68,6 +68,17 @@ BEGIN {
 		 ))
 	);
 
+	$fields = __PACKAGE__->SUPER::FIELDS('SESSIONS');
+	%{$fields->{halflife}} = (
+		(map { $_ => '+' } qw(
+			damage
+			damage_absorbed
+			damage_mitigated
+			damage_taken
+			hits shots
+		)),
+	);
+	
 	# Player weapon fields
 	$fields = __PACKAGE__->SUPER::FIELDS('WEAPONS');
 	%{$fields->{halflife}} = (
@@ -105,20 +116,20 @@ BEGIN {
 # Assign a plrid to the player, watch out for STEAM_ID_PENDING or STEAM_ID_LAN
 # and do not allow them to be used.
 sub assign_plrid {
-	my ($self) = @_;
+	my ($self, $check_only) = @_;
 	my $uniqueid = $self->{ $self->conf->main->uniqueid };
 	if ($self->conf->main->uniqueid eq 'guid' and
 	    ($uniqueid eq 'STEAM_ID_PENDING' or $uniqueid eq 'STEAM_ID_LAN')) {
 		;;; $self->debug4("Delaying PLRID assignment for $self",0);
 		return 0;
 	}
-	return $self->SUPER::assign_plrid;
+	return $self->SUPER::assign_plrid($check_only);
 }
 
-# save plr_ids' but do not save STEAM_ID_PENDING or STEAM_ID_LAN
+# save plr_ids' but do not save STEAM_ID_PENDING or STEAM_ID_LAN as GUID's
 sub save_plr_id {
-	my $self = shift;	# $_[1] == id
-	return if $self->conf->main->uniqueid eq 'guid' and
+	my $self = shift;	# 0=$type, 1=$id, 2=@$set
+	return if $_[0] eq 'guid' and
 		($_[1] eq 'STEAM_ID_PENDING' or $_[1] eq 'STEAM_ID_LAN');
 	$self->SUPER::save_plr_id(@_);
 }
@@ -126,7 +137,12 @@ sub save_plr_id {
 sub signature {
 	my ($self) = @_;
 	my $steamid = $self->{guid};
-	$steamid = "BOT" if substr($steamid,0,4) eq 'BOT_';
+	if (substr($steamid,0,4) eq 'BOT_') {
+		$steamid = "BOT";
+	} else {
+		# PS::Game::halflife::get_plr() strips the "STEAM_X:" prefix off
+		$steamid = "STEAM_0:" . $steamid;
+	}
 	return sprintf("%s<%s><%s><%s>",
 		$self->{name},
 		$self->{uid},
@@ -137,7 +153,7 @@ sub signature {
 
 # attacked events are game particular... so override it here for halflife
 sub action_attacked {
-	my ($self, $victim, $weapon, $map, $props) = @_;
+	my ($self, $game, $victim, $weapon, $map, $props) = @_;
 	my $w = $weapon->id;
 	my $v = $victim->id;
 	my $dmg = int($props->{damage}) || 0;
@@ -189,7 +205,7 @@ sub action_attacked {
 
 # Odd-ball actions (from 3rd party plugins)
 sub action_misc {
-	my ($self, $action, $props) = @_;
+	my ($self, $game, $action, $props) = @_;
 	if ($action eq 'time') {
 		
 	} elsif ($action eq 'latency') {
@@ -204,7 +220,7 @@ sub action_misc {
 
 # assign 'weaponstats' and 'weaponstats2' stats
 sub action_weaponstats {
-	my ($self, $trigger, $weapon, $props) = @_;
+	my ($self, $game, $trigger, $weapon, $props) = @_;
 	my $w = $weapon->id;
 
 	if ($trigger eq 'weaponstats') {

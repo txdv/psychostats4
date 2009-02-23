@@ -84,7 +84,6 @@ sub event {
 	my ($event, $feed) = @_;
 	my ($prefix, $timestamp);
 
-	#$event = decode('UTF-8',$event);	# HL logs are UTF-8 encoded
 	$event = decode_utf8($event);		# HL logs are UTF-8 encoded
 
 	# Ignore lines that are not complete (no newline). An incomplete line
@@ -120,7 +119,11 @@ sub event {
 		}
 
 		$timestamp = timegm_nocheck($6, $5, $4, $2, $1-1, $3-1900) - ($feed->gmt_offset || 0);
-		
+		#my $localtime = Time::Local::timelocal($6, $5, $4, $2, $1-1, $3-1900);
+		#print "$prefix == $6,$5,$4,$2,$1,$3 == $timestamp (" . ($feed->gmt_offset || 0) . ")\n";
+		#print "$prefix == " . localtime($localtime) . " (localtime) $localtime\n";
+		#print "$prefix == " . gmtime($timestamp) . " (GMT) $timestamp\n";
+
 		$self->{last_timestamp} = $timestamp;
 		$self->{last_prefix} = $prefix;
 		$self->{last_min} = $self->{min};
@@ -181,9 +184,9 @@ sub event_attacked {
 	my $m = $self->get_map;
 	my $props = $self->parseprops($propstr);
 
-	$w->action_attacked($k, $v, $m, $props);
-	$k->action_attacked($v, $w, $m, $props);
-	$v->action_injured( $k, $w, $m, $props);
+	$w->action_attacked($self, $k, $v, $m, $props);
+	$k->action_attacked($self, $v, $w, $m, $props);
+	$v->action_injured($self,  $k, $w, $m, $props);
 }
 
 sub event_changed_name {
@@ -207,8 +210,8 @@ sub event_changed_name {
 		my $m = $self->get_map;
 		
 		# save and disconnect the current player entity
-		$p->action_disconnect($m, $props);
-		$p->save;
+		$p->action_disconnect($self, $m, $props);
+		$p->save($self);
 
 		# start a new player entity using the original as the base.
 		# stats are not cloned/transfered to the new entity.
@@ -228,7 +231,7 @@ sub event_changed_name {
 
 	} else {
 		$self->del_plrcache($p);
-		$p->action_changed_name($name, $props);
+		$p->action_changed_name($self, $name, $props);
 		$self->add_plrcache($p);
 	}
 }
@@ -236,15 +239,12 @@ sub event_changed_name {
 sub event_changed_role {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $role) = @$args;
-	return;
-	my $p1 = $self->get_plr($plrstr);
-	return unless ref $p1;
-	$role = $self->role_normal($role); 
-	$p1->{role} = $role;
+	my $p = $self->get_plr($plrstr);
+	my $r = $self->get_role($role, $p->team) || return;
+	my $props = $self->parseprops;
+	return unless ref $p;
 
-	my $r1 = $self->get_role($role, $p1->{team}) || return;
-	$p1->{roles}{ $r1->{roleid} }{joined}++;
-	$r1->{basic}{joined}++;
+	$p->action_changed_role($self, $r, $props);
 }
 
 sub event_chat {
@@ -257,7 +257,7 @@ sub event_chat {
 	# hell, let banned players chat it up!
 	#return if $self->isbanned($p1);
 
-	$p->action_chat($msg, $teamonly, $props);
+	$p->action_chat($self, $msg, $teamonly, $props);
 }
 
 # "Player<uid><STEAM_ID_PENDING><>" connected, address "1.2.3.4:12345"
@@ -274,8 +274,8 @@ sub event_connected {
 	$ip = '127.0.0.1' if $ip !~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
 	$ip = ip2int($ip);
 	
-	$p->action_connected($ip, $props);
-	$m->action_connected($p, $props);
+	$p->action_connected($self, $ip, $props);
+	$m->action_connected($self, $p, $props);
 
 	# save the IP address
 	$self->add_ipcache($p->uid, $ip, $timestamp);
@@ -301,7 +301,7 @@ sub event_disconnected {
 	my $props = $self->parseprops;
 	return unless ref $p;
 	
-	$p->action_disconnect($self->get_map, $props);
+	$p->action_disconnect($self, $self->get_map, $props);
 
 	# remove the player from our cache since they're no longer online
 	$self->del_plrcache($p);
@@ -315,7 +315,7 @@ sub event_disconnected {
 	}
 
 	# save any pending stats they might have.
-	$p->save;
+	$p->save($self);
 
 	# mark this player offline
 	$self->plr_offline($p);
@@ -333,7 +333,7 @@ sub event_entered_game {
 	my $props = $self->parseprops($propstr);
 	return unless ref $p;
 
-	$p->action_entered($m, $props);
+	$p->action_entered($self, $m, $props);
 	
 	# consider the player ONLINE and actively in the game.
 	$self->plr_online($p);
@@ -354,7 +354,7 @@ sub event_joined_team {
 	my $m = $self->get_map;
 	my $props = $self->parseprops($propstr);
 
-	$p->action_joined_team($team, $m, $props);
+	$p->action_joined_team($self, $team, $m, $props);
 }
 
 # "Player<uid><STEAM_ID><TEAM>" killed "Player<uid><STEAM_ID><TEAM>" with "weapon" (headshot)
@@ -369,14 +369,17 @@ sub event_kill {
 
 	my $m = $self->get_map;
 	my $w = $self->get_weapon($weapon);
-	my $kr = $self->get_role($k->role);
-	my $vr = $self->get_role($v->role);
+	my $kr = $self->get_role($k->role, $k->team);
+	my $vr = $self->get_role($v->role, $v->team);
 	my $props = $self->parseprops($propstr);
 
-	$k->action_kill( $v, $w, $m, $props);	# record a kill for the KILLER
-	$w->action_kill( $k, $v, $m, $props);	# record a kill for the WEAPON
-	$m->action_kill( $k, $v, $w, $props);	# record a kill for the MAP
-	$v->action_death($k, $w, $m, $props);	# record a death for the VICTIM
+	# Run the action on each affected entity...
+	$v->action_death($self,  $k,     $w, $m, $props);
+	$k->action_kill($self,       $v, $w, $m, $props);
+	$w->action_kill($self,   $k, $v,     $m, $props);
+	$m->action_kill($self,   $k, $v, $w,     $props);
+	$kr->action_kill($self,  $k, $v, $w, $m, $props) if $kr;
+	$vr->action_death($self, $v, $k, $w, $m, $props) if $vr;
 
 	my $skill_handled = 0;
 	if ($self->can('mod_event_kill')) {
@@ -399,20 +402,6 @@ sub event_kill {
 		$self->{rank_kills} = 0;
 		$self->{rank_time} = time;
 	}
-	
-
-=pod
-	# check for spatial stats on this event
-	if ($props->{attacker_position}) {
-		$m->spatial(
-			$self, 
-			$k, $props->{attacker_position}, 
-			$v, $props->{victim_position}, 
-			$w, $props->{headshot}
-		);
-	}
-
-=cut
 }
 
 sub event_logstartend {
@@ -443,7 +432,7 @@ sub event_mapstarted {
 	# save any current maps in memory (should only be 1 map)
 	foreach my $map (keys %{$self->{maps}}) {
 		$m = $self->get_map($map);
-		$m->action_mapended($props);
+		$m->action_mapended($self, $props);
 		$m->save;
 		undef $m;
 	}
@@ -453,7 +442,7 @@ sub event_mapstarted {
 	$self->{curmap} = $mapname;
 	$m = $self->get_map;
 	
-	$m->action_mapstarted($props);
+	$m->action_mapstarted($self, $props);
 }
 
 # all games will end up overridding this event.
@@ -477,11 +466,11 @@ sub event_round {
 	# here instead of Game/halflife/tf2.pm
 	if ($trigger eq 'round_start' or $trigger eq 'mini_round_start') {
 		$self->{roundstart} = $timestamp;
-		$m->action_round($props);
+		$m->action_round($self, $props);
 
 		foreach my $p ($self->get_online_plrs) {
 			# do some per-round cleanup (ie: reset dead flag)
-			$p->action_round($m, $props);
+			$p->action_round($self, $m, $props);
 		}
 	}
 }
@@ -495,7 +484,7 @@ sub event_spatial {
 	my $w = $self->get_weapon($weapon);
 	my $props = $self->parseprops($propstr);
 
-	$m->action_spatial($k, $v, $w, $props);
+	$m->action_spatial($self, $k, $v, $w, $props);
 }
 
 sub event_suicide {
@@ -516,9 +505,9 @@ sub event_suicide {
 	my $m = $self->get_map;
 	my $w = $self->get_weapon($weapon);
 
-	$p->action_suicide($m, $w, $props);
-	$m->action_suicide($p, $w, $props);
-	$w->action_suicide($p, $m, $props);
+	$p->action_suicide($self, $m, $w, $props);
+	$m->action_suicide($self, $p, $w, $props);
+	$w->action_suicide($self, $p, $m, $props);
 
 	# 'suicide' award bonus/penalty for killing yourself (idiot!)
 	$self->plrbonus('suicide', 'enactor', $p);
@@ -532,15 +521,12 @@ sub event_weaponstats {
 	my $props = $self->parseprops($propstr);
 	return unless ref $p;
 	#return if $self->isbanned($p);
-	return unless $self->minconnected;
-	return unless $props->{weapon};
 	
-	my $weapon = $self->weapon_normal($props->{weapon});
-	my $w = $self->get_weapon($weapon);
+	my $w = $self->get_weapon($props->{weapon}) || return undef;
 
-	$p->action_weaponstats($trigger, $w, $props);
-	$w->action_weaponstats($trigger, $p, $props);
-	#$r->action_weaponstats($trigger, $p, $w, $props);
+	$p->action_weaponstats($self, $trigger, $w, $props);
+	$w->action_weaponstats($self, $trigger, $p, $props);
+	#$r->action_weaponstats($self, $trigger, $p, $w, $props);
 }
 
 sub event_ban {
@@ -643,9 +629,11 @@ sub get_plr {
 	# Note: steamid could be STEAM_ID_PENDING or BOT
 	$guid = substr($str, rindex($str,'<'), 128, '');
 	$guid = substr($guid, 1, -1);
+	$guid =~ s/^STEAM_\d://;	# strip the leading STEAM_x prefix
 
-	# completely ignore the HLTV client.
-	if ($guid eq 'HLTV') {
+	# Ignore the HLTV client.
+	# Ignore some plugin(s) that log using <Console> as the guid (tf)
+	if ($guid eq 'HLTV' or $guid eq 'Console') {
 		return undef;
 	}
 
@@ -720,8 +708,8 @@ sub _get_plr {
 			# mark the original player offline and mark the new
 			# player signature as online (see event_changed_name for
 			# details).
-			$p->action_disconnect($self->get_map, scalar $self->parseprops);
-			$p->save;
+			$p->action_disconnect($self, $self->get_map, scalar $self->parseprops);
+			$p->save($self);
 
 			my $p2 = $p->clone;
 			$p2->reset_ids;
@@ -763,9 +751,11 @@ sub parseprops {
 	my ($var, $val);     
 	my $props = {};
 	$str = '' unless defined $str;
-	while ($str =~ s/^\s*\((\S+)(?:\s+"([^"]*|.*?(?:<[^>]*>))")?\)//) {	# (variable "value")
+	# Find each variable pattern: (variable "value")
+	while ($str =~ s/^\s*\((\S+)(?:\s+"([^"]*|.*?(?:<[^>]*>))")?\)//) {
 		$var = $1;
-		$val = (defined $2) ? $2 : 1;			# if "value" doesn't exist the var is a true 'boolean' 
+		# if "value" doesn't exist the var is a true 'boolean' 
+		$val = (defined $2) ? $2 : 1;
 		if (exists $props->{$var}) {
 			# convert to array if its not already
 			$props->{$var} = [ $props->{$var} ] unless ref $props->{$var};
@@ -774,6 +764,7 @@ sub parseprops {
 			$props->{$var} = $val;
 		}
 	}
+	#$props->{game} = $self;
 	$props->{timestamp} = $timestamp || $self->{timestamp};
 	$props->{event} = $self->{_event};
 

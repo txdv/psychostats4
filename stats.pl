@@ -225,6 +225,15 @@ PS::Feeder::configure( DB => $db, CONF => $conf, OPT => $opt );
 
 $ERR->info("PsychoStats v$VERSION initialized.");
 
+# Handle some updates (not logs)
+#if ($opt->update) {
+#	my $update = $opt->update;
+#	if ($update =~ /\b(all|ranks)\b/) {
+#		$ERR->verbose('+ Preparing to update player ranks...');
+#	}
+#	&exit;
+#}
+
 # infinite main loop to process logs
 while (!$opt->nologs) {
 	my (@streams, @files, @sources);
@@ -357,6 +366,8 @@ sub process_streams {
 		$feeds->{$srv}->save_state;
 		$games->{$srv}->save;	# save current stats first
 		$games->{$srv}->save_state($feeds->{$srv}, $srv);
+		# force ranks to be updated once before we exit
+		$games->{$srv}->update_plrs;
 	}
 
 	# we're done... don't return to the caller.
@@ -449,6 +460,8 @@ sub process_files {
 		$feed->save_state;
 		$game->save; 	# save current stats first.
 		$game->save_state($feed, scalar $feed->server);
+		# force ranks to be updated once before we exit
+		$game->update_plrs;
 		
 		last if $GRACEFUL_EXIT > 0;
 	}
@@ -512,6 +525,54 @@ sub load_logsources {
 	}
 	sub lps_prev  { $prev = shift }
 	sub lps_reset { $lasttime = time; $prev = 0 }
+}
+
+# returns true if we're already running as a daemon under another process.
+sub is_daemon_running {
+	
+}
+
+# daemonizes the program into the background
+sub run_in_background {
+	my ($pid_file) = @_;
+	defined(my $pid = fork) or die "Can't fork process: $!";
+	exit if $pid;   # the parent exits
+
+	# 1st generation child starts here
+	
+	# redirect the standard filehandles to nowhere (linux only)
+	if ($^O !~ /mswin/) {
+		open(STDIN, '/dev/null');
+		open(STDOUT, '>>/dev/null') unless $DEBUG;
+		open(STDERR, '>>/dev/null') unless $DEBUG;
+		# run from the root directory so we don't lock other potential
+		# mounts or directories.
+		chdir('/');
+	}
+	
+	setsid(); # POSIX; sets us as the process leader (our parent PID is 1)
+	umask(0); # don't allow the running user umask affect the daemon's umask
+
+	# 2nd generation child (for SysV; avoids re-acquiring a controlling
+	# terminal). setsid() needs to be done before this, see above.
+	defined($pid = fork) or die "Can't fork sub-process: $!";
+	exit if $pid;
+	# now we're no longer the process leader but are in process group 1.
+
+	create_pid_file($pid_file) if $pid_file;
+}
+
+# creates a "pid" file with the process ID
+sub create_pid_file {
+	my ($pid_file, $pid) = @_;
+	$pid ||= $$;
+	if (open(F, ">$pid_file")) {
+		print F $pid;
+		close(F);
+		chmod(0644, $pid_file);
+	} else {
+		warn("Can not write PID $pid to file: $pid_file: $!\n");
+	}
 }
 
 # catch ^C so we can exit gracefully w/o losing any in-memory data

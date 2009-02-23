@@ -488,7 +488,7 @@ sub plr_offline {
 	delete $self->{c_online}{$p->uid};
 }
 
-# return a list of online players, optionally based on their team
+# return a list of online players, optionally based on their team (get_team)
 sub get_online_plrs {
 	my ($self, $team) = @_;
 	my @list;
@@ -553,7 +553,7 @@ sub role_normal { defined $_[1] ? lc $_[1] : '' }
 sub team_normal { defined $_[1] ? lc $_[1] : '' }
 
 # normalize a weapon name
-sub weapon_normal { defined $_[1] ? lc $_[1] : 'unknown' }
+sub weapon_normal { defined $_[1] ? lc $_[1] : '' }
 
 # returns a PS::Map object matching the map $name given
 sub get_map {
@@ -568,7 +568,7 @@ sub get_map {
 # returns a PS::Weapon object matching the weapon $name given
 sub get_weapon {
 	my ($self, $name) = @_;
-	$name = $self->weapon_normal($name);
+	$name = $self->weapon_normal($name) || return undef;
 	if (exists $self->{weapons}{$name}) {
 		return $self->{weapons}{$name};
 	}
@@ -579,7 +579,7 @@ sub get_weapon {
 sub get_role {
 	my ($self, $name, $team) = @_;
 	return undef unless $name;
-	$name = $self->role_normal($name);
+	$name = $self->role_normal($name) || return undef;
 	if (exists $self->{roles}{$name}) {
 		return $self->{roles}{$name};
 	}
@@ -1103,9 +1103,9 @@ sub update_allowed_plr_ranks {
 		# force all players
 		$force_all = $force_all ? 1 : 0;
 		if ($force_all) {	# everyone ranks
-			$st = $db->prepare('UPDATE t_plr p SET rank=1 WHERE rank IS NULL');
+			$st = $db->prepare('UPDATE t_plr p SET rank=0 WHERE rank IS NULL');
 		} else {		# no one ranks
-			$st = $db->prepare('UPDATE t_plr p SET rank=0 WHERE rank IS NOT NULL');
+			$st = $db->prepare('UPDATE t_plr p SET rank=NULL WHERE rank IS NOT NULL');
 		}
 		
 	} elsif (!($st = $db->prepared('update_allowed_plr_ranks_' . $type))) {
@@ -1132,7 +1132,8 @@ sub update_allowed_plr_ranks {
 
 	;;;bench('update_allowed_plr_ranks');
 	if (!$st->execute) {
-		$self->warn("Error updating allowed ranks for players: " . $st->errstr);
+		$self->warn("Error updating allowed ranks for players: " .
+			    $st->errstr . "\nCMD=" . $st->{Statement});
 	} else {
 		my $affected = $st->rows;
 		$self->debug3("$affected player rank flags updated.", 0) if $affected;
@@ -2253,7 +2254,7 @@ sub save {
 	
 	# SAVE PLAYERS
 	foreach $o ($self->get_plrcache) {
-		$o->save;
+		$o->save($self);
 	}
 
 	# SAVE MAPS

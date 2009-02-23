@@ -19,11 +19,10 @@
 #
 #	$Id$
 #
-package PS::Map::halflife::cstrike;
+package PS::Map::halflife::tf;
 
 use strict;
 use warnings;
-use PS::SourceFilter;
 
 # NOTE ------------------------------------------------------------------------
 # NOTE: We don't subclass halflife here, since there's no need at the moment.
@@ -34,46 +33,16 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 BEGIN {
 	my $fields = __PACKAGE__->SUPER::FIELDS('DATA');
-	%{$fields->{halflife_cstrike}} = (
+	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
 			team_kills		
-			killed_terrorist 	killed_ct 
-			terrorist_kills 	ct_kills 
-			joined_terrorist	joined_ct
-			terrorist_wins		ct_wins
-			terrorist_losses	ct_losses
-			hostages_killed		hostages_rescued 	hostages_touched
-			bomb_planted		bomb_exploded
-			bomb_defuse_attempts	bomb_defused
+			killed_red 		killed_blue 
+			red_kills 		blue_kills 
+			joined_red		joined_blue
+			red_wins		blue_wins
+			red_losses		blue_losses
 		 ))
-			#vip_became		vip_killed		vip_escaped
 	);
-}
-
-# A player did something with a bomb
-sub action_bomb {
-	my ($self, $game, $action, $plr, $props) = @_;
-	$self->timestamp($props->{timestamp});
-
-	$self->{data}{'bomb_' . $action}++;
-}
-
-# The player did something to a hostage (killed, touched, rescued)
-sub action_hostage {
-	my ($self, $game, $action, $plr, $props) = @_;
-	my $var = $action . '_hostages';
-	$self->timestamp($props->{timestamp});
-
-	$self->{data}{$var}++;
-}
-
-sub action_vip {
-	my ($self, $game, $action, $map, $props) = @_;
-	my $m = $map->id;
-	my $var = 'vip_' . $action;
-	$self->timestamp($props->{timestamp});
-
-	$self->{data}{$var}++;
 }
 
 1;

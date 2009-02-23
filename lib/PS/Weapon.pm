@@ -339,37 +339,32 @@ sub firstseen {
 # a player attacked someone. Attacks are game specific and are overridden in
 # subclasses usually.
 sub action_attacked {
-	my ($self, $killer, $victim, $map, $props) = @_;
+	my ($self, $game, $killer, $victim, $map, $props) = @_;
 	my $dmg = $props->{damage} || 0;
 	$self->timestamp($props->{timestamp});
 
 	$self->{data}{hits}++;
 	$self->{data}{shots}++;
 	$self->{data}{damage} += $dmg;
-
-	# HL2 started recording the hitbox information on attacked events
-	if ($props->{hitgroup}) {
-		my $hit_loc = 'hit_' . $props->{hitgroup};
-		my $dmg_loc = 'dmg_' . $props->{hitgroup};
-
-		$self->{data}{$hit_loc}++;
-		$self->{data}{$dmg_loc} += $dmg;
-	}	
 }
 
 # a player killed someone
 sub action_kill {
-	my ($self, $killer, $victim, $map, $props) = @_;
+	my ($self, $game, $killer, $victim, $map, $props) = @_;
 	$self->timestamp($props->{timestamp});
 	
 	$self->{data}{kills}++;
+	$self->{data}{headshot_kills}++ if $props->{headshot};
+	
 }
 
 # A player commited suicide with the weapon...
 sub action_suicide {
-	my ($self, $player, $map, $props) = @_;
+	my ($self, $game, $player, $map, $props) = @_;
 	$self->timestamp($props->{timestamp});
 
+	# track a kill too, since a suicide is a kill
+	$self->{data}{kills}++;
 	$self->{data}{suicides}++;
 }
 

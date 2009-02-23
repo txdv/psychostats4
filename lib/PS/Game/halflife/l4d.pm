@@ -53,10 +53,10 @@ sub event_kill {
 	my $vr = $self->get_role($v->role);
 	my $props = $self->parseprops($propstr);
 
-	$k->action_kill( $v, $w, $m, $props);	# record a kill for the KILLER
-	$w->action_kill( $k, $v, $m, $props);	# record a kill for the WEAPON
-	$m->action_kill( $k, $v, $w, $props);	# record a kill for the MAP
-	$v->action_death($k, $w, $m, $props);	# record a death for the VICTIM
+	$k->action_kill($self,  $v, $w, $m, $props);	# record a kill for the KILLER
+	$w->action_kill($self,  $k, $v, $m, $props);	# record a kill for the WEAPON
+	$m->action_kill($self,  $k, $v, $w, $props);	# record a kill for the MAP
+	$v->action_death($self, $k, $w, $m, $props);	# record a death for the VICTIM
 
 	my $skill_handled = 0;
 	if ($self->can('mod_event_kill')) {
@@ -110,7 +110,7 @@ sub event_plrtrigger {
 
 	} elsif ($trigger =~ /^(time|latency|amx_|game_idle_kick|camped)/) {
 		# extra statsme / amx triggers
-		$p->action_misc($trigger, $props);
+		$p->action_misc($self, $trigger, $props);
 
 	} else {
 		if ($self->{report_unknown}) {
@@ -180,12 +180,12 @@ sub event_teamtrigger {
 	}
 
 	# update map stats
-	$m->action_teamwon( $trigger, $team, $props);
-	$m->action_teamlost($trigger, $team, $props);
+	$m->action_teamwon($self,  $trigger, $team, $props);
+	$m->action_teamlost($self, $trigger, $team, $props);
 
 	# update stats for online players
-	$_->action_teamwon( $trigger, $team, $m, $props) for @$winners;
-	$_->action_teamlost($trigger, $team, $m, $props) for @$losers;
+	$_->action_teamwon($self,  $trigger, $team, $m, $props) for @$winners;
+	$_->action_teamlost($self, $trigger, $team, $m, $props) for @$losers;
 
 }
 

@@ -43,9 +43,7 @@ BEGIN {
 	$FIELDS = { };
 	$FIELDS->{DATA} = { data => {
 		(map { $_ => '+' } qw(
-			kills
-			headshot_kills	headshot_deaths
-			suicides
+			kills		suicides
 			games 		rounds
 			connections
 			online_time
@@ -359,7 +357,7 @@ sub onlinetime {
 
 # a player connected to the map while a game was active.
 sub action_connected {
-	my ($self, $plr, $props) = @_;
+	my ($self, $game, $plr, $props) = @_;
 	$self->timestamp($props->{timestamp});
 	if (!$plr->is_bot or !$self->conf->main->ignore_bots_conn) {
 		$self->{data}{connections}++;
@@ -369,7 +367,7 @@ sub action_connected {
 
 # a player joined a team on the map.
 sub action_joined_team {
-	my ($self, $team, $props) = @_;
+	my ($self, $game, $team, $props) = @_;
 	$self->timestamp($props->{timestamp});
 	
 	$self->{data}{'joined_' . $team}++;
@@ -377,33 +375,27 @@ sub action_joined_team {
 
 # a player killed someone else... duh.
 sub action_kill {
-	my ($self, $killer, $victim, $weapon, $props) = @_;
+	my ($self, $game, $killer, $victim, $weapon, $props) = @_;
 	my $map = $self->name;
 	my $kt = $killer->team;
 	my $vt = $victim->team;
 	$self->timestamp($props->{timestamp});
 
 	$self->{data}{kills}++;
-	#warn "Map '$self' has $self->{data}{kills} total kills\n";
 
-	if ($vt) {
-		# killed someone on the other team
-		$self->{data}{'killed_' . $vt}++;
-	}
-	
-	if ($kt) {
-		# kills for your current team
-		$self->{data}{$kt . '_kills'}++;
+	return unless $vt && $kt;
 
-		if ($vt eq $kt) {	# record a team kill
-			$self->{data}{team_kills}++;
-		}
+	$self->{data}{'killed_' . $vt}++;
+	$self->{data}{$kt . '_kills'}++;
+
+	if ($vt eq $kt) {	# record a team kill
+		$self->{data}{team_kills}++;
 	}
 }
 
 # The map has officially started.
 sub action_mapstarted {
-	my ($self, $props) = @_;
+	my ($self, $game, $props) = @_;
 	#$self->timestamp($props->{timestamp});
 	#warn "Map started '$self'\n\n";
 	
@@ -411,7 +403,7 @@ sub action_mapstarted {
 }
 
 sub action_mapended {
-	my ($self, $props) = @_;
+	my ($self, $game, $props) = @_;
 	#my $time = compacttime($self->onlinetime);
 	#$self->timestamp($props->{timestamp});
 	#warn "Map ended '$self' ($time)\n";
@@ -419,7 +411,7 @@ sub action_mapended {
 
 # A new round started.
 sub action_round {
-	my ($self, $props) = @_;
+	my ($self, $game, $props) = @_;
 	
 	$self->{data}{rounds}++;
 
@@ -434,7 +426,7 @@ sub action_round {
 
 # A player committed suicide
 sub action_suicide {
-	my ($self, $victim, $weapon, $props) = @_;
+	my ($self, $game, $victim, $weapon, $props) = @_;
 	
 	# we don't need to record deaths for maps, it'll always equal kills
 	#$self->{data}{deaths}++;
@@ -444,7 +436,7 @@ sub action_suicide {
 
 # generic team win event for any map game.
 sub action_teamwon {
-	my ($self, $trigger, $team, $props) = @_;	
+	my ($self, $game, $trigger, $team, $props) = @_;	
 
 	# terrorist_wins, ct_wins, red_wins, blue_wins, etc...
 	$self->{data}{$team . '_wins'}++;
@@ -452,7 +444,7 @@ sub action_teamwon {
 
 # generic team lost event for any map game.
 sub action_teamlost {
-	my ($self, $trigger, $team, $props) = @_;	
+	my ($self, $game, $trigger, $team, $props) = @_;	
 	
 	# terrorist_losses, ct_losses, red_losses, blue_losses, etc...
 	$self->{data}{$team . '_losses'}++;

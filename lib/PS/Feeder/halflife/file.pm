@@ -32,6 +32,14 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 sub logsort {
 	my $self = shift;
 	my $list = shift;		# array ref to a list of log filenames
+	#my %uniq;
+	#use util;
+	#for (@$list) {
+	#	my $key = substr($_, 0, 3);
+	#	$uniq{$key} = $_ if !exists $uniq{$key} || $_ lt $uniq{$key};
+	#}
+	#print_r(\%uniq);
+	#use util; print_r([ sort { $self->logcompare($a, $b) } @$list ]);
 	return [ sort { $self->logcompare($a, $b) } @$list ];
 }
 
@@ -40,6 +48,8 @@ sub logsort {
 # year as being < instead of > this year
 sub logcompare { 
 	my ($self, $x, $y) = @_; 
+
+	#return lc $x cmp lc $y; 
 
 	# Fast path -- $a and $b are in the same month 
 	if ( substr($x, 0, 3) eq substr($y, 0, 3) ) { 
