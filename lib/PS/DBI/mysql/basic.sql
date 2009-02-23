@@ -97,7 +97,7 @@ CREATE TABLE `ps_config_clantags` (
   KEY `idx` (`idx`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_config_events` (
-  `id` int(10) unsigned NOT NULL,
+  `id` int(10) unsigned NOT NULL auto_increment,
   `gametype` varchar(255) NOT NULL,
   `modtype` varchar(255) default NULL,
   `eventname` varchar(64) NOT NULL,
@@ -152,6 +152,12 @@ CREATE TABLE `ps_config_logsources` (
   `lastupdate` int(10) unsigned default NULL,
   PRIMARY KEY  (`id`),
   KEY `idx` (`idx`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `ps_config_plraliases` (
+  `from_uniqueid` varchar(200) NOT NULL,
+  `to_uniqueid` varchar(200) NOT NULL,
+  PRIMARY KEY  (`from_uniqueid`),
+  KEY `to_uniqueid` (`to_uniqueid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_config_plrbans` (
   `id` int(10) unsigned NOT NULL default '0',
@@ -251,8 +257,8 @@ CREATE TABLE `ps_geoip_ip` (
 CREATE TABLE `ps_map` (
   `mapid` smallint(5) unsigned NOT NULL auto_increment,
   `name` varchar(64) NOT NULL,
-  `gametype` enum('halflife') NOT NULL,
-  `modtype` enum('cstrike','tf','dod') NOT NULL,
+  `gametype` enum('halflife','cod','soldat') NOT NULL,
+  `modtype` enum('cstrike','tf','dod','l4d') NOT NULL,
   PRIMARY KEY  (`mapid`),
   UNIQUE KEY `map` (`name`,`gametype`,`modtype`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -342,13 +348,13 @@ CREATE TABLE `ps_live_games` (
 CREATE TABLE `ps_plr` (
   `plrid` int(10) unsigned NOT NULL auto_increment,
   `uniqueid` varchar(200) NOT NULL,
-  `gametype` enum('halflife') NOT NULL,
-  `modtype` enum('cstrike','tf','dod') NOT NULL,
+  `gametype` enum('halflife','cod','soldat') NOT NULL,
+  `modtype` enum('cstrike','tf','dod','l4d') NOT NULL,
   `firstseen` int(10) unsigned NOT NULL,
   `lastseen` int(10) unsigned NOT NULL,
   `activity` tinyint(3) unsigned NOT NULL default '0',
   `activity_updated` int(10) unsigned NOT NULL default '0',
-  `points` int(11) NOT NULL default '0',
+  `points` int(10) unsigned NOT NULL default '0',
   `skill` float(10,4) default NULL,
   `skill_prev` float(10,4) default NULL,
   `rank` int(10) unsigned default '0',
@@ -357,15 +363,8 @@ CREATE TABLE `ps_plr` (
   `clanid` int(10) unsigned default NULL,
   PRIMARY KEY  (`plrid`),
   UNIQUE KEY `uniqueid` (`uniqueid`,`gametype`,`modtype`),
-  KEY `rank` (`rank`,`gametype`,`modtype`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-CREATE TABLE `ps_plr_aliases` (
-  `id` int(10) unsigned NOT NULL default '0',
-  `guid` varchar(128) NOT NULL,
-  `alias` varchar(128) NOT NULL default '',
-  PRIMARY KEY  (`id`),
-  KEY `uniqueid` (`guid`),
-  KEY `alias` (`alias`)
+  KEY `rank` (`rank`,`gametype`,`modtype`),
+  KEY `lastseen` (`lastseen`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_bans` (
   `plrid` int(10) unsigned NOT NULL,
@@ -397,26 +396,26 @@ CREATE TABLE `ps_plr_data` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_ids_guid` (
   `plrid` int(10) unsigned NOT NULL default '0',
-  `guid` varchar(128) NOT NULL,
+  `guid` varchar(200) NOT NULL,
   `totaluses` int(10) unsigned NOT NULL default '1',
-  `firstseen` datetime NOT NULL,
-  `lastseen` datetime NOT NULL,
+  `firstseen` int(10) unsigned NOT NULL,
+  `lastseen` int(10) unsigned NOT NULL,
   PRIMARY KEY  (`plrid`,`guid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_ids_ipaddr` (
   `plrid` int(10) unsigned NOT NULL default '0',
   `ipaddr` int(10) unsigned NOT NULL default '0',
   `totaluses` int(10) unsigned NOT NULL default '1',
-  `firstseen` datetime NOT NULL,
-  `lastseen` datetime NOT NULL,
+  `firstseen` int(10) unsigned NOT NULL,
+  `lastseen` int(10) unsigned NOT NULL,
   PRIMARY KEY  (`plrid`,`ipaddr`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_ids_name` (
   `plrid` int(10) unsigned NOT NULL default '0',
-  `name` varchar(128) NOT NULL default '',
+  `name` varchar(200) NOT NULL,
   `totaluses` int(10) unsigned NOT NULL default '1',
-  `firstseen` datetime NOT NULL,
-  `lastseen` datetime NOT NULL,
+  `firstseen` int(10) unsigned NOT NULL,
+  `lastseen` int(10) unsigned NOT NULL,
   PRIMARY KEY  (`plrid`,`name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_maps` (
@@ -459,14 +458,14 @@ CREATE TABLE `ps_plr_roles` (
   KEY `plr_game_day` (`plrid`,`statdate`,`roleid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_sessions` (
-  `dataid` int(10) unsigned NOT NULL default '0',
+  `dataid` int(10) unsigned NOT NULL auto_increment,
   `plrid` int(10) unsigned NOT NULL default '0',
   `mapid` int(10) unsigned NOT NULL default '0',
   `session_start` int(10) unsigned NOT NULL,
   `session_end` int(10) unsigned NOT NULL,
-  `skill` float(8,2) NOT NULL default '0.00',
-  `prevskill` float(8,2) NOT NULL default '0.00',
+  `skill` float(10,4) NOT NULL default '0.0000',
   PRIMARY KEY  (`dataid`),
+  KEY `prev_session` (`plrid`,`mapid`,`session_end`),
   KEY `plrid` (`plrid`,`session_start`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_victims` (
@@ -502,8 +501,8 @@ CREATE TABLE `ps_plugins` (
 CREATE TABLE `ps_role` (
   `roleid` smallint(5) unsigned NOT NULL auto_increment,
   `name` varchar(64) NOT NULL,
-  `gametype` enum('halflife') NOT NULL,
-  `modtype` enum('cstrike','tf','dod') NOT NULL,
+  `gametype` enum('halflife','cod','soldat') NOT NULL,
+  `modtype` enum('cstrike','tf','dod','l4d') NOT NULL,
   PRIMARY KEY  (`roleid`),
   UNIQUE KEY `name` (`name`,`gametype`,`modtype`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
@@ -567,9 +566,9 @@ CREATE TABLE `ps_user` (
 CREATE TABLE `ps_weapon` (
   `weaponid` smallint(5) unsigned NOT NULL auto_increment,
   `name` varchar(32) NOT NULL,
-  `gametype` enum('halflife') NOT NULL,
-  `modtype` enum('cstrike','tf','dod') NOT NULL,
-  `fullname` varchar(128) default NULL,
+  `gametype` enum('halflife','cod','soldat') NOT NULL,
+  `modtype` enum('cstrike','tf','dod','l4d') NOT NULL,
+  `full_name` varchar(128) default NULL,
   `weight` float(4,2) default NULL,
   `class` varchar(32) default NULL,
   PRIMARY KEY  (`weaponid`),
