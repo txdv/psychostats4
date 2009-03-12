@@ -487,43 +487,72 @@ sub prepare_statements {
 }
 
 sub _init_table {
-	my ($class, $tbl, $fields, $primary, $order) = @_;
+	my ($class, $tbl, $fields, $primary, $primary_order) = @_;
 	my $created = 0;
 	$primary ||= 'dataid';
 	if (!ref $primary) {
 		$primary = { $primary => 'uint' };
 	}
-	$order ||= [ sort keys %$primary ];
+	$primary_order ||= [ sort keys %$primary ];
 	
 	# FIRST, make sure the data table exists for the game_mod.
 	if (!$DB->table_exists($tbl)) {
 		$class->info("* Creating table $tbl.");
 		# only add the primary key(s) to the table, the rest will be
 		# added afterwards.
-		if (!$DB->create($tbl, $primary, $order)) {
+		if (!$DB->create($tbl, $primary, $primary_order)) {
 			$class->fatal("Error creating table $tbl: " . $DB->errstr);
 		}
-		$DB->create_primary_index($tbl, $order);
+		$DB->create_primary_index($tbl, $primary_order);
 		$created = 1;
 	}
 	
-	# NEXT, Add any columns to the table that don't already exist. Note:
-	# It's assumed that existing columns will be the correct type.
-	my %uniq;	# filter out unique columns only
-	my @cols = sort grep { !$uniq{$_}++ } map { keys %$_ } @$fields{ keys %$fields };
-	my $info = $DB->table_info($tbl);
-	my (@add, @missing);
-	foreach my $col (@cols) {
-		if (!exists $info->{$col}) {
-			push(@missing, $col);
-			push(@add, $DB->_type_int($col) . $DB->_attrib_null(0) . $DB->_default_int);
+	my (%add, @rem, %uniq);
+	my $i = 0;
+	
+	# All columns that are actually in the table currently
+	my ($actual_cols, $actual) = $DB->table_info($tbl);
+	
+	# All fields that SHOULD be configured
+	my $configured = [ @$primary_order, sort grep { !$uniq{$_}++ } map { keys %$_ } @$fields{ keys %$fields } ];
+	my %configured_cols = ( map { $_ => $i++ } @$configured );
+
+	# remove any columns that are in the table but not configured
+	foreach (@$actual) {
+		if (!exists $configured_cols{$_}) {
+			push(@rem, $_);
+			delete $actual_cols->{$_};
 		}
 	}
-	if (@missing) {
-		$class->info("* Adding " . scalar(@missing) . " missing columns to table $tbl (" . join(', ', @missing) . ")")
+	if (@rem) {
+		$class->info("* Removing " . @rem . " unused columns from table $tbl (" . join(', ', @rem) . ")");
+		if (!$DB->alter_table_drop($tbl, @rem)) {
+			$class->fatal("Unable to DROP unused table columns from $tbl.");
+		}
+	}
+
+	# add any columns that are configured but not in the actual table
+	foreach (@$configured) {
+		my ($after, $idx);
+		if (!exists $actual_cols->{$_}) {
+			# determine where the column should be added within
+			# the sorted index list.
+			$idx = $configured_cols{$_};
+			if ($idx) {
+				# technically, $idx should always be > 0
+				$after = $configured->[ $idx-1 ];
+			}
+			$add{$_} = $after;
+		}
+	}
+	if (%add) {
+		$class->info("* Adding " . keys(%add) . " missing columns to table $tbl (" . join(', ', sort keys %add) . ")")
 			if !$created;
-		if (!$DB->alter_table_add($tbl, @add)) {
-			$class->fatal("Error updating table $tbl with new columns (" . join(', ', @missing) . "): " . $DB->errstr);
+		foreach (sort keys %add) {
+			my $col = $DB->_type_int($_) . $DB->_attrib_null(0) . $DB->_default_int;
+			if (!$DB->alter_table_add($tbl, $col, $add{$_})) {
+				$class->fatal("Error adding new column ($_) to table $tbl: " . $DB->errstr);
+			}
 		}
 	}
 }

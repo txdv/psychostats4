@@ -146,6 +146,7 @@ sub _explain {
 	my $self = shift;
 	my $tbl = $self->{dbh}->quote_identifier(shift);			# table will already have its prefix
 	my $fields = {};
+	my $order = [];
 	my $rows = $self->get_rows_hash("EXPLAIN $tbl");
 
 #          'name' => {
@@ -158,8 +159,9 @@ sub _explain {
 #                    },
 	foreach my $row (@$rows) {
 		$fields->{ $row->{Field} } = { map { lc $_ => $row->{$_} } keys %$row };
+		push(@$order, $row->{Field});
 	}
-	return wantarray ? %$fields : $fields;
+	return wantarray ? ($fields, $order) : $fields;
 }
 
 sub create_primary_index {
@@ -195,9 +197,20 @@ sub create_index {
 sub _create_footer { ") DEFAULT CHARACTER SET utf8" }
 
 sub alter_table_add {
-	my ($self, $tablename, @add) = @_;
+	my ($self, $tablename, $add, $after) = @_;
 	my $tbl = $self->{dbh}->quote_identifier( $tablename );
-	my $cmd = "ALTER TABLE $tbl " . join(', ', map { 'ADD ' . $_ } @add);
+	my @list = ref $add ? @$add : ( $add );
+	my $cmd = "ALTER TABLE $tbl " . join(', ', map { 'ADD ' . $_ } @list);
+	if (defined $after) {
+		$cmd .= " AFTER " . $self->{dbh}->quote_identifier( $after );
+	}
+	return $self->query($cmd);
+}
+
+sub alter_table_drop {
+	my ($self, $tablename, @rem) = @_;
+	my $tbl = $self->{dbh}->quote_identifier( $tablename );
+	my $cmd = "ALTER TABLE $tbl " . join(', ', map { 'DROP ' . $self->{dbh}->quote_identifier($_) } @rem);
 	return $self->query($cmd);
 }
 

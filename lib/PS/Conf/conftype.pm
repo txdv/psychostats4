@@ -34,6 +34,7 @@ sub new {
 	my $proto = shift;
 	my $conftype = shift;
 	my $list = shift;
+	my $opt = shift;	# optional PS::CmdLine object
 	my $class = ref($proto) || $proto;
 	my $self = { VARS => {}, conftype => $conftype };
 	bless($self, $class);
@@ -41,8 +42,10 @@ sub new {
 	# add methods for each section
 	foreach my $c (@$list) {
 		my ($section, $var, $value) = @$c;
+		no strict "refs";
+		# allow command line option to override config
+		$value = $opt->$var if $opt and $opt->exists($var);
 		if (defined $section and $section ne '') {
-			no strict "refs";
 			# add a section method only once...
 			if (!$self->can($section)) {
 				# create an object for this conftype

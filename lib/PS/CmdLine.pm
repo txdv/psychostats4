@@ -78,7 +78,7 @@ sub _getOptions {
 		'gametype=s'	=> \$self->{param}{gametype},
 		'modtype=s'	=> \$self->{param}{modtype},
 		'reset:s'	=> \$self->{param}{reset},
-		'unknown'	=> \$self->{param}{unknown},
+		'unknown'	=> \$self->{param}{report_unknown},
 		'v|verbose'	=> \$self->{param}{verbose},
 		'V|ver|version'	=> \$self->{param}{version},
 		'quiet'		=> \$self->{param}{quiet},

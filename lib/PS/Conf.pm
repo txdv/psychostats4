@@ -36,14 +36,25 @@ sub new {
 	my $db = shift;		# must have a valid PS::DBI object
 	my $class = ref($proto) || $proto;
 	my $self = { db => $db, order => [] };
+	my @types;
 	
 	$self->{st} = $db->prepare('load_conftype', qq{
 		SELECT section, var, value FROM $db->{t_config}
 		WHERE var IS NOT NULL AND conftype = ?
 	});
 
+	# Capture a PS::CmdLine object if passed in...
+	for (my $i=0; $i<@_; $i++) {
+		if (!ref $_[$i]) {
+			push(@types, $_[$i]);
+		} elsif (ref($_[$i]) =~ /^PS::CmdLine/) {
+			# If the ref is a PS::CmdLine::* object ...
+			$self->{opt} = $_[$i];
+		}
+	}
+
 	bless($self, $class);
-	return $self->load(@_);
+	return $self->load(@types);
 }
 
 # load config.
@@ -68,7 +79,7 @@ sub load {
 		my $vars = $self->{st}->fetchall_arrayref;
 
 		# create an object for this conftype
-		my $o = new PS::Conf::conftype($conftype, $vars);
+		my $o = new PS::Conf::conftype($conftype, $vars, $self->{opt});
 
 		# create a sub with the name of the conftype pointing to the
 		# object we just created so $self->conftype will return the

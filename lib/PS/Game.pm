@@ -889,15 +889,11 @@ sub get_plr_alias {
 	return (defined $alias and $alias ne '') ? $alias : $uniqueid;
 }
 
-# saves the current game state which is associated with the $feed.
-sub save_state {
-	my ($self, $feed, $srv, $db) = @_;
-	my $id = $feed->capture_state->{id};
-	my ($st, $str, $curstate, $newstate);
+# collects variables from the current object to save into the state.
+# subclasses that require special variables should override to save their vars.
+sub collect_state_vars {
+	my ($self) = @_;
 	my $state = {};
-	return unless $id;		# feed state should already exist
-	$db ||= $self->{db};
-	$srv ||= $feed->server;
 
 	# collect stateful game variables ...
 	$state->{timestamp}	= $self->{timestamp};
@@ -908,6 +904,40 @@ sub save_state {
 	foreach my $p ($self->get_online_plrs) {
 		push(@{$state->{players}}, $p->freeze);
 	}
+	
+	return $state;
+}
+
+# retores state variables for the game.
+# Subclasses should override for special vars as needed.
+sub restore_state_vars {
+	my ($self, $state) = @_;
+
+	$self->{timestamp} 	= $state->{timestamp} || 0;
+	$self->{curmap} 	= $state->{curmap} || 'unknown';
+	$self->{ipcache}	= $state->{ipcache} ? deep_copy($state->{ipcache}) : {};
+	
+	# restore the players that were online
+	if ($state->{players}) {
+		foreach my $plr (@{$state->{players}}) {
+			my $p = PS::Plr->unfreeze($plr);
+			$self->add_plrcache($p);
+			$self->plr_online($p);
+		}
+	}
+}
+
+# saves the current game state which is associated with the $feed.
+sub save_state {
+	my ($self, $feed, $srv, $db) = @_;
+	my $id = $feed->capture_state->{id};
+	my ($st, $str, $curstate, $newstate);
+	my $state = {};
+	return unless $id;		# feed state should already exist
+	$db ||= $self->{db};
+	$srv ||= $feed->server;
+
+	$state = $self->collect_state_vars;
 
 	# load the current game state for the feeder
 	$st = $db->prepare('SELECT game_state FROM t_state WHERE id=?');
@@ -920,14 +950,15 @@ sub save_state {
 	$str = decode_utf8($str);
 
 	# unserialize the game state into a real variable
-	$curstate = unserialize($str);
+	$curstate = $self->unserialize_state($str);
 	$curstate = {} unless ref $curstate eq 'HASH';
 
-	# add our local state to the saved state and re-serialize it.
+	# add our local state to the saved state
 	$curstate->{$srv} = $state;
 
 	# serialize the new state
-	$newstate = serialize($curstate);
+	$newstate = $self->serialize_state($curstate);
+	$newstate = encode_utf8($newstate);
 
 	# save it all!
 	$st = $db->prepare('UPDATE t_state SET game_state=? WHERE id=?');
@@ -960,9 +991,36 @@ sub restore_state {
 	# Must decode string as UTF8
 	$str = decode_utf8($str);
 
-	# unserialize the game state into a real variable
-	$state = $str ? unserialize($str) : {};
-	
+	$state = $self->unserialize_state($str);
+	$self->post_process_state($state);
+
+	# If there is no state saved for the specified server then we're done
+	return 0 unless exists $state->{$srv};
+	$self->restore_state_vars($state->{$srv});
+
+	return 1;
+}
+
+# serialize a state hash variable into a string for DB storage.
+sub serialize_state {
+	my ($self, $state) = @_;
+	my $str = serialize($state);
+	return $str;
+}
+
+# unserializes a state string into a real hash variable.
+sub unserialize_state {
+	my ($self, $str) = @_;
+	my $state = $str ? unserialize($str) : {};
+	return $state;
+}
+
+# Post process a state variable.
+# This is used to massage or fix certain elements within the state due to
+# differences in the serialization process between PHP and Perl.
+sub post_process_state {
+	my ($self, $state) = @_;
+
 	if (ref $state) {
 		# correct some 'side-effects' of the serialize() process,
 		# some arrays are serialized as hashes. We must fix that.
@@ -987,24 +1045,7 @@ sub restore_state {
 			}
 		}
 	}
-
-	# restore the game basics. If there is no state saved for the specified
-	# server then return and do nothing.
-	my $s = $state->{$srv} || return 0;
-	$self->{timestamp} 	= $s->{timestamp} || 0;
-	$self->{curmap} 	= $s->{curmap} || 'unknown';
-	$self->{ipcache}	= $s->{ipcache} ? deep_copy($s->{ipcache}) : {};
-	
-	# restore the players that were online
-	if ($s->{players}) {
-		foreach my $plr (@{$s->{players}}) {
-			my $p = PS::Plr->unfreeze($plr);
-			$self->add_plrcache($p);
-			$self->plr_online($p);
-		}
-	}
-
-	return 1;
+	return $state;
 }
 
 # assign bonus points to players
@@ -1056,6 +1097,7 @@ sub update_plr_activity {
 
 	return unless $self->conf->main->plr_min_activity or defined $force_all;
 	
+	# determine the most recent timestamp available for players
 	$lastseen = $db->max($db->{t_plr}, 'lastseen');
 	return unless $lastseen;
 
@@ -1103,9 +1145,12 @@ sub update_allowed_plr_ranks {
 		# force all players
 		$force_all = $force_all ? 1 : 0;
 		if ($force_all) {	# everyone ranks
-			$st = $db->prepare('UPDATE t_plr p SET rank=0 WHERE rank IS NULL');
+			# rank=0 means a player can rank, but has no actual rank
+			# value yet. The update_plr_ranks() needs to be called
+			# to update the actual rank values of players.
+			$st = $db->prepare('UPDATE t_plr SET rank=0 WHERE rank IS NULL');
 		} else {		# no one ranks
-			$st = $db->prepare('UPDATE t_plr p SET rank=NULL WHERE rank IS NOT NULL');
+			$st = $db->prepare('UPDATE t_plr SET rank=NULL WHERE rank IS NOT NULL');
 		}
 		
 	} elsif (!($st = $db->prepared('update_allowed_plr_ranks_' . $type))) {
@@ -1142,7 +1187,7 @@ sub update_allowed_plr_ranks {
 
 }
 
-# Assigns a rank to all players based on their skill.update_allowed_plr_ranks()
+# Assigns a rank to all players based on their skill. update_allowed_plr_ranks()
 # should be called before this in order to properly rank players based on the
 # current rules.
 sub update_plr_ranks {

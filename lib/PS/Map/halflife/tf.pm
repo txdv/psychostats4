@@ -36,13 +36,41 @@ BEGIN {
 	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
 			team_kills		
-			killed_red 		killed_blue 
-			red_kills 		blue_kills 
-			joined_red		joined_blue
-			red_wins		blue_wins
-			red_losses		blue_losses
+			killed_red 			killed_blue 
+			red_kills 			blue_kills 
+			joined_red			joined_blue
+			red_wins			blue_wins
+			red_losses			blue_losses
+			flag_captured
+			red_flag_captured		blue_flag_captured
+			red_flag_defended		blue_flag_defended
+			point_captured			blocked_capture
 		 ))
 	);
+}
+
+# A player blocked the capture of a control point
+sub action_blocked_capture {
+	my ($self, $game, $props) = @_;
+
+	$self->{data}{blocked_capture}++;
+}
+
+# A player captured a point on the map.
+sub action_captured_point {
+	my ($self, $game, $props) = @_;
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{point_captured}++;
+}
+
+# A player did something with a flag (captured, picked up, dropped, etc)
+sub action_flag {
+	my ($self, $game, $action, $plr, $props) = @_;
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{'flag_' . $action}++;
+	$self->{data}{$plr->team . '_flag_' . $action}++ if $plr;
 }
 
 1;

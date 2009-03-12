@@ -33,16 +33,29 @@ BEGIN {
 	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
 			assisted_kills
-			custom_kills		custom_deaths
-			backstab_kills		backstab_deaths
-			team_kills		team_deaths
-			red_kills		red_deaths
-			blue_kills		blue_deaths
-			killed_red		deathsby_red
-			killed_blue 		deathsby_blue 
-			joined_red		joined_blue
-			red_wins		blue_wins
-			red_losses		blue_losses
+			domination			revenge
+			custom_kills			custom_deaths
+			backstab_kills			backstab_deaths
+			team_kills			team_deaths
+			red_kills			red_deaths
+			blue_kills			blue_deaths
+			killed_red			deathsby_red
+			killed_blue 			deathsby_blue 
+			joined_red			joined_blue
+			red_wins			blue_wins
+			red_losses			blue_losses
+			destroyed_objects		built_objects
+			destroyed_dispenser		built_dispenser
+			destroyed_sentrygun		built_sentrygun
+			destroyed_attachment_sapper 	built_attachment_sapper
+			destroyed_teleporter_entrance 	built_teleporter_entrance
+			destroyed_teleporter_exit	built_teleporter_exit
+			red_flag_captured		red_flag_defended
+			blue_flag_captured		blue_flag_defended
+			flag_captured			flag_defended
+			flag_dropped			flag_pickedup
+			point_captured			blocked_capture
+			uber_charge
 		 ))
 	);
 
@@ -58,11 +71,13 @@ BEGIN {
 	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
 			assisted_kills
-			dominations
-			custom_kills		custom_deaths
-			backstab_kills		backstab_deaths
-			headshot_kills		headshot_deaths
-			structures_built	structures_destroyed
+			domination			revenge
+			custom_kills			custom_deaths
+			backstab_kills			backstab_deaths
+			headshot_kills			headshot_deaths
+			flag_captured			flag_defended
+			flag_dropped			flag_pickedup
+			point_captured			blocked_capture
 		 ))
 	);
 
@@ -70,19 +85,29 @@ BEGIN {
 	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
 			assisted_kills
-			custom_kills		custom_deaths
-			backstab_kills		backstab_deaths
-			red_wins		blue_wins
-			red_losses		blue_losses
+			domination			revenge
+			custom_kills			custom_deaths
+			backstab_kills			backstab_deaths
+			red_wins			blue_wins
+			red_losses			blue_losses
+			flag_captured			flag_defended
+			flag_dropped			flag_pickedup
+			point_captured			blocked_capture
 		 ))
 	);
 
 	$fields = __PACKAGE__->SUPER::FIELDS('WEAPONS');
 	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
-			custom_kills		custom_deaths
-			backstab_kills		backstab_deaths
-			team_kills		team_deaths
+			custom_kills			custom_deaths
+			backstab_kills			backstab_deaths
+			team_kills			team_deaths
+			destroyed_objects
+			destroyed_dispenser
+			destroyed_sentrygun
+			destroyed_attachment_sapper
+			destroyed_teleporter_entrance
+			destroyed_teleporter_exit
 		 ))
 	);
 
@@ -90,10 +115,17 @@ BEGIN {
 	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
 			assisted_kills
-			custom_kills		custom_deaths
-			backstab_kills		backstab_deaths
-			team_kills		team_deaths
-		 ))
+			domination			revenge
+			custom_kills			custom_deaths
+			backstab_kills			backstab_deaths
+			team_kills			team_deaths
+			destroyed_objects
+			destroyed_dispenser
+			destroyed_sentrygun
+			destroyed_attachment_sapper
+			destroyed_teleporter_entrance
+			destroyed_teleporter_exit
+		))
 	);
 }
 
@@ -114,14 +146,38 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 #	return $self->init($signature);
 #}
 
-sub action_flag {
-	my ($self, $game, $action, $map, $props) = @_;
+# A player blocked the capture of a control point
+sub action_blocked_capture {
+	my ($self, $game, $map, $props) = @_;
 	my $m = $map->id;
-	my $var = 'flag_' . $action;
+
+	$self->{data}{blocked_capture}++;
+	$self->{maps}{$m}{blocked_capture}++;
+}
+
+# A player captured a point on the map.
+sub action_captured_point {
+	my ($self, $game, $map, $props) = @_;
+	my $m = $map->id;
+	my $r = $self->role ? $game->get_role($self->role, $self->team)->id : undef;
 	$self->timestamp($props->{timestamp});
 
-	$self->{data}{$var}++;
-	$self->{maps}{$m}{$var}++;
+	$self->{data}{point_captured}++;
+	$self->{maps}{$m}{point_captured}++;
+	$self->{roles}{$r}{point_captured}++;
+}
+
+# A player created an object (sentry guns, dispensers, etc)
+sub action_created_object {
+	my ($self, $game, $object, $map, $props) = @_;
+	my $m = $map->id;
+	my @vars = ( 'built_' . $object, 'built_objects' );
+	$self->timestamp($props->{timestamp});
+
+	foreach (@vars) {
+		$self->{data}{$_}++;
+		$self->{maps}{$m}{$_}++;
+	}
 }
 
 # override the death action to capture 'customkill' events
@@ -149,6 +205,35 @@ sub action_death {
 		$self->{victims}{$k}{$_}++;
 		$self->{weapons}{$w}{$_}++;
 	}
+}
+
+sub action_destroyed_object {
+	my ($self, $game, $object, $owner, $weapon, $map, $props) = @_;
+	my $m = $map->id;
+	my $w = $weapon ? $weapon->id : undef;
+	my $v = $owner ? $owner->id : undef;
+	my @vars = ( 'destroyed_' . $object, 'destroyed_objects' );
+	$self->timestamp($props->{timestamp});
+
+	foreach (@vars) {
+		$self->{data}{$_}++;
+		$self->{maps}{$m}{$_}++;
+		$self->{weapons}{$w}{$_}++ if $w;
+		$self->{victims}{$v}{$_}++ if $v and $v != $self->id;
+	}
+}
+
+# A player did something with a flag (captured, picked up, dropped, etc)
+sub action_flag {
+	my ($self, $game, $action, $map, $props) = @_;
+	my $m = $map->id;
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{'flag_' . $action}++;
+	$self->{data}{$self->team . '_flag_' . $action}++;
+
+	$self->{maps}{$m}{'flag_' . $action}++;
+	$self->{maps}{$m}{$self->team . '_flag_' . $action}++;
 }
 
 # override the kill action to capture 'customkill' events
@@ -207,6 +292,28 @@ sub action_kill_assist {
 	# kill streak to increment as if it were a normal kill.
 	$self->end_streak('death_streak');
 	$self->inc_streak('kill_streak');
+}
+
+# Handles domination, revenge, etc...
+sub action_misc_plr {
+	my ($self, $game, $trigger, $victim, $map, $props) = @_;
+	my $m = $map ? $map->id : undef;
+	my $r = $game->get_role($self->role)->id;
+	my $v = $victim->id;
+	
+	$self->{data}{$trigger}++;
+	$self->{maps}{$m}{$trigger}++;
+	$self->{roles}{$r}{$trigger}++;
+	$self->{victims}{$v}{$trigger}++;
+}
+
+# A player deployed their UberCharge (invul or 100% crits for 8 seconds)
+sub action_ubercharge {
+	my ($self, $game, $map, $props) = @_;
+	my $m = $map->id;
+
+	$self->{data}{uber_charge}++;
+	$self->{maps}{$m}{uber_charge}++;
 }
 
 

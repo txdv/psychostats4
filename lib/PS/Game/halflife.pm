@@ -462,9 +462,7 @@ sub event_round {
 	#;;; warn @$plrs . " players are online\n";
 	#;;; warn join("\n", sort map { "\t$_" } grep { $_ =~ /13242553/ } @$plrs) . "\n";
 
-	# 'mini_round_start' is a TF2 trigger, but its more efficient to put it
-	# here instead of Game/halflife/tf2.pm
-	if ($trigger eq 'round_start' or $trigger eq 'mini_round_start') {
+	if ($trigger eq 'round_start') {
 		$self->{roundstart} = $timestamp;
 		$m->action_round($self, $props);
 
@@ -766,7 +764,7 @@ sub parseprops {
 	}
 	#$props->{game} = $self;
 	$props->{timestamp} = $timestamp || $self->{timestamp};
-	$props->{event} = $self->{_event};
+	#$props->{game_event} = $self->{_event};
 
 	# HL2 started recording the hitbox information on attacked events.
 	# parse it out here and normalize the property.

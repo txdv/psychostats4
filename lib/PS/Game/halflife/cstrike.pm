@@ -36,7 +36,20 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 #	return $self;
 #}
 
-# cstrike doesn't have character roles (classes) so just return a false value
+sub collect_state_vars {
+	my ($self) = @_;
+	my $state = $self->SUPER::collect_state_vars;
+	$state->{cs_bombplanter} = $self->{cs_bombplanter} ? $self->{cs_bombplanter}->freeze : undef;
+	$state->{cs_bombspawner} = $self->{cs_bombspawner} ? $self->{cs_bombspawner}->freeze : undef;
+	return $state;
+}
+
+sub restore_state_vars {
+	my ($self, $state) = @_;
+	$self->{cs_bombplanter} = PS::Plr->unfreeze($state->{cs_bombplanter});
+	$self->{cs_bombspawner} = PS::Plr->unfreeze($state->{cs_bombspawner});
+}
+
 sub get_role { undef }
 sub role_normal { '' }
 
@@ -131,7 +144,7 @@ sub event_plrtrigger {
 		$p->action_misc($self, $trigger, $props);
 		
 	} else {
-		if ($self->{report_unknown}) {
+		if ($self->conf->main->errlog->report_unknown) {
 			$self->warn("Unknown player trigger '$trigger' from src $self->{_src} line $self->{_line}: $self->{_event}");
 		}
 	}
@@ -194,7 +207,7 @@ sub event_teamtrigger {
 	#	return;
 
 	} else {
-		if ($self->{report_unknown}) {
+		if ($self->conf->main->errlog->report_unknown) {
 			$self->warn("Unknown team trigger '$trigger' from source $self->{_src} line $self->{_line}: $self->{_event}");
 		}
 		return;		# return here so we don't calculate the 'won/lost' points below

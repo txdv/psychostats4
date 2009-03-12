@@ -39,6 +39,24 @@ sub init {
 	return $self;
 }
 
+sub collect_state_vars {
+	my ($self) = @_;
+	my $state = $self->SUPER::collect_state_vars;
+	$state->{last_kill_plr} 	= $self->{last_kill_plr} ? $self->{last_kill_plr}->freeze : undef;
+	$state->{last_kill_weapon} 	= $self->{last_kill_weapon} ? $self->{last_kill_weapon}->name : undef;
+	$state->{last_kill_role} 	= $self->{last_kill_role} ? $self->{last_kill_role}->name : undef;
+	$state->{last_kill_headshot} 	= $self->{last_kill_headshot};
+	return $state;
+}
+
+sub restore_state_vars {
+	my ($self, $state) = @_;
+	$self->{last_kill_plr} 		= PS::Plr->unfreeze($state->{last_kill_plr});
+	$self->{last_kill_weapon} 	= $self->get_weapon($state->{last_kill_weapon});
+	$self->{last_kill_role} 	= $self->get_role($state->{last_kill_role});
+	$self->{last_kill_headshot} 	= $state->{last_kill_headshot};
+}
+
 # add some extra stats from a kill (called from event_kill)
 # k 	= killer
 # v 	= victim
@@ -70,7 +88,6 @@ sub event_plrtrigger {
 
 	return unless ref $p;
 	#return if $self->isbanned($p);
-	#return unless $self->minconnected;
 
 	$trigger = lc $trigger;
 	$self->plrbonus($trigger, 'enactor', $p);
@@ -81,6 +98,7 @@ sub event_plrtrigger {
 		$self->add_ipcache($p->uid, ip2int($props->{address}), $timestamp);
 
 	} elsif ($trigger eq 'kill assist') {
+		return unless $self->minconnected;
 		my $p2 = $self->get_plr($plrstr2);
 		if ($p2) {
 			my $r = $self->get_role($p2->role, $p2->team);
@@ -90,8 +108,10 @@ sub event_plrtrigger {
 		}
 		
 	} elsif ($trigger eq 'flagevent') {
+		return unless $self->minconnected;
 		my $action = $props->{event};
 		$action =~ s/\s+//g; # remove spaces
+		$m->action_flag($self, $action, $p, $props);
 		$p->action_flag($self, $action, $m, $props);
 		$self->plrbonus('flag_' . $action,
 				'enactor', 	$p,
@@ -99,60 +119,66 @@ sub event_plrtrigger {
 				'victim_team',  $self->get_online_plrs($p->team eq 'red' ? 'blue' : 'red')
 		);
 
-	#} elsif ($trigger eq 'killedobject') {
-	#	my $props = $self->parseprops($propstr);
-	#	$p2 = $props->{objectowner} ? $self->get_plr($props->{objectowner}) : undef;
-	#	if ($props->{object} eq "OBJ_DISPENSER") {
-	#		#@vars = ( 'dispenserdestroy' );
-	#
-	#	} elsif ($props->{object} eq "OBJ_SENTRYGUN") {
-	#		#@vars = ( 'sentrydestroy' );
-	#		# do not give points to the object owner if they kill their own object
-	#		if (!$p2 or $p->plrid != $p2->plrid) {
-	#			$self->plrbonus('killedsentry', 'enactor', $p);	# depreciated; REMOVEME
-	#			$self->plrbonus('sentrydestroy', 'enactor', $p);
-	#		}
-	#
-	#	} elsif ($props->{object} eq "OBJ_TELEPORTER_ENTRANCE" || $props->{object} eq "OBJ_TELEPORTER_EXIT") {
-	#		#@vars = ( 'teleporterdestroy' );
-	#		# do not give points to the object owner if they kill their own object
-	#		$self->plrbonus('teleporterdestroy', 'enactor', $p) if !$p2 or $p->plrid != $p2->plrid;
-	#
-	#	} elsif ($props->{object} eq "OBJ_ATTACHMENT_SAPPER") {
-	#		#@vars = ( 'sapperdestroy' );
-	#		# do not give points to the object owner if they kill their own object
-	#		$self->plrbonus('sapperdestroy', 'enactor', $p) if !$p2 or $p->plrid != $p2->plrid;
-	#
-	#	}
-	#	#push(@vars, 'itemsdestroyed');
-	#
-	#} elsif ($trigger eq 'revenge') {
-	#	#@vars = ( 'revenge' );
-	#	$p2 = $self->get_plr($plrstr2);
-	#	$self->plrbonus($trigger, 'victim', $p2) if $p2;	# 'enactor' will get their bonus below...
-	#
-	#} elsif ($trigger eq 'builtobject') {
-	#	#@vars = ( 'itemsbuilt' );
-	#	# player built something... good for them.
-	#
-	#} elsif ($trigger eq 'chargedeployed') {
-	#	# ... something to do with the medic charge gun thingy ...
-	#	#@vars = ( 'chargedeployed' );
-	#
-	#} elsif ($trigger eq 'domination') {
-	#	#@vars = ( 'dominations' );
-	#	$p2 = $self->get_plr($plrstr2);
-	#	$self->plrbonus($trigger, 'victim', $p2) if $p2;	# 'enactor' will get their bonus below...
-	#
-	#} elsif ($trigger eq 'captureblocked') {
-	#	#@vars = ( $p->{team} . 'captureblocked', 'captureblocked' );
-	#
+	} elsif ($trigger eq 'killedobject') {
+		return unless $self->minconnected;
+		my $p2 = $props->{objectowner} ? $self->get_plr($props->{objectowner}) : undef;
+		my $w  = $props->{weapon} ? $self->get_weapon($props->{weapon}) : undef;
+		my $obj = lc substr($props->{object}, 4); # strip off "OBJ_"
+
+		$p->action_destroyed_object($self, $obj, $p2, $w, $m, $props);
+
+		# no bonus to the object owner if they destroy their own object.
+		if (!$p2 or ($p->id != $p2->id)) {
+			$self->plrbonus('destroyed_' . $obj,
+					'enactor', $p,
+					'victim', $p2);
+		}
+
+	} elsif ($trigger eq 'builtobject') {
+		return unless $self->minconnected;
+		my $obj = lc substr($props->{object}, 4); # strip off "OBJ_"
+		$p->action_created_object($self, $obj, $m, $props);
+
+		$self->plrbonus('built_' . $obj, 'enactor', $p);
+
+	} elsif ($trigger eq 'chargedeployed') {
+		return unless $self->minconnected;
+		$p->action_ubercharge($self, $m, $props);
+
+	} elsif ($trigger eq 'revenge') {
+		return unless $self->minconnected;
+		my $p2 = $self->get_plr($plrstr2);
+		$p->action_misc_plr($self, $trigger, $p2, $m, $props);
+		# enactor is given their bonus above
+		$self->plrbonus($trigger, 'victim', $p2);
+
+	} elsif ($trigger eq 'domination') {
+		return unless $self->minconnected;
+		# $props->{assist} will be true if this was the result of an
+		# assist or straight domination kill. We don't care though.
+		my $p2 = $self->get_plr($plrstr2);
+		$p->action_misc_plr($self, $trigger, $p2, $m, $props);
+		# enactor is given their bonus above
+		$self->plrbonus($trigger, 'victim', $p2);
+
+	} elsif ($trigger eq 'captureblocked') {
+		return unless $self->minconnected;
+		$p->action_blocked_capture($self, $m, $props);
+		$m->action_blocked_capture($self, $p, $props);
+
+	} elsif ($trigger eq 'backstab' ||
+		 $trigger eq 'headshot') {
+		# these are redundant triggers for 'customkill' properties and
+		# are ignored otherwise the stat could be doubled. I'm not
+		# sure if these triggers were added by an addon or were added
+		# to the engine by valve.
+
 	} elsif ($trigger =~ /^(time|latency|amx_|game_idle_kick|camped)/) {
 		# extra statsme / amx triggers
-		$p->action_misc($self, $trigger, $props);
+		$p->action_misc($self, $trigger, $m, $props);
 		
 	} else {
-		if ($self->{report_unknown}) {
+		if ($self->conf->main->errlog->report_unknown) {
 			$self->warn("Unknown player trigger '$trigger' from src $self->{_src} line $self->{_line}: $self->{_event}");
 		}
 	}
@@ -162,25 +188,20 @@ sub event_plrtrigger {
 sub event_teamtrigger {
         my ($self, $timestamp, $args) = @_;
         my ($team, $trigger, $propstr) = @$args;
-        my ($team2);
-
-        return unless $self->minconnected;
+	my $props = $self->parseprops($propstr);
         my $m = $self->get_map;
+        return unless $self->minconnected;
 
-        my @vars = ();
         $team = $self->team_normal($team);
 
         $trigger = lc $trigger;
-
-	if ($trigger eq "pointcaptured") {
-		my $props = $self->parseprops($propstr);
-		my $roles = {};
+	if ($trigger eq 'pointcaptured') {
 		my $players = [];
 		my $list = [];
 		my $i = 1;
 
 		# old style (player "") (player "") ...
-		if (ref $props->{player}) {			# array of player strings
+		if (ref $props->{player} eq 'ARRAY') {		# array of player strings
 			push(@$list, @{$props->{player}});
 		} elsif (defined $props->{player}) {		# 1 player string
 			push(@$list, $props->{player});
@@ -191,23 +212,20 @@ sub event_teamtrigger {
 			push(@$list, $props->{'player' . $i++});
 		}
 
-		return unless @$list;
 		foreach my $plrstr (@$list) {
-			my $p1 = $self->get_plr($plrstr) || next;
-#			my $r1 = $self->get_role($p1->{roleid}, $team);
-			$p1->{mod}{$trigger}++;
-			$p1->{mod}{$team . $trigger}++;
-			$p1->{mod_maps}{ $m->{mapid} }{$trigger}++;
-			$p1->{mod_roles}{$trigger}++;
-#			$roles->{ $r1->{roleid} } = $r1 if $r1;		# keep track of which roles are involved
-			push(@$players, $p1);				# keep track of each player
+			my $p = $self->get_plr($plrstr) || next;
+			$p->action_captured_point($self, $m, $props);
+			# keep track of each player (for bonus)
+			push(@$players, $p);
 		}
-#		$roles->{$_}{mod}{$trigger}++ for keys %$roles;		# give point to each unique role
-		$m->{mod}{$trigger}++;
-		$m->{mod}{$team . $trigger}++;
+		$m->action_captured_point($self, $props);
+
 		my $team1 = $self->get_online_plrs($team);
 		my $team2 = $self->get_online_plrs($team eq 'red' ? 'blue' : 'red');
-		$self->plrbonus($trigger, 'enactor', $players, 'enactor_team', $team1, 'victim_team', $team2);
+		$self->plrbonus('point_captured',
+				'enactor', $players,
+				'enactor_team', $team1,
+				'victim_team', $team2);
 	} elsif ($trigger eq 'intermission_win_limit') {
 		# uhm.... what?
 	} else {
@@ -218,35 +236,24 @@ sub event_teamtrigger {
 sub event_round {
 	my ($self, $timestamp, $args) = @_;
 	my ($trigger, $propstr) = @$args;
+	my $props = $self->parseprops($propstr);
+	my $m = $self->get_map;
 
 	$trigger = lc $trigger;
 	if ($trigger eq 'round_win' or $trigger eq 'mini_round_win') {
-		my $m = $self->get_map;
-		my $props = $self->parseprops($propstr);
-		my $team = $self->team_normal($props->{winner}) || return;
+		my $team = $self->team_normal($props->{winner});
 		return unless $team eq 'red' or $team eq 'blue';
 		my $team2 = $team eq 'red' ? 'blue' : 'red';
 		my $winners = $self->get_online_plrs($team);
 		my $losers  = $self->get_online_plrs($team2);
-		my $var = $team . 'won';
-		my $var2 = $team2 . 'lost';
 
+		$m->action_teamwon($self, $trigger, $team, $props);
+		$m->action_teamlost($self, $trigger, $team2, $props);
 		$self->plrbonus($trigger, 'enactor_team', $winners, 'victim_team', $losers);
-		$m->{mod}{$var}++;
-		$m->{mod}{$var2}++;
-		foreach my $p1 (@$winners) {
-			$p1->{basic}{rounds}++;
-			$p1->{maps}{ $m->{mapid} }{basic}{rounds}++;
-			$p1->{mod_maps}{ $m->{mapid} }{$var}++;
-			$p1->{mod}{$var}++;
-		}
-		foreach my $p1 (@$losers) {
-			$p1->{basic}{rounds}++;
-			$p1->{maps}{ $m->{mapid} }{basic}{rounds}++;
-			$p1->{mod_maps}{ $m->{mapid} }{$var2}++;
-			$p1->{mod}{$var2}++;
-		}
+		$_->action_teamwon($self, $trigger, $team, $m, $props) for @$winners;
+		$_->action_teamlost($self, $trigger, $team, $m, $props) for @$losers;
 	} else {
+		# parent handles 'round_start'
 		$self->SUPER::event_round($timestamp, $args);
 	}
 
@@ -258,8 +265,5 @@ sub event_logstartend {
 	$self->{last_kill_weapon} = undef;
 	$self->{last_kill_role} = undef;
 }
-
-sub has_mod_tables { 1 }
-sub has_roles { 1 }
 
 1;

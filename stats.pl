@@ -210,7 +210,7 @@ $DBCONF = {
 $db = new PS::DBI($DBCONF);
 $db->do('SET time_zone = \'+00:00\'');	# Make sure Mysql treats all times as UTC/GMT
 
-$conf = new PS::Conf($db, 'main');
+$conf = new PS::Conf($db, 'main', $opt);
 $ERR = new PS::ErrLog($db, $conf);	# Errors will be logged to the DB
 $ERR->set_verbose($opt->verbose and !$opt->quiet);
 
@@ -445,6 +445,17 @@ sub process_files {
 			#}
 
 			last if $GRACEFUL_EXIT > 0;
+
+			# stop processing the feed if we've reached the
+			# configured resource limits.
+			if (($args{maxlines} and $total_events >= $args{maxlines}) ||
+			    ($args{maxlogs}  and $total_logs   >= $args{maxlogs})) {
+				$ERR->verbose(sprintf(
+					'Maximum events (%d) or logs (%d) reached. Exiting cleanly.',
+					$args{maxlines}, $args{maxlogs}
+				));
+				last;
+			}
 
 			# save the game state every X minutes (real-time)
 			if (time - $saved > $save_threshold) {

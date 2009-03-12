@@ -393,6 +393,7 @@ sub create_index { }
 
 # ->alter_table(table, column cmd)
 sub alter_table_add { }
+sub alter_table_drop { }
 
 # INTERNAL: sub-classes have to override this to provide a method to 'explain'
 # the details of a table. The results are returned as a hash, or undef if the
@@ -419,7 +420,11 @@ sub table_exists {
 sub table_info {
 	my $self = shift;
 	my $tablename = shift;
-	return $self->_explain($tablename);
+	if (wantarray) {
+		return $self->_explain($tablename);
+	} else {
+		return scalar $self->_explain($tablename);
+	}
 }
 
 # Takes an arrayref and returns a WHERE clause that matches on each key=value
