@@ -51,6 +51,8 @@ sub collect_state_vars {
 
 sub restore_state_vars {
 	my ($self, $state) = @_;
+	$self->SUPER::restore_state_vars($state);
+	
 	$self->{last_kill_plr} 		= PS::Plr->unfreeze($state->{last_kill_plr});
 	$self->{last_kill_weapon} 	= $self->get_weapon($state->{last_kill_weapon});
 	$self->{last_kill_role} 	= $self->get_role($state->{last_kill_role});
