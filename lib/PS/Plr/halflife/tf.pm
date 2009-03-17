@@ -27,7 +27,7 @@ use base qw( PS::Plr::halflife );
 use PS::SourceFilter;
 
 BEGIN {
-	my $fields;
+	my ($fields, $history);
 	
 	$fields = __PACKAGE__->SUPER::FIELDS('DATA');
 	%{$fields->{halflife_tf}} = (
@@ -58,7 +58,16 @@ BEGIN {
 			uber_charge
 		 ))
 	);
-
+	$history = __PACKAGE__->SUPER::HISTORY('DATA');
+	%$history = (
+		%$history, 
+		(map { $_ => $fields->{halflife_tf}{$_} } qw(
+			assisted_kills		backstab_kills
+			domination		revenge
+			team_kills
+		 ))
+	);
+	
 	$fields = __PACKAGE__->SUPER::FIELDS('MAPS');
 	%{$fields->{halflife_tf}} = (
 		# use the same fields as 'DATA'

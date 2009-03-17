@@ -29,7 +29,7 @@ use PS::SourceFilter;
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 BEGIN {
-	my $fields;
+	my ($history, $fields);
 
 	$fields = __PACKAGE__->SUPER::FIELDS('DATA');
 	%{$fields->{halflife}} = (

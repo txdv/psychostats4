@@ -44,7 +44,7 @@ use constant {
 
 # Global fields hash that determines what can be saved in the DB. Fields are
 # created at COMPILE TIME.
-our ($FIELDS, $HISTORY, $ALL, $ORDERED);
+our ($FIELDS, $HISTORY, $ALL, $ORDERED, $ORDERED_HISTORY);
 BEGIN {
 	$FIELDS = {};
 	$FIELDS->{DATA} = { data => {
@@ -58,10 +58,15 @@ BEGIN {
 		kill_streak	=> '>',
 		death_streak	=> '>',
 	}};
-
-	$HISTORY->{DATA} = { data => {}
-		
+	$HISTORY->{DATA} = {
+		(map { $_ => $FIELDS->{DATA}{data}{$_} } qw(
+			kills		headshot_kills
+			deaths
+			games		rounds
+			connections	online_time
+		))
 	};
+	
 	#$CALC->{DATA} = {
 	#	kills_per_death		=> [ ratio 		=> qw( kills deaths ) 		],
 	#	kills_per_minute	=> [ ratio_minutes 	=> qw( kills online_time ) 	],
@@ -80,6 +85,7 @@ BEGIN {
 	}};
 	# remove some extra stats that are not saved to maps
 	delete @{$FIELDS->{MAPS}{data}}{ qw( bonus_points kill_streak death_streak ) };
+	$HISTORY->{MAPS} = { %{$HISTORY->{DATA}} };
 
 	$FIELDS->{ROLES} = { data => {
 		(map { $_ => '+' } qw(
@@ -87,6 +93,12 @@ BEGIN {
 			deaths		headshot_deaths		suicides
 		)),
 	}};
+	$HISTORY->{ROLES} = {
+		(map { $_ => $FIELDS->{ROLES}{data}{$_} } qw(
+			kills 		headshot_kills
+			deaths
+		))
+	};
 
 	$FIELDS->{SESSIONS} = { data => {
 		(map { $_ => '+' } qw(
@@ -101,14 +113,25 @@ BEGIN {
 			deaths		headshot_deaths
 		)),
 	}};
+	$HISTORY->{VICTIMS} = {
+		(map { $_ => $FIELDS->{VICTIMS}{data}{$_} } qw(
+			kills 		headshot_kills
+			deaths
+		))
+	};
 
 	$FIELDS->{WEAPONS} = { data => {
 		(map { $_ => '+' } qw(
 			kills 		headshot_kills
-			deaths 		headshot_deaths	suicides
+			deaths 		headshot_deaths		suicides
 		)),
 	}};
-
+	$HISTORY->{WEAPONS} = {
+		(map { $_ => $FIELDS->{WEAPONS}{data}{$_} } qw(
+			kills 		headshot_kills
+			deaths
+		))
+	};
 	# each gametype and gametype::modtype combination will create
 	# their own tree of fields under each root key shown above.
 	#'gametype' => {},
@@ -1462,6 +1485,14 @@ sub FIELDS {
 	return $root;
 }
 
+sub HISTORY {
+	my ($self, $rootkey) = @_;
+	if (!exists $HISTORY->{$rootkey}) {
+		$HISTORY->{$rootkey} = {};
+	}
+	return $HISTORY->{$rootkey};
+}
+
 # Package method to return a $CALC hash for database columns
 #sub CALC {
 #	my ($self, $rootkey) = @_;
@@ -1498,6 +1529,10 @@ sub prepare_statements {
 			grep { !$uniq{$_}++ }
 			map { keys %$_ }
 			@{$FIELDS->{$F}}{ keys %{$FIELDS->{$F}} }
+		];
+		# keep the fields for historical values ordered separately
+		$ORDERED_HISTORY->{$F} = [
+			grep { exists $HISTORY->{$F}{$_} } @{$ORDERED->{$F}}
 		];
 	}
 
@@ -1614,8 +1649,8 @@ sub prepare_statements {
 			'INSERT INTO %splr_data_%s (dataid,%s) ' .
 			'VALUES (?%s)',
 			$pref, $type, 
-			join(',', @{$ORDERED->{DATA}}),
-			',?' x @{$ORDERED->{DATA}}
+			join(',', @{$ORDERED_HISTORY->{DATA}}),
+			',?' x @{$ORDERED_HISTORY->{DATA}}
 		));
 		#print $db->prepared('insert_plr_data_' . $type)->{Statement}, "\n";
 
@@ -1647,16 +1682,17 @@ sub prepare_statements {
 		# insert a new plr_*_gametype_modtype row
 		$name .= '_' . $type;
 		if (!$db->prepared($name)) {
-			if (@{$ORDERED->{$F}}) {
+			if (@{$ORDERED_HISTORY->{$F}}) {
 				$db->prepare($name, sprintf(
 					'INSERT INTO %splr_%ss_%s (dataid,%s) ' .
 					'VALUES (?%s)',
 					$pref, $t, $type, 
-					join(',', @{$ORDERED->{$F}}),
-					',?' x @{$ORDERED->{$F}}
+					join(',', @{$ORDERED_HISTORY->{$F}}),
+					',?' x @{$ORDERED_HISTORY->{$F}}
 				));
 				#print "$name: ", $db->prepared($name)->{Statement}, "\n";
-
+			}
+			if (@{$ORDERED->{$F}}) {
 				# COMPILED STATS
 				$db->prepare($cname, sprintf(
 					'INSERT INTO %splr_%ss_%s (plrid,%sid,%s) ' .
@@ -1725,6 +1761,19 @@ sub _init_table {
 	my $configured = [ @$primary_order, sort grep { !$uniq{$_}++ } map { keys %$_ } @$fields{ keys %$fields } ];
 	my %configured_cols = ( map { $_ => $i++ } @$configured );
 
+	# short-circuit. If the table was created above, then there's no reason
+	# to build the table 1 column at a time (Very slow)
+	if ($created) {
+		my @cols;
+		foreach (grep { !exists $primary->{$_} } @$configured) {
+			push(@cols, $DB->_type_int($_) . $DB->_attrib_null(0) . $DB->_default_int);
+		}
+		if (!$DB->alter_table_add($tbl, \@cols)) {
+			$class->fatal("Error initializing columns in table $tbl: " . $DB->errstr);
+		}
+		return;
+	}
+
 	# remove any columns that are in the table but not configured
 	foreach (@$actual) {
 		if (!exists $configured_cols{$_}) {
@@ -1773,19 +1822,27 @@ sub init_game_database {
 	my ($class, $gametype, $modtype) = @_;
 	my $type = $modtype ? $gametype . '_' . $modtype : $gametype;
 
-	# init all game_mod stat tables for the player
+	# init all game_mod stat tables for the player. The 'sessions' table is
+	# handled slightly different (its not a history table).
 	for my $t (qw( data maps roles sessions weapons victims )) {
-		$class->_init_table($DB->tbl('plr_' . $t . '_' . $type), $FIELDS->{uc $t});
+		my $F = uc $t;
+		# sessions use all fields configured, the rest of the history
+		# tables use only the history fields configured.
+		my $cols = $t eq 'sessions' ? $FIELDS->{$F} : { data => $HISTORY->{$F} };
+		
+		$class->_init_table($DB->tbl('plr_' . $t . '_' . $type), $cols);
+		
+		# sessions do not have a 'compiled' table
 		next if $t eq 'sessions';
 
 		my $primary = { plrid => 'uint' };
 		if ($t eq 'data') {
-			$class->_init_table($DB->ctbl('plr_' . $t . '_' . $type), $FIELDS->{uc $t}, $primary);
+			$class->_init_table($DB->ctbl('plr_' . $t . '_' . $type), $FIELDS->{$F}, $primary);
 		} else {
 			my $key = substr($t, 0, -1) . 'id';
 			my $order = [ 'plrid', $key ];
 			$primary->{$key} = 'uint';
-			$class->_init_table($DB->ctbl('plr_' . $t . '_' . $type), $FIELDS->{uc $t}, $primary, $order);
+			$class->_init_table($DB->ctbl('plr_' . $t . '_' . $type), $FIELDS->{$F}, $primary, $order);
 		}
 	}
 }

@@ -990,14 +990,14 @@ sub restore_state {
 
 	# Must decode string as UTF8
 	$str = decode_utf8($str);
-
+	
 	$state = $self->unserialize_state($str);
 	$self->post_process_state($state);
 
 	# If there is no state saved for the specified server then we're done
 	return 0 unless exists $state->{$srv};
 	$self->restore_state_vars($state->{$srv});
-
+	
 	return 1;
 }
 

@@ -32,7 +32,7 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 # Global fields hash that determines what can be saved in the DB. Fields are
 # created at COMPILE TIME.
-our ($FIELDS, $ALL, $ORDERED);
+our ($FIELDS, $HISTORY, $ALL, $ORDERED, $ORDERED_HISTORY);
 BEGIN {
 	$FIELDS = { };
 	$FIELDS->{DATA} = { data => {
@@ -41,6 +41,13 @@ BEGIN {
 			deaths		headshot_deaths		suicides
 		)),
 	}};
+	# include all data fields for history
+	$HISTORY->{DATA} = { %{$FIELDS->{DATA}{data}} };
+	#	(map { $_ => $FIELDS->{DATA}{data}{$_} } qw(
+	#		kills		headshot_kills
+	#		deaths
+	#	))
+	#};
 }
 
 # global helper objects for all PS::Role objects (use methods to access)
@@ -473,6 +480,19 @@ sub _init_table {
 	my $configured = [ @$primary_order, sort grep { !$uniq{$_}++ } map { keys %$_ } @$fields{ keys %$fields } ];
 	my %configured_cols = ( map { $_ => $i++ } @$configured );
 
+	# short-circuit. If the table was created above, then there's no reason
+	# to build the table 1 column at a time (Very slow)
+	if ($created) {
+		my @cols;
+		foreach (grep { !exists $primary->{$_} } @$configured) {
+			push(@cols, $DB->_type_int($_) . $DB->_attrib_null(0) . $DB->_default_int);
+		}
+		if (!$DB->alter_table_add($tbl, \@cols)) {
+			$class->fatal("Error initializing columns in table $tbl: " . $DB->errstr);
+		}
+		return;
+	}
+
 	# remove any columns that are in the table but not configured
 	foreach (@$actual) {
 		if (!exists $configured_cols{$_}) {
@@ -521,7 +541,7 @@ sub init_game_database {
 	my ($class, $gametype, $modtype) = @_;
 	my $type = $modtype ? $gametype . '_' . $modtype : $gametype;
 
-	$class->_init_table($DB->tbl( 'role_data_' . $type), $FIELDS->{DATA});
+	$class->_init_table($DB->tbl( 'role_data_' . $type), { data => $HISTORY->{DATA} });
 	$class->_init_table($DB->ctbl('role_data_' . $type), $FIELDS->{DATA}, 'roleid');
 }
 
