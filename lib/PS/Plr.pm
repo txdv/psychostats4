@@ -1029,7 +1029,7 @@ sub role {
 sub skill {
 	my ($self, $new, $inc) = @_;
 	if (defined $new and (($self->{skill} || '' ne $new) || $inc)) {
-		$self->{skill} = $inc ? $self->{skill} + $inc : $new;
+		$self->{skill} = $inc ? $self->{skill} + $new : $new;
 	}
 	return $self->{skill};
 }
