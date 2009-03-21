@@ -370,8 +370,7 @@ sub save {
 
 	# Save player chat messages, if enabled.
 	if (defined $self->{chat}) {
-		$self->save_plr_chat($self->{chat});
-		$self->trim_plr_chat;
+		$self->trim_plr_chat if $self->save_plr_chat($self->{chat});
 	}
 
 	# Update the player profile name [first, last, most] used as configured...
@@ -407,7 +406,12 @@ sub save {
 
 	# finally, save stats
 	for (qw( data maps roles weapons victims )) {
-		$self->save_stats($statdate, $_);
+		# save compiled stats
+		$self->save_stats($_);
+		
+		# save historical stats, if configured
+		$self->save_history($statdate, $_);
+		
 		# reset in-memory stats that were saved (keeping the same
 		# reference is faster than assigning a new hash {})
 		%{$self->{$_}} = ();
@@ -418,6 +422,287 @@ sub save {
 	
 	# reset points since they were saved in save_stats
 	$self->{points} = 0;
+}
+
+# Quick save any stats that are pending.
+# This will only save basic stats (kills, deaths, etc). This allows for a quick
+# saving of basic stats to be seen in-game or online w/o waiting for the player
+# to fully disconnect.
+sub quick_save {
+	my ($self, $game) = @_;
+	# don't save if we don't have a timestamp
+	return unless $self->{timestamp};
+
+	# force a normal save if the player has no plrid.
+	return $self->save unless $self->{plrid};
+	
+	# calculate the current online time for this player
+	$self->{data}{online_time} = $self->onlinetime;
+
+	# save session stats if a game object is passed in
+	$self->save_session($game) if $game;
+
+	$self->save_stats('data');
+
+	my ($d, $m, $y) = (gmtime($self->{timestamp}))[3,4,5];
+	my $statdate = sprintf('%04u-%02u-%02u', $y+1900, $m+1, $d);
+	$self->save_history($statdate, 'data');
+	
+	# reset in-memory stats that were saved
+	%{$self->{$_}} = () for qw( data );
+
+	# reset the timer start since we've calculated the online time above.
+	$self->{timestart} = $self->{timestamp};
+}
+
+# package level cache to help with DB efficiency when saving stats
+my $_cache = {};		# helps reduce the number of SELECT's we have to do
+my $_cache_max = 1024 * 2;	# max entries allowed in cache before its reset (power of 2)
+keys(%$_cache) = $_cache_max;	# preset hash bucket size for efficiency
+
+# Save a set of "compiled" player stats (data, maps, roles, weapons, victims)
+sub save_stats {
+	my ($self, $stats_key, $field_key) = @_;
+	my $list = $self->{$stats_key} || return undef;
+	my $tbl = sprintf('plr_%s_%s', $stats_key, $self->{type});	# ie: plr_data_halflife_cstrike
+	my ($cmd, $exists, @bind, @updates);
+	$field_key ||= uc $stats_key;
+
+	# don't allow the cache to consume a ton of memory
+	%$_cache = () if keys %$_cache >= $_cache_max;
+
+	if ($stats_key eq 'data') {
+		# find out if a compiled row exists already...
+		$exists = $_cache->{$stats_key . '-' . $self->{plrid}}
+			|| ($_cache->{$stats_key . '-' . $self->{plrid}} =
+			    $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid}));
+
+		if ($exists) {
+			# UPDATE an existing row
+			@bind = ();
+			@updates = ( );
+			foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED->{DATA}}) {
+				push(@updates, $self->db->expr(
+					$key,			# stat key (kills, deaths, etc)
+					$ALL->{DATA}{$key},	# expression '+'
+					$self->{data}{$key},	# actual value
+					\@bind			# arrayref to store bind values
+				));
+			}
+
+			# Make sure the player has a default skill assigned
+			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
+			
+			# update some columns in ps_plr
+			push(@updates, $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind));
+			push(@updates, $self->db->expr('skill', '=', $self->{skill}, \@bind));
+			push(@updates, $self->db->expr('points', '+', $self->{points}, \@bind));
+			
+			$cmd = sprintf('UPDATE %s d, %s p SET %s WHERE d.plrid=? AND p.plrid=d.plrid',
+				$self->db->ctbl($tbl),
+				$self->db->{t_plr},
+				join(',', @updates)
+			);
+			push(@bind, $self->{plrid});
+			if (!$self->db->do($cmd, @bind)) {
+				$self->warn("Error updating compiled PLR data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
+			}
+			#;;;warn "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
+			
+		} else {
+			# INSERT a new row
+			@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
+			$self->db->execute('insert_c' . $tbl, $self->{plrid}, @bind);
+			$_cache->{$stats_key . '-' . $self->{plrid}} = 1;
+
+			# Make sure the player has a default skill assigned
+			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
+
+			@bind = ();
+			# update some columns in ps_plr
+			push(@updates, $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind));
+			push(@updates, $self->db->expr('skill', '=', $self->{skill}, \@bind));
+			push(@updates, $self->db->expr('points', '+', $self->{points}, \@bind));
+
+			push(@bind, $self->{plrid});
+			$self->db->do(sprintf('UPDATE %s SET %s WHERE plrid=?',
+				$self->db->{t_plr},
+				join(',', @updates)
+			), @bind);
+			#;;;warn "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
+		}
+	} else {
+		# loop through each key in the hash and insert/update each row
+		# as needed for this player.
+		my $cacheid;
+		foreach my $id (keys %$list) {
+			# ignore any ID's that are ZERO (mainly for victims)
+			next unless $id;
+			$cacheid = $stats_key . '-' . $self->{plrid} . '-' . $id;
+			
+			# find out if a compiled row exists already...
+			$exists = $_cache->{$cacheid}
+				|| ($_cache->{$cacheid} =
+				    $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid}, $id));
+
+			if ($exists) {
+				# UPDATE the existing row
+				@bind = ();
+				@updates = ();
+				foreach my $key (grep { exists $list->{$id}{$_} } @{$ORDERED->{$field_key}}) {
+					push(@updates, $self->db->expr(
+						$key,				# stat key (kills, deaths, etc)
+						$ALL->{$field_key}{$key},	# expression '+'
+						$list->{$id}{$key},		# actual value
+						\@bind				# arrayref to store bind values
+					));
+				}
+				if (@updates) {
+					$cmd = sprintf('UPDATE %s SET %s WHERE plrid=? AND %s=?',
+						$self->db->ctbl($tbl),
+						join(',', @updates),
+						substr($stats_key,0,-1) . 'id'
+					);
+
+					if (!$self->db->do($cmd, @bind, $self->{plrid}, $id)) {
+						$self->warn("Error updating compiled PLR $stats_key for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
+					}
+				}
+			} else {
+				# INSERT a new row
+				@bind = map { exists $self->{$stats_key}{$_} ? $self->{$stats_key}{$_} : 0 } @{$ORDERED->{$field_key}};
+				$self->db->execute('insert_c' . $tbl, $self->{plrid}, $id, @bind);
+				$_cache->{$cacheid} = 1;
+			}
+		}
+	}
+}
+
+# Save a set of historic stats (data, maps, roles, weapons, victims).
+# This does not check the 'maxdays' configuration.
+sub save_history {
+	my ($self, $statdate, $stats_key, $field_key) = @_;
+	my $list = $self->{$stats_key} || return undef;
+	my $tbl = sprintf('plr_%s_%s', $stats_key, $self->{type});	# ie: plr_data_halflife_cstrike
+	my ($cmd, $cache_key, $exists, @bind, @updates);
+	$cache_key = $stats_key . '-' . $self->{plrid} . '@' . $statdate;
+	$field_key ||= uc $stats_key;
+
+	# don't allow the cache to consume a ton of memory
+	%$_cache = () if keys %$_cache >= $_cache_max;
+
+	if ($stats_key eq 'data') {
+		# find out if a row exists already...
+		$exists = $_cache->{$cache_key}
+			|| ($_cache->{$cache_key} =
+			    $self->db->execute_selectcol('find_plr_data', $self->{plrid}, $statdate));
+
+		if ($exists) {
+			# update the tables, using a single query:
+			# plr_data, plr_data_gametype_modtype
+			my $cmd = sprintf('UPDATE %s%s t1, %splr_data t2 SET lastseen=?',
+				$self->db->{dbtblprefix},
+				$tbl,
+				$self->db->{dbtblprefix}
+			);
+			
+			@bind = ( $self->{timestamp} );
+			foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED_HISTORY->{DATA}}) {
+				$cmd .= ',' . $self->db->expr(
+					$key,			# stat key (kills, deaths, etc)
+					$ALL->{DATA}{$key},	# expression '+'
+					$self->{data}{$key},	# actual value
+					\@bind			# arrayref to store bind values
+				);
+			}
+			$cmd .= ' WHERE t1.dataid=? AND t2.dataid=t1.dataid';
+			push(@bind, $exists);
+			
+			if (!$self->db->do($cmd, @bind)) {
+				$self->warn("Error updating PLR data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
+			}
+
+		} else {
+			if (!$self->db->execute('insert_plr_data',
+				$self->{plrid},
+				$statdate,
+				$self->{firstseen},
+				$self->{timestamp}	# lastseen
+			)) {
+				# report error? 
+				return undef;
+			}
+			$exists = $self->db->last_insert_id || return undef;
+			$_cache->{$cache_key} = $exists;
+			
+			@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED_HISTORY->{DATA}};
+			if (!$self->db->execute('insert_' . $tbl, $exists, @bind)) {
+				$self->warn("Error inserting $tbl row for \"$self\": " . ($self->db->errstr || ''));
+			}
+		}
+	} else {
+		# loop through each key in the hash and insert/update each row
+		# as needed for this player.
+		my $_key = $stats_key;
+		foreach my $id (keys %$list) {
+			# Ignore any ID's that are ZERO (mainly for victims)
+			next unless $id;
+			$_key = $cache_key . '@' . $id;
+			
+			# find out if a row exists already...
+			$exists = $_cache->{$_key}
+				|| ($_cache->{$_key} =
+				    $self->db->execute_selectcol('find_plr_' . $stats_key,
+								 $self->{plrid}, $id, $statdate));
+
+			if ($exists) {
+				# update the tables, using a single query:
+				# plr_blah, plr_blah_gametype_modtype
+				my $cmd = sprintf('UPDATE %s%s t1, %splr_%s t2 SET lastseen=?',
+					$self->db->{dbtblprefix},
+					$tbl,
+					$self->db->{dbtblprefix},
+					$stats_key
+				);
+				
+				@bind = ( $self->{timestamp} );
+				foreach my $key (grep { exists $self->{$stats_key}{$id}{$_} } @{$ORDERED_HISTORY->{$field_key}}) {
+					$cmd .= ',' . $self->db->expr(
+						$key,				# stat key (kills, deaths, etc)
+						$ALL->{$field_key}{$key},	# expression '+'
+						$self->{$stats_key}{$id}{$key},	# actual value
+						\@bind				# arrayref to store bind values
+					);
+				}
+				$cmd .= ' WHERE t1.dataid=? AND t2.dataid=t1.dataid';
+				push(@bind, $exists);
+				
+				if (!$self->db->do($cmd, @bind)) {
+					$self->warn("Error updating PLR $stats_key for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
+				}
+				#$cmd =~ s/\?/$_/ for @bind; print "$cmd\n";
+
+			} else {
+				if (!$self->db->execute('insert_plr_' . $stats_key,
+					$self->{plrid},
+					$id, 
+					$statdate,
+					$self->{firstseen},
+					$self->{timestamp}	# lastseen
+				)) {
+					# report error? 
+					return undef;
+				}
+				$exists = $self->db->last_insert_id || return undef;
+				$_cache->{$_key} = $exists;
+				
+				@bind = map { exists $self->{$stats_key}{$id}{$_} ? $self->{$stats_key}{$id}{$_} : 0 } @{$ORDERED_HISTORY->{$field_key}};
+				if (!$self->db->execute('insert_' . $tbl, $exists, @bind)) {
+					$self->warn("Error inserting $tbl row for \"$self\": " . ($self->db->errstr || ''));
+				}
+			}
+		}
+	}
 }
 
 # Save the current stats for the player as part of a game session.
@@ -486,301 +771,8 @@ sub save_session {
 
 }
 
-# Quick save any stats that are pending.
-# This will only save basic stats (kills, deaths, etc). This allows for a quick
-# saving of basic stats to be seen in-game or online w/o waiting for the player
-# to fully disconnect.
-sub quick_save {
-	my ($self, $game) = @_;
-	# don't save if we don't have a timestamp
-	return unless $self->{timestamp};
-
-	# force a normal save if the player has no plrid.
-	return $self->save unless $self->{plrid};
-	
-	# save stats only, don't bother with other stuff...
-	my ($d, $m, $y) = (gmtime($self->{timestamp}))[3,4,5];
-	my $statdate = sprintf('%04u-%02u-%02u', $y+1900, $m+1, $d);
-
-	# calculate the current online time for this player
-	$self->{data}{online_time} = $self->onlinetime;
-
-	# save session stats if a game object is passed in
-	$self->save_session($game) if $game;
-
-	$self->save_stats($statdate, 'data');
-	
-	# reset in-memory stats that were saved
-	%{$self->{$_}} = () for qw( data );
-
-	# reset the timer start since we've calculated the online time above.
-	$self->{timestart} = $self->{timestamp};
-}
-
-my $_data_dataids = {};
-sub _save_data {
-	my ($self, $statdate, $no_compiled) = @_;
-	my $fields = $FIELDS->{DATA};
-	my $tbl = 'plr_data_' . ($self->{modtype} ? $self->{gametype} . '_' . $self->{modtype} : $self->{gametype});
-	my @bind;
-	my $cmd_expr;
-	
-	# check if the main data table already exists, if it does, we need its
-	# dataid so the other tables can be related to it.
-	my $history = $_data_dataids->{$self->{plrid} . '-' . $statdate}
-		|| $self->db->execute_selectcol('find_plr_data', $self->{plrid}, $statdate);
-
-	if (!$history) {
-		if (!$self->db->execute('insert_plr_data',
-			$self->{plrid},
-			$statdate,
-			$self->{firstseen},
-			$self->{timestamp}	# lastseen
-		)) {
-			return undef;
-		}
-		$history = $self->db->last_insert_id || return undef;
-
-		@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
-		$self->db->execute('insert_' . $tbl, $history, @bind);
-	} else {
-		# update the tables, using a single query:
-		# plr_data, plr_data_gametype_modtype
-		
-		my $pref = $self->db->{dbtblprefix};
-		my $cmd = sprintf('UPDATE %s%s t1, %splr_data t2 SET lastseen=?', $pref, $tbl, $pref);
-		
-		@bind = ( $self->{timestamp} );
-		$cmd_expr = '';
-		foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED->{DATA}}) {
-			my $expr = $ALL->{DATA}{$key};
-			$cmd_expr .= ',' . $self->db->expr($key, $expr, $self->{data}{$key}, \@bind);
-		}
-		$cmd .= $cmd_expr . ' WHERE t1.dataid=? AND t2.dataid=t1.dataid';
-		push(@bind, $history);
-		
-		if (!$self->db->do($cmd, @bind)) {
-			$self->warn("Error updating PLR data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
-		}
-	}
-	$_data_dataids->{$self->{plrid} . '-' . $statdate} = $history;
-
-	# COMPILED STATS
-	if (!$no_compiled) {
-		# find_cplr_data_gametype_modtype
-		my $exists = $_data_dataids->{$self->{plrid}}
-			|| $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid});
-		if ($exists) {
-			my $pref = $self->db->{dbtblcompiledprefix};
-			my $cmd = sprintf('UPDATE %s%s SET ', $pref, $tbl);
-
-			# re-use the $cmd_expr if it was set above already.			
-			#if (!$cmd_expr) {
-				@bind = ( );
-				$cmd_expr = '';
-				foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED->{DATA}}) {
-					my $expr = $ALL->{DATA}{$key};
-					$cmd_expr .= ',' . $self->db->expr($key, $expr, $self->{data}{$key}, \@bind);
-				}
-			#}
-
-			if ($cmd_expr) {
-				$cmd .= substr($cmd_expr,1) . ' WHERE plrid=?';
-				if (!$self->db->do($cmd, @bind, $self->{plrid})) {
-					$self->warn("Error updating compiled PLR data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
-				}
-			}
-			
-		} else {
-			# insert_cplr_data_gametype_modtype
-			@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
-			$self->db->execute('insert_c' . $tbl, $self->{plrid}, @bind);
-			$_data_dataids->{$self->{plrid}} = $exists;
-		}
-	}
-	
-}
-
-# Save a set of player stats (maps, roles, weapons, victims)
-my $_cache = {};		# helps reduce the number of SELECT's we have to do
-my $_cache_max = 1024 * 2;	# max entries allowed in cache before its reset (power of 2)
-keys(%$_cache) = $_cache_max;	# preset hash bucket size for efficiency
-sub save_stats {
-	my ($self, $statdate, $stats_key, $field_key) = @_;
-	my $list = $self->{$stats_key} || return undef;
-	my $tbl = sprintf('plr_%s_%s', $stats_key, $self->{type});	# ie: plr_data_halflife_cstrike
-	my ($cmd, $history, $compiled, @bind, @updates);
-	$field_key ||= uc $stats_key;
-
-	# don't allow the cache to consume a ton of memory
-	%$_cache = () if keys %$_cache >= $_cache_max;
-
-	if ($stats_key eq 'data') {
-		# SAVE COMPILED STATS
-		
-		# find out if a compiled row exists already...
-		# The _cache saves us a SELECT query if it trues true. The
-		# cache must be pruned often to reduce memory consumption.
-		$compiled = $_cache->{$stats_key . '-' . $self->{plrid}}
-			|| ($_cache->{$stats_key . '-' . $self->{plrid}} =
-			    $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid}));
-
-		if ($compiled) {
-			# UPDATE an existing row
-			@bind = ();
-			@updates = ( );
-			foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED->{DATA}}) {
-				push(@updates, $self->db->expr(
-					$key,			# stat key (kills, deaths, etc)
-					$ALL->{DATA}{$key},	# expression '+'
-					$self->{data}{$key},	# actual value
-					\@bind			# arrayref to store bind values
-				));
-			}
-
-			# Make sure the player has a default skill assigned
-			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
-			
-			# update some columns in ps_plr
-			push(@updates, $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind));
-			push(@updates, $self->db->expr('skill', '=', $self->{skill}, \@bind));
-			push(@updates, $self->db->expr('points', '+', $self->{points}, \@bind));
-			
-			$cmd = sprintf('UPDATE %s d, %s p SET %s WHERE d.plrid=? AND p.plrid=d.plrid',
-				$self->db->ctbl($tbl),
-				$self->db->{t_plr},
-				join(',', @updates)
-			);
-			push(@bind, $self->{plrid});
-			if (!$self->db->do($cmd, @bind)) {
-				$self->warn("Error updating compiled PLR data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
-			}
-			#;;;warn "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
-			
-		} else {
-			# INSERT a new row
-			@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
-			$self->db->execute('insert_c' . $tbl, $self->{plrid}, @bind);
-			$_cache->{$stats_key . '-' . $self->{plrid}} = 1;
-
-			# Make sure the player has a default skill assigned
-			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
-
-			@bind = ();
-			# update some columns in ps_plr
-			push(@updates, $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind));
-			push(@updates, $self->db->expr('skill', '=', $self->{skill}, \@bind));
-			push(@updates, $self->db->expr('points', '+', $self->{points}, \@bind));
-
-			push(@bind, $self->{plrid});
-			$self->db->do(sprintf('UPDATE %s SET %s WHERE plrid=?',
-				$self->db->{t_plr},
-				join(',', @updates)
-			), @bind);
-			#;;;warn "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
-		}
-
-		# SAVE HISTORICAL STATS
-
-		# get current dataid, if it exists.
-		#$history = $_cache->{$self->{plrid} . '-' . $statdate}
-		#	|| $self->db->execute_selectcol('find_plr_data', $self->{plrid}, $statdate);
-
-	} else {
-		# loop through each key in the hash and insert/update each row
-		# as needed for this player.
-		my $cacheid;
-		
-		foreach my $id (keys %$list) {
-			# ignore any ID's that are ZERO (mainly for victims)
-			next unless $id;
-			$cacheid = $stats_key . '-' . $self->{plrid} . '-' . $id;
-			
-			# SAVE COMPILED STATS
-
-			# find out if a compiled row exists already...
-			$compiled = $_cache->{$cacheid}
-				|| ($_cache->{$cacheid} =
-				    $self->db->execute_selectcol('find_c' . $tbl, $self->{plrid}, $id));
-
-			if ($compiled) {
-				# UPDATE the existing row
-				@bind = ();
-				@updates = ();
-				foreach my $key (grep { exists $list->{$id}{$_} } @{$ORDERED->{$field_key}}) {
-					push(@updates, $self->db->expr(
-						$key,				# stat key (kills, deaths, etc)
-						$ALL->{$field_key}{$key},	# expression '+'
-						$list->{$id}{$key},		# actual value
-						\@bind				# arrayref to store bind values
-					));
-				}
-				if (@updates) {
-					$cmd = sprintf('UPDATE %s SET %s WHERE plrid=? AND %s=?',
-						$self->db->ctbl($tbl),
-						join(',', @updates),
-						substr($stats_key,0,-1) . 'id'
-					);
-
-					if (!$self->db->do($cmd, @bind, $self->{plrid}, $id)) {
-						$self->warn("Error updating compiled PLR $stats_key for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
-					}
-				}
-				
-			} else {
-				# INSERT a new row
-				@bind = map { exists $self->{$stats_key}{$_} ? $self->{$stats_key}{$_} : 0 } @{$ORDERED->{$field_key}};
-				$self->db->execute('insert_c' . $tbl, $self->{plrid}, $id, @bind);
-				$_cache->{$cacheid} = 1;
-			}
-
-			# SAVE HISTORICAL STATS
-
-		}		
-	}
-=pod
-	foreach my $id (keys %$list) {
-		if (!$dataid) {
-			# insert a new row
-			if ($self->db->execute('insert_plr_' . $stats_key,
-				$self->{plrid},
-				$id, 
-				$statdate,
-				$self->{firstseen},
-				$self->{timestamp}	# lastseen
-			)) {
-				$dataid = $self->db->last_insert_id || return undef;
-			} else {
-				return undef;
-			}
-	
-			# insert game+mod stats, we don't care if this fails.
-			$self->db->execute('insert_' . $tbl,
-				$dataid,
-				# include all field keys
-				map { exists $list->{$id}{$_} ? $list->{$id}{$_} : 0 } @{$ORDERED->{$field_key}}
-			);
-		} else {
-			# update an existing row
-			my $pref = $self->db->{dbtblprefix};
-			my $cmd = sprintf('UPDATE %s%s t1, %splr_data t2 SET lastseen=?', $pref, $tbl, $pref);
-			my @bind = ( $self->{timestamp} );
-			foreach my $key (grep { exists $list->{$id}{$_} } @{$ORDERED->{$field_key}}) {
-				my $expr = $ALL->{$field_key}{$key};
-				$cmd .= ',' . $self->db->expr($key, $expr, $list->{$id}{$key}, \@bind);
-			}
-			$cmd .= ' WHERE t1.dataid=? AND t2.dataid=t1.dataid';
-			push(@bind, $dataid);
-			
-			if (!$self->db->do($cmd, @bind)) {
-				$self->warn("Error updating PLR $stats_key #$id for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
-			}
-		}
-	}
-=cut
-}
-
 # Save "plr_chat" messages. 1 or more messages can be saved at the same time.
+# Returns the total messages saved.
 sub save_plr_chat {
 	my ($self, $messages) = @_;
 	my ($st, @bind);
@@ -797,9 +789,9 @@ sub save_plr_chat {
 	foreach my $m (@$messages) {
 		push(@bind, $self->{plrid}, map { $m->{$_} } qw( timestamp message team team_only dead ));
 	}
-	$st->execute(@bind);
+	return 0 unless $st->execute(@bind);
 	$st->finish;
-	return $st;
+	return scalar @$messages;
 }
 
 # trim the player chat messages to the configured limit.
@@ -1157,12 +1149,15 @@ sub action_chat {
 # information about the player.
 sub action_connected {
 	my ($self, $game, $ip, $props) = @_;
+	my $map = $game->get_map;
+	my $m = $map ? $map->id : undef;
 	;;; $self->debug7("$self connected with IP " . int2ip($ip), 0);
 	$self->timestamp($props->{timestamp});
 	#$self->timestart($props->{timestamp});
 	
 	$self->ipaddr($ip);
 	$self->{data}{connections}++;
+	$self->{maps}{$m}{connections}++ if $m;
 }
 
 # The player was killed (either by another player or suicide)
@@ -1606,11 +1601,13 @@ sub prepare_statements {
 	# statdate.
 	$db->prepare('find_plr_data', 'SELECT dataid FROM t_plr_data WHERE plrid=? AND statdate=?')
 		if !$db->prepared('find_plr_data');
+	#print $db->prepared('find_plr_data')->{Statement}, "\n";
 
 	# returns plrid (true) if the compiled player ID already exists in the
 	# compiled table.
 	$db->prepare('find_cplr_data_' . $type, 'SELECT plrid FROM ' . $cpref . 'plr_data_' . $type . ' WHERE plrid=?')
 		if !$db->prepared('find_cplr_data_' . $type);
+	#print $db->prepared('find_cplr_data_' . $type)->{Statement}, "\n";
 
 	# returns the dataid of the t_plr_* table...
 	# find_plr_maps, find_plr_roles, find_plr_victims, find_plr_weapons
@@ -1627,7 +1624,7 @@ sub prepare_statements {
 		);
 		#print $db->prepared('find_cplr_' . $_ . 's_' . $type)->{Statement}, "\n";
 	}
-
+	
 	# returns the latest session info for the plrid given...
 	if (!$db->prepared('find_plr_session')) {
 		$db->prepare('find_plr_session', 

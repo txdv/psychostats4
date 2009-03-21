@@ -162,35 +162,33 @@ sub save {
 		$self->id || return undef;
 	}
 
+	$self->save_stats;
+
 	# Use the last known timestamp for the statdate.
 	my ($d, $m, $y) = (gmtime($self->{timestamp}))[3,4,5];
 	my $statdate = sprintf('%04u-%02u-%02u', $y+1900, $m+1, $d);
+	$self->save_history($statdate);
 
-	# NEXT: save stats
-	$self->save_stats($statdate);
-	
 	%{$self->{data}} = ();
 }
 
 my $_cache = {};		# helps reduce the number of SELECT's we have to do
-my $_cache_max = 256;		# max entries allowed in cache before its reset (power of 2)
+my $_cache_max = 512;		# max entries allowed in cache before its reset (power of 2)
 keys(%$_cache) = $_cache_max;	# preset hash bucket size for efficiency
 sub save_stats {
-	my ($self, $statdate) = @_;
+	my ($self) = @_;
 	my $tbl = sprintf('weapon_data_%s', $self->{type});
-	my ($cmd, $history, $compiled, @bind, @updates);
+	my ($cmd, $exists, @bind, @updates);
 
 	# don't allow the cache to consume a ton of memory
 	%$_cache = () if keys %$_cache >= $_cache_max;
 	
-	# SAVE COMPILED STATS
-	
 	# find out if a compiled row exists already...
-	$compiled = $_cache->{$self->{weaponid}}
+	$exists = $_cache->{$self->{weaponid}}
 		|| ($_cache->{$self->{weaponid}} =
 		    $self->db->execute_selectcol('find_c' . $tbl, $self->{weaponid}));
 
-	if ($compiled) {
+	if ($exists) {
 		# UPDATE an existing row
 		@bind = ();
 		@updates = ();
@@ -210,86 +208,73 @@ sub save_stats {
 				$self->warn("Error updating compiled WEAPON data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
 			}
 		}
-		
 	} else {
 		# INSERT a new row
 		@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
 		$self->db->execute('insert_c' . $tbl, $self->{weaponid}, @bind);
 		$_cache->{$self->{weaponid}} = 1;
 	}
-
-	# SAVE HISTORICAL STATS
-
-	# get current dataid, if it exists.
-	#$history = $_cache->{$self->{weaponid} . '-' . $statdate}
-	#	|| $self->db->execute_selectcol('find_plr_data', $self->{weaponid}, $statdate);
-
 }
 
-my $_data_dataids = {};
-sub save_data {
+# Save a set of historic stats.
+# This does not check the 'maxdays' configuration.
+sub save_history {
 	my ($self, $statdate) = @_;
-	my $fields = $FIELDS->{DATA};
-	my $tbl = 'weapon_data_' . $self->{type};
+	my $tbl = sprintf('weapon_data_%s', $self->{type});	# ie: weapon_data_halflife_cstrike
+	my ($cache_key, $exists, @bind);
+	$cache_key = $self->{weaponid} . '@' . $statdate;
 
-	# check if the main data table already exists, if it does, we need its
-	# dataid so the other tables can be related to it.
-	my $dataid = $_data_dataids->{$self->{weaponid} . '-' . $statdate}
-		|| $self->db->execute_selectcol('find_weapon_data', $self->{weaponid}, $statdate);
+	# don't allow the cache to consume a ton of memory
+	%$_cache = (); # if keys %$_cache >= $_cache_max;
 
-	if (!$dataid) {
+	# find out if a row exists already...
+	$exists = $_cache->{$cache_key}
+		|| ($_cache->{$cache_key} =
+		    $self->db->execute_selectcol('find_weapon_data', $self->{weaponid}, $statdate));
+
+	if ($exists) {
+		# update the tables, using a single query:
+		# weapon_data, weapon_data_gametype_modtype
+		my $cmd = sprintf('UPDATE %s%s t1, %sweapon_data t2 SET lastseen=?',
+			$self->db->{dbtblprefix},
+			$tbl,
+			$self->db->{dbtblprefix}
+		);
+		
+		@bind = ( $self->{timestamp} );
+		foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED_HISTORY->{DATA}}) {
+			$cmd .= ',' . $self->db->expr(
+				$key,			# stat key (kills, deaths, etc)
+				$ALL->{DATA}{$key},	# expression '+'
+				$self->{data}{$key},	# actual value
+				\@bind			# arrayref to store bind values
+			);
+		}
+		$cmd .= ' WHERE t1.dataid=? AND t2.dataid=t1.dataid';
+		push(@bind, $exists);
+		
+		if (!$self->db->do($cmd, @bind)) {
+			$self->warn("Error updating WEAPON data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
+		}
+
+	} else {
 		if (!$self->db->execute('insert_weapon_data',
 			$self->{weaponid},
 			$statdate,
 			$self->{firstseen},
 			$self->{timestamp}	# lastseen
 		)) {
-			# If an error occurs it will be reported by the DB
-			# object. This means we can't continue here, since we
-			# won't have a valid dataid.
+			# report error? 
 			return undef;
 		}
-		$dataid = $self->db->last_insert_id || return undef;
-
-		# Insert a matching row for the game_mod data. We don't care
-		# if this fails (technically, it never should fail).
-		$self->db->execute('insert_' . $tbl,
-			$dataid,
-			# include all field keys
-			map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}}
-		);
-	} else {
-		# update the tables, using a single query:
-		# weapon_data, weapon_data_gametype_modtype
-
-		my $pref = $self->db->{dbtblprefix};
-		my $cmd = sprintf('UPDATE %s%s t1, %sweapon_data t2 SET lastseen=?', $pref, $tbl, $pref);
-		my @bind = ( $self->{timestamp} );
-		foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED->{DATA}}) {
-			my $expr = $ALL->{DATA}{$key};
-			$cmd .= ",$key=";
-			if ($expr eq '+' || $expr eq '=') {
-				$cmd .= $key . $expr . '?';
-				push(@bind, $self->{data}{$key});
-			} elsif ($expr eq '>') {
-				$cmd .= $self->db->expr_max($key, '?');
-				# expr_max creates two '?' placeholders
-				push(@bind, $self->{data}{$key}, $self->{data}{$key});
-			} elsif ($expr eq '<') {
-				$cmd .= $self->db->expr_min($key, '?');
-				# expr_min creates two '?' placeholders
-				push(@bind, $self->{data}{$key}, $self->{data}{$key});
-			}
-		}
-		$cmd .= ' WHERE t1.dataid=? AND t2.dataid=t1.dataid';
-		push(@bind, $dataid);
+		$exists = $self->db->last_insert_id || return undef;
+		$_cache->{$cache_key} = $exists;
 		
-		if (!$self->db->do($cmd, @bind)) {
-			$self->warn("Error updating WEAPON data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
+		@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED_HISTORY->{DATA}};
+		if (!$self->db->execute('insert_' . $tbl, $exists, @bind)) {
+			$self->warn("Error inserting $tbl row for \"$self\": " . ($self->db->errstr || ''));
 		}
 	}
-	$_data_dataids->{$self->{weaponid} . '-' . $statdate} = $dataid;
-	
 }
 
 # get the unique weaponid (read only). If the id is not set yet, the object will
@@ -438,6 +423,10 @@ sub prepare_statements {
 			map { keys %$_ }
 			@{$FIELDS->{$F}}{ keys %{$FIELDS->{$F}} }
 		];
+		# keep the fields for historical values ordered separately
+		$ORDERED_HISTORY->{$F} = [
+			grep { exists $HISTORY->{$F}{$_} } @{$ORDERED->{$F}}
+		];
 	}
 
 	# setup a list of all columns for each set of stats, so we don't have
@@ -475,8 +464,8 @@ sub prepare_statements {
 		$db->prepare('insert_weapon_data_' . $type, sprintf(
 			'INSERT INTO ' . $pref . 'weapon_data_' . $type . ' (dataid,%s) ' .
 			'VALUES (?%s)',
-			join(',', @{$ORDERED->{DATA}}),
-			',?' x @{$ORDERED->{DATA}}
+			join(',', @{$ORDERED_HISTORY->{DATA}}),
+			',?' x @{$ORDERED_HISTORY->{DATA}}
 		));
 		#print $db->prepared('insert_weapon_data_' . $type)->{Statement}, "\n";
 
