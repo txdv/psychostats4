@@ -94,9 +94,29 @@ sub new {
 		weapon weapon_data
 	)];
 
+	# An array of all 'compiled' tables
 	$self->{compiled_tables} = [qw(
 		plr_data plr_maps plr_roles plr_victims plr_weapons
 		map_data role_data weapon_data
+	)];
+
+	# An array of all basic stats tables
+	$self->{stats_tables} = [qw(
+		plr_data plr_maps plr_roles plr_sessions plr_victims plr_weapons
+		plr_chat plr_ids_guid plr_ids_ipaddr plr_ids_name
+		map_data role_data weapon_data
+	)];
+
+	# An array of all special tables (tables that have extra
+	# gametype_modtype tables)
+	$self->{special_tables} = [qw(
+		plr_data plr_maps plr_roles plr_sessions plr_victims plr_weapons
+		map_data role_data weapon_data
+	)];
+
+	# An array of all PSlive tables
+	$self->{live_tables} = [qw(
+		live_entities live_events live_games
 	)];
 
 	bless($self, $class);
@@ -380,10 +400,10 @@ sub _type_uint 		{ $_[0]->{dbh}->quote_identifier($_[1]) . " INT UNSIGNED" }
 sub _type_int 		{ $_[0]->{dbh}->quote_identifier($_[1]) . " INT" }
 sub _type_float  	{ $_[0]->{dbh}->quote_identifier($_[1]) . " FLOAT(10,2)" }
 sub _type_date  	{ $_[0]->{dbh}->quote_identifier($_[1]) . " DATE" }
-sub _default_uint () 	{ my $v = $_[0]->{dbh}->quote($_[1] || 0); " DEFAULT $v" }
-sub _default_int () 	{ my $v = $_[0]->{dbh}->quote($_[1] || 0); " DEFAULT $v" }
-sub _default_float () 	{ my $v = $_[0]->{dbh}->quote($_[1] || 0.00); " DEFAULT $v" }
-sub _default_date () 	{ my $v = $_[0]->{dbh}->quote($_[1] || '0000-00-00'); " DEFAULT $v" }
+sub _default_uint  	{ my $v = $_[0]->{dbh}->quote($_[1] || 0); " DEFAULT $v" }
+sub _default_int  	{ my $v = $_[0]->{dbh}->quote($_[1] || 0); " DEFAULT $v" }
+sub _default_float  	{ my $v = $_[0]->{dbh}->quote($_[1] || 0.00); " DEFAULT $v" }
+sub _default_date  	{ my $v = $_[0]->{dbh}->quote($_[1] || '0000-00-00'); " DEFAULT $v" }
 sub _attrib_null 	{ $_[1] ? " NULL" : " NOT NULL" }
 
 # ->create_primary_index(table, cols)
@@ -815,6 +835,10 @@ sub query {
 # "do" performs a simple non-select query and we don't care about the result.
 sub do {
 	my ($self, $cmd, @bind) = @_;
+
+	# interpolate table names in query to real table names
+	$cmd =~ s/\s([tc])_(\w+)/' ' . ($self->{$1.'_'.$2} || $1.'_'.$2)/ge;
+
 	$self->{lastcmd} = $cmd;
 	;;; $self->debug9($cmd, 20);
 	return $self->{dbh}->do($cmd, undef, @bind);

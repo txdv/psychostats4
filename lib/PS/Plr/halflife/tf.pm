@@ -167,13 +167,14 @@ sub action_blocked_capture {
 # A player captured a point on the map.
 sub action_captured_point {
 	my ($self, $game, $map, $props) = @_;
+	my $role = $game->get_role($self->role, $self->team);
 	my $m = $map->id;
-	my $r = $self->role ? $game->get_role($self->role, $self->team)->id : undef;
+	my $r = $role ? $role->id : undef;
 	$self->timestamp($props->{timestamp});
 
 	$self->{data}{point_captured}++;
 	$self->{maps}{$m}{point_captured}++;
-	$self->{roles}{$r}{point_captured}++;
+	$self->{roles}{$r}{point_captured}++ if $r;
 }
 
 # A player created an object (sentry guns, dispensers, etc)
@@ -306,13 +307,14 @@ sub action_kill_assist {
 # Handles domination, revenge, etc...
 sub action_misc_plr {
 	my ($self, $game, $trigger, $victim, $map, $props) = @_;
+	my $role = $game->get_role($self->role, $self->team);
 	my $m = $map ? $map->id : undef;
-	my $r = $game->get_role($self->role)->id;
+	my $r = $role ? $role->id : undef;
 	my $v = $victim->id;
 	
 	$self->{data}{$trigger}++;
 	$self->{maps}{$m}{$trigger}++;
-	$self->{roles}{$r}{$trigger}++;
+	$self->{roles}{$r}{$trigger}++ if $r;
 	$self->{victims}{$v}{$trigger}++;
 }
 

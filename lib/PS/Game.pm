@@ -38,6 +38,7 @@ use PS::Award;
 use PS::Conf;
 use PS::Map;
 use PS::Plr;
+use PS::Map;
 use PS::Role;
 use PS::Weapon;
 use util qw( :date :time :numbers :net print_r deep_copy is_regex bench );
@@ -1079,46 +1080,42 @@ sub plrbonus {
 # and activity values, etc.
 sub update_plrs {
 	my ($self, $quiet) = @_;
+	
 	$self->debug3("Updating player activity...", 0) unless $quiet;
-	$self->update_plr_activity;
+	$self->update_plr_activity( $self->conf->main->plr_min_activity );
+	
 	$self->debug3("Updating player rank flags...", 0) unless $quiet;
-	$self->update_allowed_plr_ranks;
+	$self->update_allowed_plr_ranks( $self->conf->main->ranking->VARS );
+	
 	$self->debug3("Updating player ranks...", 0) unless $quiet;
 	$self->update_plr_ranks;
 }
 
-# Updates the activity percentage for all players. If $force_all is defined
-# (a value between 0-100) all player activity will be set to that value instead
-# of calculating it for each player.
+# Updates the activity percentage for all players. If $force_all is true all
+# player activity will be set to the $plr_min_activity value instead of
+# calculating it for each player.
 sub update_plr_activity {
-	my ($self, $force_all) = @_;
+	my ($self, $plr_min_activity, $force_all) = @_;
 	my $db = $self->{db};
 	my ($st, $lastseen);
 
-	return unless $self->conf->main->plr_min_activity or defined $force_all;
+	$plr_min_activity = abs($plr_min_activity || 0);
+	return unless $plr_min_activity or $force_all;
 	
 	# determine the most recent timestamp available for players
 	$lastseen = $db->max($db->{t_plr}, 'lastseen');
 	return unless $lastseen;
 
-	if (defined $force_all) {
-		$force_all = ($force_all =~ /(\d+)/)[0] || 0;
-		$st = $db->prepare("UPDATE t_plr SET activity=$force_all, activity_updated=$lastseen");
+	if ($force_all) {
+		$st = $db->prepare("UPDATE t_plr SET activity=$plr_min_activity");
 	} else {
-		my $min_act = abs($self->conf->main->plr_min_activity) * 60*60*24;
-		# I believe it'll be faster to no longer use the
-		# activity_updated field since mysql will ignore rows where
-		# the activity value doesn't change.
+		my $min_act = $plr_min_activity * 60*60*24;
 		$st = $db->prepare(
 			"UPDATE t_plr SET " . 
-			#"activity_updated = $lastseen, " . 
 			"activity = IF($min_act > $lastseen - lastseen, " . 
-			"LEAST(100, 100 / $min_act * ($min_act - ($lastseen - lastseen)) ), 0) " . 
-			#"WHERE activity_updated < $lastseen" .
-			""
+			"LEAST(100, 100 / $min_act * ($min_act - ($lastseen - lastseen)) ), 0) "
 		);
 	}
-	#print $st->{Statement}, "\n";
 
 	;;;bench('update_plr_activity');
 	if (!$st->execute) {
@@ -1130,26 +1127,25 @@ sub update_plr_activity {
 	;;;bench('update_plr_activity');
 }
 
-# Updates all players that are allowed to rank based on their current stats. If
-# $force_all is defined then the configured rules are ignored and all players
-# are set to be ranked based on the value of $force_all (either 0 or 1)
+# Updates all players that are allowed to rank based on their current stats.
+# $rules is a hash of min/max rules to use for determining who can rank.
+# If $rules is a scalar then all players are set to be ranked based on the value
+# given (either 0 or 1).
 sub update_allowed_plr_ranks {
-	my ($self, $force_all) = @_;
+	my ($self, $rules, $force_all) = @_;
 	my ($st, @min, @max, $where);
-	my $rules = $self->conf->main->ranking->VARS;
 	my $db = $self->{db};
 	my $cpref = $db->{dbtblcompiledprefix};
 	my $type = $self->{modtype} ? $self->{gametype} . '_' . $self->{modtype} : $self->{gametype};
 
-	if (defined $force_all) {
-		# force all players
-		$force_all = $force_all ? 1 : 0;
-		if ($force_all) {	# everyone ranks
+	if (!ref $rules) {
+		# force all players 
+		if ($rules) {	# everyone ranks
 			# rank=0 means a player can rank, but has no actual rank
 			# value yet. The update_plr_ranks() needs to be called
 			# to update the actual rank values of players.
 			$st = $db->prepare('UPDATE t_plr SET rank=0 WHERE rank IS NULL');
-		} else {		# no one ranks
+		} else {	# no one ranks
 			$st = $db->prepare('UPDATE t_plr SET rank=NULL WHERE rank IS NOT NULL');
 		}
 		
@@ -1159,7 +1155,7 @@ sub update_allowed_plr_ranks {
 		# collect min/max rule keys
 		@min = ( map { s/^player_min_//; $_ } grep { /^player_min_/ && $rules->{$_} ne '' } keys %$rules );
 		@max = ( map { s/^player_max_//; $_ } grep { /^player_max_/ && $rules->{$_} ne '' } keys %$rules );
-	
+
 		# build where clause to match players that meet requirements
 		$where = join(' AND ', 
 			(map { $_ . ' >= ' . $rules->{'player_min_' . $_} } @min),
@@ -1170,7 +1166,8 @@ sub update_allowed_plr_ranks {
 
 		# query to update rank flag for all players based on rules
 		$st = $db->prepare('update_allowed_plr_ranks_' . $type, 
-			"UPDATE t_plr p, ${cpref}plr_data_${type} c SET rank=IF($where, IF(rank,rank,0), NULL) " .
+			"UPDATE t_plr p, ${cpref}plr_data_${type} c " .
+			"SET rank=IF($where, IF(rank,rank,0), NULL) " .
 			"WHERE p.plrid=c.plrid"
 		);
 	}
@@ -1184,7 +1181,6 @@ sub update_allowed_plr_ranks {
 		$self->debug3("$affected player rank flags updated.", 0) if $affected;
 	}
 	;;;bench('update_allowed_plr_ranks');
-
 }
 
 # Assigns a rank to all players based on their skill. update_allowed_plr_ranks()
@@ -2224,66 +2220,142 @@ sub delete_clans {
 	$db->truncate($db->{t_clan_profile}) if $profile_too;
 }
 
-# resets all stats in the database. USE WITH CAUTION!
-# reset(1) resets stats and all profiles
-# reset(0 or undef) resets stats and NO profiles
-# reset(player => 1, clans => 0, weapons => 0, heatmaps => 0) resets stats and only the profiles specified
-sub reset {
+sub reset_all {
 	my $self = shift;
-	my $del = @_ == 1 ? { players => $_[0], clans => $_[0], weapons => $_[0], heatmaps => $_[0] } : { @_ };
 	my $db = $self->{db};
-	my $gametype = $self->conf->main->gametype;
-	my $modtype  = $self->conf->main->modtype;
+	my $del = @_ == 1 ? { map { $_  => $_[0] } qw(players clans weapons heatmaps) } : { @_ };
+	
+}
+
+# Resets the current "gametype_modtype" in the database. Does not remove shared
+# information like player records from another game.
+sub reset_game {
+	my $self = shift;
+	my $del = (@_ == 1)
+		? { map { $_  => $_[0] } qw(players clans maps roles weapons heatmaps) }
+		: { @_ };
+	my $db = $self->{db};
+	my $gametype = $self->{gametype};
+	my $modtype  = $self->{modtype} || undef;
+	my $type = $gametype . ($modtype ? '_' . $modtype : '');
 	my $errors = 0;
+	my $where = "gametype=? AND modtype" . ($modtype ? '=?' : ' IS NULL');
+	my @bind = $modtype ? ($gametype, $modtype) : ($gametype);
+	my ($cmd,$st);
 
-	my @empty_c = qw( c_map_data c_plr_data c_plr_maps c_plr_victims c_plr_weapons c_weapon_data c_role_data c_plr_roles );
-	my @empty_m = qw( t_map_data_mod t_role_data_mod t_plr_data_mod t_plr_maps_mod t_plr_roles_mod );
-	my @empty = qw(
-		t_awards t_awards_plrs
-		t_clan
-		t_errlog
-		t_map t_map_data t_map_hourly t_map_spatial
-		t_plr t_plr_data t_plr_ids_ipaddr t_plr_ids_name t_plr_ids_worldid 
-		t_plr_maps t_plr_roles t_plr_sessions t_plr_victims t_plr_weapons
-		t_role t_role_data
-		t_search_results t_state 
-		t_weapon_data
+	# Delete overall map, role and weapon stats
+	for my $t (qw(map role weapon)) {
+		my $t1 = $db->{'t_' . $t};
+		my $t2 = $db->{'t_' . $t . '_data'};
+		my $t3 = $t2 . '_' . $type;
+		my $st = $db->prepare(
+			"DELETE QUICK t2 FROM $t1 t, $t2 t2 " .
+			"WHERE $where AND t2.${t}id=t.${t}id "
+		);
+		$self->debug1("Deleting ${t}s ...",0);
+		if (!$st->execute(@bind)) {
+			$self->warn("Reset error on $t2: " . $db->errstr);
+			$errors++;
+		} else {
+			if ($del->{$t . 's'}) {
+				$db->do("DELETE FROM t_$t WHERE $where",0);
+			}
+			$db->truncate($t3);
+			$db->optimize($t1, $t2);
+		}
+		$st->finish;
+	}
+	
+	# Delete player specific stats 
+	for my $t (qw(data map role session victim weapon)) {
+		my $t2 = $db->{'t_plr_' . $t . ($t ne 'data' ? 's' : '')};
+		my $t3 = $t2 . '_' . $type;
+		my $st = $db->prepare(
+			"DELETE QUICK t2 FROM t_plr p, $t2 t2 " .
+			"WHERE $where AND t2.plrid=p.plrid "
+		);
+		$self->debug1("Deleting player $t" . ($t ne 'data' ? 's' : '') . " ...",0);
+		if (!$st->execute(@bind)) {
+			$self->warn("Reset error on $t2: " . $db->errstr);
+			$errors++;
+		} else {
+			$db->truncate($t3);
+			$db->optimize($t2);
+		}
+		$st->finish;
+	}
+
+	# Delete player ids
+	for my $t (qw(guid ipaddr name)) {
+		my $st = $db->prepare(
+			"DELETE QUICK t2 FROM t_plr p, t_plr_ids_$t t2 " .
+			"WHERE $where AND t2.plrid=p.plrid "
+		);
+		$self->debug1("Deleting player ${t}s ...",0);
+		if (!$st->execute(@bind)) {
+			$self->warn("Reset error on " . $db->{'t_plr_ids_' . $t} . ": " . $db->errstr);
+			$errors++;
+		} else {
+			$db->optimize($db->{'t_plr_ids_' . $t});
+		}
+	}
+
+	# Delete player chat
+	$self->debug1("Deleting player chat ...",0);
+	if (!$db->do("DELETE QUICK c FROM t_plr p, t_plr_chat c " .
+		"WHERE $where AND c.plrid=p.plrid ", @bind)) {
+		$self->warn("Reset error on " . $db->{t_plr_chat} . ": " . $db->errstr);
+		$errors++;
+	} else {
+		$db->optimize($db->{t_plr_chat});
+	}
+
+	# Delete players and optionally their profiles
+	if ($del->{players}) {
+		$cmd = "DELETE pp, p FROM t_plr p, t_plr_profile pp " .
+		       "WHERE p.uniqueid=pp.uniqueid AND $where";
+	} else {
+		$cmd = "DELETE FROM t_plr WHERE $where";
+	}
+	$st = $db->prepare($cmd);
+	$self->debug1("Deleting players " . ($del->{players} ? 'and profiles' : '') . " ...",0);
+	if (!$st->execute(@bind)) {
+		$self->warn("Reset error on $db->{t_plr}: " . $db->errstr);
+		$errors++;
+	} else {
+		$db->optimize($db->{t_plr}, $db->{t_plr_profile});
+	}
+
+	#$self->debug1("Unranking all clans ...", 0);
+	#$db->do("UPDATE t_clan SET rank=NULL");
+	$self->debug1("Deleting clans ...",0);
+	$db->truncate($db->{t_clan});
+	if ($del->{clans}) {
+		$db->truncate($db->{t_clan_profile});
+	}
+
+	# Delete all game specific compiled tables
+	foreach my $t (@{$db->{compiled_tables}}) {
+		my $tbl = $db->{'c_' . $t} . '_' . $type || next;
+		next unless $db->table_exists($tbl);
+		$self->debug1("Deleting compiled table $t ...",0);
+		if (!$db->truncate($tbl)) {
+			$self->warn("Reset error on $tbl: " . $db->errstr);
+			$errors++;
+		}
+	}
+	
+	# Delete current state
+	$st = $db->prepare("DELETE s FROM t_state s, t_config_logsources l " .
+			   "WHERE l.gametype=? AND l.modtype" . ($modtype ? '=?' : ' IS NULL')
 	);
-
-	# only reset these tables if explicitly told to
-	push(@empty, 't_plr_profile') if $del->{players};
-	push(@empty, 't_clan_profile') if $del->{clans};
-	push(@empty, 't_weapon') if $del->{weapons};
-	push(@empty, 't_heatmaps') if $del->{heatmaps};
-
-	# DROP compiled data (will be recreated the next time stats.pl is run)
-	foreach my $t (@empty_c) {
-		my $tbl = $db->{$t} || next;
-		if (!$db->droptable($tbl) and $db->errstr !~ /unknown table/i) {
-			$self->warn("Reset error on $tbl: " . $db->errstr);
-			$errors++;
-		}
+	$self->debug1("Deleting game state ...",0);
+	if (!$st->execute(@bind)) {
+		$self->warn("Reset error on $db->{t_state}: " . $db->errstr);
+		$errors++;
+	} else {
+		$db->optimize($db->{t_state});
 	}
-
-	# delete most of everything else
-	foreach my $t (@empty) {
-		my $tbl = $db->{$t} || next;
-		if (!$db->truncate($tbl) and $db->errstr !~ /exist/) {
-			$self->warn("Reset error on $tbl: " . $db->errstr);
-			$errors++;
-		}
-	}
-
-	# delete mod specific tables
-	foreach my $t (@empty_m) {
-		my $tbl = $db->{$t} || next;
-		if (!$db->truncate($tbl) and $db->errstr !~ /exist/) {
-			$self->warn("Reset error on $tbl: " . $db->errstr);
-			$errors++;
-		}
-	}
-
-	$self->info("Player stats have been reset!! (from command line)");
 
 	return ($errors == 0);
 }

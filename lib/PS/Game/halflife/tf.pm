@@ -175,6 +175,9 @@ sub event_plrtrigger {
 		# sure if these triggers were added by an addon or were added
 		# to the engine by valve.
 
+	} elsif ($trigger eq 'hurt_firstblood') {
+		# beetlesmod trigger, ignoring for now, until I deem it useful.
+
 	} elsif ($trigger =~ /^(time|latency|amx_|game_idle_kick|camped)/) {
 		# extra statsme / amx triggers
 		$p->action_misc($self, $trigger, $m, $props);

@@ -223,7 +223,7 @@ PS::Role::configure  ( DB => $db, CONF => $conf, OPT => $opt );
 PS::Weapon::configure( DB => $db, CONF => $conf, OPT => $opt );
 PS::Feeder::configure( DB => $db, CONF => $conf, OPT => $opt );
 
-$ERR->info("PsychoStats v$VERSION initialized.");
+#$ERR->info("PsychoStats v$VERSION initialized.");
 
 # Handle some updates (not logs)
 #if ($opt->update) {
@@ -233,6 +233,34 @@ $ERR->info("PsychoStats v$VERSION initialized.");
 #	}
 #	&exit;
 #}
+
+# handle a 'stats reset' request
+if (defined $opt->reset) {
+	if (!$opt->gametype or !$opt->modtype) {
+		$ERR->fatal("-gametype and -modtype paramaters are required to reset the database.", 1);
+		undef $ERR; # prevent END block from saying anything
+		exit;
+	}
+	
+	my $res = $opt->reset;
+	my $all = (index($opt->reset,'all') >= 0);
+	my %del = (
+		players 	=> ($all || (index($res,'player') >= 0)),
+		clans   	=> ($all || (index($res,'clan') >= 0)),
+		weapons 	=> ($all || (index($res,'weapon') >= 0)),
+		heatmaps	=> ($all || (index($res,'heat') >= 0)),
+	);
+	my $game = new PS::Game($opt->gametype, $opt->modtype, $db);
+	my $ok = $game->reset_game(%del);
+	if ($ok) {
+		$ERR->info('Stats database has been reset for ' . $opt->gametype . '::' . $opt->modtype);
+	} else {
+		
+	}
+	
+	undef $ERR; # prevent END block from saying anything
+	exit;
+}
 
 # infinite main loop to process logs
 while (!$opt->nologs) {

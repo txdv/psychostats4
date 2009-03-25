@@ -260,7 +260,8 @@ CREATE TABLE `ps_map` (
   `gametype` enum('halflife','cod','soldat') NOT NULL,
   `modtype` enum('cstrike','tf','dod','l4d') NOT NULL,
   PRIMARY KEY  (`mapid`),
-  UNIQUE KEY `map` (`name`,`gametype`,`modtype`)
+  UNIQUE KEY `map` (`name`,`gametype`,`modtype`),
+  KEY `gametype` (`gametype`,`modtype`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_map_data` (
   `dataid` int(10) unsigned NOT NULL auto_increment,
@@ -353,7 +354,6 @@ CREATE TABLE `ps_plr` (
   `firstseen` int(10) unsigned NOT NULL,
   `lastseen` int(10) unsigned NOT NULL,
   `activity` tinyint(3) unsigned NOT NULL default '0',
-  `activity_updated` int(10) unsigned NOT NULL default '0',
   `points` int(10) unsigned NOT NULL default '0',
   `skill` float(10,4) default NULL,
   `skill_prev` float(10,4) default NULL,
@@ -364,7 +364,8 @@ CREATE TABLE `ps_plr` (
   PRIMARY KEY  (`plrid`),
   UNIQUE KEY `uniqueid` (`uniqueid`,`gametype`,`modtype`),
   KEY `rank` (`rank`,`gametype`,`modtype`),
-  KEY `lastseen` (`lastseen`)
+  KEY `lastseen` (`lastseen`),
+  KEY `gametype` (`gametype`,`modtype`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_plr_bans` (
   `plrid` int(10) unsigned NOT NULL,
@@ -504,7 +505,8 @@ CREATE TABLE `ps_role` (
   `gametype` enum('halflife','cod','soldat') NOT NULL,
   `modtype` enum('cstrike','tf','dod','l4d') NOT NULL,
   PRIMARY KEY  (`roleid`),
-  UNIQUE KEY `name` (`name`,`gametype`,`modtype`)
+  UNIQUE KEY `name` (`name`,`gametype`,`modtype`),
+  KEY `gametype` (`gametype`,`modtype`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_role_data` (
   `dataid` int(10) unsigned NOT NULL auto_increment,
@@ -572,7 +574,8 @@ CREATE TABLE `ps_weapon` (
   `weight` float(4,2) default NULL,
   `class` varchar(32) default NULL,
   PRIMARY KEY  (`weaponid`),
-  UNIQUE KEY `weapon` (`name`,`gametype`,`modtype`)
+  UNIQUE KEY `weapon` (`name`,`gametype`,`modtype`),
+  KEY `gametype` (`gametype`,`modtype`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 CREATE TABLE `ps_weapon_data` (
   `dataid` int(10) unsigned NOT NULL auto_increment,
