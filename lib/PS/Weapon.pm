@@ -159,7 +159,7 @@ sub save {
 
 	if (!$self->{weaponid}) {
 		# side effect; make sure a WEAPONID is assigned to this weapon.
-		$self->id || return undef;
+		$self->id || return;
 	}
 
 	$self->save_stats;
@@ -265,9 +265,9 @@ sub save_history {
 			$self->{timestamp}	# lastseen
 		)) {
 			# report error? 
-			return undef;
+			return;
 		}
-		$exists = $self->db->last_insert_id || return undef;
+		$exists = $self->db->last_insert_id || return;
 		$_cache->{$cache_key} = $exists;
 		
 		@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED_HISTORY->{DATA}};
@@ -407,7 +407,7 @@ sub FIELDS {
 # already. This is only called once, per sub-class.
 sub prepare_statements {
 	my ($class, $gametype, $modtype) = @_;
-	my $db = $PS::Weapon::DB || return undef;
+	my $db = $PS::Weapon::DB || return;
 	my $cpref = $db->{dbtblcompiledprefix};
 	my $pref = $db->{dbtblprefix};
 	my $type = $modtype ? $gametype . '_' . $modtype : $gametype;

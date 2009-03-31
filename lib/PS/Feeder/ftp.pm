@@ -38,7 +38,7 @@ sub init {
 	eval "require Net::FTP";
 	if ($@) {
 		$::ERR->warn("Net::FTP not installed. Unable to load $self->{class} object.");
-		return undef;
+		return;
 	}
 
 	$self->{_logs} = [ ];
@@ -52,7 +52,7 @@ sub init {
 	$self->{type} = $PS::Feeder::WAIT;
 	$self->{reconnect} = 0;
 
-	return undef unless $self->_connect;
+	return unless $self->_connect;
 
 	# if a savedir was configured and it's not a directory try to create it
 =pod
@@ -73,7 +73,7 @@ sub init {
 	}
 =cut
 
-	return undef unless $self->_readdir;
+	return unless $self->_readdir;
 
 	$self->{state} = $self->load_state;
 	$self->{_pos} = $self->{state}{pos};
@@ -148,13 +148,13 @@ sub _connect {
 	$self->{ftp} = new Net::FTP($host, %{$self->{_opts}});
 	if (!$self->{ftp}) {
 		$::ERR->warn("$self->{class} error connecting to FTP server: $@");
-		return undef;
+		return;
 	}
 
 	if (!$self->{ftp}->login($self->{_user}, $self->{_pass})) {
 		chomp(my $msg = $self->{ftp}->message);
 		$::ERR->warn("Error logging into FTP server: $msg");
-		return undef;
+		return;
 	}
 
 	# get the current directory
@@ -163,7 +163,7 @@ sub _connect {
 	if ($self->{_dir} and !$self->{ftp}->cwd($self->{_dir})) {
 		chomp(my $msg = $self->{ftp}->message);
 		$::ERR->warn("$self->{class} error changing FTP directory: $msg");
-		return undef;
+		return;
 	}
 
 	# do transfers in binary. so we can use REST commands to fast forward
@@ -263,7 +263,7 @@ sub parsesource {
 		}
 	} else {
 		$::ERR->warn("Invalid logsource syntax. Valid example: ftp://user:pass\@host.com/path/to/logs");
-		return undef;
+		return;
 	}
 	return 1;
 }
@@ -283,7 +283,7 @@ sub _opennextlog {
 	}
 
 	undef $self->{_loghandle};				# close the previous log, if there was one
-	return undef if !scalar @{$self->{_logs}};		# no more logs or directories to scan
+	return if !scalar @{$self->{_logs}};		# no more logs or directories to scan
 
 	$self->{_offsetbytes} = defined $offset ? int($offset)+0 : 0;
 	$self->{_lastprint} = time;
@@ -292,7 +292,7 @@ sub _opennextlog {
 	# we're done if the maximum number of logs has been reached
 	if (!$fastforward and $self->{_maxlogs} and $self->{_totallogs} >= $self->{_maxlogs}) {
 		$self->save_state;
-		return undef;
+		return;
 	}
 
 	$self->{_curlog} = shift @{$self->{_logs}};
@@ -315,7 +315,7 @@ sub _opennextlog {
 #			my $size = $self->{ftp}->size($self->{_curlog}) || 0;
 #			if (!$size or $offset >= $size) {
 #				$self->debug2("Skipping log $self->{_curlog} (EOF from previous state)");
-##				$self->{_curlog} = shift @{$self->{_logs}} || return undef;
+##				$self->{_curlog} = shift @{$self->{_logs}} || return;
 #			}
 #		}
 		$self->debug2("Downloading log $self->{_curlog}");
@@ -379,7 +379,7 @@ sub next_event {
 	# Or we've reached our maximum allowed lines
 	if ($::GRACEFUL_EXIT > 0 or ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines})) {
 		$self->save_state;
-		return undef;
+		return;
 	}
 
 	# No current loghandle? Get the next log in the queue
@@ -389,7 +389,7 @@ sub next_event {
 			$self->echo_processing;
 		} else {
 			$self->save_state;
-			return undef;
+			return;
 		}
 	}
 
@@ -401,14 +401,14 @@ sub next_event {
 			$self->echo_processing;
 		} else {
 			$self->save_state;
-			return undef;
+			return;
 		}
 	}
 	# skip the last line if we're at EOF and there are no more logs in the directory
 	# do not increment the line counter, etc.
 	if ($self->{logsource}{skiplastline} and eof($fh) and !scalar @{$self->{_logs}}) {
 		$self->save_state;
-		return undef;
+		return;
 	}
 	$self->{_curline}++;
 	$self->{_pos} = tell($fh);

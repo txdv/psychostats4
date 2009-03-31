@@ -57,12 +57,12 @@ sub debug {
 	$plaintrace = ' [' . join("->", @trace) . ']' if @trace;
 
 	if ($::DEBUGFILE) {
-		if (!open(DF, ">>", $::DEBUGFILE)) {
+		if (!open(my $fh, ">>", $::DEBUGFILE)) {
 			warn "[WARNING]* Error opening debug file $::DEBUGFILE for writting: $!\n";
 			$::DEBUGFILE = undef;		# disable the DEBUGFILE (to avoid further errors)
 		} else {
-			print DF "D$minlevel>$plaintrace $msg";
-			close(DF);
+			print $fh "D$minlevel>$plaintrace $msg";
+			close($fh);
 		}
 	}
 

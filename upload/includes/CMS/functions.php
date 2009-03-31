@@ -402,7 +402,10 @@ if (!function_exists('ps_user_can_edit_clan')) {
 			$plrid = $plr;
 			$plr = $ps->get_player_profile($plrid);
 		}
-		return ($user->logged_in() and $plr['userid'] == $user->userid() and $plr['clanid'] == $clanid);
+		return ($user->logged_in() and
+			$user->has_access(PU_ACL_CLANADMIN) and  
+			$plr['userid'] == $user->userid() and
+			$plr['clanid'] == $clanid);
 	}
 }
 

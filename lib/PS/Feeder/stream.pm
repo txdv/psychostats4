@@ -38,7 +38,7 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 sub init {
 	my $self = shift;
 	my %args = @_;
-	$self->SUPER::init(%args) || return undef;
+	$self->SUPER::init(%args) || return;
 
 	# allow alternate bind IP:port to listen on from the command line
 	$self->{bindip}   = $args{bindip};
@@ -136,7 +136,7 @@ sub _connect {
 
 	if (!$self->{socket}) {
 		$self->{error} = "Error binding to local port $self->{listen_on}: $@";
-		return undef;
+		return;
 	}
 
 	$self->{select} = new IO::Select($self->{socket});
@@ -262,7 +262,7 @@ sub next_event {
 
 	# the stream never stops, except for GRACEFUL_EXIT, -maxlogs, -maxlines
 	while (1) {
-		#return undef if $::GRACEFUL_EXIT > 0;
+		#return if $::GRACEFUL_EXIT > 0;
 
 		$line = undef;
 		if (my ($s) = $self->{select}->can_read(defined $timeout ? $timeout : 1)) {
@@ -278,7 +278,7 @@ sub next_event {
 					$self->warn("Unauthorized stream from '$cl' will be ignored!");
 					$self->{_not_allowed}{$cl} = 1;
 				}
-				return undef;
+				return;
 			}
 
 			# keep track of traffic stats for each client

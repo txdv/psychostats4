@@ -163,7 +163,7 @@ sub save {
 
 	if (!$self->{mapid}) {
 		# side effect; make sure a MAPID is assigned to this map.
-		$self->id || return undef;
+		$self->id || return;
 	}
 
 	# calculate the total online time
@@ -275,9 +275,9 @@ sub save_history {
 			$self->{timestamp}	# lastseen
 		)) {
 			# report error? 
-			return undef;
+			return;
 		}
-		$exists = $self->db->last_insert_id || return undef;
+		$exists = $self->db->last_insert_id || return;
 		$_cache->{$cache_key} = $exists;
 		
 		@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED_HISTORY->{DATA}};
@@ -475,7 +475,7 @@ sub FIELDS {
 # already. This is only called once, per sub-class.
 sub prepare_statements {
 	my ($class, $gametype, $modtype) = @_;
-	my $db = $PS::Map::DB || return undef;
+	my $db = $PS::Map::DB || return;
 	my $cpref = $db->{dbtblcompiledprefix};
 	my $pref = $db->{dbtblprefix};
 	my $type = $modtype ? $gametype . '_' . $modtype : $gametype;

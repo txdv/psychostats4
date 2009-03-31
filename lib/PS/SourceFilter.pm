@@ -29,7 +29,9 @@
 # 	statements will NOT be removed from the code.
 package PS::SourceFilter;
 
+use strict;
 use Filter::Simple;
+
 BEGIN {
         Filter::Simple::FILTER {
 		unless ($ENV{PSYCHOSTATS_DEBUG}) {

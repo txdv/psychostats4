@@ -99,11 +99,11 @@ sub log {
 		});
 		$self->truncate;
 	} else {
-		if (open(L, ">>stats.log")) {
+		if (open(my $fh, '>>', 'stats.log')) {
 			my @lines = split("\n", $msg);
 			my $line1 = shift @lines;
-			print L "[" . uc($severity) . "] $line1\n" . join("\n", map { " > $_" } @lines) . (@lines ? "\n" : "");
-			close(L);
+			print $fh "[" . uc($severity) . "] $line1\n" . join("\n", map { " > $_" } @lines) . (@lines ? "\n" : "");
+			close($fh);
 		}
 	}
 

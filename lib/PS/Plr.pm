@@ -317,7 +317,7 @@ sub init_plr {
 	if (!$self->{plrid}) {
 		# determine our plrid, if possible. If we can't determine it
 		# then we can't initialize the player yet.
-		$self->assign_plrid or return undef;
+		$self->assign_plrid or return;
 	}
 	$self->{plr} ||= {};
 	my $plr = $self->db->execute_fetchrow('get_plr_basic', $self->{plrid});
@@ -335,7 +335,7 @@ sub init_plr {
 # Save basic t_plr information.
 sub save_plr {
 	my ($self, $plr) = @_;
-	return undef unless $self->id;
+	return unless $self->id;
 	$plr ||= $self->{plr};
 	# TODO: ...
 }
@@ -348,7 +348,7 @@ sub save {
 	# First, we need a new PLRID if this player doesn't already have one.
 	# If a PLRID can not be assigned then no data will be saved yet.
 	if (!$self->{plrid}) {
-		$self->assign_plrid || return undef;
+		$self->assign_plrid || return;
 	}
 
 	# Make sure a profile exists for this player
@@ -463,7 +463,7 @@ keys(%$_cache) = $_cache_max;	# preset hash bucket size for efficiency
 # Save a set of "compiled" player stats (data, maps, roles, weapons, victims)
 sub save_stats {
 	my ($self, $stats_key, $field_key) = @_;
-	my $list = $self->{$stats_key} || return undef;
+	my $list = $self->{$stats_key} || return;
 	my $tbl = sprintf('plr_%s_%s', $stats_key, $self->{type});	# ie: plr_data_halflife_cstrike
 	my ($cmd, $exists, @bind, @updates);
 	$field_key ||= uc $stats_key;
@@ -582,7 +582,7 @@ sub save_stats {
 # This does not check the 'maxdays' configuration.
 sub save_history {
 	my ($self, $statdate, $stats_key, $field_key) = @_;
-	my $list = $self->{$stats_key} || return undef;
+	my $list = $self->{$stats_key} || return;
 	my $tbl = sprintf('plr_%s_%s', $stats_key, $self->{type});	# ie: plr_data_halflife_cstrike
 	my ($cmd, $cache_key, $exists, @bind, @updates);
 	$cache_key = $stats_key . '-' . $self->{plrid} . '@' . $statdate;
@@ -630,9 +630,9 @@ sub save_history {
 				$self->{timestamp}	# lastseen
 			)) {
 				# report error? 
-				return undef;
+				return;
 			}
-			$exists = $self->db->last_insert_id || return undef;
+			$exists = $self->db->last_insert_id || return;
 			$_cache->{$cache_key} = $exists;
 			
 			@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED_HISTORY->{DATA}};
@@ -691,9 +691,9 @@ sub save_history {
 					$self->{timestamp}	# lastseen
 				)) {
 					# report error? 
-					return undef;
+					return;
 				}
-				$exists = $self->db->last_insert_id || return undef;
+				$exists = $self->db->last_insert_id || return;
 				$_cache->{$_key} = $exists;
 				
 				@bind = map { exists $self->{$stats_key}{$id}{$_} ? $self->{$stats_key}{$id}{$_} : 0 } @{$ORDERED_HISTORY->{$field_key}};
@@ -710,7 +710,7 @@ sub save_history {
 # difference is not that far apart.
 sub save_session {
 	my ($self, $game, $threshold) = @_;
-	my $plrid = $self->id || return undef;
+	my $plrid = $self->id || return;
 	my $m = $game->get_map->id;
 
 	return unless $self->conf->main->plr_sessions_max > 0 && $self->{timestamp};
@@ -1509,7 +1509,7 @@ sub HISTORY {
 # already. This is only called once, per sub-class.
 sub prepare_statements {
 	my ($class, $gametype, $modtype) = @_;
-	my $db = $PS::Plr::DB || return undef;
+	my $db = $PS::Plr::DB || return;
 	my $cpref = $db->{dbtblcompiledprefix};
 	my $pref = $db->{dbtblprefix};
 	my $type = $modtype ? $gametype . '_' . $modtype : $gametype;

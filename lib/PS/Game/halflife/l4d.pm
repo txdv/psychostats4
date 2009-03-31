@@ -264,13 +264,13 @@ sub get_plr_l4d {
 	if ($guid eq 'BOT') {
 		# For BOTS: replace STEAMID's with the player name otherwise all
 		# bots will be combined into the same STEAMID
-		return undef if $self->conf->main->ignore_bots;
+		return if $self->conf->main->ignore_bots;
 		# limit the total characters (128 - 4)
 		$guid = "BOT_" . uc substr($name, 0, 124);
 	} elsif ($guid eq '') {
 		# If the plr has no GUID then its an 'Infected' mob that is
 		# computer controlled.
-		#return undef;
+		#return;
 	}
 
 

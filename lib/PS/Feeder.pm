@@ -99,7 +99,8 @@ sub new_from_id {
 sub new_from_string {
 	my $proto = shift;
 	my $str = shift;
-	my $db = pop if ref $_[ scalar @_ - 1 ];	# db is last param, optionally
+	my $db;
+	$db = pop if ref $_[ scalar @_ - 1 ];	# db is last param, optionally
 	my ($gametype, $modtype) = @_;			# only used for non-existing logsources
 	my $baseclass = ref($proto) || $proto;
 	my $class = $baseclass;
@@ -267,7 +268,7 @@ sub init {
 
 sub bytes_per_second {
 	my ($self, $tail) = @_;
-	return undef unless defined $self->{_lasttimebytes};
+	return unless defined $self->{_lasttimebytes};
 	my $time_diff = time - $self->{_lasttimebytes};
 	my $byte_diff = $self->{_totalbytes} - $self->{_prevbytes};
 	my $total = $time_diff ? sprintf("%.0f", $byte_diff / $time_diff) : $byte_diff;
@@ -278,7 +279,7 @@ sub bytes_per_second {
 
 sub lines_per_second {
 	my ($self, $tail) = @_;
-	return undef unless defined $self->{_lasttimelines};
+	return unless defined $self->{_lasttimelines};
 	my $time_diff = time - $self->{_lasttimelines};
 	my $line_diff = $self->{_totallines} - $self->{_prevlines};
 	my $total = $time_diff ? sprintf("%.0f", $line_diff / $time_diff) : $line_diff;
@@ -293,7 +294,7 @@ sub percent_complete {
 	if ($self->{_filesize}) {
 		return sprintf($fmt, ($self->{_offsetbytes} + $self->{_lastprint_bytes}) / $self->{_filesize} * 100);
 	}
-	return undef;
+	return;
 }
 
 sub echo_processing {
@@ -387,8 +388,8 @@ sub save {
 sub save_logsource {
 	my ($self, $logsource, $db) = @_;
 	my ($st, $exists);
-	return undef unless ref $logsource eq 'HASH' and keys %$logsource;
-	$db ||= $self->db || return undef;
+	return unless ref $logsource eq 'HASH' and keys %$logsource;
+	$db ||= $self->db || return;
 	
 	# NULL certain empty fields before we save the logsource
 	$logsource->{$_} = undef for (
@@ -419,7 +420,7 @@ sub save_logsource {
 sub load_logsource {
 	my ($self, $id, $db) = @_;
 	my ($st, $logsource);
-	$db ||= $self->db || return undef;
+	$db ||= $self->db || return;
 	
 	if (!$db->prepared('load_logsource')) {
 		$db->prepare('load_logsource',"SELECT * FROM t_config_logsources WHERE id=?");
@@ -437,7 +438,7 @@ sub load_logsource {
 sub load_logsource_from_hash {
 	my ($self, $src, $db) = @_;
 	my ($st, $logsource, @bind);
-	$db ||= $self->db || return undef;
+	$db ||= $self->db || return;
 
 	my $cmd = 'SELECT * FROM t_config_logsources WHERE';
 	while (my($key,$val) = each(%$src)) {
@@ -527,7 +528,7 @@ sub parse {
 		$logsource->{path} = $path || '';	# don't allow undef
 
 	} else {
-		return undef;
+		return;
 	}
 
 	return $logsource;

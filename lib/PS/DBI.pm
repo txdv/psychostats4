@@ -214,7 +214,7 @@ sub execute {
 	if (!exists $self->{prepared}{$name}) {
 		$self->{totalwarnings}++;
 		carp("[WARNING] Attempt to execute unprepared statement '$name'");
-		return undef;
+		return;
 	}
 	
 	$self->{lasterr} = '';
@@ -247,7 +247,7 @@ sub execute_debug {
 # executes a prepared statement and fetches an array of hash rows
 sub execute_fetchall {
 	my ($self, $name, @bind) = @_;
-	my $st = $self->execute($name, @bind) || return undef;
+	my $st = $self->execute($name, @bind) || return;
 	my $rows = $st->fetchall_arrayref({});
 	$st->finish;
 	return wantarray ? @$rows : $rows;
@@ -256,7 +256,7 @@ sub execute_fetchall {
 # executes a prepared statement and fetches the first row only
 sub execute_fetchrow {
 	my ($self, $name, @bind) = @_;
-	my $st = $self->execute($name, @bind) || return undef;
+	my $st = $self->execute($name, @bind) || return;
 	my $row = $st->fetchrow_hashref;
 	$st->finish;
 	return wantarray ? %$row : $row;
@@ -265,7 +265,7 @@ sub execute_fetchrow {
 # executes a prepared statement and fetches all columns into a single array
 sub execute_selectall {
 	my ($self, $name, @bind) = @_;
-	my $st = $self->execute($name, @bind) || return undef;
+	my $st = $self->execute($name, @bind) || return;
 	my @rows = map { @$_ } @{$st->fetchall_arrayref};
 	$st->finish;
 	return wantarray ? @rows : \@rows;
@@ -274,7 +274,7 @@ sub execute_selectall {
 # executes a prepared statement and fetches the first column of the first row.
 sub execute_selectcol {
 	my ($self, $name, @bind) = @_;
-	my $st = $self->execute($name, @bind) || return undef;
+	my $st = $self->execute($name, @bind) || return;
 	my $row = $st->fetchrow_arrayref;
 	$st->finish;
 	return $row ? $row->[0] : undef;
@@ -285,7 +285,7 @@ sub prepared {
 	my ($self, $name) = @_;
 	if (!exists $self->{prepared}{$name}) {
 		#carp("[WARNING] Attempt to access an unprepared statement named '$name'");
-		return undef;
+		return;
 	}
 	return $self->{prepared}{$name};
 }
@@ -591,7 +591,7 @@ sub get_rows_hash {
 	my $cmd = shift;
 	my @rows;
 
-	return undef unless $self->query($cmd, @_);
+	return unless $self->query($cmd, @_);
 
 	while (my $data = $self->{sth}->fetchrow_hashref) {
 		push(@rows, { %$data });			# make a copy of the hash, do not keep original reference
@@ -607,7 +607,7 @@ sub get_row_hash {
 	my $cmd = shift;
 
 	$self->query($cmd, @_) if $cmd;
-#	return undef unless $self->query($cmd);
+#	return unless $self->query($cmd);
 	return $self->{sth}->fetchrow_hashref;
 }
 
@@ -618,7 +618,7 @@ sub get_rows_array {
 	my $cmd = shift;
 	my @rows;
 
-	return undef unless $self->query($cmd, @_);
+	return unless $self->query($cmd, @_);
 
 	while (my $data = $self->{sth}->fetchrow_arrayref) {
 		push(@rows, [ @$data ]);			# make a copy of the array, do not keep original reference
@@ -634,7 +634,7 @@ sub get_row_array {
 	my $cmd = shift;
 
 	$self->query($cmd, @_) if $cmd;
-#	return undef unless $self->query($cmd);
+#	return unless $self->query($cmd);
 	my $row = $self->{sth}->fetchrow_arrayref;
 	return wantarray ? defined $row ? @$row : () : $row;
 }
@@ -648,7 +648,7 @@ sub get_list {
 	my $cmd = shift;
 	my @list;
 
-	return undef unless $self->query($cmd, @_);
+	return unless $self->query($cmd, @_);
 
 	while (my $data = $self->{sth}->fetchrow_arrayref) {
 		push(@list, @$data);
@@ -866,7 +866,7 @@ sub _calc {
 # deleted (at least it's not easy to do)
 sub update_stats {
 	my ($self, $table, $data, $types, $where) = @_;
-	my ($exists, $key, $qk, $func, $set, $calcset, $t);
+	my ($exists, $qk, $func, $set, $calcset, $t);
 	my $primary = 'dataid';
 	my $dbh = $self->{dbh};
 	my $ok = 1;
@@ -875,7 +875,7 @@ sub update_stats {
 #	$exists = $self->select($table, $primary, $where);
 #	if ($exists) {
 		$set = [];
-		foreach $key (keys %$data) {
+		foreach my $key (keys %$data) {
 			next unless exists $types->{$key};
 			next if ref $types->{$key};
 			$t = $types->{$key};
@@ -894,7 +894,7 @@ sub update_stats {
 			}
 		}
 		if (@$set) {
-			foreach $key (grep { ref $types->{$_} } keys %$types) {
+			foreach my $key (grep { ref $types->{$_} } keys %$types) {
 				push(@$set, $dbh->quote_identifier($key), $self->_calc($table,$types->{$key}));
 			}
 			$ok = $self->update($table, $set, $where, 1);		# 1 = no `quotes`
@@ -907,7 +907,7 @@ sub update_stats {
 # used to determine the firstdate and lastdate.
 sub save_stats {
 	my ($self, $table, $data, $types, $where, $statdate, $primary) = @_;
-	my ($exists, $key, $qk, $func, $set, $calcset, $t);
+	my ($exists, $qk, $func, $set, $calcset, $t);
 	my $docalc = (index($table, $self->{dbtblcompiledprefix}) == 0);	# do not use calc'd fields on non-compiled tables
 	my $dbh = $self->{dbh};
 	return unless scalar keys %$data;		# nothing to do if the hash is empty
@@ -916,7 +916,7 @@ sub save_stats {
 	$exists = $where ? $self->select($table, $primary, $where) : undef;
 	if ($exists) {
 		$set = [];
-		foreach $key (keys %$data) {
+		foreach my $key (keys %$data) {
 			next unless exists $types->{$key};
 			next if ref $types->{$key};
 			$t = $types->{$key};
@@ -937,7 +937,7 @@ sub save_stats {
 		if (@$set) {
 			if ($docalc) {
 				push(@$set, 'lastdate', $dbh->quote($statdate)) if $statdate;
-				foreach $key (grep { ref $types->{$_} } keys %$types) {
+				foreach my $key (grep { ref $types->{$_} } keys %$types) {
 					push(@$set, $dbh->quote_identifier($key), $self->_calc($table,$types->{$key}));
 				}
 			}
@@ -964,7 +964,7 @@ sub save_stats {
 				my $sd = $dbh->quote($statdate);
 				push(@$set, 'firstdate', $sd, 'lastdate', $sd);
 			}
-			foreach $key (grep { ref $types->{$_} } keys %$types) {
+			foreach my $key (grep { ref $types->{$_} } keys %$types) {
 #				push(@$set, map { $dbh->quote_identifier($_), 0 } grep { !exists $data->{$_} } @{$types->{$key}}[1,2]) if $self->type eq 'sqlite';
 				push(@$set, $dbh->quote_identifier($key), $self->_calc($table,$types->{$key}));
 			}

@@ -276,7 +276,7 @@ sub scan_for_clantag {
 			return $tag;
 		}
 	}
-	return undef;
+	return;
 }
 
 # returns the basic clan info based on the clantag given. Creates a new clan
@@ -300,7 +300,7 @@ sub get_clan {
 	# create the clan record
 	if (!$self->{db}->execute('insert_clan', $clantag, $time)) {
 		$self->warn("Error inserting clan '$clantag' into DB: " . $self->{db}->lasterr);
-		return undef;
+		return;
 	}
 
 	# create the current record in memory (clanid is auto_increment)
@@ -329,16 +329,16 @@ sub add_calcskill_func {
 
 	# If the function exists there is no reason to redefine it...	
 	if ($self->can($calcskill_func)) {
-		return undef;	
+		return;	
 	}
 	
 	# try to load the skill calculation code
 	my $file = catfile($FindBin::Bin, 'lib', 'PS', 'Skill', $calcskill_func . '.pl');
 	if (-f $file) {
 		my $code = "";
-		if (open(F, "<$file")) {
-			$code = join('', <F>);
-			close(F);
+		if (open(my $f, '<', $file)) {
+			$code = join('', <$f>);
+			close($f);
 		} else {
 			$self->fatal("Error reading skill code file ($file): $!");
 		}
@@ -454,7 +454,7 @@ sub get_plrcache {
 # return the cached plr or undef if not found
 sub plrcached {
 	my ($self, $sig, $cache) = @_;
-	return undef unless defined $sig;
+	return unless defined $sig;
 	$cache ||= 'eventsig';
 	return exists $self->{'c_'.$cache}{$sig} ? $self->{'c_'.$cache}{$sig} : undef;
 }
@@ -504,7 +504,7 @@ sub get_online_plrs {
 # return the cached IP or undef if not found
 sub ipcached {
 	my ($self, $uid, $var) = @_;
-	return undef unless exists $self->{ipcache}{$uid};
+	return unless exists $self->{ipcache}{$uid};
 	# return the ip and time it was updated if in array context. Otherwise
 	# simply return the IP address.
 	return wantarray
@@ -569,7 +569,7 @@ sub get_map {
 # returns a PS::Weapon object matching the weapon $name given
 sub get_weapon {
 	my ($self, $name) = @_;
-	$name = $self->weapon_normal($name) || return undef;
+	$name = $self->weapon_normal($name) || return;
 	if (exists $self->{weapons}{$name}) {
 		return $self->{weapons}{$name};
 	}
@@ -579,8 +579,8 @@ sub get_weapon {
 # returns a PS::Role object matching the role $name given
 sub get_role {
 	my ($self, $name, $team) = @_;
-	return undef unless $name;
-	$name = $self->role_normal($name) || return undef;
+	return unless $name;
+	$name = $self->role_normal($name) || return;
 	if (exists $self->{roles}{$name}) {
 		return $self->{roles}{$name};
 	}
@@ -818,9 +818,9 @@ sub load_events {
 			}
 
 			my $code = "";
-			if (open(F, "<$path$file")) {
-				$code = join('', <F>);
-				close(F);
+			if (open(my $f, '<', $path . $file)) {
+				$code = join('', <$f>);
+				close($f);
 			} else {
 				$self->warn("Error reading event code 'event': $!");
 				next;
@@ -1207,7 +1207,7 @@ sub update_plr_ranks {
 	}
 	if (!$get->execute(@$self{qw( gametype modtype )})) {
 		$@ = "Error executing DB query:\n$get->{Statement}\n" . $db->errstr;
-		return undef;
+		return;
 	}
 
 	# prepare the query that will update a player rank
@@ -2370,7 +2370,7 @@ sub save {
 	$self->{last_saved} = time;
 	
 	# SAVE PLAYERS
-	foreach $o ($self->get_plrcache) {
+	foreach my $o ($self->get_plrcache) {
 		$o->save($self);
 	}
 

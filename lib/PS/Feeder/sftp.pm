@@ -40,7 +40,7 @@ sub init {
 	eval "require Net::SFTP";
 	if ($@) {
 		$::ERR->warn("Net::SFTP not installed. Unable to load $self->{class} object.");
-		return undef;
+		return;
 	}
 
 	$self->{_logs} = [ ];
@@ -50,7 +50,7 @@ sub init {
 	$self->{_last_saved} = time;
 	$self->{type} = $PS::Feeder::WAIT;
 
-	return undef unless $self->_connect;
+	return unless $self->_connect;
 
 	# if a savedir was configured and it's not a directory try to create it
 	if ($self->{logsource}{savedir} and !-d $self->{logsource}{savedir}) {
@@ -69,7 +69,7 @@ sub init {
 		$::ERR->info("Downloaded logs will be saved to: $self->{logsource}{savedir}");
 	}
 
-	return undef unless $self->_readdir;
+	return unless $self->_readdir;
 
 	$self->{state} = $self->load_state;
 	$self->{_pos} = $self->{state}{pos};
@@ -152,7 +152,7 @@ sub _connect {
 	};
 	if (!$self->{sftp}) {
 		$self->warn("Error connecting to SFTP server: $@");
-		return undef;
+		return;
 	}
 
 	# get the current directory
@@ -242,7 +242,7 @@ sub parsesource {
 
 	} else {
 		$self->warn("Invalid logsource syntax. Valid example: sftp://user:pass\@host.com/path/to/logs");
-		return undef;
+		return;
 	}
 	return 1;
 }
@@ -267,7 +267,7 @@ sub _opennextlog {
 	}
 
 	undef $FH;						# close the previous log, if there was one
-	return undef if !scalar @{$self->{_logs}};		# no more logs or directories to scan
+	return if !scalar @{$self->{_logs}};		# no more logs or directories to scan
 
 	$self->{_offsetbytes} = 0;
 	$self->{_lastprint} = time;
@@ -276,7 +276,7 @@ sub _opennextlog {
 	# we're done if the maximum number of logs has been reached
 	if (!$fastforward and $self->{_maxlogs} and $self->{_totallogs} >= $self->{_maxlogs}) {
 		$self->save_state;
-		return undef;
+		return;
 	}
 
 	$self->{_curlog} = shift @{$self->{_logs}};
@@ -314,11 +314,11 @@ sub _opennextlog {
 				my $file = catfile($self->{logsource}{savedir}, $self->{_curlog});
 				my $path = (splitpath($file))[1] || '';
 				eval { mkpath($path) } if $path and !-d $path;
-				if (open(F, ">$file")) {
+				if (open(my $f, '>', $file)) {
 					while (defined(my $line = <$FH>)) {
-						print F $line;
+						print $f $line;
 					}
-					close(F);
+					close($f);
 					seek($FH,0,0);	# back up again; since we still need to process it
 				} else {
 					$::ERR->warn("Error creating local file for writting ($file): $!");
@@ -345,7 +345,7 @@ sub next_event {
 	# Or we've reached our maximum allowed lines
 	if ($::GRACEFUL_EXIT > 0 or ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines})) {
 		$self->save_state;
-		return undef;
+		return;
 	}
 
 	# No current loghandle? Get the next log in the queue
@@ -355,7 +355,7 @@ sub next_event {
 			$self->echo_processing;
 		} else {
 			$self->save_state;
-			return undef;
+			return;
 		}
 	}
 
@@ -366,14 +366,14 @@ sub next_event {
 			$self->echo_processing;
 		} else {
 			$self->save_state;
-			return undef;
+			return;
 		}
 	}
 	# skip the last line if we're at EOF and there are no more logs in the directory
 	# do not increment the line counter, etc.
 	if ($self->{logsource}{skiplastline} and eof($FH) and !scalar @{$self->{_logs}}) {
 		$self->save_state;
-		return undef;
+		return;
 	}
 	$self->{_curline}++;
 	$self->{_pos} = tell($FH);

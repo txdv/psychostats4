@@ -34,7 +34,7 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 sub init {
 	my $self = shift;
 	my %args = @_;
-	$self->SUPER::init(%args) or return undef;
+	$self->SUPER::init(%args) or return;
 
 	$self->{_pos} = 0;
 	$self->{_logs} = [ ];
@@ -85,7 +85,7 @@ sub _dirtree {
 # reads the contents of the next directory
 sub readnextdir {
 	my $self = shift;
-	return undef unless @{$self->{_dirs}};
+	return unless @{$self->{_dirs}};
 	my $dir = shift @{$self->{_dirs}};
 
 	$self->{_curdir} = $dir;
@@ -136,14 +136,14 @@ sub _opennextlog {
 	# we're done if the maximum number of logs has been reached
 	if (!$fastforward and $self->{_maxlogs} and $self->{_totallogs} >= $self->{_maxlogs}) {
 		#$self->save_state;
-		return undef;
+		return;
 	}
 
 	# no more logs in current directory, get next directory
 	while (!scalar @{$self->{_logs}} and scalar @{$self->{_dirs}}) {
 		$self->readnextdir;
 	}
-	return undef if !scalar @{$self->{_logs}};		# no more logs or directories to scan
+	return if !scalar @{$self->{_logs}};		# no more logs or directories to scan
 
 	$self->{_curlog} = catfile($self->{_curdir}, shift @{$self->{_logs}});
 	$self->{_curline} = 0;
@@ -196,7 +196,7 @@ sub next_event {
 	#if ($::GRACEFUL_EXIT > 0 or ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines})) {
 	if ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines}) {
 		#$self->save_state;
-		return undef;
+		return;
 	}
 
 	# No current loghandle? Get the next log in the queue
@@ -206,7 +206,7 @@ sub next_event {
 			$self->echo_processing;
 		} else {
 			#$self->save_state;
-			return undef;
+			return;
 		}
 	}
 
@@ -218,14 +218,14 @@ sub next_event {
 			$self->echo_processing;
 		} else {
 			#$self->save_state;
-			return undef;
+			return;
 		}
 	}
 	# skip the last line if we're at EOF and there are no more logs in the
 	# directory. Do not increment the line counter, etc.
 	if ($self->{logsource}{skiplastline} and eof($fh) and !scalar @{$self->{_logs}}) {
 		#$self->save_state;
-		return undef;
+		return;
 	}
 	$self->{_curline}++;
 	$self->{_pos} = tell($fh);

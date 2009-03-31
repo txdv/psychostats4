@@ -520,7 +520,7 @@ sub event_weaponstats {
 	return unless ref $p;
 	#return if $self->isbanned($p);
 	
-	my $w = $self->get_weapon($props->{weapon}) || return undef;
+	my $w = $self->get_weapon($props->{weapon}) || return;
 
 	$p->action_weaponstats($self, $trigger, $w, $props);
 	$w->action_weaponstats($self, $trigger, $p, $props);
@@ -632,7 +632,7 @@ sub get_plr {
 	# Ignore the HLTV client.
 	# Ignore some plugin(s) that log using <Console> as the guid (tf)
 	if ($guid eq 'HLTV' or $guid eq 'Console') {
-		return undef;
+		return;
 	}
 
 	# UID is unique to each player until a server restarts
@@ -643,7 +643,7 @@ sub get_plr {
 	# treat $uid as a string to avoid numerical errors due to invalid events
 	if (!$guid or $uid eq '-1') {
 		;;; $self->debug1("Ignoring invalid player identifier from logsource '$self->{_src}' line $self->{_line}: '$plrsig'",0);
-		return undef;
+		return;
 	}
 
 	# The rest of the string is the full player name. Trim the string, since
@@ -660,7 +660,7 @@ sub get_plr {
 	# For BOTS: replace STEAMID's with the player name otherwise all bots
 	# will be combined into the same STEAMID
 	if ($guid eq 'BOT') {
-		return undef if $self->conf->main->ignore_bots;
+		return if $self->conf->main->ignore_bots;
 		# limit the total characters (128 - 4)
 		$guid = "BOT_" . uc substr($name, 0, 124);
 	}

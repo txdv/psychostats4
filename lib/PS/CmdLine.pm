@@ -238,7 +238,7 @@ sub exists {
 #	my $undefexists = shift;			# defaults to false
 #	my $exists = exists $self->{param}{$var};	# true, even if the value is undef
 #	if (!$undefexists and $exists and !defined $self->{param}{$var}) {
-#		return undef;
+#		return;
 #	}
 #	return $exists;
 }
@@ -255,7 +255,7 @@ sub get {
 	my $self = shift;
 	my $var = shift;
 
-	return undef unless exists $self->{param}{$var};
+	return unless exists $self->{param}{$var};
 	return $self->{param}{$var};
 }
 
@@ -280,7 +280,7 @@ sub AUTOLOAD {
 	# prevent AUTOLOAD from being called again for the same option.
 	eval "sub $var () { undef }";
 	#goto &$var;
-	return undef;
+	return;
 }
 
 1;

@@ -78,7 +78,7 @@ sub mod_event_kill {
 				       (($props->{customkill} || '') eq 'headshot')
 				       );
 
-	return undef;
+	return;
 }
 
 sub event_plrtrigger {
