@@ -726,18 +726,26 @@ sub save_session {
 	}
 
 	if (!$dataid) {
+		# get skill from previous session
+		my $prevskill = $self->db->execute_selectcol('get_plr_session_prev_skill',
+							     $self->{plrid});
+		
 		# insert a new session
 		$self->db->execute('insert_plr_sessions',
 			$self->{plrid},
 			$m,
 			$self->{timestart},
 			$self->{timestamp},
-			$self->skill
+			$self->skill,
+			defined $prevskill ? $prevskill : $self->{skill}
 		);
 		$dataid = $self->db->last_insert_id;
-		$self->db->execute('insert_plr_sessions_' . $self->{type}, $dataid,
+		
+		# insert game specific session data using the new datid
+		$self->db->execute('insert_plr_sessions_' . $self->{type},
+			$dataid,
 			map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 }
-			@{$ORDERED->{SESSIONS}}
+				@{$ORDERED->{SESSIONS}}
 		);
 	} else {
 		# update the session stats
@@ -1703,10 +1711,18 @@ sub prepare_statements {
 		}
 	}
 
+	# get skill from most recent session for a player
+	$db->prepare('get_plr_session_prev_skill',
+		'SELECT skill FROM t_plr_sessions ' .
+		'WHERE plrid=? ' .
+		'ORDER BY session_start DESC ' .
+		'LIMIT 1'
+	) if !$db->prepared('get_plr_session_prev_skill');
+
 	# insert a new plr_sessions row
 	$db->prepare('insert_plr_sessions',
-		'INSERT INTO t_plr_sessions ' . #(plrid,mapid,session_start,session_end,skill) ' .
-		'VALUES (NULL,?,?,?,?,?)'
+		'INSERT INTO t_plr_sessions ' .
+		'VALUES (NULL,?,?,?,?,?,?)'
 	) if !$db->prepared('insert_plr_sessions');
 	#print $db->prepared('insert_plr_sessions')->{Statement}, "\n";
 
