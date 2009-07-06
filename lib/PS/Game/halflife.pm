@@ -396,12 +396,12 @@ sub event_kill {
 
 	# automatically update player ranks after X number of kills or X game
 	# time minutes have elapsed.
-	if (++$self->{rank_kills} >= $self->{rank_kills_threshold} or
-	    time - $self->{rank_time} >= $self->{rank_time_threshold}) {
-		$self->update_plrs;
-		$self->{rank_kills} = 0;
-		$self->{rank_time} = time;
-	}
+	#if (++$self->{rank_kills} >= $self->{rank_kills_threshold} or
+	#    time - $self->{rank_time} >= $self->{rank_time_threshold}) {
+	#	$self->update_plrs;
+	#	$self->{rank_kills} = 0;
+	#	$self->{rank_time} = time;
+	#}
 }
 
 sub event_logstartend {

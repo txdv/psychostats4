@@ -161,7 +161,7 @@ sub _sanitize {
 	# Warn the user to inform them of this if -debug is used.
 	if (defined $self->{param}{debug}) {
 		warn "Depreciated paramater ignored (-debug).\nSet the " . 
-			"environment variable PSYCHSTATS_DEBUG to the debug " . 
+			"environment variable PSYCHOSTATS_DEBUG to the debug " . 
 			"level desired (1-9).\n";
 	}
 

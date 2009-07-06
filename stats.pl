@@ -374,6 +374,13 @@ sub process_streams {
 			#	$last_log = $feed->curlog;
 			#	++$total_logs;
 			#}
+
+			# update player ranks if the day has changed
+			if ($games->{$srv}->get_event_last_day and
+			    $games->{$srv}->get_event_last_day != $games->{$srv}->get_event_day
+			    ) {
+				$games->{$srv}->update_plrs( $games->{$srv}->get_event_last_timestamp );
+			}
 			
 			# if ^C was pressed, stop processing.
 			last if $GRACEFUL_EXIT > 0;
@@ -450,6 +457,13 @@ sub process_files {
 			if ($feed->curlog ne $last_log) {
 				$last_log = $feed->curlog;
 				++$total_logs;
+			}
+
+			# update player ranks if the day has changed
+			if ($game->get_event_last_day and
+			    $game->get_event_last_day != $game->get_event_day
+			    ) {
+				$game->update_plrs( $game->get_event_last_timestamp );
 			}
 
 			#&lps_prev($total);

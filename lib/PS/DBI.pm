@@ -219,6 +219,7 @@ sub execute {
 	
 	$self->{lasterr} = '';
 	my $ok = $self->{prepared}{$name}->execute(@bind);
+	;;;$self->{lastcmd} = $self->{prepared}{$name}->{Statement};
 	if (!$ok) {
 		my $err = $self->err . ": " . $self->errstr;
 		$self->{totalwarnings}++;
@@ -236,6 +237,7 @@ sub execute {
 sub execute_debug {
 	my ($self, $name, @bind) = @_;
 	my $ok = $self->execute($name, @bind);
+	;;;$self->{lastcmd} = $self->{prepared}{$name}->{Statement};
 	;;;if (exists $self->{prepared}{$name}) {
 	;;;	my $q = $self->{prepared}{$name}{Statement};
 	;;;	$q =~ s/\?/$_/e for map { $self->{dbh}->quote($_) } @bind;
@@ -840,7 +842,7 @@ sub do {
 	$cmd =~ s/\s([tc])_(\w+)/' ' . ($self->{$1.'_'.$2} || $1.'_'.$2)/ge;
 
 	$self->{lastcmd} = $cmd;
-	;;; $self->debug9($cmd, 20);
+	;;;$self->debug9($cmd, 20);
 	return $self->{dbh}->do($cmd, undef, @bind);
 }
 
@@ -1027,8 +1029,18 @@ sub type () { '' }
 # cleans up the last used statement handle and free its memory
 sub finish { undef $_[0]->{sth} if $_[0]->{sth} }
 
-# returns the last query command given
-sub lastcmd { $_[0]->{lastcmd} }
+# returns the last query command given, optionally with bound values given
+sub lastcmd {
+	if (@_ <= 1) {
+		return $_[0]->{lastcmd};
+	} else {
+		my $self = shift;
+		my @bind = ref $_[0] ? @{$_[0]} : @_;
+		my $cmd = $self->{lastcmd};
+		$cmd =~ s/\?/$_/ for map { $self->{dbh}->quote($_) } @bind;
+		return $cmd;
+	}
+}
 
 # Quotes an identifier (table column name, table name, database name, etc...)
 sub qi { $_[0]->{dbh}->quote_identifier($_[1]) }

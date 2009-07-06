@@ -761,6 +761,13 @@ sub create_event_regex_func {
 sub event { $_[0]->fatal($_[0]->{class} . " has no 'event' method implemented. HALTING.") }
 sub event_ignore { }
 
+sub get_event_hour { int($_[0]->{hour} || 0) }
+sub get_event_last_hour { int($_[0]->{last_hour} || 0) }
+sub get_event_day { int($_[0]->{day} || 0) }
+sub get_event_last_day { int($_[0]->{last_day} || 0) }
+sub get_event_timestamp { $_[0]->{timestamp} }
+sub get_event_last_timestamp { $_[0]->{last_timestamp} }
+
 # Loads the player bonuses config for the current game. May be called several
 # times to overload previous values.
 # game/mod type 'undef' means to use the current config settings. a blank string
@@ -1079,7 +1086,7 @@ sub plrbonus {
 # wrapper to update current players by checking ranking rules, assigning rank
 # and activity values, etc.
 sub update_plrs {
-	my ($self, $quiet) = @_;
+	my ($self, $rank_timestamp, $quiet) = @_;
 	
 	$self->debug3("Updating player activity...", 0) unless $quiet;
 	$self->update_plr_activity( $self->conf->main->plr_min_activity );
@@ -1088,7 +1095,7 @@ sub update_plrs {
 	$self->update_allowed_plr_ranks( $self->conf->main->ranking->VARS );
 	
 	$self->debug3("Updating player ranks...", 0) unless $quiet;
-	$self->update_plr_ranks;
+	$self->update_plr_ranks($rank_timestamp);
 }
 
 # Updates the activity percentage for all players. If $force_all is true all
@@ -1110,11 +1117,11 @@ sub update_plr_activity {
 		$st = $db->prepare("UPDATE t_plr SET activity=$plr_min_activity");
 	} else {
 		my $min_act = $plr_min_activity * 60*60*24;
-		$st = $db->prepare(
-			"UPDATE t_plr SET " . 
-			"activity = IF($min_act > $lastseen - lastseen, " . 
-			"LEAST(100, 100 / $min_act * ($min_act - ($lastseen - lastseen)) ), 0) "
-		);
+		$st = $db->prepare(qq{
+			UPDATE t_plr SET 
+			activity = IF($min_act > $lastseen - lastseen, 
+			LEAST(100, 100 / $min_act * ($min_act - ($lastseen - lastseen)) ), 0) 
+		});
 	}
 
 	;;;bench('update_plr_activity');
@@ -1161,15 +1168,20 @@ sub update_allowed_plr_ranks {
 			(map { $_ . ' >= ' . $rules->{'player_min_' . $_} } @min),
 			(map { $_ . ' <= ' . $rules->{'player_max_' . $_} } @max)
 		);
+		
+		# fudge skill and rank to point to the main player table prefix
+		# to avoid ambiguity.
+		$where =~ s/(?<![\w\.])(skill|rank)/p.$1/g;
+		
 		$self->debug3("Ranking rules for players: $where", 0);
 		$where = '1' unless $where;	# force all if no rules are defined
 
 		# query to update rank flag for all players based on rules
-		$st = $db->prepare('update_allowed_plr_ranks_' . $type, 
-			"UPDATE t_plr p, ${cpref}plr_data_${type} c " .
-			"SET rank=IF($where, IF(rank,rank,0), NULL) " .
-			"WHERE p.plrid=c.plrid"
-		);
+		$st = $db->prepare('update_allowed_plr_ranks_' . $type, qq{
+			UPDATE t_plr p, ${cpref}plr_data_${type} d 
+			SET p.rank=IF($where, IF(p.rank,p.rank,0), NULL) 
+			WHERE p.plrid=d.plrid 
+		});
 	}
 
 	;;;bench('update_allowed_plr_ranks');
@@ -1189,63 +1201,75 @@ sub update_allowed_plr_ranks {
 sub update_plr_ranks {
 	my ($self, $timestamp) = @_;
 	my $db = $self->{db};
-	my ($plrid, $rank, $rank_prev, $rank_time, $skill);
-	my ($get, $set, $newrank, $prevskill, $cmd);
-	$timestamp ||= $self->{timestamp} || timegm(localtime);
+	my ($plrid, $rank, $skill);
+	my ($get, $set, $setprev, $newrank, $prevskill);
+	$timestamp ||= $self->{timestamp}; #|| timegm(localtime);
+
+	my ($d, $m, $y) = (gmtime($timestamp))[3,4,5];
+	my $statdate = sprintf('%04u-%02u-%02u', $y+1900, $m+1, $d);
 
 	# prepare the query that will fetch the player list
 	if (!defined($get = $db->prepared('get_plr_ranks'))) {
 		# TODO: Allow this query to be customizable so different ranking
 		# calculations can be done.
-		$get = $db->prepare('get_plr_ranks',
-			#'SELECT plrid,rank,rank_prev,rank_time,skill FROM t_plr ' .
-			'SELECT plrid,rank,skill FROM t_plr ' .
-			'WHERE rank IS NOT NULL AND skill IS NOT NULL ' .
-			'AND gametype=? AND modtype=? ' .
-			'ORDER BY skill DESC'
-		);
+		$get = $db->prepare('get_plr_ranks', qq{
+			SELECT plrid,rank,skill FROM t_plr 
+			WHERE rank IS NOT NULL
+			AND skill IS NOT NULL 
+			AND gametype=? AND modtype=? 
+			ORDER BY skill DESC
+		});
 	}
 	if (!$get->execute(@$self{qw( gametype modtype )})) {
 		$@ = "Error executing DB query:\n$get->{Statement}\n" . $db->errstr;
 		return;
 	}
 
+	if ($timestamp) {
+		# NOTE: This also sets the previous skill value.
+		if (!defined($setprev = $db->prepared('set_prev_rank'))) {
+			$setprev = $db->prepare('set_prev_rank', q{
+				UPDATE t_plr
+				SET rank_prev=rank, skill_prev=skill, prev_time=?
+				WHERE prev_time IS NULL 
+				OR DATE(FROM_UNIXTIME(?)) > DATE(FROM_UNIXTIME(prev_time))
+			});
+		}
+		;;;bench('update_plr_prev_ranks');
+		$setprev->execute($timestamp, $timestamp);
+		;;;bench('update_plr_prev_ranks');
+	}
+	
 	# prepare the query that will update a player rank
 	if (!defined($set = $db->prepared('set_plr_rank'))) {
-		$set = $db->prepare('set_plr_rank',
-			'UPDATE t_plr SET ' .
-			#'rank_prev=IF(DATE(FROM_UNIXTIME(?)) > DATE(FROM_UNIXTIME(rank_time)), rank, rank_prev), ' .
-			#'rank_time=IF(rank_prev = rank, ?, rank_time), ' . 
-			'rank=? ' . 
-			'WHERE plrid=?'
-		);
+		$set = $db->prepare('set_plr_rank', q{
+			UPDATE t_plr p
+			LEFT JOIN t_plr_data d ON d.plrid=p.plrid AND d.statdate=?
+			SET p.rank=?, d.rank=p.rank 
+			WHERE p.plrid=? 
+		});
 	}
 
 	# Loop through all ranked players and set their new rank. Note; this
 	# loop does not scale well and its speed depends on total players.
 	# Players with the same value will have the same rank.
-	$newrank = 0;
 	;;;bench('update_plr_ranks');
-	#$get->bind_columns(\($plrid, $rank, $rank_prev, $rank_time, $skill));
-	$get->bind_columns(\($plrid, $rank, $skill));
 	;;;my $affected = 0;
+
+	$get->bind_columns(\($plrid, $rank, $skill));
+	$newrank = 0;
 	while ($get->fetch) {
 		++$newrank if !defined($prevskill) || $prevskill != $skill;
-		#if (!$set->execute($timestamp, $timestamp, $newrank, $plrid)) {
 		if ($rank != $newrank) {
-			if (!$set->execute($newrank, $plrid)) {
+			if (!$set->execute($statdate, $newrank, $plrid)) {
 				$self->warn("Error updating player ranks: CMD=$set->{Statement}; ERR=" . $set->errstr);
 				last;
 			}
 			;;;++$affected;
 		}
-		#my $cmd = $set->{Statement};
-		#$cmd =~ s/\?/$_/e foreach ($timestamp, $timestamp, $newrank, $plrid);
-		#$cmd =~ s/\?/$_/e foreach ($newrank, $plrid);
-		#print "$cmd\n";
-
 		$prevskill = $skill;
 	}
+
 	;;;$self->debug3("$affected players changed rank.", 0) if $affected;
 	;;;bench('update_plr_ranks');
 	
@@ -2248,10 +2272,10 @@ sub reset_game {
 		my $t1 = $db->{'t_' . $t};
 		my $t2 = $db->{'t_' . $t . '_data'};
 		my $t3 = $t2 . '_' . $type;
-		my $st = $db->prepare(
-			"DELETE QUICK t2 FROM $t1 t, $t2 t2 " .
-			"WHERE $where AND t2.${t}id=t.${t}id "
-		);
+		my $st = $db->prepare(qq{
+			DELETE QUICK t2 FROM $t1 t, $t2 t2 
+			WHERE $where AND t2.${t}id=t.${t}id 
+		});
 		$self->debug1("Deleting ${t}s ...",0);
 		if (!$st->execute(@bind)) {
 			$self->warn("Reset error on $t2: " . $db->errstr);
@@ -2262,6 +2286,11 @@ sub reset_game {
 			}
 			$db->truncate($t3);
 			$db->optimize($t1, $t2);
+
+			# truncate/reset auto_increment if table is empty
+			if (!$db->count($t2)) {
+				$db->truncate($t2);
+			}
 		}
 		$st->finish;
 	}
@@ -2324,6 +2353,15 @@ sub reset_game {
 		$errors++;
 	} else {
 		$db->optimize($db->{t_plr}, $db->{t_plr_profile});
+		# truncate the plr tables if no more players exist so the
+		# 'auto_increment' counter will reset to 1. 
+		if (!$db->count($db->{t_plr})) {
+			$db->truncate($db->{t_plr});
+			foreach (map { $db->{"t_plr_$_"} }
+				 qw( data maps roles sessions victims weapons )) {
+				$db->truncate($_)
+			}
+		}
 	}
 
 	#$self->debug1("Unranking all clans ...", 0);
@@ -2370,7 +2408,7 @@ sub save {
 	$self->{last_saved} = time;
 	
 	# SAVE PLAYERS
-	foreach my $o ($self->get_plrcache) {
+	foreach $o ($self->get_plrcache) {
 		$o->save($self);
 	}
 

@@ -313,7 +313,7 @@ sub init {
 # known and used in calculations).
 sub init_plr {
 	my ($self, $reset) = @_;
-	return 1 if $self->{plr} and !$reset;
+	return $self->{plr} if $self->{plr} and !$reset;
 	if (!$self->{plrid}) {
 		# determine our plrid, if possible. If we can't determine it
 		# then we can't initialize the player yet.
@@ -322,13 +322,17 @@ sub init_plr {
 	$self->{plr} ||= {};
 	my $plr = $self->db->execute_fetchrow('get_plr_basic', $self->{plrid});
 	%{$self->{plr}} = %$plr if $plr;
-	
+
 	# assign the loaded skill to our public key for use
-	$self->{skill} = ($plr and defined $self->{plr}{skill})
-		? $self->{plr}{skill} : $self->conf->main->baseskill;
-	#$self->{points} = ($plr and $self->{plr}{points})
-	#	? $self->{plr}{points} : 0;
-	
+	$self->{skill} = ($plr and defined $plr->{skill})
+		? $plr->{skill}
+		: $self->conf->main->baseskill;
+
+	$self->{rank} = $plr ? $plr->{rank} : undef;
+
+	#$self->{points} = ($plr and $plr->{points})
+	#	? $plr->{points} : 0;
+
 	return $self->{plr};
 }
 
@@ -507,13 +511,14 @@ sub save_stats {
 			if (!$self->db->do($cmd, @bind)) {
 				$self->warn("Error updating compiled PLR data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
 			}
-			#;;;warn "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
+			#;;;warn "CMD:  ", $self->db->lastcmd(\@bind), "\n";
 			
 		} else {
 			# INSERT a new row
 			@bind = map { exists $self->{data}{$_} ? $self->{data}{$_} : 0 } @{$ORDERED->{DATA}};
 			$self->db->execute('insert_c' . $tbl, $self->{plrid}, @bind);
 			$_cache->{$stats_key . '-' . $self->{plrid}} = 1;
+			#;;;warn "CMD:  ", $self->db->lastcmd(\@bind), "\n";
 
 			# Make sure the player has a default skill assigned
 			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
@@ -529,7 +534,7 @@ sub save_stats {
 				$self->db->{t_plr},
 				join(',', @updates)
 			), @bind);
-			#;;;warn "CMD:  ", $self->db->lastcmd, "\nBIND: ", join(',', @bind), "\n";
+			#;;;warn "CMD:  ", $self->db->lastcmd(\@bind), "\n";
 		}
 	} else {
 		# loop through each key in the hash and insert/update each row
@@ -600,13 +605,17 @@ sub save_history {
 		if ($exists) {
 			# update the tables, using a single query:
 			# plr_data, plr_data_gametype_modtype
-			my $cmd = sprintf('UPDATE %s%s t1, %splr_data t2 SET lastseen=?',
+			my $cmd = sprintf('UPDATE %s%s t1, %splr_data t2 SET lastseen=?,rank=?,skill=?',
 				$self->db->{dbtblprefix},
 				$tbl,
 				$self->db->{dbtblprefix}
 			);
+			@bind = (
+				$self->{timestamp},
+				$self->{rank} || undef,
+				$self->{skill} || $self->conf->main->baseskill
+			);
 			
-			@bind = ( $self->{timestamp} );
 			foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED_HISTORY->{DATA}}) {
 				$cmd .= ',' . $self->db->expr(
 					$key,			# stat key (kills, deaths, etc)
@@ -616,18 +625,22 @@ sub save_history {
 				);
 			}
 			$cmd .= ' WHERE t1.dataid=? AND t2.dataid=t1.dataid';
+
 			push(@bind, $exists);
 			
 			if (!$self->db->do($cmd, @bind)) {
 				$self->warn("Error updating PLR data for \"$self\": " . $self->db->errstr . "\nCMD=$cmd");
 			}
+			#;;;warn "CMD:  ", $self->db->lastcmd(\@bind), "\n";
 
 		} else {
 			if (!$self->db->execute('insert_plr_data',
 				$self->{plrid},
 				$statdate,
 				$self->{firstseen},
-				$self->{timestamp}	# lastseen
+				$self->{timestamp},	# lastseen
+				$self->{rank} || undef,
+				defined $self->{skill} ? $self->{skill} : $self->conf->main->baseskill,
 			)) {
 				# report error? 
 				return;
@@ -639,6 +652,7 @@ sub save_history {
 			if (!$self->db->execute('insert_' . $tbl, $exists, @bind)) {
 				$self->warn("Error inserting $tbl row for \"$self\": " . ($self->db->errstr || ''));
 			}
+			#;;;warn "CMD:  ", $self->db->lastcmd(\@bind), "\n";
 		}
 	} else {
 		# loop through each key in the hash and insert/update each row
@@ -1644,8 +1658,8 @@ sub prepare_statements {
 
 	# insert a new plr_data row
 	$db->prepare('insert_plr_data',
-		'INSERT INTO t_plr_data (plrid,statdate,firstseen,lastseen) ' .
-		'VALUES (?,?,?,?)'
+		'INSERT INTO t_plr_data (plrid,statdate,firstseen,lastseen,rank,skill) ' .
+		'VALUES (?,?,?,?,?,?)'
 	) if !$db->prepared('insert_plr_data');
 	#print $db->prepared('insert_plr_data')->{Statement}, "\n";
 
