@@ -23,10 +23,11 @@
 #       removed. Any line that starts with 3 semicolons are removed from the
 #       source code before Perl compiles it. This allows me to riddle
 # 	my code with debug statements w/o worring about those statements
-# 	affecting performance (tons of function calls, or logic expressions).
+# 	affecting performance (tons of function calls, or blocks of code).
 #
-#	If the environment variable PSYCHOSTATS_DEBUG is defined the debug
+#       If the environment variable PSYCHOSTATS_DEBUG is defined (1-9) the debug
 # 	statements will NOT be removed from the code.
+#
 package PS::SourceFilter;
 
 use strict;

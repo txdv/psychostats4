@@ -575,7 +575,7 @@ sub save_stats {
 				}
 			} else {
 				# INSERT a new row
-				@bind = map { exists $self->{$stats_key}{$_} ? $self->{$stats_key}{$_} : 0 } @{$ORDERED->{$field_key}};
+				@bind = map { exists $list->{$id}{$_} ? $list->{$id}{$_} : 0 } @{$ORDERED->{$field_key}};
 				$self->db->execute('insert_c' . $tbl, $self->{plrid}, $id, @bind);
 				$_cache->{$cacheid} = 1;
 			}
@@ -680,11 +680,11 @@ sub save_history {
 				);
 				
 				@bind = ( $self->{timestamp} );
-				foreach my $key (grep { exists $self->{$stats_key}{$id}{$_} } @{$ORDERED_HISTORY->{$field_key}}) {
+				foreach my $key (grep { exists $list->{$id}{$_} } @{$ORDERED_HISTORY->{$field_key}}) {
 					$cmd .= ',' . $self->db->expr(
 						$key,				# stat key (kills, deaths, etc)
 						$ALL->{$field_key}{$key},	# expression '+'
-						$self->{$stats_key}{$id}{$key},	# actual value
+						$list->{$id}{$key},		# actual value
 						\@bind				# arrayref to store bind values
 					);
 				}
@@ -710,7 +710,7 @@ sub save_history {
 				$exists = $self->db->last_insert_id || return;
 				$_cache->{$_key} = $exists;
 				
-				@bind = map { exists $self->{$stats_key}{$id}{$_} ? $self->{$stats_key}{$id}{$_} : 0 } @{$ORDERED_HISTORY->{$field_key}};
+				@bind = map { exists $list->{$id}{$_} ? $list->{$id}{$_} : 0 } @{$ORDERED_HISTORY->{$field_key}};
 				if (!$self->db->execute('insert_' . $tbl, $exists, @bind)) {
 					$self->warn("Error inserting $tbl row for \"$self\": " . ($self->db->errstr || ''));
 				}
