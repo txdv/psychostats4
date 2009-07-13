@@ -97,10 +97,17 @@ class MY_Controller extends Controller {
 			if (!$this->smarty->verify_compile_dir()) {
 				if (!$this->smarty->create_compile_dir()) {
 					trigger_error(
-						'Compile directory (' . $this->smarty->compile_dir .
-						') does not exist or is not writable by the webserver. ' .
-						' You must fix permissions or change the "compile_dir" ' .
-						'setting in your config.',
+						'Compile directory "<strong>' .
+						$this->smarty->compile_dir .
+						'</strong>" ' . 
+						'does not exist or is not writable by the webserver. ' .
+						'<br />' .
+						'I tried to create the directory but failed.' . 
+						'<br />' .
+						'You must create and fix permissions on that directory ' .
+						'or change the "<strong>compile_dir</strong>" ' .
+						'setting in your config.php to point to another directory ' .
+						'that will work.',
 						E_USER_ERROR
 					);
 					// no sense in continuing ... 

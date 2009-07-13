@@ -117,8 +117,15 @@ class Psychosmarty extends Smarty
 		if ($path === null) {
 			$path = $this->compile_dir;
 		}
-		if (!file_exists($path) and !is_dir($path)) {
-			if (!@mkdir($path, 0777, true)) {	// recursive (php5 only)
+		if (!file_exists($path)) {
+			// recursive (php5 only)
+			if (!@mkdir($path, 0777, true)) {
+				return false;
+			}
+		} elseif (!is_writable($path)) {
+			// path exists but we can't write to it, try to chmod
+			// it so we can... 
+			if (!@chmod($path, 0777)) {
 				return false;
 			}
 		}

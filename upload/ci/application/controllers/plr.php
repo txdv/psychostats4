@@ -45,8 +45,6 @@ class Plr extends MY_Controller {
 	
 	function view($id = null)
 	{
-		$this->load->library('highlighter');
-
 		$this->load->library('charts');
 		$this->load->library('psychotable');
 		$this->load->helper('get');
