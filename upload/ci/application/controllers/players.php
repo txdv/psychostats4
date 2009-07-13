@@ -9,8 +9,6 @@ class Players extends MY_Controller {
 	
 	function index()
 	{
-		$this->load->library('highlighter');	// debug
-
 		$this->load->library('psychotable');
 		$this->load->helper('get');
 		$config =& get_config();
@@ -127,7 +125,6 @@ class Players extends MY_Controller {
 			'total_players' => $total_players,
 			'total_ranked' 	=> $total_ranked,
 			'pager'		=> $pager,
-			//'query' 	=> $this->highlighter->parse($this->db->last_query(), 'sql'),
 		);
 
 		define('PAGE', strtolower(get_class()));
