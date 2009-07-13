@@ -1,0 +1,97 @@
+{extend file="$theme/base_full_page.html"}
+
+{block name="content"}
+<div class="yui-g">
+<div class='ps-form narrow-form'>
+{if !$user->logged_in()}
+<form method="post" action="{$SELF}">
+<fieldset>
+	<legend><#Please Login#></legend>
+
+	{if $form_error and !validation_errors()}
+	<div class="row err fatal">
+		<h4><#Error with login#>:</h4>
+		<p>{$form_error}</p>
+	</div>
+	{/if}
+	
+	<div class="row{if form_error('un')} err{/if}">
+		{form_error('un')}
+		<label><#Username#>:</label>
+		<div class="input">
+			<input name="un" value="{set_value('un')}" type="text" class="field" />
+		</div>
+	</div>
+
+	<div class="row{if form_error('pw')} err{/if}">
+		{form_error('pw')}
+		<label><#Password#>:</label>
+		<div class="input">
+			<input name="pw" value="" type="password" class="field" />
+		</div>
+	</div>
+
+	<div class="row">
+		<label for="remember"><#Remember Me#>:</label>
+		<div class="input">
+			<input id="remember" name="remember" value="1" type="checkbox" class="checkbox" />
+		</div>
+		<p class="notes">
+			<!--<#LOGIN_REMEMBER#>-->
+			If "Remember me" is checked a cookie will be saved in
+			your browser and the next time you visit this site you
+			will automatically be logged in again.
+			<!---->
+		</p>
+	</div>
+
+	<div class="row">
+		<div class="notes">
+			<h4><#Login Help#></h4>
+			<ul>
+				<li>
+					<strong><#Not registered?#></strong>
+					<a href="{site_url('login/register')}"><#Register now#></a>
+				</li>
+				<li>
+					<strong><#Forgot your password?#></strong>
+					<a href="{site_url('login/reset')}"><#Reset your password#></a>
+				</li>
+			</ul>
+		</div>
+	</div>
+</fieldset>
+<fieldset>
+	<div class="row-submit">
+		<input name="ref" value="{$ref|escape}" type="hidden" />
+		
+		<input value="<#Login#>"  name="submit" type="submit" class="default" />
+		<input value="<#Cancel#>" name="cancel" type="submit" />
+	</div>
+</fieldset>
+</form>
+{else}{* If user is logged in ... *}
+<fieldset>
+	<legend><#You are logged in#></legend>
+	<div class="row">
+		<div class="notes">
+			<p>
+				<#You are already logged in as#>
+				<strong>{$user->username|escape}</strong>.
+			</p>
+			<p>
+				<a href="{site_url('logout')}"><#Logout now#></a>
+				<#or goto one of the following#>:
+			</p>
+			<ul>
+				<li><a href="{site_url('home')}"><#Home#></a></li>
+				<li><a href="{site_url('players')}"><#Players#></a></li>
+				<li><a href="{site_url('clans')}"><#Clans#></a></li>
+			</ul>
+		</div>
+	</div>
+</fieldet>
+{/if}
+</div>
+</div>
+{/block}

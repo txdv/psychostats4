@@ -1,0 +1,21 @@
+{extend file="$theme/base_full_page.html"}
+
+{block name="content"}
+<div class="yui-g">
+<div class='ps-form narrow-form'>
+<fieldset>
+	<legend><#User Logout#></legend>
+	<div class="row">
+		<div class="notes">
+{if $was_logged_in}
+			<p><strong>{$who->username|escape}</strong> <#has been logged out.#></p>
+{else}
+			<p><#You are no longer logged in.#></p>
+{/if}
+			<p>You can now <a href="{site_url('login')}">login again</a>.</p>
+		</div>
+	</div>
+</fieldset>
+</div>
+</div>
+{/block}

@@ -1,0 +1,542 @@
+/*
+ * Main theme styles for overall content
+ */
+
+/* overall styles */
+.yui-t3 a, .yui-t7 a {
+	text-decoration: none;
+	color: #003355;
+}
+.yui-t3 a:link, .yui-t3 a:visited, .yui-t3 a:hover, .yui-t3 a:active, 
+.yui-t7 a:link, .yui-t7 a:visited, .yui-t7 a:hover, .yui-t7 a:active {
+	text-decoration: none;
+	color: #003355;
+}
+
+.yui-t3 a:hover, .yui-t7 a:hover {
+	color: #0066CC;
+}
+
+/*
+  Change the margin's slightly to allow for empty space between the chrome and
+  contents of the page.
+*/
+.yui-t3 #yui-main .yui-b {
+	margin-left: 25.0769em;
+}
+.yui-t1 #yui-main, .yui-t2 #yui-main, .yui-t3 #yui-main {
+	margin-right: 1em;
+}
+
+#bd {
+	background: #C5CEDC url({asset static='img/body-bg.png'}) repeat-x 0 0;
+}
+
+/* PS content */
+div.ps-content { /* wrapper around content */
+	margin: 0 10px;
+	/*border: 1px solid #B4BDCB;*/
+}
+
+/* Overall Header */
+div.ps-header {
+	display: none;
+	background: url({asset static='img/header-bg.png'}) repeat-x 0 0;
+}
+div.ps-header img {
+	vertical-align: top;
+	padding: 0;
+	margin: 0;
+}
+
+/* Overall Header Menu */
+div.ps-menu {
+	line-height: 28px;
+	background: url({asset static='img/header-menu-bg.png'}) repeat;
+}
+div.ps-menu ul {
+	padding: 0;
+	margin: 0 1em;
+}
+div.ps-menu ul li {
+	padding-left: 12px;
+	display: inline;
+	font-weight: bold;
+	background: url({asset static='img/header-menu-sep.png'}) no-repeat 0 50%;
+}
+
+div.ps-menu ul li.first-child {
+	background: none;
+	padding-left: 0;
+}
+
+/* Per Page Header Title */
+div.ps-page-title {
+	padding: 3px;
+}
+div.ps-page-title-inner {
+	margin: 10px;
+	padding: 5px;
+	border: 1px solid #003355;
+	background: url({asset static='img/page-title-bg-reverse.jpg'}) repeat-x;
+}
+div.ps-page-title h1 {
+	margin: 0 0 5px;
+	padding-bottom: 3px;
+	border-bottom: 2px solid #003355;
+	color: #000;
+}
+div.ps-page-title p {
+	margin: 0;
+	color: #000;
+}
+div.ps-page-title .search {
+	float: right;
+}
+div.ps-page-title .search input.field {
+	border: 1px solid gray;
+	padding-left: 17px;
+	width: 110px;
+	background-repeat: no-repeat;
+	background-color: #FFF;
+	background-image: url({asset static='img/icons/search-input-icon.png'});
+}
+
+div.yui-t3 div.nav { /* Left-side nav area */
+	margin-left: 1em;
+}
+
+table.container {
+	width: auto;
+	padding: 0;
+	margin: 0 auto;
+	text-align: center;
+}
+table.container td,
+table.container th {
+	border: none;
+	padding: 0;
+	margin: 0;
+}
+
+/* Overall Footer */
+div.ps-footer {
+	line-height: 41px;
+	text-align: center;
+	font-size: 77%;
+	background: gray url({asset static='img/footer-bg.png'}) repeat-x;
+}
+div.ps-footer p {
+	margin: 0;
+}
+div.ps-footer .elapsed {
+	color: #444;
+}
+
+/* Forms */
+div.ps-form {
+	text-align: left;
+	margin: 0 auto;
+	border: 1px solid #003355;
+	padding: 0.5em;
+	background-color: #FFF;
+}
+div.ps-form fieldset {
+	border-color: #C5CEDC;
+	border-style: solid none none;
+	border-width: 3px 0 0;
+	font-size: 100%;
+	margin: 0;
+	padding: 10px;
+}
+div.ps-form fieldset legend {
+	color: #003355;
+	font-size: 150%;
+	font-weight: normal;
+	line-height: 150%;
+	margin: 0;
+	padding: 0 5px;
+}
+div.ps-form div.row {
+	padding: 2px;
+	border: 1px solid #FFF;
+	clear: both;
+}
+div.ps-form div.err {
+	border: 1px solid #CC0000;
+	background: #FFFFDD;
+}
+div.ps-form div.err p {
+	color: #CC0000;
+	font-weight: normal;
+	font-size: 90%;
+	line-height: 130%;
+	margin: 0;
+	padding-left: 20px;
+	background: url({asset static='img/icons/error.png'}) no-repeat 0 0;
+}
+
+div.ps-form div.fatal {
+	margin-bottom: 1em;
+}
+div.ps-form div.fatal h4 {
+	font-weight: bold;
+	padding-left: 20px;
+	background: url({asset static='img/icons/error.png'}) no-repeat 0 0;
+}
+div.ps-form div.fatal p {
+	background: none;
+	padding-left: 2em;
+}
+
+div.ps-form div.row label {
+	display: block;
+	float: left;
+	font-weight: bold;
+	margin: 0 0 5px;
+	padding: 3px 5px;
+	text-align: right;
+	width: 115px;
+}
+div.ps-form div.row label.for { /* allow row labels that are not on the left */
+	float: none;
+	display: inline;
+	font-weight: normal;
+	margin: 0;
+	padding: 0;
+}
+div.ps-form div.row div.input {
+	width: auto;
+	float: none;
+	display: inline;
+}
+div.ps-form div.row div.input input.field {
+	width: 200px;
+}
+div.ps-form div.row div.input input.checkbox {
+}
+div.ps-form div.row p.notes {	/* plain notes in a row (P) */
+	clear: both;
+	font-size: 85%;
+	color: #444;
+	padding-left: 5px;
+	border-left: 1px solid #C5CEDC;
+	background-image: none; /* don't allow .err to display the error icon */
+}
+div.ps-message div.notes, 
+div.ps-form div.row div.notes {	/* fancy notes in a row (DIV) */
+	clear: both;
+	font-size: 90%;
+	color: #444;
+	border: 1px solid #C5CEDC;
+	background-color: #EFEFEF;
+}
+div.ps-message div.notes h4,
+div.ps-form div.row div.notes h4 {
+	color: #003355;
+	padding-left: 20px;
+	line-height: 1.5em;
+	border-bottom: 1px solid #C5CEDC;
+	background: #C5CEDC url({asset static='img/icons/information.png'}) no-repeat 0 50%;
+}
+div.ps-message div.notes p,
+div.ps-form div.row div.notes p {
+	margin: 1em;
+}
+div.ps-message div.notes ul, 
+div.ps-form div.row div.notes ul {
+	margin: 1em 1em 1em 2em;
+}
+
+div.ps-form div.row p.message { /* a message within a form row (P) */
+	clear: both;
+	font-size: 100%;
+	color: #444;
+	background-image: none;
+}
+
+div.ps-form div.row a {
+	text-decoration: underline;
+}
+
+div.ps-form div.row-submit {
+	text-align: center;
+}
+div.ps-form div.row-submit input {
+	margin: 0 1em;
+}
+div.ps-form div.row-submit input.default {
+	font-weight: bold;
+}
+
+div.narrow-form {
+	width: 375px;
+}
+div.medium-form {
+	width: 600px;
+}
+div.full-form {
+	width: auto;
+	margin: 0 1em;
+}
+
+/*
+  Basic content message wrapper.
+  {*
+  Used for simple messages that need to be embedded into the main $CONTENT
+  block in base_full_page.
+  *}
+*/
+div.ps-message {
+	border: 1px solid #003355;
+	background: #FFF;
+	width: 500px;
+	margin: 0 auto;
+	padding: 1em;
+}
+div.ps-message h2 {
+	margin: 0 0 1em 0;
+	padding: 0 3px;
+	border-bottom: 2px solid black;
+}
+div.ps-message p a,
+div.ps-message p a:link,
+div.ps-message p a:visited,
+div.ps-message p a:hover,
+div.ps-message p a:active
+{
+	text-decoration: underline;
+}
+
+/* tables */
+div.ps-table { /* table wrapper */
+	margin: 0 1em 1em 1em;
+}
+table.neat {
+	text-align: center;
+	margin: 0 auto;
+	border: 1px solid #BBBBBB; /* border around entire table */
+	width: 100%;
+}
+table.neat tbody {
+}
+table.neat tr {
+	/*background-color: #EEEEEE;*/
+	background-color: #FFF;
+}
+table.neat tr.even {
+	/*background-color: #E0E0E0;*/
+	background-color: #EEEEff;
+}
+table.neat th, table.neat td {
+	border: none;		/* border around each cell */
+	padding: 3px;
+}
+table.neat td {
+	border-right: 1px solid #BBBBBB;
+	line-height: 1.5em;
+	padding: 0 3px;
+	text-align: center;	
+}
+table.neat th p {
+	margin: 0;
+}
+table.neat td.rank {
+	text-align: left;
+	white-space: nowrap;
+}
+table.neat td.no-rank {
+	text-align: center;
+}
+table.neat td.link,
+table.neat td.name {
+	text-align: left;
+	font-weight: bold;
+}
+table.neat td.img {
+	text-align: center;
+	font-weight: bold;
+}
+
+table.neat td.map {
+	line-height: 3em;
+}
+
+table.neat td.map img {
+	height: 2.5em;
+	vertical-align: middle;
+}
+
+
+table.neat td.skill {
+	text-align: right;
+}
+table.neat td.rank img,
+table.neat td.prevrank img,
+table.neat td.skill img {
+	vertical-align: middle;
+}
+table.neat th.left {
+	text-align: right;
+	background: none;
+	border: none;
+	/*border-right: 1px solid #BBBBBB;*/
+}
+table.neat th {
+	line-height: 20px;
+	border-bottom: 1px solid #BBBBBB;
+	text-align: center;
+	padding: 0 1px;
+	background: url({asset static='img/table-header-bg.jpg'}) repeat;
+	vertical-align: top;
+}
+table.neat th.sorted p {
+	background: url({asset static='img/table-header-active-l-bg.png'}) no-repeat;
+}
+table.neat th p a {
+	cursor: pointer;
+}
+table.neat th p span {
+	display: block;
+	width: 100%;
+}
+table.neat th.sorted p a span {
+	color: #FFF;
+}
+table.neat th.sorted p a:hover span.desc,
+table.neat th.sorted p span.asc {
+	background: url({asset static='img/table-header-asc-r-bg.png'}) no-repeat 100% 0;
+}
+table.neat th.sorted p a:hover span.asc,
+table.neat th.sorted p span.desc {
+	background: url({asset static='img/table-header-desc-r-bg.png'}) no-repeat 100% 0;
+}
+
+/* percentage bar */
+span.pct-bar, span.dual-bar {
+	display: block;
+	border: 1px solid #AAA;
+	background-color: #EEE;
+	height: 8px;
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: left;
+	/*float: none;*/
+}
+span.pct-bar span, span.dual-bar span {
+	display: block;
+	height: 100%;
+	text-align: left;
+	background-color: black;
+}
+span.pct-bar-text {
+	display: none;
+}
+span.dual-bar span.left,
+span.dual-bar span.right,
+span.dual-bar span.center {
+	float: left;
+}
+.dual-bar span.center {
+	width: 1px;
+	background-color: #AAA;
+}
+
+table.dual-bar {
+	border: none;
+	background-color: #EEE;
+	height: 8px;
+	overflow: hidden;
+	text-align: left;
+	border-collapse: collapse;
+	empty-cells: show;
+	margin: 0;
+	padding: 0;
+}
+table.dual-bar td.left-bar,
+table.dual-bar td.right-bar,
+table.dual-bar td.center-bar {
+	border: 1px solid #AAA;
+	margin: 0;
+	padding: 0;
+	height: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: left;
+}
+table.dual-bar td.center-bar {
+	width: 1px;
+	background-color: #AAA;
+}
+
+/* PAGER styles */
+span.pager {
+	display: block;
+	padding: 3px;
+	text-align: right;
+	color: #003355;
+}
+span.pager .pager-current,
+span.pager .pager-next,
+span.pager .pager-prev,
+span.pager .pager-goto {
+	border: 1px solid #AAA;
+	padding: 0 2px;
+	background: #FFF;
+}
+span.pager .pager-current {
+	background: lightyellow;
+	font-weight: bold;
+	font-size: 125%;
+}
+span.pager .pager-next,
+span.pager .pager-prev {
+	background: #DDD;
+	font-weight: bold;
+}
+
+/**
+ * Define content blocks used for small pieces of content that highlights
+ * some sort of special or important information.
+ */
+div.block, div.block-last {
+	border: 1px solid #003355;
+	margin: 0 0 1em 0;
+	background: url({asset static='img/page-title-bg-reverse.jpg'}) repeat-x;
+}
+div.block-last {
+	/*margin-right: 1em;*/
+}
+div.block-last table.neat th.left,
+div.block table.neat th.left {
+	width: 25%;
+}
+div.block-last table.neat tr,
+div.block table.neat tr {
+	background: none;
+	
+}
+
+div.table {
+	margin: 0 0 1em 0;
+}
+
+.no-plr-avatar {
+	font-style: italic;
+	text-align: center;
+}
+
+/* Override some UI styles here */
+.ui-tabs li {
+	list-style-type: none;
+}
+.ui-widget {
+	font-size: 1em !important;
+}
+.ui-tabs .ui-tabs-hide {
+	position: absolute;
+	left: -10000px;
+}
+.tab-group {
+	margin-bottom: 1em;
+}

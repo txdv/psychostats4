@@ -1,0 +1,20 @@
+<html>
+<body>
+{block name="header"}
+{/block}
+
+{block name="content"}
+<p>
+	There was an error processing this email. Please disregard. Thank you.
+</p>
+{/block}
+
+{block name="footer"}
+<p style="color: #666; font-size: 85%; margin-top: 1em">
+	This email was sent{if $to} to {$to|escape}{/if} from {site_url()}.
+	Please do not reply to this email, no one will receive it and you
+	will not get a response. Thank you.
+</p>
+{/block}
+</body>
+</html>

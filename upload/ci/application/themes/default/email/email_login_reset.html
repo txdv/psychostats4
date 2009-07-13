@@ -1,0 +1,24 @@
+{extend file="$theme/email/base_email.html"}
+
+{block name="content"}
+<p>{$who->username|escape},</p>
+<p>
+	<!--<#LOGIN_RESET_WHY#>-->
+	You are receiving this email because you or someone on your behalf has
+	requested your password at {site_url()} to be reset.
+	<!---->
+</p>
+<p>
+	<!--<#LOGIN_RESET_HOW#>-->
+	To reset your password please go to the following link:
+	<!---->
+	<br /><a href="{$reset_url|escape}">{$reset_url|escape}</a>
+</p>
+<p>
+	<!--<#LOGIN_RESET_IGNORE#>-->
+	If you did not make this request no further action is required on your
+	part. Your password will not be reset and you can continue to login
+	normally.
+	<!---->
+</p>
+{/block}

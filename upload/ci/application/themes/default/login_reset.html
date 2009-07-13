@@ -1,0 +1,130 @@
+{extend file="$theme/base_full_page.html"}
+
+{block name="content"}
+<div class="yui-g">
+<div class='ps-form narrow-form'>
+<form method="post" action="{$SELF}">
+<fieldset>
+	<legend><#Password Reset#></legend>
+
+	{if $form_error and !validation_errors()}
+	<div class="row err fatal">
+		<h4><#Error with password reset#>:</h4>
+		<p>{$form_error}</p>
+	</div>
+	{/if}
+
+{if $email_sent and !$password_reset}
+	<div class="row">
+		<p class="message">
+			<!--<#LOGIN_RESET_SENT#>-->
+			An email has been sent to
+			<strong><a href="mailto:{$email}">{$email}</a></strong>
+			with instructions on how to reset your password.
+			Thank you!
+			<!---->
+		</p>
+	</div>
+{/if}
+
+{if $password_reset}
+	{* password was successfully reset *}
+	<div class="row">
+		<p class="message">
+			<strong><#Password reset successful!#></strong>
+		</p>
+		<p class="message">
+			<!--<#LOGIN_RESET_SUCCESSFUL#>-->
+			The password for <strong>{$who->username|escape}</strong>
+			was reset successfully.
+			You can now <a href="{site_url('login')}">login</a>
+			using your new password.
+			<!---->
+		</p>
+	</div>
+	
+{elseif $process_reset}
+	{if !$valid_request}
+	<div class="row err fatal">
+		<h4><#Invalid request#>:</h4>
+		<p>
+			Your request can not be completed due to an invalid
+			user or token. You can
+			<a href="{site_url('login/reset')}">re-request your password to be reset</a>
+			again if you want.
+		</p>
+	</div>
+	{else}
+	<div class="row">
+		<p class="message">
+			<!--<#LOGIN_RESET_WHO#>-->
+			You are changing the password for <strong>{$who->username|escape}</strong>.
+			Enter the new password below.
+			<!---->
+		</p>
+	</div>
+	<div class="row{if form_error('pw1')} err{/if}">
+		{form_error('pw1')}
+		<label><#Password#>:</label>
+		<div class="input">
+			<input name="pw1" autocomplete="off" type="password" class="field" />
+		</div>
+	</div>
+
+	<div class="row{if form_error('pw2')} err{/if}">
+		{form_error('pw2')}
+		<label><#Password Again#>:</label>
+		<div class="input">
+			<input name="pw2" autocomplete="off" type="password" class="field" />
+		</div>
+	</div>
+	{/if}
+{/if}
+
+{if $request_reset}
+	<div class="row{if form_error('un')} err{/if}">
+		{form_error('un')}
+		<label><#Username#>:</label>
+		<div class="input">
+			<input name="un" value="{set_value('un')}" type="text" class="field" />
+		</div>
+	</div>
+
+	<div class="row{if form_error('email')} err{/if}">
+		{form_error('email')}
+		<label><#Email Address#>:</label>
+		<div class="input">
+			<input name="email" value="{set_value('email')}" type="text" class="field" />
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="notes">
+			<h4><#How to reset your password#></h4>
+			<p>
+				<!--<#LOGIN_RESET#>-->
+				Please provide your username and email address
+				that you registered with. Once submitted you
+				will receive an email with instructions on how
+				to reset your password.
+				<!---->
+			</p>
+		</div>
+	</div>
+{/if}
+</fieldset>
+
+{if !$email_sent and $valid_request}
+<fieldset>
+	<div class="row-submit">
+		<input name="ref" value="{$ref|escape}" type="hidden" />
+		
+		<input value="<#Submit#>" name="submit" type="submit" class="default" />
+		<input value="<#Cancel#>" name="cancel" type="submit" />
+	</div>
+</fieldset>
+{/if}
+</form>
+</div>
+</div>
+{/block}

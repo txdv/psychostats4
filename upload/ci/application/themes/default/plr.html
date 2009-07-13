@@ -1,0 +1,260 @@
+{extend file="$theme/base_full_page.html"}
+
+{block name="css" append=true}
+	<link href='{asset static='css/cupertino/jquery-ui-1.7.2.custom.css'}' rel='stylesheet' type='text/css' />
+{/block}
+
+{block name="javascript" append=true}
+	<script src='{asset static='js/jquery-ui-1.7.2.min.js'}' type='text/javascript'></script>
+	<script src='{asset static='js/jquery.cookie.js'}' type='text/javascript'></script>
+	<script src='{asset static='js/plr.js'}' type='text/javascript'></script>
+	<script src='{asset static='js/fusioncharts.js'}' type='text/javascript'></script>
+	<script src='{asset static='js/fusionchartsdom.js'}' type='text/javascript'
+		parameters="backgroundColor: 'C5CEDC', chartVersion: 'free', swfPath: '{asset static='charts/'}'"
+		settings="alertOnErrors: true"></script>
+{/block}
+
+{block name="content"}
+<div class="yui-g">
+	<div class="yui-u first">
+		{* Player profile information *}
+		<div class="block">
+			<table class="neat">
+				<tr>
+					<th class="left">Steam:</th>
+					<td>{if $plr.steam}<a href="#" class="ext"><#View Steam Profile#></a>{else}<em><#Not available#></em>{/if}</td>
+				</tr>
+				<tr>
+					<th class="left">Website:</th>
+					<td>{if $plr.website}<a href="{$plr.website|escape}" class="ext"><#Visit Website#></a>{else}<em><#Not available#></em>{/if}</td>
+				</tr>
+				<tr>
+					<th class="left">Email:</th>
+					<td>{if $plr.email}<a href="mailto:{$plr.email|escape}" class="ext"><#Email Me!#></a>{else}<em><#Not available#></em>{/if}</td>
+				</tr>
+				<tr>
+					<th class="left">AIM:</th>
+					<td>{if $plr.aim}<a href="{$plr.aim|escape}" class="ext"><#Visit Website#></a>{else}<em><#Not available#></em>{/if}</td>
+				</tr>
+				<tr>
+					<th class="left">ICQ:</th>
+					<td>{if $plr.icq}<a href="{$plr.icq|escape}" class="ext"><#Visit Website#></a>{else}<em><#Not available#></em>{/if}</td>
+				</tr>
+				<tr>
+					<th class="left">MSN:</th>
+					<td>{if $plr.msn}<a href="{$plr.msn|escape}" class="ext"><#Visit Website#></a>{else}<em><#Not available#></em>{/if}</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	{* player logo/avatar *}
+	<div class="yui-u">
+		<div class="block-last">
+		{if $plr.logo}
+			{$plr.logo}
+		{else}
+			<div class="no-plr-avatar"><#Player avatar not configured#></div>
+		{/if}
+		</div>
+	</div>
+</div>
+
+{* Lower blocks for sessions, weapons, maps, victims *}
+{*
+<div class="yui-g">
+	<div class="block-last">
+	Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+	Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
+	rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
+	sit amet dignissim cursus, quam lacus feugiat.
+	</div>
+</div>
+*}
+<div class="yui-g">
+	<div id="session-tabs" class="tab-group">
+		<ul>
+			<li><a href="#session-tabs-1"><#Sessions Table#></a></li>
+{*
+			<li><a href="#session-tabs-2"><#Chart#></a></li>
+*}
+		</ul>
+		<div id="session-tabs-1" class="ui-tabs-hide">
+			<div id="sessions" class="table">
+				{$sessions_pager}
+				{$sessions_table}
+			</div>
+		</div>
+		
+{*
+		<div id="session-tabs-2" style="text-align: center">
+			{$sessions_chart}
+		</div>
+*}
+	</div>
+	
+	<div id="weapon-tabs" class="tab-group">
+		<ul>
+			<li><a href="#weapon-tabs-1"><#Weapons Table#></a></li>
+			<li><a href="#weapon-tabs-2"><#Chart#></a></li>
+		</ul>
+		<div id="weapon-tabs-1" class="ui-tabs-hide">
+			<div id="weapons" class="table">
+				{$weapons_pager}
+				{$weapons_table}
+			</div>
+		</div>
+		
+		<div id="weapon-tabs-2" style="text-align: center">
+			{$weapons_chart}
+		</div>
+	</div>
+
+	<div id="map-tabs" class="tab-group">
+		<ul>
+			<li><a href="#map-tabs-1"><#Maps Table#></a></li>
+			<li><a href="#map-tabs-2"><#Chart#></a></li>
+		</ul>
+		<div id="map-tabs-1" class="ui-tabs-hide">
+			<div id="maps" class="table">
+				{$maps_pager}
+				{$maps_table}
+			</div>
+		</div>
+		
+		<div id="map-tabs-2" style="text-align: center">
+			<table class="container">
+				<tr>
+					<td>{$maps_chart}</td>
+					<td>{$map_wins_chart}</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+{if $roles}
+	<div id="role-tabs" class="tab-group">
+		<ul>
+			<li><a href="#role-tabs-1"><#Roles Table#></a></li>
+			<li><a href="#role-tabs-2"><#Chart#></a></li>
+		</ul>
+		<div id="role-tabs-1" class="ui-tabs-hide">
+			<div id="roles" class="table">
+				{$roles_pager}
+				{$roles_table}
+			</div>
+		</div>
+		
+		<div id="role-tabs-2" style="text-align: center">
+			{$roles_chart}
+		</div>
+	</div>
+{/if}
+
+	<div id="victim-tabs" class="tab-group">
+		<ul>
+			<li><a href="#victim-tabs-1"><#Victims Table#></a></li>
+			<li><a href="#victim-tabs-2"><#Chart#></a></li>
+		</ul>
+		<div id="victim-tabs-1" class="ui-tabs-hide">
+			<div id="victims" class="table">
+				{$victims_pager}
+				{$victims_table}
+			</div>
+		</div>
+		
+		<div id="victim-tabs-2" style="text-align: center">
+			{$victims_chart}
+		</div>
+	</div>
+</div>
+
+{* 3 units: 33/33/33 *}
+{*
+<div class="yui-gb">
+        <div class="yui-u first">
+		<div class="block">
+		Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+		Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
+		rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
+		sit amet dignissim cursus, quam lacus feugiat.
+		</div>
+        </div>
+        <div class="yui-u">
+		<div class="block">
+		Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+		Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
+		rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
+		sit amet dignissim cursus, quam lacus feugiat.
+		</div>
+        </div>
+        <div class="yui-u">
+		<div class="block-last">
+		Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+		Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
+		rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
+		sit amet dignissim cursus, quam lacus feugiat.
+		</div>
+        </div>
+</div>
+*}
+{* 4 units: 25/25/25/25 *}
+{*
+<div class="yui-g">
+    <div class="yui-g first">
+        <div class="yui-u first">
+		<div class="block">
+		Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+		Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
+		rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
+		sit amet dignissim cursus, quam lacus feugiat.
+		</div>
+        </div>
+        <div class="yui-u">
+		<div class="block">
+		Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+		Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
+		rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
+		sit amet dignissim cursus, quam lacus feugiat.
+		</div>
+        </div>
+    </div>
+    <div class="yui-g">
+        <div class="yui-u first">
+		<div class="block">
+		Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+		Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
+		rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
+		sit amet dignissim cursus, quam lacus feugiat.
+		</div>
+        </div>
+        <div class="yui-u">
+		<div class="block-last">
+		Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
+		Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
+		rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
+		sit amet dignissim cursus, quam lacus feugiat.
+		</div>
+        </div>
+    </div>
+</div>
+*}
+{/block}
+
+{* Side content that displays player break down and other information.
+ * Change the 'body_layout' in plr.php to alter the side this displays on.
+ *}
+{block name="sub-content"}
+<div class="yui-b">
+	<div class="nav">
+		<div class="nav-header">
+			<#Your Skill#>
+		</div>
+		<div class="nav-content">
+			{$skill_chart}
+		</div>
+		<div class="nav-footer">
+		</div>
+	</div>
+</div>
+{/block}
+

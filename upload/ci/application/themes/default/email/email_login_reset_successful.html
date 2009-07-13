@@ -1,0 +1,14 @@
+{extend file="$theme/email/base_email.html"}
+
+{block name="content"}
+<p>{$who->username|escape},</p>
+<p>
+	<!--<#LOGIN_RESET_SUCCESSFUL#>-->
+	You are receiving this email because you or someone on your behalf has
+	actually RESET your password at {site_url()}. If you did not request
+	or authorize this you should immediately reset your password again
+	at the following link:
+	<!---->
+	<br /><a href="{$reset_url|escape}">{$reset_url|escape}</a>
+</p>
+{/block}
