@@ -90,7 +90,7 @@ class Plr extends MY_Controller {
 		}
 
 		// set the default game/mod so we don't have to pass it around
-		// to every function below...
+		// to every player function below...
 		$this->ps->set_gametype($this->plr['gametype'], $this->plr['modtype']);
 
 		// define a base table that all other tables will inherit from
@@ -143,16 +143,16 @@ class Plr extends MY_Controller {
 		// table and return a JSON record.
 		if (in_array($ajax, array('sessions','weapons','maps','roles','victims'))) {
 			// soft reference variables
-			$t = $ajax . '_table';
-			$p = $ajax . '_pager';
+			$t = 'player_' . $ajax . '_table';
+			$p = 'player_' . $ajax . '_pager';
 
 			header("Content-Type: application/x-javascript", true);
 
-			if ($$t) { // soft ref
+			if ($this->$t) { // soft ref
 				$json = array(
 					'status' => true,
-					'pager' => $$p ? $$p->render() : '',
-					'table' => $$t->render()
+					'pager' => $this->$p ? $this->$p->render() : '',
+					'table' => $this->$t->render()
 				);
 			} else {
 				$json = array( 'status' => false );
@@ -497,7 +497,7 @@ class Plr extends MY_Controller {
 				'bgColor'		=> 'F2F5F7',
 			
 			);
-			
+
 			$fc = $this->charts->create('pie2d', 300, 200, $params);
 
 			$i = 0;
@@ -523,7 +523,7 @@ class Plr extends MY_Controller {
 					'numberSuffix'		=> '%',
 				) + $params;
 				
-				$fc = $this->charts->create('column2d', 300, 200, $params);
+				$fc = $this->charts->create('column3d', 300, 200, $params);
 
 				$wins = $this->player_stats['wins'];
 				$losses = $this->player_stats['losses'];
@@ -619,7 +619,7 @@ class Plr extends MY_Controller {
 				$settings = sprintf('name=%s;showName=1;isSliced=%d;link=%s',
 					$d['name'],
 					$i++==0 ? 1 : 0,
-					ps_site_url('wpn', $d['name'])
+					ps_site_url('role', $d['name'])
 				);
 				$fc->addChartData($d[$by], $settings);
 				if ($i>=10) break;
@@ -698,7 +698,7 @@ class Plr extends MY_Controller {
 			
 			);
 
-			$fc = $this->charts->create('pie2d', 500, 350, $params);
+			$fc = $this->charts->create('pie2d', 500, 300, $params);
 
 			$i = 0;
 			foreach ($list as $d) {
