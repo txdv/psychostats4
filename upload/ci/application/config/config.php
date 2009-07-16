@@ -15,22 +15,22 @@ $config['wpn_url'] = 'wpn';
 $config['map_url'] = 'map';
 $config['role_url'] = 'role';
 
-$config['charts_url'] = '/ps/ci/application/charts/';
-
 // URL to your themes WITH trailing slash. This is used to fetch static content
 // from themes.
-$config['theme_url'] = '/ps/ci/application/themes/';
-
-// Absolute file path were themes are stored on the server
-//$config['theme_dir'] = dirname(FCPATH) . DIRECTORY_SEPARATOR . 'themes';
-$config['theme_dir'] = BASEPATH . 'application/themes';
+$config['theme_url'] = '/ps/themes/';
 
 // Absolute URL to the stock images WITH trailing slash. This is used to build
 // static URL's to the images based on the img_dir path.
 $config['img_url'] = '/ps/img/';
 
+// Absolute URL to the stock flash charts (SWF)
+$config['charts_url'] = '/ps/charts/';
+
+// Absolute file path were themes are stored on the server
+$config['theme_dir'] = dirname(FCPATH) . DIRECTORY_SEPARATOR . 'themes';
+
 // Absolute root file path where the stock images on the server. 
-$config['img_dir'] = dirname(FCPATH) . '/img';
+$config['img_dir'] = dirname(FCPATH) . DIRECTORY_SEPARATOR . 'img';
 
 // Directory name for the different types of images within the img_dir path.
 // These names should be a single directoy name and NOT a path.
