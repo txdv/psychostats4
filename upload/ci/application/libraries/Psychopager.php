@@ -30,6 +30,10 @@ class Psychopager {
 		if (empty($this->opts['start_regex'])) {
 			$this->opts['start_regex'] = '|/?' . $this->opts['start_var'] . '/\d+|';
 		}
+		// remove trailing slash if its present.
+		if (substr($this->opts['base_url'], -1) == '/') {
+			$this->opts['base_url'] = substr($this->opts['base_url'], 0, -1);
+		}
 		return $this;
 	}
 

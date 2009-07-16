@@ -170,12 +170,16 @@ class Plr extends MY_Controller {
 			));
 
 			$title = trans('Player "%s"', $this->plr['name']);		
-			$page_subtitle = trans('Ranked <strong>%s</strong> of <strong>%s</strong> with a skill of <strong>%s</strong>',
-				number_format($this->plr['rank']),
-				number_format($total_ranked),
-				$this->plr['skill']
-			);
-
+			if ($this->plr['rank']) {
+				$page_subtitle = trans('Ranked <strong>%s</strong> of <strong>%s</strong> with a skill of <strong>%s</strong>',
+					number_format($this->plr['rank']),
+					number_format($total_ranked),
+					$this->plr['skill']
+				);
+			} else {
+				$page_subtitle = trans('This player is not ranked');
+			}
+			
 			$data = array(
 				'title'		=> $title,
 				'page_title' 	=> $title,

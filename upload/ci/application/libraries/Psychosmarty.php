@@ -35,6 +35,7 @@ class Psychosmarty extends Smarty
 		$this->compile_dir = (!empty($config['compile_dir'])
 			? $config['compile_dir']
 			: BASEPATH . 'cache');
+		$this->cache_dir = $this->compile_dir;
 
 		$this->charset = (!empty($config['charset'])
 			? $config['charset']
@@ -47,9 +48,11 @@ class Psychosmarty extends Smarty
 
 		// Setup the prefilter so we can parse language strings
 		$this->load_filter('pre', 'translate_language');
+		//$this->load_filter('pre', 'translate_assets');
 		//$this->load_filter('variable', 'htmlspecialchars');
 		//$this->enableVariableFilter();
 		//$this->disableVariableFilter();
+		//$this->enableCaching();
 		
 		// we always use the url helper
 		$this->CI->load->helper('url');
@@ -286,7 +289,7 @@ function smarty_function_asset($params, $smarty, $template)
 	if ($static) {
 		return $smarty->theme_url . $theme . '/' . $file;
 	} else {
-		return site_url("ta/$theme/$file");
+		return rel_site_url("ta/$theme/$file");
 	}
 } 
 
@@ -328,5 +331,23 @@ function smarty_prefilter_translate_language_callback($key) {
 		return $smarty->trans($key[1]);
 	}
 }
+
+//function smarty_prefilter_translate_assets($source, &$smarty) {
+//	$regex = '/\{asset\s+([^\s}])\s*\}/';
+//	return preg_replace_callback($regex,
+//				     'smarty_prefilter_translate_assets_callback',
+//				     $source);
+//}
+//function smarty_prefilter_translate_assets_callback($key) {
+//	$smarty =& Smarty::instance();
+//	$str = str_replace("\n", " ", $key[1]);
+//	list($type, $path) = explode('=', $str, 2);
+//	if ($type == 'static') {
+//		$path = substr($path, 1, -1); // remove quotes
+//		return $smarty->theme_url . $smarty->theme . '/' . $path;
+//	} else {
+//		return $key[0];
+//	}
+//}
 
 ?>

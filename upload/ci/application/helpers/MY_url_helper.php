@@ -26,7 +26,7 @@ if (!function_exists('page_url')) {
 		if (isset($extra)) {
 			$url .= $extra;
 		}
-		$url = site_url($url);
+		$url = rel_site_url($url);
 		return $url;
 	}
 }
@@ -46,7 +46,25 @@ if (!function_exists('ps_site_url')) {
 			$url = $page;
 		}
 		// add the path to the base fragment and return a full URL.
-		return site_url("$url/$path");
+		return rel_site_url("$url/$path");
+	}
+}
+
+/**
+ * Returns a relative URL based on the site_url configured. This is esentially
+ * the same as site_url() within a protocol or domain on the URL. Most URL's
+ * (if not all) should be created using this.
+ */
+if (!function_exists('rel_site_url')) {
+	function rel_site_url($path) {
+		static $url = null;
+		if ($url === null) {
+			$url = base_url();
+			// strip off everything up to the first slash, ignoring
+			// the double // on the prefix.
+			$url = substr($url, strpos($url, '/', 9));
+		}
+		return $url . $path;
 	}
 }
 

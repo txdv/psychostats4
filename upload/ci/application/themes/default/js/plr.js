@@ -24,12 +24,22 @@ function click_pager(e) {
 	var table = div.children('table:eq(0)');
 	var pager = div.children('.pager');
 
+	if ($.blockUI) {
+		$.blockUI.defaults.fadeIn = 0;
+		$.blockUI.defaults.fadeOut = 0;
+		$.blockUI.defaults.overlayCSS = {
+			backgroundColor: '#FFF',
+			opacity: 0.6 
+		};
+	}
+
 	$.ajax({
 		url: url.replace(/\#.+/, ''),	// (remove trailing anchor from url)
 		data: { js: id },
 		dataType: 'json',
-		beforeSend: null,
-		complete: null,
+		beforeSend: function(){ if ($.blockUI) div.block({ message: 'Loading...' }); },
+		complete:   function(){ if ($.blockUI) div.unblock(); },
+		error: function(o){ window.location.href = url }, // reload on failure
 		success: function(o){
 			// process result; update the table and pager.
 			// todo: make this a 'cool' effect.
