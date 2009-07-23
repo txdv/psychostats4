@@ -38,7 +38,7 @@ if (!function_exists('get_url_params')) {
 		// which is why the indexes below look out of order.
 
 		// remove the class from the segments array
-		if ($segments[1] == $ci->router->class) {
+		if ($segments and $segments[1] == $ci->router->class) {
 			array_shift($segments);
 		}
 		// remove the method from the segments array 

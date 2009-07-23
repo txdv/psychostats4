@@ -4,29 +4,30 @@
  * $Id$
  */
 
-class Psychostats_Method_Mod_Table_Player_Maps extends Psychostats_Method {
+class Psychostats_Method_Mod_Table_Player_Maps_Halflife_Tf
+extends Psychostats_Method {
 	public function execute($table, $gametype, $modtype = null) {
 		$table
-			->column_last(	'blue_wins',
-					trans('BW'),
-					'number_format',
-					array('tooltip' => trans('Blu Wins'))
-			)
-			->column_last(	'blue_losses',
-					trans('BL'),
-					'number_format',
-					array('tooltip' => trans('Blu Losses'))
-			)
-			->column_last(	'red_wins',
-					trans('RW'),
-					'number_format',
-					array('tooltip' => trans('Red Wins'))
-			)
-			->column_last(	'red_losses',
-					trans('RL'),
-					'number_format',
-					array('tooltip' => trans('Red Losses'))
-			)
+			//->column_last(	'blue_wins',
+			//		trans('BW'),
+			//		'number_format',
+			//		array('tooltip' => trans('Blu Wins'))
+			//)
+			//->column_last(	'blue_losses',
+			//		trans('BL'),
+			//		'number_format',
+			//		array('tooltip' => trans('Blu Losses'))
+			//)
+			//->column_last(	'red_wins',
+			//		trans('RW'),
+			//		'number_format',
+			//		array('tooltip' => trans('Red Wins'))
+			//)
+			//->column_last(	'red_losses',
+			//		trans('RL'),
+			//		'number_format',
+			//		array('tooltip' => trans('Red Losses'))
+			//)
 			->column_last(	'win_ratio',
 					trans('WR'),
 					array($this, 'cb_win_ratio'),
@@ -40,8 +41,8 @@ class Psychostats_Method_Mod_Table_Player_Maps extends Psychostats_Method {
 					array('tooltip' => trans('Win Percentage'),
 					      'nosort2' => true)
 			)
-			->column_last(	'wins',
-					trans('Wins'),
+			->column_last(	'balance',
+					trans('Balance'),
 					'cb:cb_blu_red_wins',
 					array('tooltip' => trans('Blu / Red Wins'),
 					      'nosort' => true)

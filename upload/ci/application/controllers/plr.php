@@ -35,6 +35,7 @@ class Plr extends MY_Controller {
 	protected $plr;
 	protected $default_table;
 	protected $default_pager;
+	protected $blocks;
 	
 	function Plr()
 	{
@@ -180,12 +181,77 @@ class Plr extends MY_Controller {
 				$page_subtitle = trans('This player is not ranked');
 			}
 			
+			// load blocks of data for the side nav area
+			$this->nav_blocks = array();
+			$this->nav_blocks['player_vitals'] = array(
+				'title' => trans('Player Vitals'),
+				'rows' => array(
+					'rank' => array(
+						'row_class' => 'hdr',
+						'label' => trans('Rank'),
+						'value' => $this->plr['rank'] . ' ' . rank_change($this->plr),
+					),
+					'rank_prev' => array(
+						'row_class' => 'sub',
+						'label' => trans('Previous'),
+						'value' => $this->plr['rank_prev'],
+					),
+					'skill' => array(
+						'row_class' => 'hdr',
+						'label' => trans('Skill'),
+						'value' => $this->plr['skill'] . ' ' . skill_change($this->plr),
+					),
+					'skill_prev' => array(
+						'row_class' => 'sub',
+						'label' => trans('Previous'),
+						'value' => $this->plr['skill_prev'],
+					),
+					'points' => array(
+						'label' => trans('Points'),
+						'value' => number_format($this->plr['points']),
+					),
+					'activity' => array(
+						'label' => trans('Activity'),
+						'value' => sprintf('<div class="pct-stat">%s</div>%s%%', pct_bar($this->plr['activity']), $this->plr['activity']),
+					),
+					'online_time' => array(
+						'label' => trans('Online Time'),
+						'value' => compact_time($this->player_stats['online_time']),
+					),
+					'firstseen' => array(
+						'label' => trans('First Seen'),
+						'value' => strftime('%b %e, %Y @ %R', $this->plr['firstseen']),
+					),
+					'lastseen' => array(
+						'label' => trans('Last Seen'),
+						'value' => strftime('%b %e, %Y @ %R', $this->plr['lastseen']),
+					),
+					'games' => array(
+						'label' => trans('Games'),
+						'value' => number_format($this->player_stats['games']),
+					),
+					'rounds' => array(
+						'label' => trans('Rounds'),
+						'value' => number_format($this->player_stats['rounds']),
+					),
+				),
+			);
+			
+			// allow game specific updates to the blocks ...
+			// load method if available
+			$method = $this->ps->load_overloaded_method('player_nav_blocks', $this->plr['gametype'], $this->plr['modtype']);
+			$nav_block_html = $this->smarty->render_blocks(
+				$method, $this->nav_blocks, 
+				array(&$this->plr, &$this->player_stats)
+			);
+			
 			$data = array(
 				'title'		=> $title,
 				'page_title' 	=> $title,
 				'page_subtitle' => $page_subtitle,
 				'plr'		=> &$this->plr,
 				'stats'		=> &$this->player_stats,
+				'nav_block_html'=> &$nav_block_html,
 
 				'sessions'	=> &$this->player_sessions,
 				'sessions_total'=> $this->player_sessions_total,
@@ -251,7 +317,7 @@ class Plr extends MY_Controller {
 			'chartLeftMargin'	=> 1,
 			//'decimalPrecision'	=> 0,
 		);
-		$fc = $this->charts->create('line', 285, 150, $params);
+		$fc = $this->charts->create('line', 275, 150, $params);
 	
 		$dates = $this->ps->get_min_max_dates($this->plr['gametype'], $this->plr['modtype'], true);
 		
@@ -328,7 +394,7 @@ class Plr extends MY_Controller {
 			->column('kills',		trans('Kills'), 	'number_format')
 			->column('deaths',		trans('Deaths'), 	'number_format')
 			->column('headshot_kills', 	trans('HS'),	 	'number_format')
-			->column('skill',		trans('Skill'), 	array($this, '_cb_skill'))
+			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
 			//->data_attr('session_start', 'class', 'name')
 			->data_attr('skill', 'class', 'skill')
 			->header_attr('headshot_kills', array( 'tooltip' => trans('Headshot Kills') ))
@@ -368,11 +434,13 @@ class Plr extends MY_Controller {
 			->column('deaths',		trans('Deaths'), 	'number_format')
 			->column('headshot_kills', 	trans('HS'),	 	'number_format')
 			//->column('headshot_kills_pct', 	trans('HS%'),	 	'cb:plr_hs')
+			//->column('damage',		trans('Dmg'), 		'number_format')
 			->data_attr('img', 'class', 'img')
 			->data_attr('name', 'class', 'name')
 			->header_attr('img', 'nosort', true)
 			->header_attr('kills_scaled_pct', 	array( 'tooltip' => trans('Kill Percentage') ))
 			->header_attr('headshot_kills', 	array( 'tooltip' => trans('Headshot Kills') ))
+			//->header_attr('damage', 		array( 'tooltip' => trans('Damage') ))
 			//->header_attr('headshot_kills_pct', 	array( 'tooltip' => trans('Headshot Kills Percentage') ))
 			;
 
@@ -457,6 +525,7 @@ class Plr extends MY_Controller {
 			//->column('kills_per_minute',	trans('KpM'),	 	'')
 			->data_attr('img', 'class', 'img map')
 			->data_attr('name', 'class', 'name')
+			->header_attr('img', 'nosort', true)
 			->header_attr('kills_scaled_pct', 	array( 'tooltip' => trans('Kill Percentage') ))
 			->header_attr('kills_per_death', 	array( 'tooltip' => trans('Kills per Death') ))
 			//->header_attr('kills_per_minute', 	array( 'tooltip' => trans('Kills per Minute') ))
@@ -648,18 +717,20 @@ class Plr extends MY_Controller {
 			->set_data($this->player_victims)
 			->set_sort($this->get['vs'], $this->get['vo'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'vs', 'order' => 'vo', 'start' => 'vst'))
+			->column('rank', 		trans('Rank'), 		array($this, '_cb_plr_rank'))
 			->column('name',		trans('Victim'), 	array($this, '_cb_name'))
 			->column('kills_scaled_pct',	trans('Kill%'), 	array($this, '_cb_kills_pct'))
 			->column('kills',		trans('Kills'), 	'number_format')
 			->column('deaths',		trans('Deaths'), 	'number_format')
 			->column('kills_per_death',	trans('KpD'),	 	'')
 			->column('headshot_kills', 	trans('HS'),	 	'number_format')
-			//->column('headshot_kills_pct', 	trans('HS%'),	 	array($this, '_cb_pct'))
+			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
+			->data_attr('rank', 'class', 'rank')
 			->data_attr('name', 'class', 'name')
+			->data_attr('skill', 'class', 'skill')
 			->header_attr('kills_scaled_pct', 	array( 'tooltip' => trans('Kill Percentage') ))
 			->header_attr('kills_per_death', 	array( 'tooltip' => trans('Kills per Death') ))
 			->header_attr('headshot_kills', 	array( 'tooltip' => trans('Headshot Kills') ))
-			//->header_attr('headshot_kills_pct', 	array( 'tooltip' => trans('Headshot Kills Percentage') ))
 			;
 
 		$this->ps->mod_table($this->player_victims_table, 'player_victims',
@@ -727,8 +798,7 @@ class Plr extends MY_Controller {
 				$img, $text, $text
 			);
 		}
-		$link = sprintf('<a href="%s">%s</a>', ps_site_url('wpn', $data['name']), $img ? $img : $text);
-		return $link;
+		return sprintf('<a href="%s">%s</a>', ps_site_url('wpn', $data['name']), $img ? $img : $text);
 	}
 
 	function _cb_map_img($name, $val, $data, $td, $table) {
@@ -742,13 +812,11 @@ class Plr extends MY_Controller {
 		} else {
 			return '';
 		}
-		$link = sprintf('<a href="%s">%s</a>', ps_site_url('map', $data['name']), $img ? $img : $text);
-		return $link;
+		return sprintf('<a href="%s">%s</a>', ps_site_url('map', $data['name']), $img ? $img : $text);
 	}
 
 	function _cb_datetime($name, $val, $data, $td, $table) {
-		$text = date('Y-m-d H:i', $val);
-		return $text;
+		return date('Y-m-d H:i', $val);
 	}
 	
 	function _cb_session_length($name, $val, $data, $td, $table) {
@@ -778,8 +846,7 @@ class Plr extends MY_Controller {
 			$path = $data['victimid'];
 		}
 
-		$link = sprintf('<a href="%s">%s</a>', ps_site_url($page, $path), $text);
-		return $link;
+		return sprintf('<a href="%s">%s</a>', ps_site_url($page, $path), $text);
 	}
 	
 	function _cb_pct($name, $val, $data, $td, $table) {

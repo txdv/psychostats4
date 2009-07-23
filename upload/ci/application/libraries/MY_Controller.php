@@ -204,6 +204,40 @@ class MY_Controller extends Controller {
 			}
 		}
 	}
+	
+	// COMMON callbacks for tables ...
+	
+	function _cb_plr_skill($name, $val, $plr, $td, $table) {
+		return $val . ' ' . skill_change($plr);
+	}
+	
+	function _cb_plr_rank($name, $val, $plr, $td, $table) {
+		if ($val) {
+			return rank_change($plr) . ' ' . $val;
+		} else {
+			$td->set_attr('class', 'no-rank', true);
+			return '-';
+		}
+	}
+	
+	function _cb_plr_name($name, $val, $plr, $td, $table) {
+		$args = func_get_args();
+		$text = htmlentities($val, ENT_NOQUOTES, 'UTF-8');
+		$link = sprintf('<a href="%s" title="%s">%s</a>',
+			rel_site_url('plr/' . $plr['plrid']),
+			$text,
+			$text
+		);
+		return $link;
+	}
+
+	// same as cb_plr_name except the name will not wrap in the table cell.
+	function _cb_plr_name_no_wrap($name, $val, $plr, $td, $table) {
+		$link = $this->_cb_plr_name($name, $val, $plr, $td, $table);
+		$link = sprintf('<table class="inner"><tr><td>%s</td></tr></table>', $link);
+		return $link;
+	}
+
 }
 
 ?>

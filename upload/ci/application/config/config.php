@@ -47,6 +47,11 @@ $config['compile_dir'] = BASEPATH . 'cache';
 // Default theme to use when a user has none selected.
 $config['default_theme'] = 'default';
 
+// Default view to load when the main home page is viewed. Example, if you want
+// the main players list to be displayed you put 'players' here. Any relative
+// URL will work.
+$config['default_view'] = 'home';
+
 // If true every time a user logs in a new password salt is generated for them.
 // This increases DB security for users but not really necessary.
 $config['login_regen_password_salt'] = true;

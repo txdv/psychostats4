@@ -4,7 +4,8 @@
  * $Id$
  */
 
-class Psychostats_Method_Mod_Table_Player_Sessions extends Psychostats_Method {
+class Psychostats_Method_Mod_Table_Player_Sessions_Halflife_Tf
+extends Psychostats_Method {
 	public function execute($table, $gametype, $modtype = null) {
 		$table
 			->column_after('deaths',
@@ -27,8 +28,8 @@ class Psychostats_Method_Mod_Table_Player_Sessions extends Psychostats_Method {
 					array( 'tooltip' => trans('Dominations') )
 			)
 			->column_before('skill',
-					'wins',
-					trans('Wins'),
+					'balance',
+					trans('Balance'),
 					'cb:cb_blu_red_wins',
 					array('tooltip' => trans('Blu / Red Wins'),
 					      'nosort' => true)

@@ -37,13 +37,26 @@ class Psychostats_Method_Get_Player_Weapons extends Psychostats_Method {
 		$t_data = $this->ps->tbl('c_plr_data', $gametype, $modtype);
 		$t_weapons = $this->ps->tbl('c_plr_weapons', $gametype, $modtype);
 		$t_weapon = $this->ps->tbl('weapon', false);
+
+		// non game specific stats
+		$stats = array(
+			'w.name, w.full_name, w.weight, w.class, d.*',
+			"IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_weapons d3 WHERE d3.plrid=d.plrid) * 100, 0) kills_scaled_pct",
+			'IFNULL(d.kills / d2.kills * 100, 0) kills_pct'
+		);
+
+		// allow game::mod specific stats to be added
+		if ($meth = $this->ps->load_overloaded_method('get_player_weapons_sql', $gametype, $modtype)) {
+			$meth->execute($stats);
+		}
+		
+		// combine everything into a string for our query
+		$fields = implode(',', $stats);
 		
 		// load the compiled stats
 		$sql =
 <<<CMD
-		SELECT w.name, w.full_name, w.weight, w.class, d.*,
-		IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_weapons d3 WHERE d3.plrid=d.plrid) * 100, 0) kills_scaled_pct,
-		IFNULL(d.kills / d2.kills * 100, 0) kills_pct
+		SELECT $fields
 		FROM ($t_weapons d, $t_weapon w)
 		LEFT JOIN $t_data d2 ON d2.plrid=d.plrid
 		WHERE w.weaponid = d.weaponid AND d.plrid = ?

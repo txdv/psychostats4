@@ -38,27 +38,29 @@ class Psychostats_Method_Get_Player_Maps extends Psychostats_Method {
 		$t_maps = $this->ps->tbl('c_plr_maps', $gametype, $modtype);
 		$t_map = $this->ps->tbl('map', false);
 
-		// extra non game specific stats that are added to the query.
-		$calc = array(
-			"IFNULL(d.kills / d.deaths, 0) kills_per_death",
-			"IFNULL(d.kills / (d.online_time / 60), 0) kills_per_minute",
+		// non game specific stats
+		$stats = array(
+			'd.*, m.name',
+			'IFNULL(d.kills / d.deaths, 0) kills_per_death',
+			'IFNULL(d.kills / (d.online_time / 60), 0) kills_per_minute',
 			"IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_maps d3 WHERE d3.plrid=d.plrid) * 100, 0) kills_scaled_pct",
-			"IFNULL(d.kills / d2.kills * 100, 0) kills_pct",
-			"IFNULL(d.wins / d.losses, d.wins) win_ratio",
-			"IFNULL(d.wins / (d.wins + d.losses) * 100, 0) win_pct",
+			'IFNULL(d.kills / d2.kills * 100, 0) kills_pct',
+			'IFNULL(d.wins / d.losses, d.wins) win_ratio',
+			'IFNULL(d.wins / (d.wins + d.losses) * 100, 0) win_pct',
 		);
 
 		// allow game::mod specific stats to be added
-		
+		if ($meth = $this->ps->load_overloaded_method('get_player_maps_sql', $gametype, $modtype)) {
+			$meth->execute($stats);
+		}
 		
 		// combine everything into a string for our query
-		$calc_stats = implode(',', $calc);
+		$fields = implode(',', $stats);
 		
 		// load the compiled stats
 		$sql =
 <<<CMD
-		SELECT m.name, d.*,
-		$calc_stats
+		SELECT $fields
 		FROM ($t_maps d, $t_map m)
 		LEFT JOIN $t_data d2 ON d2.plrid=d.plrid
 		WHERE m.mapid = d.mapid AND d.plrid = ?

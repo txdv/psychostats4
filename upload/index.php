@@ -1,4 +1,8 @@
 <?php
+
+// enable code profiling? XHProf module must be enabled in your PHP config.
+//define('XHPROFILE', true);
+
 /*
 |---------------------------------------------------------------
 | PHP ERROR REPORTING LEVEL
@@ -104,6 +108,11 @@ else
 	define('APPPATH', BASEPATH.$application_folder.'/');
 }
 
+// start profiler, if enabled
+if (defined('XHPROFILE') and XHPROFILE) {
+	xhprof_enable(XHPROF_FLAGS_MEMORY);
+}
+
 /*
 |---------------------------------------------------------------
 | LOAD THE FRONT CONTROLLER
@@ -113,6 +122,19 @@ else
 |
 */
 require_once BASEPATH.'codeigniter/CodeIgniter'.EXT;
+
+// output profiler data, if enabled
+// TODO: change paths and attributes to be configurable!
+if (defined('XHPROFILE') and XHPROFILE) {
+	$xhprof_data = xhprof_disable();
+	include "/usr/www/liche.net/html/xhprof/xhprof_lib/utils/xhprof_lib.php";
+	include "/usr/www/liche.net/html/xhprof/xhprof_lib/utils/xhprof_runs.php";
+	
+	$xhprof_runs = new XHProfRuns_Default();
+	$xhprof_ns = 'ps4';
+	$xhprof_id = $xhprof_runs->save_run($xhprof_data, $xhprof_ns, defined('PAGE') ? PAGE : basename(__FILE__, '.php'));
+	echo "<a href='http://liche.net/xhprof/index.php?run=$xhprof_id&source=$xhprof_ns'>View XHProfile Output</a>";
+}
 
 /* End of file index.php */
 /* Location: ./index.php */

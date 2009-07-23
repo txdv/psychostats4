@@ -18,9 +18,10 @@
 {/block}
 
 {block name="content"}
+{*
 <div class="yui-g">
 	<div class="yui-u first">
-		{* Player profile information *}
+		<!-- Player profile information -->
 		<div class="block">
 			<table class="neat">
 				<tr>
@@ -50,7 +51,7 @@
 			</table>
 		</div>
 	</div>
-	{* player logo/avatar *}
+	<!-- player logo/avatar -->
 	<div class="yui-u">
 		<div class="block-last">
 		{if $plr.logo}
@@ -61,25 +62,13 @@
 		</div>
 	</div>
 </div>
+*}
 
 {* Lower blocks for sessions, weapons, maps, victims *}
-{*
-<div class="yui-g">
-	<div class="block-last">
-	Lorem ipsum dolor sit amet, consectetuer adipiscing elit.
-	Maecenas sit amet metus. Nunc quam elit, posuere nec, auctor in,
-	rhoncus quis, dui. Aliquam erat volutpat. Ut dignissim, massa
-	sit amet dignissim cursus, quam lacus feugiat.
-	</div>
-</div>
-*}
 <div class="yui-g">
 	<div id="session-tabs" class="tab-group">
 		<ul>
 			<li><a href="#session-tabs-1"><#Sessions Table#></a></li>
-{*
-			<li><a href="#session-tabs-2"><#Chart#></a></li>
-*}
 		</ul>
 		<div id="session-tabs-1" class="ui-tabs-hide">
 			<div id="sessions" class="table">
@@ -87,12 +76,6 @@
 				{$sessions_table}
 			</div>
 		</div>
-		
-{*
-		<div id="session-tabs-2" style="text-align: center">
-			{$sessions_chart}
-		</div>
-*}
 	</div>
 	
 	<div id="weapon-tabs" class="tab-group">
@@ -250,21 +233,14 @@
 <div class="yui-b">
 	<div class="nav">
 		<div class="nav-header">
-			<#Your Skill#>
+			<#Skill History#>
 		</div>
 		<div class="nav-content">
 			{$skill_chart}
 		</div>
-		<div class="nav-footer"></div>
 	</div>
 
-	<div class="nav">
-		<div class="nav-header"><h3>Player Rundown</h3></div>
-		<div class="nav-content">
-			
-		</div>
-		<div class="nav-footer"></div>
-	</div>
+	{$nav_block_html}
 	
 </div>
 {/block}

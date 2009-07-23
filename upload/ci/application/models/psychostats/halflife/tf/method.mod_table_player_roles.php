@@ -4,7 +4,8 @@
  * $Id$
  */
 
-class Psychostats_Method_Mod_Table_Player_Roles extends Psychostats_Method {
+class Psychostats_Method_Mod_Table_Player_Roles_Halflife_Tf
+extends Psychostats_Method {
 	public function execute($table, $gametype, $modtype = null) {
 		$table
 			->column_after('headshot_kills',

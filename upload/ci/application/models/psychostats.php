@@ -134,20 +134,30 @@ class Psychostats extends Model {
 	/**
 	 * Load a method into the class. Throws an Exception if loading fails.
 	 * @param mixed $name Method name (or array of names) to load.
+	 * @param string $methods_dir altnerate path to search for method file.
+	 * @param boolean $missing_allowed If true an exception is not thrown
+	 * 				if the method file does not exist.
 	 */
-	public function load_method($name, $methods_dir = null, $missing_allowed = false) {
+	public function load_method($name, $methods_dir = null, $missing_allowed = false, $class = null) {
 		if (is_array($name)) {
+			$m = false;
 			foreach ($name as $n) {
-				$this->load_method($n, $methods_dir, $missing_allowed);
+				$m = $this->load_method($n, $methods_dir, $missing_allowed);
 			}
-			return true;
+			// when loading multiple methods only return the last one
+			return $m;
 		}
 		
 		if (is_null($methods_dir)) {
 			$methods_dir = $this->methods_dir;
 		}
+
+		if (is_null($class)) {
+			$class = $name;
+		}
+		$class_name = 'Psychostats_Method_' . $class;
 		
-		$class_name = 'Psychostats_Method_' . $name;
+		// If the class does'nt exist try to load and instantiate it
 		if (!class_exists($class_name, false)) {
 			$filename = 'method.' . strtolower($name) . EXT;
 			if (!file_exists($methods_dir . $filename)) {
@@ -163,10 +173,21 @@ class Psychostats extends Model {
 			}
 			$this->loaded_methods[$name] = new $class_name($this);
 		}
-		return true;
+		return $this->loaded_methods[$name];
 	}
 
-	public function mod_table($table, $func, $gametype, $modtype = null) {
+	/**
+	 * Searches for a game specific method to load.
+	 * @param string $func Name of the function to load.
+	 * @param string $gametype Gametype
+	 * @param string $modtype Modtype
+	 */
+	public function load_overloaded_method($func, $gametype, $modtype = null) {
+		// short-circuit return if the method is loaded already
+		if (array_key_exists($func, $this->loaded_methods)) {
+			return $this->loaded_methods[$func];
+		}
+
 		$parts = array( $gametype );
 		if ($modtype) {
 			$parts[] = $modtype;
@@ -176,15 +197,34 @@ class Psychostats extends Model {
 			$methods_dir = $this->methods_dir .
 				implode(DIRECTORY_SEPARATOR, $parts) .
 				DIRECTORY_SEPARATOR;
-			$name = 'mod_table_' . $func;
 
-			// attempt to load the method and execute it
-			if ($this->load_method($name, $methods_dir, true)) {
-				return $this->__call($name, array( $table, $gametype, $modtype ));
+			// attempt to load the method
+			$class_name = $func . '_' . implode('_', $parts);
+			$method = $this->load_method($func, $methods_dir, true, $class_name);
+			if ($method) {
+				return $method;
 			}
-
 			array_pop($parts);
 		}
+		return false;
+	}
+	
+	/**
+	 * Shortcut method that allows game specific methods to change the
+	 * behavior or look of a table before it's rendered.
+	 * @param object $table Table object reference.
+	 * @param string $func Name of the function to call (automatically
+	 * 		       prefixed with 'mod_table_')
+	 * @param string $gametype Gametype
+	 * @param string $modtype Modtype
+	 */
+	public function mod_table($table, $func, $gametype, $modtype = null) {
+		$name = 'mod_table_' . $func;
+		if ($this->load_overloaded_method($name, $gametype, $modtype)) {
+			return $this->__call($name, array( $table, $gametype, $modtype ));
+		}
+		return false;
+
 	}
 
 	/**

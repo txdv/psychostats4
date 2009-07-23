@@ -2,9 +2,6 @@
 
 require "smarty/Smarty.class.php";
 
-/**
-* @file system/application/libraries/Psychosmarty.php
-*/
 class Psychosmarty extends Smarty
 {
 	var $CI;
@@ -48,14 +45,19 @@ class Psychosmarty extends Smarty
 
 		// Setup the prefilter so we can parse language strings
 		$this->load_filter('pre', 'translate_language');
+
+		// Prefilter for {asset} tags... experimenting to see if this
+		// will make certain compilations faster...
 		//$this->load_filter('pre', 'translate_assets');
+
 		//$this->load_filter('variable', 'htmlspecialchars');
 		//$this->enableVariableFilter();
 		//$this->disableVariableFilter();
 		//$this->enableCaching();
 		
 		// we always use the url helper
-		$this->CI->load->helper('url');
+		// this is autoloaded.
+		//$this->CI->load->helper('url');
 
 		// Set some useful template vars
 		$this->assign(array(
@@ -133,6 +135,31 @@ class Psychosmarty extends Smarty
 			}
 		}
 		return true;
+	}
+	
+	/**
+	 * Render a block of data and optionally using the PsychoStats_Method object.
+	 * @param object $method Method to optionally call on the blocks.
+	 * @param array $blocks Array of blocks to render.
+	 * @param string $filename Template filename to use for html ('block-nav' by default)
+	 */
+	function render_blocks($method, &$blocks, $args = array(), $filename = 'block-nav') {
+		if ($method) {
+			array_unshift($args, &$blocks);
+			call_user_func_array(array($method, 'execute'), $args);
+		}
+		
+		// render the blocks
+		$out = '';
+		foreach ($blocks as $b) {
+			$out .= $this->view(
+				$filename,
+				&$b,
+				null,
+				true
+			);
+		}
+		return $out;
 	}
 	
 	/**
@@ -215,9 +242,12 @@ class Psychosmarty extends Smarty
 	 * Returns true/false if the theme specified exists within template_dir.
 	 * @param string $theme Name of theme to check.
 	 */
-	function theme_exists($theme)
+	function theme_exists($theme, $template_dir = null)
 	{
-		
+		if (empty($template_dir)) {
+			$template_dir = $this->template_dir;
+		}
+		return is_dir($template_dir . DIRECTORY_SEPARATOR . $theme);
 	}
 	
 	function set_theme($theme)
@@ -332,22 +362,26 @@ function smarty_prefilter_translate_language_callback($key) {
 	}
 }
 
-//function smarty_prefilter_translate_assets($source, &$smarty) {
-//	$regex = '/\{asset\s+([^\s}])\s*\}/';
-//	return preg_replace_callback($regex,
-//				     'smarty_prefilter_translate_assets_callback',
-//				     $source);
-//}
-//function smarty_prefilter_translate_assets_callback($key) {
-//	$smarty =& Smarty::instance();
-//	$str = str_replace("\n", " ", $key[1]);
-//	list($type, $path) = explode('=', $str, 2);
-//	if ($type == 'static') {
-//		$path = substr($path, 1, -1); // remove quotes
-//		return $smarty->theme_url . $smarty->theme . '/' . $path;
-//	} else {
-//		return $key[0];
-//	}
-//}
+/**
+ * Prefilter's all static {asset} tags into a plain string since there's no
+ * need to keep these as variables within the compiled template file.
+ */
+function smarty_prefilter_translate_assets($source, &$smarty) {
+	$regex = '/\{asset\s+([^\s}]+)\s*\}/';
+	return preg_replace_callback($regex,
+				     'smarty_prefilter_translate_assets_callback',
+				     $source);
+}
+function smarty_prefilter_translate_assets_callback($key) {
+	$smarty =& Smarty::instance();
+	$str = str_replace("\n", " ", $key[1]);
+	list($type, $path) = explode('=', $str, 2);
+	if ($type == 'static') {
+		$path = substr($path, 1, -1); // remove quotes
+		return $smarty->theme_url . $smarty->theme . '/' . $path;
+	} else {
+		return $key[0];
+	}
+}
 
 ?>

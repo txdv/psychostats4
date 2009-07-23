@@ -1,0 +1,20 @@
+{*
+	A block of stats data that is usually displayed on the sidebar
+	navigation area of a 2 column page.
+*}
+<div class="nav">
+{if $title}
+	<div class="nav-header">{$title}</div>
+{/if}
+	<div class="nav-content">
+		<table class="neat">
+{foreach from=$rows item='r' key='key'}
+			<tr{if $r.row_class} class="{$r.row_class|escape}"{/if}>
+				<th class="label{if $r.label_class} {$r.label_class}{/if}">{$r.label}</th>
+				<td class="value{if $r.value_class} {$r.value_class}{/if}">{$r.value}</td>
+				
+			</tr>
+{/foreach}
+		</table>
+	</div>
+</div>
