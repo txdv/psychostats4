@@ -22,7 +22,7 @@ class Psychostats_Method_Get_Player_Total extends Psychostats_Method {
 		}
 
 		if (!$gametype) {
-			$g = $this->ps->get_player_gametype($id, true);
+			$g = $this->ps->get_player_gametype($id);
 			if (!$g) {
 				return false;
 			}

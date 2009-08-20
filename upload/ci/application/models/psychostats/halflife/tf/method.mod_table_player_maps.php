@@ -31,15 +31,12 @@ extends Psychostats_Method {
 			->column_last(	'win_ratio',
 					trans('WR'),
 					array($this, 'cb_win_ratio'),
-					array('tooltip' => trans('Win Ratio'),
-					      'nosort2' => true)
+					array('tooltip' => trans('Win Ratio'))
 			)
 			->column_last(	'win_pct',
 					trans('Win%'),
 					array($this, 'cb_win_pct'),
-					//'%0.0f<small>%%</small>',
-					array('tooltip' => trans('Win Percentage'),
-					      'nosort2' => true)
+					array('tooltip' => trans('Win Percentage'))
 			)
 			->column_last(	'balance',
 					trans('Balance'),
@@ -75,7 +72,7 @@ extends Psychostats_Method {
 	}
 }
 
-
+// this needs to be removed and made public or put in parent class
 if (!function_exists('cb_blu_red_wins')) {
 	function cb_blu_red_wins($name, $val, $data, $td, $table) {
 		$wins = $data['blue_wins'] + $data['red_wins'];

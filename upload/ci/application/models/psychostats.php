@@ -9,6 +9,8 @@ class Psychostats extends Model {
 	// @var boolean Allow methods to be autoloaded if true (default).
 	// If false load_method() must be called explicitly.
 	public $allow_autoload_methods = true;
+	// @var string SQL string used to limit SQL results to players that are ranked.
+	public $is_ranked_sql = '(rank IS NOT NULL AND rank <> 0)';
 	// @var array Array of methods that have been loaded.
 	protected $loaded_methods = array();
 	// @var array PsychoStats configuration that has been loaded from DB.
@@ -115,6 +117,10 @@ class Psychostats extends Model {
 		}
 	}
 
+	public function gametype() {
+		return $this->gametype;
+	}
+
 	/**
 	 * Resets the default gametype and modtype to null.
 	 */
@@ -129,6 +135,10 @@ class Psychostats extends Model {
 	 */
 	public function set_modtype($modtype) {
 		$this->modtype = $modtype;
+	}
+
+	public function modtype() {
+		return $this->modtype;
 	}
 
 	/**
@@ -229,35 +239,63 @@ class Psychostats extends Model {
 
 	/**
 	 * Returns the gametype and modtype for the player that matches the ID.
-	 * @param integer $id 	The plrid of the player to match.
-	 * @param boolean $ary 	If true a 2 element array is returned, false (default)
-	 * 			an object is returned instead.
-	 * @return mixed 	FALSE on failure, or either a 2 element array or an object.
+	 * @param integer $id 	   The plrid of the player to match.
+	 * @param boolean $ret_obj If true a 2 element array is returned, false (default)
+	 * 			   an object is returned instead.
+	 * @return mixed 	   FALSE on failure, or either a 2 element array or an object.
 	 */
-	public function get_player_gametype($id, $ary = false) {
+	public function get_player_gametype($id, $ret_obj = false) {
+		return $this->get_object_gametype($id, 'plr', 'plrid', $ret_obj);
+	}
+	public function get_weapon_gametype($id, $ret_obj = false) {
+		return $this->get_object_gametype($id, 'weapon', 'weaponid', $ret_obj);
+	}
+	public function get_map_gametype($id, $ret_obj = false) {
+		return $this->get_object_gametype($id, 'map', 'mapid', $ret_obj);
+	}
+	public function get_role_gametype($id, $ret_obj = false) {
+		return $this->get_object_gametype($id, 'role', 'roleid', $ret_obj);
+	}
+	
+	/**
+	 * Returns the gametype::modtype for the object within the table.
+	 * @param integer $id The ID of the record to fetch.
+	 * @param string $tbl The table name to query.
+	 * @param string $key The key name of the primary key.
+	 */
+	public function get_object_gametype($id, $tbl, $key, $ret_obj = false) {
 		// return preset gametype/modtype if available
 		if ($this->gametype !== null) {
-			return array($this->gametype, $this->modtype);
+			if ($ret_obj) {
+				$o = new stdClass();
+				$o->gametype = $this->gametype;
+				$o->modtype = $this->modtype;
+				return $o;
+			} else {
+				return array($this->gametype, $this->modtype);
+			}
 		}
 
 		$ci =& get_instance();
-		$t_plr = $this->tbl('plr', false);
-		$sql = "SELECT gametype, modtype FROM $t_plr WHERE plrid = ? LIMIT 1";
+		$tbl = $this->tbl($tbl, false);
+		$sql = "SELECT gametype, modtype FROM $tbl WHERE $key = ? LIMIT 1";
 		$q = $ci->db->query($sql, $id);
 		
 		if ($q->num_rows() == 0) {
-			// player not found
+			// not found
 			return false;
 		}
 
-		if ($ary) {
-			$r = $g->row_array();
-		} else {
+		$r = null;
+		if ($ret_obj) {
 			$r = $q->row();
+		} else {
+			$r = $g->row_array();
 		}
 		$q->free_result();
 		return $r;
 	}
+	
 
 	/**
 	 * Shortcut for ORDER BY x y.
@@ -270,6 +308,7 @@ class Psychostats extends Model {
 		if ($sort) {
 			$list = explode(',', $sort);
 			foreach ($list as $s) {
+				$s = trim($s);
 				if (strpos($s, ' ')) {
 					list($s, $o) = array_map('trim', explode(' ', $s));
 				} else {
@@ -295,16 +334,101 @@ class Psychostats extends Model {
 		$ci =& get_instance();
 		$sql = '';
 		if ($limit and $start) {
+			// 'LIMIT x OFFSET y' is compatible with PostgreSQL
 			$sql = ' LIMIT ' . intval($limit) .
 			       ' OFFSET ' . intval($start);
+			//$sql = ' LIMIT ' . intval($start) ',' . intval($limit);
 		} else if ($limit) {
 			$sql = ' LIMIT ' . intval($limit);
 		}
 		return $sql;
 	}
 
-	public function tbl($tbl, $gametype = null, $modtype = null) {
+	/**
+	 * Returns a SQL string that can be used within a WHERE clause.
+	 * @param array $criteria An array of key => values that defines the
+	 * 			  where expression. The key can have an optional
+	 * 			  operator.
+	 * @param string $glue Logical operator to glue where clause together.
+	 * @param boolean $escape Should values be escaped?
+	 * @param string $prefix Optional string to prepend to the result, only
+	 * 			 if a SQL string is not going to be empty.
+	 */
+	public function where($criteria = array(), $glue = 'AND', $escape = true, $prefix = ' ') {
+		if (empty($criteria)) {
+			return '';
+		}
+		if (!is_array($criteria)) {
+			if (!empty($criteria)) {
+				// treat the value as a key string that is a
+				// full logical expression w/o any explict
+				// value.
+				$criteria = array( $criteria => null );
+			} else {
+				return '';
+			}
+		}
+		$glue = ' ' . trim($glue) . ' ';
+		
 		$ci =& get_instance();
+		$sql = '';
+		foreach ($criteria as $key => $val) {
+			// $key is a numeric array index and val is a sub-array.
+			// use the array from $val as our key => val pair. This
+			// allows us to have multiple tests for the same key.
+			// e.g.: array( array( 'key <>' => 1 ), array( 'key <>' => 2 ) )
+			if (is_numeric($key)) {
+				if (is_array($val)) {
+					if (is_numeric(key($val))) {
+						// there is no key, so use the
+						// literal value.
+						$key = current($val);
+						$val = null;
+					} else {
+						$key = key($val);
+						$val = current($val);
+					}
+				} else {
+					// there is no actual key, so use $val
+					// as a literal key+op string.
+					$key = $val;
+					$val = null;
+				}
+			}
+			
+			$has_op = $this->has_op($key);
+			$where = ($has_op || !$escape) ? $key : $ci->db->_protect_identifiers($key);
+			
+			if (!$has_op) {
+				// No OP was given so default one depending on the value.
+				$where .= is_null($val) ? ' IS NULL' : '=';
+			}
+			
+			if (!is_null($val)) {
+				if (is_bool($val)) {
+					// convert boolean values into 1 or 0
+					$val = $val ? 1 : 0;
+				}
+				$where .= $escape ? $ci->db->escape($val) : $val;
+			}
+			
+			$sql .= $where . $glue;
+		}
+		
+		return $sql != '' ? $prefix . substr($sql, 0, -strlen($glue)) : '';
+	}
+
+	/**
+	 * Returns true if the key string given has an operator embedded in it.
+	 * @param string $key Key name to check.
+	 */
+	public function has_op($key) {
+		$key = strtolower(trim($key));
+		return preg_match('/[ <>!=]|is (?:not )?null|between/', $key) ? true : false;
+	}
+
+
+	public function tbl($tbl, $gametype = null, $modtype = null) {
 		if ($gametype === null) {
 			$gametype = $this->gametype;
 		}
@@ -312,6 +436,7 @@ class Psychostats extends Model {
 			$modtype = $this->modtype;
 		}
 		
+		$ci =& get_instance();
 		$tbl = $ci->db->dbprefix($tbl);
 		if ($gametype) {
 			if ($modtype) {

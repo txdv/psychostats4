@@ -26,7 +26,7 @@ class Home extends MY_Controller {
 	{
 		// load 'default_view' from config to determine which page
 		// should be loaded first (portal, players, awards, etc)
-		$config = get_config();
+		$config =& get_config();
 		$page = $config['default_view'];
 		if ($page != 'home') {
 			redirect( site_url($page) );
@@ -35,7 +35,6 @@ class Home extends MY_Controller {
 		// Process home page.
 		$this->load->library('psychotable');
 		$this->load->helper('get');
-		$config =& get_config();
 
 		$this->get_defaults = array(
 			'gametype'	=> $config['default_gametype'],
@@ -47,31 +46,27 @@ class Home extends MY_Controller {
 		);
 		$this->get = get_url_params($this->get_defaults);
 
-		// determine the total players available
-		$total_players = $this->ps->get_total_players(array(
-			'gametype' => $this->get['gametype'],
-			'modtype' => $this->get['modtype']
-		));
-		$total_ranked  = $this->ps->get_total_players(array(
-			'gametype' => $this->get['gametype'],
-			'modtype' => $this->get['modtype'],
-			'rank IS NOT NULL AND rank <> 0' => null
-		));
+		// set the default game/mod
+		$this->ps->set_gametype($this->get['gametype'], $this->get['modtype']);
 
-		$select =
-			// basic player information
-			'plr.plrid, plr.skill, plr.skill_prev, ' .
-			'plr.rank, plr.rank_prev, ' .
-			'name, icon, cc,' .
+		// determine the total players available
+		$total_players = $this->ps->get_total_players();
+		//$total_ranked  = $this->ps->get_total_players(array('is_ranked' => true));
+
+		$select = array(
+			'plr.plrid, plr.skill, plr.skill_prev', 
+			'plr.rank, plr.rank_prev', 
+			'pp.name, pp.cc',
 			'kills'
-			;
+		);
 		$criteria = array(
 			'select' => $select,
+			'select_overload_method' => null,
 			'limit' => 5,
 			'start' => 0,
-			'order'	=> 'rank asc, kills desc',
+			'sort' => 'rank asc, kills desc', 
 		);
-		$players = $this->ps->get_players($criteria, $this->get['gametype'], $this->get['modtype']);
+		$players = $this->ps->get_players($criteria);
 
 		$players_table = $this->psychotable->create()
 			->set_template('table_open', '<table class="neat">')
@@ -83,18 +78,18 @@ class Home extends MY_Controller {
 			->set_data($players)
 			->set_sort('rank', 'asc')
 			->column('rank', 		'#', 			array($this, '_cb_plr_rank'))
-			->column('name',		trans('Player'), 	array($this, '_cb_plr_name_no_wrap'))
+			->column('name',		trans('Player'), 	array($this, '_cb_name_link_no_wrap'))
 			->column('kills',		trans('Kills'), 	'number_format')
 			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
 			->data_attr('rank', 'class', 'rank')
 			->data_attr('name', 'class', 'link')
 			->data_attr('skill', 'class', 'skill')
 			;
-		$this->ps->mod_table($players_table, 'top5players', $this->get['gametype'], $this->get['modtype']);
+		$this->ps->mod_table($players_table, 'players_top5', $this->get['gametype'], $this->get['modtype']);
 
 		$data = array(
-			'total_players'	=> $total_players,
-			'total_ranked'	=> $total_ranked,
+			'total_players' => $total_players,
+			//'total_ranked' => $total_ranked,
 			'players_table'	=> $players_table->render(),
 		);
 

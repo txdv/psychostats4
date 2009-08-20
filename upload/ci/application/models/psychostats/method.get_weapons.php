@@ -1,33 +1,32 @@
 <?php
 /**
- * PsychoStats method get_players()
+ * PsychoStats method get_weapons()
  * $Id$
  *
  */
-class Psychostats_Method_Get_Players extends Psychostats_Method {
+class Psychostats_Method_Get_Weapons extends Psychostats_Method {
 	/**
-	 * Fetches a list of player stats for a specific game.
+	 * Fetches a list of weapon stats for a specific game.
 	 * 
 	 * @param array $criteria
-	 * 	Criteria that defines what players will be returned.
+	 * 	Criteria that defines what weapons will be returned.
 	 * @param string $gametype
-	 * 	Game type to fetch players list for. Leave null for current
+	 * 	Game type to fetch weapons list for. Leave null for current
 	 * 	default (from set_gametype).
 	 * @param string $modtype
-	 * 	Mod type to fetch players list for. Leave null for current
+	 * 	Mod type to fetch weapons list for. Leave null for current
 	 * 	default (from set_gametype or set_modtype)
 	 */
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
 		// set defaults
 		$criteria += array(
 			'select' 	=> null,
-			'select_overload_method'=> 'get_players_sql',
+			'select_overload_method'=> 'get_weapons_sql',
 			'limit' 	=> null,
 			'start' 	=> null,
 			'sort'		=> null,
 			'order' 	=> null,
 			'where' 	=> null,
-			'is_ranked' 	=> true,	// true
 		);
 		
 		$ci =& get_instance();
@@ -38,18 +37,11 @@ class Psychostats_Method_Get_Players extends Psychostats_Method {
 			$modtype = $this->ps->modtype();
 		}
 
-		// add the game::mod to our where clause
-		if ($gametype) {
-			$criteria['where']['gametype'] = $gametype;
-			$criteria['where']['modtype']  = $modtype;
-		}
-
 		// setup table names
-		$t_plr = $this->ps->tbl('plr', false);
-		$t_plr_profile = $this->ps->tbl('plr_profile', false);
-		$c_plr_data = $ci->db->dbprefix('c_plr_data_' . $gametype);
+		$t_weapon = $this->ps->tbl('weapon', false);
+		$c_weapon_data = $ci->db->dbprefix('c_weapon_data_' . $gametype);
 		if ($modtype) {
-			$c_plr_data .= '_' . $modtype;
+			$c_weapon_data .= '_' . $modtype;
 		}
 
 		// allow game::mod specific stats to be added
@@ -65,28 +57,16 @@ class Psychostats_Method_Get_Players extends Psychostats_Method {
 		}
 
 		// start basic query
-		$sql =
-<<<CMD
-		SELECT $fields
-		FROM ($t_plr plr, $c_plr_data d)
-		LEFT JOIN $t_plr_profile pp ON plr.uniqueid=pp.uniqueid
-		WHERE
-CMD;
-		//$sql = preg_replace('/^\s+/m', '', $sql); // remove leading whitespace (I'm OCD)
+		$sql = "SELECT $fields FROM $t_weapon weapon, $c_weapon_data d WHERE ";
 
 		// add join clause for tables
-		$criteria['where'][] = 'plr.plrid=d.plrid';
-
-		// apply is_ranked shortcut
-		if ($criteria['is_ranked']) {
-			$criteria['where'][] = $this->ps->is_ranked_sql;
-		}
+		$criteria['where'][] = 'd.weaponid=weapon.weaponid';
 		
 		// apply sql clauses
 		$sql .= $this->ps->where($criteria['where']);
 		$sql .= $this->ps->order_by($criteria['sort'], $criteria['order']);
 		$sql .= $this->ps->limit($criteria['limit'], $criteria['start']);
-		
+
 		$q = $ci->db->query($sql);
 
 		$res = array();

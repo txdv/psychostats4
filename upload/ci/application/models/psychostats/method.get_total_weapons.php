@@ -1,20 +1,19 @@
 <?php
 /**
- * PsychoStats method get_total_players()
+ * PsychoStats method get_total_weapons()
  * $Id$
  *
- * Returns the total players that have stats based on the criteria given.
+ * Returns the total weapons available based on the criteria given.
  *
  */
-class Psychostats_Method_Get_Total_Players extends Psychostats_Method {
+class Psychostats_Method_Get_Total_Weapons extends Psychostats_Method {
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
 		// set defaults
 		if (!is_array($criteria)) {
 			$criteria = array();
 		}
 		$criteria += array(
-			'where' 	=> null,
-			'is_ranked' 	=> false,	// false
+			'where' 	=> null
 		);
 
 		$ci =& get_instance();
@@ -25,22 +24,17 @@ class Psychostats_Method_Get_Total_Players extends Psychostats_Method {
 			$modtype = $this->ps->modtype();
 		}
 
-		$t_plr = $this->ps->tbl('plr', false);
-		$c_plr_data = $ci->db->dbprefix('c_plr_data_' . $gametype);
+		$t_weapon = $this->ps->tbl('weapon', false);
+		$c_weapon_data = $ci->db->dbprefix('c_weapon_data_' . $gametype);
 		if ($modtype) {
-			$c_plr_data .= '_' . $modtype;
+			$c_weapon_data .= '_' . $modtype;
 		}
 		
 		// start basic query
-		$sql = "SELECT COUNT(*) total FROM $t_plr plr,$c_plr_data d WHERE ";
+		$sql = "SELECT COUNT(*) total FROM $t_weapon weapon,$c_weapon_data d WHERE ";
 		
 		// add join clause for tables
-		$criteria['where'][] = 'd.plrid=plr.plrid';
-
-		// apply is_ranked shortcut
-		if ($criteria['is_ranked']) {
-			$criteria['where'][] = $this->ps->is_ranked_sql;
-		}
+		$criteria['where'][] = 'd.weaponid=weapon.weaponid';
 
 		$sql .= $this->ps->where($criteria['where']);
 
@@ -53,8 +47,7 @@ class Psychostats_Method_Get_Total_Players extends Psychostats_Method {
 		}
 		$q->free_result();
 
-		return $count;
-	} 
+		return $count;	} 
 } 
 
 ?>

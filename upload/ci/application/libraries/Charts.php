@@ -1,8 +1,5 @@
 <?php if (!defined('BASEPATH')) exit('No direct script access allowed');
 
-/**
-* @file system/application/libraries/Psychosmarty.php
-*/
 class Charts {
 
 	function Charts() {

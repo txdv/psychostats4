@@ -27,7 +27,7 @@ class Psychostats_Method_Get_Player_Roles extends Psychostats_Method {
 		$id = isset($criteria['id']) ? $criteria['id'] : 0;
 
 		if (!$gametype) {
-			$g = $this->ps->get_player_gametype($id, true);
+			$g = $this->ps->get_player_gametype($id);
 			if (!$g) {
 				return false;
 			}
@@ -41,7 +41,7 @@ class Psychostats_Method_Get_Player_Roles extends Psychostats_Method {
 		// non game specific stats
 		$stats = array(
 			'r.name, r.full_name, d.*',
-			'IFNULL(d.kills / d.deaths, 0) kills_per_death',
+			'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
 			"IFNULL(d.kills / (SELECT MAX(d2.kills) FROM $t_roles d2 WHERE d2.plrid=d.plrid) * 100, 0) kills_scaled_pct",
 			'IFNULL(d.kills / d2.kills * 100, 0) kills_pct'
 		);

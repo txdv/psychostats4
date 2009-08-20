@@ -281,7 +281,7 @@ if (!function_exists('skill_change')) {
 			$skill_prev = $args['skill_prev'];
 		}
 	
-		$alt = trans("Skill has not changed");
+		$alt = trans('Skill has not changed');
 		$dir = "same";
 		$diff = sprintf($args['difffmt'], $skill - $skill_prev);
 	
@@ -371,6 +371,35 @@ if (!function_exists('json_encode')) {
 if (!function_exists('not_empty')) {
 	function not_empty($x) {
 		return !empty($x);
+	}
+}
+
+// abbreviates the number given into the closet KB, MB, GB, TB range.
+if (!function_exists('abbrnum')) {
+	// most of the integers we use are 1000 based, usually this func would
+	// be useful when dealing with bytes (1024 base)
+	function abbrnum($num, $precision=0, $base=1000, $abbr_strs=null) {
+		static $strs; // = array('',' KB',' MB',' GB',' TB');
+		if ($strs === null) {
+			$strs = array(
+				'',
+				' ' . trans('K'),
+				' ' . trans('M'),
+				' ' . trans('B'),
+			);
+		}
+		if ($abbr_strs === null) {
+			$abbr_strs =& $strs;
+		}
+		if (!is_numeric($precision)) $precision = 2;
+		if (!$num) return '0' . $abbr_strs[0];
+	
+		$i = 0;
+		while (($num >= $base) and ($i < count($abbr_strs)-1)) {
+			$num /= $base;
+			$i++;
+		}
+		return sprintf('%.' . $precision . 'f', $num) . $abbr_strs[$i];
 	}
 }
 

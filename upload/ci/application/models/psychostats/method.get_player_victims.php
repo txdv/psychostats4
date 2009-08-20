@@ -27,7 +27,7 @@ class Psychostats_Method_Get_Player_Victims extends Psychostats_Method {
 		$id = isset($criteria['id']) ? $criteria['id'] : 0;
 
 		if (!$gametype) {
-			$g = $this->ps->get_player_gametype($id, true);
+			$g = $this->ps->get_player_gametype($id);
 			if (!$g) {
 				return false;
 			}
@@ -42,7 +42,7 @@ class Psychostats_Method_Get_Player_Victims extends Psychostats_Method {
 		// non game specific stats
 		$stats = array(
 			'v.*, pp.*, d.*',
-			'IFNULL(d.kills / d.deaths, 0) kills_per_death',
+			'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
 			"IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_victims d3 WHERE d3.plrid=d.plrid) * 100, 0) kills_scaled_pct",
 			'IFNULL(d.kills / d2.kills * 100, 0) kills_pct'
 		);

@@ -1,13 +1,13 @@
 <?php
 /**
- * PsychoStats method get_player_stats()
+ * PsychoStats method get_weapon_stats()
  * $Id$
  *
- * Fetches the basic stats for a single player.
+ * Fetches the basic stats for a single weapon.
  *
  */
 
-class Psychostats_Method_Get_Player_Stats extends Psychostats_Method {
+class Psychostats_Method_Get_Weapon_Stats extends Psychostats_Method {
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
 		$ci =& get_instance();
 		if (!is_array($criteria)) {
@@ -22,22 +22,19 @@ class Psychostats_Method_Get_Player_Stats extends Psychostats_Method {
 		$res = array();
 
 		if (!$gametype) {
-			$g = $this->ps->get_player_gametype($id);
+			$g = $this->ps->get_weapon_gametype($id);
 			if (!$g) {
 				return false;
 			}
 			list($gametype, $modtype) = $g;
 		}
 
-		$t_plr_data = $this->ps->tbl('c_plr_data', $gametype, $modtype);
+		$t_weapon_data = $this->ps->tbl('c_weapon_data', $gametype, $modtype);
 
 		// non game specific stats
 		$stats = array(
 			'*',
-			'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
-			'ROUND(IFNULL(d.kills / (d.online_time / 60), 0),2) kills_per_minute',
 			'IFNULL(d.headshot_kills / d.kills * 100, 0) headshot_kills_pct',
-			'IFNULL(d.headshot_deaths / d.deaths * 100, 0) headshot_deaths_pct',
 			'IFNULL(d.shots / d.hits * 100, 0) accuracy',
 			'IFNULL(d.hit_head / d.hits * 100, 0) hit_head_pct',
 			'IFNULL(d.hit_chest / d.hits * 100, 0) hit_chest_pct',
@@ -56,20 +53,20 @@ class Psychostats_Method_Get_Player_Stats extends Psychostats_Method {
 		);
 
 		// allow game::mod specific stats to be added
-		if ($meth = $this->ps->load_overloaded_method('get_player_stats_sql', $gametype, $modtype)) {
+		if ($meth = $this->ps->load_overloaded_method('get_weapon_stats_sql', $gametype, $modtype)) {
 			$meth->execute($stats);
 		}
 		
 		// combine everything into a string for our query
 		$fields = implode(',', $stats);
 		
-		$sql = "SELECT $fields FROM $t_plr_data d WHERE plrid = ? LIMIT 1";
+		$sql = "SELECT $fields FROM $t_weapon_data d WHERE weaponid = ? LIMIT 1";
 		$q = $ci->db->query($sql, $id);
 
 		$res = false;
 		if ($q->num_rows()) {
 			$res = $q->row_array();
-			unset($res['plrid']);
+			unset($res['weaponid']);
 		}
 		$q->free_result();
 

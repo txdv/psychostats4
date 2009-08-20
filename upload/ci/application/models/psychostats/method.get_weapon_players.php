@@ -1,12 +1,12 @@
 <?php
 /**
- * PsychoStats method get_players()
+ * PsychoStats method get_weapon_players()
  * $Id$
  *
  */
-class Psychostats_Method_Get_Players extends Psychostats_Method {
+class Psychostats_Method_Get_Weapon_Players extends Psychostats_Method {
 	/**
-	 * Fetches a list of player stats for a specific game.
+	 * Fetches a list of players that have used a specific weapon.
 	 * 
 	 * @param array $criteria
 	 * 	Criteria that defines what players will be returned.
@@ -20,14 +20,14 @@ class Psychostats_Method_Get_Players extends Psychostats_Method {
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
 		// set defaults
 		$criteria += array(
+			'id'		=> 0,		// weaponid
 			'select' 	=> null,
-			'select_overload_method'=> 'get_players_sql',
+			'select_overload_method' => 'get_weapon_players_sql',
 			'limit' 	=> null,
 			'start' 	=> null,
-			'sort'		=> null,
 			'order' 	=> null,
 			'where' 	=> null,
-			'is_ranked' 	=> true,	// true
+			'is_ranked' 	=> null,
 		);
 		
 		$ci =& get_instance();
@@ -38,18 +38,19 @@ class Psychostats_Method_Get_Players extends Psychostats_Method {
 			$modtype = $this->ps->modtype();
 		}
 
-		// add the game::mod to our where clause
-		if ($gametype) {
-			$criteria['where']['gametype'] = $gametype;
-			$criteria['where']['modtype']  = $modtype;
+		if (empty($criteria['select'])) {
+			$criteria['select'] = array(
+				'plr.*, pp.*, d.*',
+				'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
+			);
 		}
 
 		// setup table names
 		$t_plr = $this->ps->tbl('plr', false);
 		$t_plr_profile = $this->ps->tbl('plr_profile', false);
-		$c_plr_data = $ci->db->dbprefix('c_plr_data_' . $gametype);
+		$t_plr_weapons = $ci->db->dbprefix('c_plr_weapons_' . $gametype);
 		if ($modtype) {
-			$c_plr_data .= '_' . $modtype;
+			$t_plr_weapons .= '_' . $modtype;
 		}
 
 		// allow game::mod specific stats to be added
@@ -65,39 +66,25 @@ class Psychostats_Method_Get_Players extends Psychostats_Method {
 		}
 
 		// start basic query
-		$sql =
+		$cmd =
 <<<CMD
 		SELECT $fields
-		FROM ($t_plr plr, $c_plr_data d)
-		LEFT JOIN $t_plr_profile pp ON plr.uniqueid=pp.uniqueid
-		WHERE
+		FROM $t_plr_weapons d, $t_plr plr, $t_plr_profile pp
+		WHERE d.weaponid=? AND plr.plrid=d.plrid AND pp.uniqueid=plr.uniqueid
 CMD;
-		//$sql = preg_replace('/^\s+/m', '', $sql); // remove leading whitespace (I'm OCD)
 
-		// add join clause for tables
-		$criteria['where'][] = 'plr.plrid=d.plrid';
+		$sql .= $this->ps->where($criteria['where'], 'AND', true, ' AND ');
+		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
+		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
 
-		// apply is_ranked shortcut
-		if ($criteria['is_ranked']) {
-			$criteria['where'][] = $this->ps->is_ranked_sql;
-		}
-		
-		// apply sql clauses
-		$sql .= $this->ps->where($criteria['where']);
-		$sql .= $this->ps->order_by($criteria['sort'], $criteria['order']);
-		$sql .= $this->ps->limit($criteria['limit'], $criteria['start']);
-		
-		$q = $ci->db->query($sql);
+		$q = $ci->db->query($cmd, array($criteria['id']));
 
-		$res = array();
+		$list = array();		
 		if ($q->num_rows()) {
-			foreach ($q->result_array() as $row) {
-				$res[] = $row;
-			}
+			$list = $q->result_array();
 		}
 		$q->free_result();
-
-		return $res;
+		return $list;
 	}
 } 
 

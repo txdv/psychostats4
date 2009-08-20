@@ -40,14 +40,20 @@
 |
 */
 
-$route['default_controller'] = "home";
-$route['scaffolding_trigger'] = "";
+$route['default_controller'] = 'home';
+$route['scaffolding_trigger'] = '';
 
+// short-cut route for theme_asset URL's so 'ta/blah/blah' can be used
 $route['ta/:any'] = 'theme_asset/index';
-$route['players/:any'] = 'players/index';
-//$route['plr/(:num)'] = 'plr/view/$1';
-$route['plr/(:num)(?:/(:any))?'] = 'plr/view/$1$2';
-//$route['([a-z]+)/:any'] = '$1/index';
+
+// This route allows the controllers to have extra parameters on the URL
+// ie: players/sort/kills will route to players
+$route['(players|clans|weapons|maps|roles|servers|overview)/:any'] = '$1/index';
+
+// this route allows the controllers to have extra parameters on the URL
+// and also passes them to the function.
+// Be sure to use parent::view() within the controller::view() method.
+$route['(plr|clan|wpn|map|role|srv)/(:any)'] = '$1/view/$2';
 
 
 /* End of file routes.php */

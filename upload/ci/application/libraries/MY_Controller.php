@@ -8,10 +8,18 @@
 */
 
 class MY_Controller extends Controller {
-	
+
 	function MY_Controller() {
 		parent::Controller();
 		$this->_psychostats_init();
+	}
+
+	// allow any 'view' controller pages to fix their parameters.
+	function view($args, $func = 'view') {
+		if (is_array($args) && count($args) && $args[0] == $func) {
+			array_shift($args);
+		}
+		return $args;
 	}
 
 	function _psychostats_init() {
@@ -207,10 +215,34 @@ class MY_Controller extends Controller {
 	
 	// COMMON callbacks for tables ...
 	
+	function _cb_datetime($name, $val, $data, $td, $table) {
+		return date('Y-m-d H:i', $val);
+	}
+	
+	function _cb_pct($name, $val, $plr, $td, $table) {
+		return $val != '' ? $val . '<small>%</small>' : '-';
+	}
+
+	function _cb_pct0($name, $val, $plr, $td, $table) {
+		return $val != '' ? ceil($val) . '<small>%</small>' : '-';
+	}
+
+	function _cb_pct2($name, $val, $plr, $td, $table) {
+		return $val != '' ? abbrnum($val, 2, 1000) . '<small>%</small>' : '-';
+	}
+
+	function _cb_pct_bar($name, $val, $plr, $td, $table) {
+		return pct_bar($val);
+	}
+
+	function _cb_abbrnum($name, $val, $plr, $td, $table) {
+		return abbrnum($val, 2, 1000);
+	}
+
 	function _cb_plr_skill($name, $val, $plr, $td, $table) {
 		return $val . ' ' . skill_change($plr);
 	}
-	
+
 	function _cb_plr_rank($name, $val, $plr, $td, $table) {
 		if ($val) {
 			return rank_change($plr) . ' ' . $val;
@@ -220,22 +252,89 @@ class MY_Controller extends Controller {
 		}
 	}
 	
-	function _cb_plr_name($name, $val, $plr, $td, $table) {
-		$args = func_get_args();
+	// modifies the value to be an <a> link to the record based on the type
+	// of data being displayed in the table (plr, map, role, wpn).
+	function _cb_name_link($name, $val, $data, $td, $table) {
+		$page = '';
 		$text = htmlentities($val, ENT_NOQUOTES, 'UTF-8');
-		$link = sprintf('<a href="%s" title="%s">%s</a>',
-			rel_site_url('plr/' . $plr['plrid']),
-			$text,
-			$text
+		$path = $text;
+		
+		if (isset($data['mapid'])) {
+			$page = 'map';
+			$path = $data['mapid'];
+		} elseif (isset($data['roleid'])) {
+			$page = 'role';
+			$path = $data['roleid'];
+		} elseif (isset($data['victimid'])) {
+			$page = 'plr';
+			$path = $data['victimid'];
+		} elseif (isset($data['plrid'])) {
+			$page = 'plr';
+			$path = $data['plrid'];
+		} elseif (isset($data['clanid'])) {
+			$page = 'clan';
+			$path = $data['clanid'];
+		} elseif (isset($data['weaponid'])) {
+			// must come after 'plrid'
+			$page = 'wpn';
+			$path = $data['weaponid'];
+		} elseif (isset($data['srvid'])) {
+			$page = 'srv';
+			$path = $data['srvid'];
+		}
+
+		return sprintf('<a href="%s" title="%s">%s</a>',
+			       ps_site_url($page, $path),
+			       $text,
+			       $text
 		);
-		return $link;
 	}
 
 	// same as cb_plr_name except the name will not wrap in the table cell.
-	function _cb_plr_name_no_wrap($name, $val, $plr, $td, $table) {
-		$link = $this->_cb_plr_name($name, $val, $plr, $td, $table);
+	function _cb_name_link_no_wrap($name, $val, $plr, $td, $table) {
+		$link = $this->_cb_name_link($name, $val, $plr, $td, $table);
 		$link = sprintf('<table class="inner"><tr><td>%s</td></tr></table>', $link);
 		return $link;
+	}
+
+	function _cb_weapon_img($name, $val, $data, $td, $table) {
+		$text = htmlentities($data['full_name'] ? $data['full_name'] : $data['name'], ENT_NOQUOTES, 'UTF-8');
+		$img = img_url('weapons', $data['name'], $this->ps->gametype(), $this->ps->modtype());
+		if ($img) {
+			$img = sprintf("<img src='%s' alt='%s' title='%s'/>",
+				$img, $text, $text
+			);
+			return sprintf('<a href="%s">%s</a>', ps_site_url('wpn', $data['name']), $img ? $img : $text);
+		}
+		return '';
+	}
+
+	function _cb_map_img($name, $val, $data, $td, $table) {
+		$text = htmlentities($data['name'], ENT_NOQUOTES, 'UTF-8');
+		$url = img_url('maps', $data['name'], $this->ps->gametype(), $this->ps->modtype());
+		$img = false;
+		if ($url) {
+			$img = sprintf('<img class="map-img" src="%s" alt="%s" title="%s" />',
+				$url, $text, $text
+			);
+		} else {
+			return '';
+		}
+		return sprintf('<a href="%s">%s</a>', ps_site_url('map', $data['name']), $img ? $img : $text);
+	}
+
+	function _cb_kills_pct($name, $val, $data, $td, $table) {
+		return pct_bar(array(
+			'pct'	=> $val, // scaled percentage
+			'title'	=> sprintf('%0.02f%%', $data['kills_pct'])
+		));
+	}
+
+	function _cb_online_time_pct($name, $val, $data, $td, $table) {
+		return pct_bar(array(
+			'pct'	=> $val, // scaled percentage
+			'title'	=> sprintf('%0.02f%%', $data['online_time_pct'])
+		));
 	}
 
 }

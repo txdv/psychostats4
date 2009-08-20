@@ -1,8 +1,8 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
-class Players extends MY_Controller {
+class Maps extends MY_Controller {
 
-	function Players()
+	function Maps()
 	{
 		parent::MY_Controller();
 	}
@@ -16,8 +16,8 @@ class Players extends MY_Controller {
 		$this->get_defaults = array(
 			'gametype'	=> $config['default_gametype'],
 			'modtype'	=> $config['default_modtype'],
-			'sort'		=> 'rank',
-			'order'		=> 'asc',
+			'sort'		=> 'kills',
+			'order'		=> 'desc',
 			'limit' 	=> 100,
 			'start'		=> 0,
 		);
@@ -36,81 +36,87 @@ class Players extends MY_Controller {
 		// set the default game/mod
 		$this->ps->set_gametype($this->get['gametype'], $this->get['modtype']);
 		
+		// determine the total maps available
+		$total_maps = $this->ps->get_total_maps(array(
+			'gametype' => $this->get['gametype'],
+			'modtype' => $this->get['modtype']
+		));
 		// determine the total players available
 		$total_players = $this->ps->get_total_players();
-		$total_ranked  = $this->ps->get_total_players(array('is_ranked' => true));
+		//$total_ranked  = $this->ps->get_total_players(array('is_ranked' => true));
 
+		$c_maps = $this->ps->tbl('c_map_data', $this->get['gametype'], $this->get['modtype']);
 
 		// non game specific stats		
 		$stats = array(
-			// basic player information
-			'plr.plrid, plr.uniqueid, plr.activity, ' . 
-			'plr.skill, plr.skill_prev, plr.rank, plr.rank_prev, ' .
-			'plr.clanid, pp.name, pp.avatar, pp.cc',
+			// basic information
+			'map.name',
 
 			// static stats
-			'kills, deaths, headshot_kills, online_time',
+			'd.*',
 
 			// calculated stats
-			'ROUND(IFNULL(kills / deaths, 0), 2) AS kills_per_death',
-			'ROUND(IFNULL(kills / (online_time/60), 0), 2) AS kills_per_minute', 
-			'ROUND(IFNULL(headshot_kills / kills * 100, 0), 0) AS headshot_kills_pct',
+			"IFNULL(d.online_time / (SELECT MAX(online_time) FROM $c_maps) * 100, 0) online_time_scaled_pct",
+			"IFNULL(d.online_time / (SELECT SUM(online_time) FROM $c_maps) * 100, 0) online_time_pct",
+			"IFNULL(d.kills / (SELECT MAX(kills) FROM $c_maps) * 100, 0) kills_scaled_pct",
+			"IFNULL(d.kills / (SELECT SUM(kills) FROM $c_maps) * 100, 0) kills_pct",
 		);
-
+		
 		$criteria = array(
 			'select'=> $stats,
 			'limit' => $this->get['limit'],
 			'start' => $this->get['start'],
-			'sort'	=> $this->get['sort'] . ($this->get['sort'] != 'kills' ? ', kills desc' : ''),
+			'sort'	=> $this->get['sort'],
 			'order'	=> $this->get['order'],
-			'is_ranked' => true,
 			'where' => null
 		);
-		$players = $this->ps->get_players($criteria);
-		
+		$maps = $this->ps->get_maps($criteria);
+
 		$table = $this->psychotable->create()
+			->set_data($maps)
 			->set_template('table_open', '<table class="neat">')
 			->set_sort($this->get['sort'], $this->get['order'], array($this, '_sort_header_callback'))
-			->column('rank', 		trans('Rank'), 		array($this, '_cb_plr_rank'))
-			->column('name',		trans('Player'), 	array($this, '_cb_name_link'))
+			->column('img',			false,		 	array($this, '_cb_map_img'))
+			->column('name',		trans('Map'),		array($this, '_cb_name_link'))
+			->column('kills_scaled_pct',	trans('Kill%'), 	array($this, '_cb_kills_pct'))
 			->column('kills',		trans('Kills'), 	'number_format')
-			->column('deaths',		trans('Deaths'), 	'number_format')
-			->column('kills_per_death',	trans('KpD'), 		'')
-			->column('headshot_kills', 	trans('HS'),	 	'number_format')
-			->column('headshot_kills_pct', 	trans('HS%'),	 	array($this, '_cb_pct'))
+			->column('games',		trans('Games'), 	'number_format')
+			->column('rounds',		trans('Rounds'), 	'number_format')
 			->column('online_time',		trans('Online'), 	'compact_time')
-			->column('kills_per_minute',	trans('KpM'), 		'')
-			->column('activity',		trans('Activity'), 	array($this, '_cb_pct_bar'))
-			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
-			->data_attr('rank', 'class', 'rank')
-			->data_attr('name', 'class', 'link')
-			->data_attr('skill', 'class', 'skill')
-			->header_attr('kills_per_death', 	array( 'tooltip' => trans('Kills per Death') ))
-			->header_attr('kills_per_minute', 	array( 'tooltip' => trans('Kills per Minute') ))
+			->column('online_time_scaled_pct',trans('Online%'), 	array($this, '_cb_online_time_pct'))
+			//->column('lastseen',		trans('Last Played'), 	'')
+			//->column('Damage',		trans('Damage'), 	array($this, '_cb_abbrnum'))
+			->data_attr('name', 'class', 'name')
+			->data_attr('img', 'class', 'img map')
+			->header_attr('img', 'nosort', true)
+			->header_attr('name', 'colspan', 2)
+			->header_attr('kills_scaled_pct', 	array( 'tooltip' => trans('Kill Percentage') ))
 			->header_attr('headshot_kills', 	array( 'tooltip' => trans('Headshot Kills') ))
 			->header_attr('headshot_kills_pct', 	array( 'tooltip' => trans('Headshot Kills Percentage') ))
 			;
-		$this->ps->mod_table($table, 'players', $this->get['gametype'], $this->get['modtype']);
+		$this->ps->mod_table($table, 'maps', $this->get['gametype'], $this->get['modtype']);
 
 		// define pager
 		$this->pager->initialize(array(
 			'base_url'	=> page_url(build_query_string($this->get, $this->get_defaults, 'start')),
-			'total' 	=> $total_ranked,
+			'per_page'	=> $this->get['limit'],
+			'total' 	=> $total_maps,
 			'start'		=> $this->get['start'],
 		));
 		$pager = $this->pager->create_links();
 		
+		$page_subtitle = trans('<strong>%s</strong> maps have been played by <strong>%s</strong> players',
+			number_format($total_maps),
+			number_format($total_players)
+		);
 		$data = array(
-			'title'		=> trans('Player Statistics'),
-			'page_title' 	=> trans('Player Statistics'),
-			'page_subtitle' => trans('<strong>%s</strong> players out of <strong>%s</strong> total are ranked <small>(%0.0f%%)</small>',
-						 number_format($total_ranked),
-						 number_format($total_players),
-						 $total_ranked / $total_players * 100),
-			'players' 	=> &$players,
-			'table'		=> $table->render($players),
+			'title'		=> trans('Map Statistics'),
+			'page_title' 	=> trans('Map Statistics'),
+			'page_subtitle' => $page_subtitle,
+			'maps' 		=> &$maps,
+			'table'		=> $table->render(),
+			'total_maps' 	=> $total_maps,
 			'total_players' => $total_players,
-			'total_ranked' 	=> $total_ranked,
 			'pager'		=> $pager,
 		);
 
@@ -119,6 +125,7 @@ class Players extends MY_Controller {
 		
 		$this->load->view('full_page', array('params' => $data));
 	}
+
 }
 
 ?>

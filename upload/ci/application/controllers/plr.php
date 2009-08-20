@@ -46,6 +46,8 @@ class Plr extends MY_Controller {
 	
 	function view($id = null)
 	{
+		list($id) = parent::view(func_get_args());
+
 		$this->load->library('charts');
 		$this->load->library('psychotable');
 		$this->load->helper('get');
@@ -163,12 +165,8 @@ class Plr extends MY_Controller {
 			exit;
 		} else {
 			// a normal page display will include all data ...
-			
-			$total_ranked = $this->ps->get_total_players(array(
-				'gametype' => $this->plr['gametype'],
-				'modtype' => $this->plr['modtype'],
-				'rank IS NOT NULL' => null
-			));
+
+			$total_ranked = $this->ps->get_total_players(array('is_ranked' => true));
 
 			$title = trans('Player "%s"', $this->plr['name']);		
 			if ($this->plr['rank']) {
@@ -390,7 +388,7 @@ class Plr extends MY_Controller {
 			->set_sort_names(array('sort' => 'ss', 'order' => 'so', 'start' => 'sst'))
 			->column('session_start',	trans('Session Start'),	array($this, '_cb_datetime'))
 			->column('session_seconds',	trans('Length'), 	array($this, '_cb_session_length'))
-			->column('name',		trans('Map'), 		array($this, '_cb_name'))
+			->column('name',		trans('Map'), 		array($this, '_cb_name_link'))
 			->column('kills',		trans('Kills'), 	'number_format')
 			->column('deaths',		trans('Deaths'), 	'number_format')
 			->column('headshot_kills', 	trans('HS'),	 	'number_format')
@@ -428,7 +426,7 @@ class Plr extends MY_Controller {
 			->set_sort($this->get['ws'], $this->get['wo'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'ws', 'order' => 'wo', 'start' => 'wst'))
 			->column('img',			trans('Weapon'), 	array($this, '_cb_weapon_img'))
-			->column('name',		trans('Name'), 		array($this, '_cb_name'))
+			->column('name',		trans('Name'), 		array($this, '_cb_name_link'))
 			->column('kills_scaled_pct',	trans('Kill%'), 	array($this, '_cb_kills_pct'))
 			->column('kills',		trans('Kills'), 	'number_format')
 			->column('deaths',		trans('Deaths'), 	'number_format')
@@ -517,7 +515,7 @@ class Plr extends MY_Controller {
 			->set_sort($this->get['ms'], $this->get['mo'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'ms', 'order' => 'mo', 'start' => 'mst'))
 			->column('img',			trans('Map'),	 	array($this, '_cb_map_img'))
-			->column('name',		trans('Name'),	 	array($this, '_cb_name'))
+			->column('name',		trans('Name'),	 	array($this, '_cb_name_link'))
 			->column('kills_scaled_pct',	trans('Kill%'), 	array($this, '_cb_kills_pct'))
 			->column('kills',		trans('Kills'), 	'number_format')
 			->column('deaths',		trans('Deaths'), 	'number_format')
@@ -631,7 +629,7 @@ class Plr extends MY_Controller {
 			->set_data($this->player_roles)
 			->set_sort($this->get['rs'], $this->get['ro'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'rs', 'order' => 'ro', 'start' => 'rst'))
-			->column('name',		trans('Role'),	 	array($this, '_cb_name'))
+			->column('name',		trans('Role'),	 	array($this, '_cb_name_link'))
 			->column('kills_scaled_pct',	trans('Kill%'), 	array($this, '_cb_kills_pct'))
 			->column('kills',		trans('Kills'), 	'number_format')
 			->column('deaths',		trans('Deaths'), 	'number_format')
@@ -718,7 +716,7 @@ class Plr extends MY_Controller {
 			->set_sort($this->get['vs'], $this->get['vo'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'vs', 'order' => 'vo', 'start' => 'vst'))
 			->column('rank', 		trans('Rank'), 		array($this, '_cb_plr_rank'))
-			->column('name',		trans('Victim'), 	array($this, '_cb_name'))
+			->column('name',		trans('Victim'), 	array($this, '_cb_name_link'))
 			->column('kills_scaled_pct',	trans('Kill%'), 	array($this, '_cb_kills_pct'))
 			->column('kills',		trans('Kills'), 	'number_format')
 			->column('deaths',		trans('Deaths'), 	'number_format')
@@ -790,35 +788,6 @@ class Plr extends MY_Controller {
 		}
 	}
 
-	function _cb_weapon_img($name, $val, $data, $td, $table) {
-		$img = img_url('weapons', $data['name'], $this->plr['gametype'], $this->plr['modtype']);
-		$text = htmlentities($data['name'], ENT_NOQUOTES, 'UTF-8');
-		if ($img) {
-			$img = sprintf("<img src='%s' alt='%s' title='%s'/>",
-				$img, $text, $text
-			);
-		}
-		return sprintf('<a href="%s">%s</a>', ps_site_url('wpn', $data['name']), $img ? $img : $text);
-	}
-
-	function _cb_map_img($name, $val, $data, $td, $table) {
-		$url = img_url('maps', $data['name'], $this->plr['gametype'], $this->plr['modtype']);
-		$text = htmlentities($data['name'], ENT_NOQUOTES, 'UTF-8');
-		$img = false;
-		if ($url) {
-			$img = sprintf('<img class="map-img" src="%s" alt="%s" title="%s" />',
-				$url, $text, $text
-			);
-		} else {
-			return '';
-		}
-		return sprintf('<a href="%s">%s</a>', ps_site_url('map', $data['name']), $img ? $img : $text);
-	}
-
-	function _cb_datetime($name, $val, $data, $td, $table) {
-		return date('Y-m-d H:i', $val);
-	}
-	
 	function _cb_session_length($name, $val, $data, $td, $table) {
 		if ($data['session_seconds'] >= 60) {
 			$text = trans('%d minutes', ceil($data['session_minutes']));
@@ -826,42 +795,6 @@ class Plr extends MY_Controller {
 			$text = '&lt; ' . trans('%d minute', 1);
 		}
 		return $text;
-	}
-
-	// modifies the value to be an <a> link to the record based on the type
-	// of data being displayed in the table.
-	function _cb_name($name, $val, $data, $td, $table) {
-		$page = '';
-		$text = htmlentities($val, ENT_NOQUOTES, 'UTF-8');
-		$path = $text;
-		
-		if (isset($data['mapid'])) {
-			$page = 'map';
-		} elseif (isset($data['weaponid'])) {
-			$page = 'wpn';
-		} elseif (isset($data['roleid'])) {
-			$page = 'role';
-		} elseif (isset($data['victimid'])) {
-			$page = 'plr';
-			$path = $data['victimid'];
-		}
-
-		return sprintf('<a href="%s">%s</a>', ps_site_url($page, $path), $text);
-	}
-	
-	function _cb_pct($name, $val, $data, $td, $table) {
-		return $val ? $val . '<small>%</small>' : '-';
-	}
-	
-	function _cb_skill($name, $val, $data, $td, $table) {
-		return $val . ' ' . skill_change($data);
-	}
-	
-	function _cb_kills_pct($name, $val, $data, $td, $table) {
-		return pct_bar(array(
-			'pct'	=> $val,
-			'title'	=> sprintf('%0.02f%%', $data['kills_pct'])
-		));
 	}
 
 }

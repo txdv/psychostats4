@@ -30,7 +30,7 @@ class Psychostats_Method_Get_Player_History extends Psychostats_Method {
 		$id = isset($criteria['id']) ? $criteria['id'] : 0;
 
 		if (!$gametype) {
-			$g = $this->ps->get_player_gametype($id, true);
+			$g = $this->ps->get_player_gametype($id);
 			if (!$g) {
 				return false;
 			}
