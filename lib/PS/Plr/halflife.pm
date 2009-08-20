@@ -60,6 +60,8 @@ BEGIN {
 		 ))
 	);
 	delete @{$fields->{halflife}}{qw( latency latency_sum latency_total )};
+	delete @{$fields->{halflife}}{qw( hit_head hit_leftarm hit_rightarm hit_chest hit_stomach hit_leftleg hit_rightleg )};
+	delete @{$fields->{halflife}}{qw( dmg_head dmg_leftarm dmg_rightarm dmg_chest dmg_stomach dmg_leftleg dmg_rightleg )};
 	
 	# Player role fields
 	$fields = __PACKAGE__->SUPER::FIELDS('ROLES');

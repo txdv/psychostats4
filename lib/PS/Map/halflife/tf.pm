@@ -35,7 +35,8 @@ BEGIN {
 	my $fields = __PACKAGE__->SUPER::FIELDS('DATA');
 	%{$fields->{halflife_tf}} = (
 		(map { $_ => '+' } qw(
-			team_kills		
+			team_kills			custom_kills
+			headshot_kills			backstab_kills
 			killed_red 			killed_blue 
 			red_kills 			blue_kills 
 			joined_red			joined_blue
@@ -72,6 +73,24 @@ sub action_flag {
 
 	$self->{data}{'flag_' . $action}++;
 	$self->{data}{$plr->team . '_flag_' . $action}++ if $plr;
+}
+
+# override the kill action to capture 'customkill' events
+sub action_kill {
+	my $self = shift;
+	my ($game, $killer, $victim, $weapon, $props) = @_;
+	
+	# allow parent to do its thing...
+	$self->SUPER::action_kill(@_);
+	
+	# if there is no custom kill property then we're done.
+	return unless exists $props->{customkill};
+	
+	# track custom kills
+	my @customs = ( 'custom_kills', $props->{customkill} . '_kills' );
+	for (@customs) {
+		$self->{data}{$_}++;
+	}
 }
 
 1;
