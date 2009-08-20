@@ -1,17 +1,17 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
-class Wpn extends MY_Controller {
-	protected $weapon_stats;
+class Map extends MY_Controller {
+	protected $map_stats;
 	
 	protected $base_url;
 	protected $get_defaults;
 	protected $get;
-	protected $wpn;
+	protected $map;
 	protected $default_table;
 	protected $default_pager;
 	protected $blocks;
 	
-	function Wpn()
+	function Map()
 	{
 		parent::MY_Controller();
 	}
@@ -41,19 +41,19 @@ class Wpn extends MY_Controller {
 		//$ajax = $this->get['js'];
 
 		// Load the record ... If it doesn't exist then silently
-		// redirect to the weapons list ...
+		// redirect to the maps list ...
 		if ($id) {
-			$this->wpn = $this->ps->get_weapon($id);
+			$this->map = $this->ps->get_map($id);
 		}
-		if (!$this->wpn) {
-			redirect_previous('weapons');
+		if (!$this->map) {
+			redirect_previous('maps');
 		}
 		if (!is_numeric($id)) {
-			$id = $this->wpn['weaponid'];
+			$id = $this->map['mapid'];
 		}
 
 		// set the default game/mod so we don't have to pass it around
-		$this->ps->set_gametype($this->wpn['gametype'], $this->wpn['modtype']);
+		$this->ps->set_gametype($this->map['gametype'], $this->map['modtype']);
 
 		// define a base table that all other tables will inherit from
 		$this->default_table = $this->psychotable->create()
@@ -62,8 +62,8 @@ class Wpn extends MY_Controller {
 
 		$limit = 25;
 
-		$this->weapon_stats = $this->ps->get_weapon_stats($id);
-		$this->topten_kills = $this->ps->get_weapon_players(array(
+		$this->map_stats = $this->ps->get_map_stats($id);
+		$this->topten_kills = $this->ps->get_map_players(array(
 			'id' => $id,
 			'sort' => $this->get['ks'],
 			'order' => $this->get['ko'],
@@ -80,6 +80,8 @@ class Wpn extends MY_Controller {
 			->column('deaths',		trans('Deaths'), 	'number_format')
 			->column('kills_per_death',	trans('KpD'),	 	'')
 			->column('headshot_kills', 	trans('HS'),	 	'number_format')
+			->column('games',		trans('Games'), 	'number_format')
+			->column('rounds',		trans('Rounds'), 	'number_format')
 			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
 			->data_attr('rank', 'class', 'rank')
 			->data_attr('name', 'class', 'name')
@@ -89,50 +91,41 @@ class Wpn extends MY_Controller {
 			->header_attr('headshot_kills', 	array( 'tooltip' => trans('Headshot Kills') ))
 			;
 
-		$this->ps->mod_table($this->topten_kills_table, 'weapon_topten_kills',
-				     $this->wpn['gametype'], $this->wpn['modtype']);
+		$this->ps->mod_table($this->topten_kills_table, 'map_topten_kills',
+				     $this->map['gametype'], $this->map['modtype']);
 
-		// a normal page display will include all data ...
-		$total_weapons = $this->ps->get_total_weapons();
+		$total_maps = $this->ps->get_total_maps();
 
-		$title = trans('Weapon "%s"', $this->wpn['long_name']);		
-		$page_subtitle = $this->wpn['name'] != $this->wpn['long_name'] ? $this->wpn['name'] : '';
+		$title = trans('Map') . ' "' . $this->map['long_name'] . '"';
+		$page_subtitle = $this->map['name'] != $this->map['long_name'] ? $this->map['name'] : '';
 		
 		// load blocks of data for the side nav area
 		$this->nav_blocks = array();
-		$this->nav_blocks['weapon_vitals'] = array(
-			'title' => trans('Weapon Vitals'),
+		$this->nav_blocks['map_vitals'] = array(
+			'title' => trans('Map Vitals'),
 			'rows' => array(
 				'long_name' => array(
 					'label' => trans('Name'),
-					'value' => htmlentities($this->wpn['long_name'], ENT_COMPAT, 'UTF-8'),
+					'value' => htmlentities($this->map['long_name'], ENT_COMPAT, 'UTF-8'),
 					'value_nowrap' => true,
-				),
-				'class' => array(
-					'label' => trans('Class'),
-					'value' => $this->wpn['class'] ? $this->wpn['class'] : '<em>' . trans('none') . '</em>',
-				),
-				'weight' => array(
-					'label' => trans('Skill Modifier'),
-					'value' => $this->wpn['weight'] ? $this->wpn['weight'] : '<em>1.0</em>',
 				),
 			),
 		);
 		
 		// allow game specific updates to the blocks ...
 		// load method if available
-		$method = $this->ps->load_overloaded_method('weapon_nav_blocks', $this->wpn['gametype'], $this->wpn['modtype']);
+		$method = $this->ps->load_overloaded_method('map_nav_blocks', $this->map['gametype'], $this->map['modtype']);
 		$nav_block_html = $this->smarty->render_blocks(
 			$method, $this->nav_blocks, 
-			array(&$this->wpn, &$this->weapon_stats)
+			array(&$this->map, &$this->map_stats)
 		);
 		
 		$data = array(
 			'title'		=> $title,
 			'page_title' 	=> $title,
 			'page_subtitle' => $page_subtitle,
-			'wpn'		=> &$this->wpn,
-			'stats'		=> &$this->weapon_stats,
+			'map'		=> &$this->map,
+			'stats'		=> &$this->map_stats,
 			'topten_kills'	=> &$this->topten_kills,
 			'topten_kills_table' => $this->topten_kills_table->render(),
 			'nav_block_html'=> &$nav_block_html,
@@ -145,18 +138,6 @@ class Wpn extends MY_Controller {
 		
 		$this->load->view('full_page', array('params' => $data));
 	}
-
-	function _cb_weapon_img($name, $val, $data, $td, $table) {
-		$img = img_url('weapons', $data['name'], $this->wpn['gametype'], $this->wpn['modtype']);
-		$text = htmlentities($data['name'], ENT_NOQUOTES, 'UTF-8');
-		if ($img) {
-			$img = sprintf("<img src='%s' alt='%s' title='%s'/>",
-				$img, $text, $text
-			);
-		}
-		return sprintf('<a href="%s">%s</a>', ps_site_url('wpn', $data['name']), $img ? $img : $text);
-	}
-
 }
 
 

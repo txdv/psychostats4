@@ -12,6 +12,10 @@ class Psychostats_user extends MY_Model {
 	// @var integer The ID of the currently loaded user.
 	// @access private
 	private $id = 0;
+
+	// @var integer The access level required to be an admin
+	// @access private
+	private $admin_access_level = 255;
 	
 	// @var array What columns are allowed in the user table.
 	// @access private
@@ -308,6 +312,15 @@ class Psychostats_user extends MY_Model {
 		// if the user_id is available in the session then the user
 		// is logged in.
 		return $ci->session->userdata('user_id') ? true : false;
+	}
+
+	/**
+	 * Returns true if the user is an admin
+	 * @return boolean True/false if the user is an admin
+	 */
+	public function is_admin() {
+		$acl = $this->access_level;
+		return ($acl and $acl >= $this->admin_access_level);
 	}
 	
 	function __get($name) {

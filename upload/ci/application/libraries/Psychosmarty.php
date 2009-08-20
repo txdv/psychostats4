@@ -291,6 +291,36 @@ function smarty_function_elapsed_time($params, $smarty, $template) {
 }
 
 /**
+ * Generates the overall header menu for the theme.
+ */
+function smarty_function_ps_header_menu($params, $smarty, $template) {
+        //$ci =& get_instance();
+	$config =& get_config();
+
+	if (!user_is_admin()) {
+		unset($config['header_menu']['admin']);
+	}
+	reset($config['header_menu']);
+
+	$out = '';
+	$i = 0;
+	while (list($url, $label) = each($config['header_menu'])) {
+		// If the url does not start with a slash or protocol then
+		// generate a clean relative url.
+		if (substr($url,0,1)!='/' and !preg_match('|^[a-z0-9]+://|i', $url)) {
+			$url = rel_site_url($url);
+		}
+		$out .= sprintf("<li%s><a href='%s'>%s</a></li>\n",
+			$i++ ? '' : ' class=\'first-child\'',
+			$url,
+			trans($label)
+		);
+	}
+	
+	return "<ul>\n" . $out . "</ul>\n";
+}
+
+/**
  * Create URL for theme assets that can be static or dynamic. Dynamic assets
  * are parsed by the smarty engine while static assets are not.
  * 

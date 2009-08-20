@@ -14,6 +14,22 @@ if (!function_exists('user_logged_in')) {
 	}
 }
 
+if (!function_exists('user_is_admin')) {
+	/**
+	 * Returns true/false if the user is an admin (and is logged in).
+	 * @return boolean True if user is an admin
+	 */
+	function user_is_admin() {
+		$ci =& get_instance();
+		if (isset($ci->ps_user) and
+		    user_logged_in() and
+		    $ci->ps_user->is_admin()) {
+			return true;
+		}
+		return false;
+	}
+}
+
 if (!function_exists('trans')) {
 	/**
 	 * Translates a string phrase from english to something else.

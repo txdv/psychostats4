@@ -6,7 +6,7 @@ $(function(){
 	$('table.neat tr.hdr th a').live('click', click_table);
 	
 	// enable cookie support for tabs to make them persistent.
-	$('div.tab-group').tabs({ cookie: { expires: 30 } });
+	$('div.tabs').simpleTabs({ cookie: { expires: 30 } });
 	
 });
 

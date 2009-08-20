@@ -64,6 +64,18 @@ $config['gametypes']['cod'] = array();
 $config['default_gametype'] = 'halflife';
 $config['default_modtype']  = 'tf';
 
+// Overall header menu (order matters). The 'Label' is translated.
+// ['url'] = 'Label'
+$config['header_menu']['home'] = 'Home';
+$config['header_menu']['players'] = 'Players';
+$config['header_menu']['clans'] = 'Clans';
+$config['header_menu']['weapons'] = 'Weapons';
+$config['header_menu']['maps'] = 'Maps';
+$config['header_menu']['roles'] = 'Roles';
+$config['header_menu']['awards'] = 'Awards';
+$config['header_menu']['servers'] = 'Servers';
+$config['header_menu']['admin'] = 'Admin'; // auto removed for non-admins
+
 /*
 |--------------------------------------------------------------------------
 | Index File
@@ -273,12 +285,6 @@ $config['encryption_key'] = "";
 |--------------------------------------------------------------------------
 | Session Variables
 |--------------------------------------------------------------------------
-|
-| 'session_cookie_name' = the name you want for the cookie
-| 'encrypt_sess_cookie' = TRUE/FALSE (boolean).  Whether to encrypt the cookie
-| 'session_expiration'  = the number of SECONDS you want the session to last.
-|  by default sessions last 7200 seconds (two hours).  Set to zero for no expiration.
-| 'time_to_update'		= how many seconds between CI refreshing Session Information
 |
 */
 $config['sess_cookie_name']	= 'psid';

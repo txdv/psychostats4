@@ -11,8 +11,13 @@
 {foreach from=$rows item='r' key='key'}
 			<tr{if $r.row_class} class="{$r.row_class|escape}"{/if}>
 				<th class="label{if $r.label_class} {$r.label_class}{/if}">{$r.label}</th>
-				<td class="value{if $r.value_class} {$r.value_class}{/if}">{$r.value}</td>
-				
+				<td class="value{if $r.value_class} {$r.value_class}{/if}">
+{if $r.value_nowrap}
+					<table class='inner'><tr><td style="text-align: right">{$r.value}</td></tr></table>
+{else}
+					{$r.value}
+{/if}
+				</td>
 			</tr>
 {/foreach}
 		</table>

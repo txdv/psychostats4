@@ -31,7 +31,7 @@ class Home extends MY_Controller {
 		if ($page != 'home') {
 			redirect( site_url($page) );
 		}
-
+		
 		// Process home page.
 		$this->load->library('psychotable');
 		$this->load->helper('get');

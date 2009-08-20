@@ -1,12 +1,13 @@
 <?php
 /**
- * PsychoStats method get_total_weapons()
- * $Id$
+ * PsychoStats method get_total_roles()
+ * $Id: method.get_total_roles.php 624 2009-08-20 11:16:44Z lifo $
  *
- * Returns the total weapons available based on the criteria given.
+ * Returns the total roles available based on the criteria given.
  *
  */
-class Psychostats_Method_Get_Total_Weapons extends Psychostats_Method {
+
+class Psychostats_Method_Get_Total_Roles extends Psychostats_Method {
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
 		// set defaults
 		if (!is_array($criteria)) {
@@ -24,17 +25,17 @@ class Psychostats_Method_Get_Total_Weapons extends Psychostats_Method {
 			$modtype = $this->ps->modtype();
 		}
 
-		$t_weapon = $this->ps->tbl('weapon', false);
-		$c_weapon_data = $ci->db->dbprefix('c_weapon_data_' . $gametype);
+		$t_role = $this->ps->tbl('role', false);
+		$c_role_data = $ci->db->dbprefix('c_role_data_' . $gametype);
 		if ($modtype) {
-			$c_weapon_data .= '_' . $modtype;
+			$c_role_data .= '_' . $modtype;
 		}
 		
 		// start basic query
-		$sql = "SELECT COUNT(*) total FROM $t_weapon weapon,$c_weapon_data d WHERE ";
+		$sql = "SELECT COUNT(*) total FROM $t_role role,$c_role_data d WHERE ";
 		
 		// add join clause for tables
-		$criteria['where'][] = 'd.weaponid=weapon.weaponid';
+		$criteria['where'][] = 'd.roleid=role.roleid';
 
 		$sql .= $this->ps->where($criteria['where']);
 

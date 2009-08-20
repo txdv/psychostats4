@@ -7,7 +7,7 @@
 	<meta http-equiv="cache-control" content="no-cache" />
 	<meta http-equiv="Pragma" content="no-cache" />
 	<meta http-equiv="expires" content="-1" />
-	<meta name="author" content="Stormtrooper" />
+	<meta name="author" content="Jason Morriss" />
 	<meta name="keywords" content="Psychostats Statistics Rankings Hitbox Counter-Strike cstrike Day of Defeat dod Team Fortress tf tf2 valve valvesoftware" />
 	{/block}
 	{block name='css'}
@@ -20,26 +20,16 @@
 </head>
 <body>
  <div id="doc3" class="{$smarty.const.BODY_LAYOUT|default:'yui-t7'}">
-   <div id="hd">
 {block name="header"}
+   <div id="hd">
 	<div class="ps-header">
 		<img src="{asset static='img/header-logo.png'}" alt="Psychostats" />
 	</div>
 	<div class="ps-menu">
-		<ul>
-			<li class="first-child"><a href="{rel_site_url('home')}"><#Home#></a></li>
-			<li><a href="{rel_site_url('players')}"><#Players#></a></li>
-			<li><a href="{rel_site_url('clans')}"><#Clans#></a></li>
-			<li><a href="{rel_site_url('weapons')}"><#Weapons#></a></li>
-			<li><a href="{rel_site_url('maps')}"><#Maps#></a></li>
-			<li><a href="{rel_site_url('awards')}"><#Awards#></a></li>
-			<li><a href="{rel_site_url('servers')}"><#Servers#></a></li>
-			<li><a href="{rel_site_url('overview')}"><#Overview#></a></li>
-			<!--<li><a href="{rel_site_url('admin')}"><#Admin#></a></li>-->
-		</ul>
+{ps_header_menu}
 	</div>
-{/block}
    </div>
+{/block}
    <div id="bd">
 {block name="page_title"}
 	<div class="ps-page-title">

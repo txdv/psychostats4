@@ -261,7 +261,7 @@ class MY_Controller extends Controller {
 		
 		if (isset($data['mapid'])) {
 			$page = 'map';
-			$path = $data['mapid'];
+			//$path = $data['mapid'];
 		} elseif (isset($data['roleid'])) {
 			$page = 'role';
 			$path = $data['roleid'];

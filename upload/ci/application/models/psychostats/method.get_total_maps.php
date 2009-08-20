@@ -5,24 +5,49 @@
  *
  * Returns the total maps available based on the criteria given.
  *
- * Note: 'gametype' and 'modtype' must be passed in the $where criteria if
- * you want to limit players to a certain game. This will allow totals to be
- * calculated on ALL maps in the database regardless of game.
- *
  */
 
 class Psychostats_Method_Get_Total_Maps extends Psychostats_Method {
-	public function execute($where = array()) {
-		$ci =& get_instance();
+	public function execute($criteria = array(), $gametype = null, $modtype = null) {
+		// set defaults
+		if (!is_array($criteria)) {
+			$criteria = array();
+		}
+		$criteria += array(
+			'where' 	=> null
+		);
 
-		if (!empty($where)) {
-			$ci->db->where($where);
+		$ci =& get_instance();
+		if ($gametype === null) {
+			$gametype = $this->ps->gametype();
+		}
+		if ($modtype === null) {
+			$modtype = $this->ps->modtype();
 		}
 
-		// TODO: This is wrong. it will return total maps in the database
-		// regardless if they have stats or not. FIXME
+		$t_map = $this->ps->tbl('map', false);
+		$c_map_data = $ci->db->dbprefix('c_map_data_' . $gametype);
+		if ($modtype) {
+			$c_map_data .= '_' . $modtype;
+		}
+		
+		// start basic query
+		$sql = "SELECT COUNT(*) total FROM $t_map map,$c_map_data d WHERE ";
+		
+		// add join clause for tables
+		$criteria['where'][] = 'd.mapid=map.mapid';
 
-		$count = $ci->db->count_all_results('map');
+		$sql .= $this->ps->where($criteria['where']);
+
+		$q = $ci->db->query($sql);
+
+		$count = 0;
+		if ($q->num_rows()) {
+			$res = $q->row_array();
+			$count = $res['total'];
+		}
+		$q->free_result();
+
 		return $count;
 	} 
 } 
