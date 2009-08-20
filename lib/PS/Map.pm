@@ -433,6 +433,7 @@ sub action_teamwon {
 	my ($self, $game, $trigger, $team, $props) = @_;	
 
 	# terrorist_wins, ct_wins, red_wins, blue_wins, etc...
+	$self->{data}{'wins'}++;
 	$self->{data}{$team . '_wins'}++;
 }
 
@@ -441,6 +442,7 @@ sub action_teamlost {
 	my ($self, $game, $trigger, $team, $props) = @_;	
 	
 	# terrorist_losses, ct_losses, red_losses, blue_losses, etc...
+	$self->{data}{'losses'}++;
 	$self->{data}{$team . '_losses'}++;
 }
 

@@ -38,6 +38,7 @@ BEGIN {
 			killed_terrorist	deathsby_terrorist
 			killed_ct 		deathsby_ct 
 			joined_terrorist	joined_ct
+			wins			losses
 			terrorist_wins		ct_wins
 			terrorist_losses	ct_losses
 			hostages_killed		hostages_rescued 	hostages_touched

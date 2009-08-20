@@ -39,6 +39,7 @@ BEGIN {
 			killed_red 			killed_blue 
 			red_kills 			blue_kills 
 			joined_red			joined_blue
+			wins				losses
 			red_wins			blue_wins
 			red_losses			blue_losses
 			flag_captured

@@ -1407,7 +1407,9 @@ sub action_teamwon {
 	my $m = $map->id;
 	
 	# terrorist_wins, ct_wins, red_wins, blue_wins, etc...
+	$self->{data}{'wins'}++;
 	$self->{data}{$team . '_wins'}++;
+	$self->{maps}{$m}{'wins'}++;
 	$self->{maps}{$m}{$team . '_wins'}++;
 }
 
@@ -1417,7 +1419,9 @@ sub action_teamlost {
 	my $m = $map->id;
 	
 	# terrorist_losses, ct_losses, red_losses, blue_losses, etc...
+	$self->{data}{'losses'}++;
 	$self->{data}{$team . '_losses'}++;
+	$self->{maps}{$m}{'losses'}++;
 	$self->{maps}{$m}{$team . '_losses'}++;
 }
 
@@ -1798,7 +1802,7 @@ sub _init_table {
 		if (!$DB->alter_table_add($tbl, \@cols)) {
 			$class->fatal("Error initializing columns in table $tbl: " . $DB->errstr);
 		}
-		return;
+		return 1;
 	}
 
 	# remove any columns that are in the table but not configured
@@ -1869,7 +1873,12 @@ sub init_game_database {
 			my $key = substr($t, 0, -1) . 'id';
 			my $order = [ 'plrid', $key ];
 			$primary->{$key} = 'uint';
-			$class->_init_table($DB->ctbl('plr_' . $t . '_' . $type), $FIELDS->{$F}, $primary, $order);
+			my $created = $class->_init_table($DB->ctbl('plr_' . $t . '_' . $type), $FIELDS->{$F}, $primary, $order);
+
+			# create an index on just the secondary key
+			if ($created and grep { $t eq $_ } qw( maps roles weapons victims )) {
+				$DB->create_index($DB->ctbl('plr_' . $t . '_' . $type), $key, $key);
+			}
 		}
 	}
 }

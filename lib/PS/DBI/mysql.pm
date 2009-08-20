@@ -187,9 +187,10 @@ sub create_unique_index {
 sub create_index {
 	my $self = shift;
 	my $tablename = shift;
+	my $name = shift;
 	my $tbl = $self->{dbh}->quote_identifier( $tablename );
-	my $name = $self->{dbh}->quote_identifier( shift );	
 	my @cols = ref $_[0] ? @{$_[0]} : @_;
+	$name = $self->{dbh}->quote_identifier( $name );
 	my $cmd = "ALTER TABLE $tbl ADD INDEX $name ( " . join(", ", map { $self->{dbh}->quote_identifier($_) } @cols) . " )";
 	$self->query($cmd) or $self->fatal("Error creating index on table $tablename: $self->errstr");
 }

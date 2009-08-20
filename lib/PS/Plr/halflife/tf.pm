@@ -42,6 +42,7 @@ BEGIN {
 			killed_red			deathsby_red
 			killed_blue 			deathsby_blue 
 			joined_red			joined_blue
+			wins				losses
 			red_wins			blue_wins
 			red_losses			blue_losses
 			destroyed_objects		built_objects
