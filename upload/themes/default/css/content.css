@@ -142,6 +142,20 @@ div.nav-content table.neat th.label {
 	border-bottom: 1px solid #ddd;
 	line-height: 1.5em;
 }
+div.nav-content table.neat td div.pct-text {
+	position: relative;
+	float: left;
+	width: 70px;
+	text-align: left;
+	font-size: 0.8em;
+}
+.pct-text-up {
+	color: #00CC00;
+}
+.pct-text-down {
+	color: #CC0000;
+}
+
 div.nav-content table.neat td div.pct-stat {
 	position: relative;
 	top: 0.3em;
@@ -448,6 +462,9 @@ table.neat td.name {
 table.neat td.img {
 	text-align: center;
 	font-weight: bold;
+}
+table.neat td.nowrap {
+	white-space: nowrap;
 }
 
 table.neat td.map {

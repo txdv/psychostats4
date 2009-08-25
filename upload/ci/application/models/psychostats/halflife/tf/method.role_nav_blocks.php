@@ -1,7 +1,7 @@
 <?php
 /**
  * PsychoStats method role_nav_blocks()
- * $Id: method.role_nav_blocks.php 624 2009-08-20 11:16:44Z lifo $
+ * $Id$
  *
  *
  */

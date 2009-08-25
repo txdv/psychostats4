@@ -1,7 +1,7 @@
 <?php
 /**
  * PsychoStats method get_role_players()
- * $Id: method.get_role_players.php 624 2009-08-20 11:16:44Z lifo $
+ * $Id$
  *
  */
 class Psychostats_Method_Get_Role_Players extends Psychostats_Method {
@@ -21,13 +21,12 @@ class Psychostats_Method_Get_Role_Players extends Psychostats_Method {
 		// set defaults
 		$criteria += array(
 			'id'		=> 0,		// roleid
-			'select' 	=> null,
-			'select_overload_method' => 'get_role_players_sql',
 			'limit' 	=> null,
 			'start' 	=> null,
 			'order' 	=> null,
 			'where' 	=> null,
 			'is_ranked' 	=> null,
+			'select' 	=> null,
 		);
 		
 		$ci =& get_instance();
@@ -38,34 +37,14 @@ class Psychostats_Method_Get_Role_Players extends Psychostats_Method {
 			$modtype = $this->ps->modtype();
 		}
 
-		if (empty($criteria['select'])) {
-			$criteria['select'] = array(
-				'plr.*, pp.*, d.*',
-				'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
-			);
-		}
-
 		// setup table names
 		$t_plr = $this->ps->tbl('plr', false);
 		$t_plr_profile = $this->ps->tbl('plr_profile', false);
-		$t_plr_roles = $ci->db->dbprefix('c_plr_roles_' . $gametype);
-		if ($modtype) {
-			$t_plr_roles .= '_' . $modtype;
-		}
+		$t_plr_roles = $this->ps->tbl('c_plr_roles', $gametype, $modtype);
 
-		// allow game::mod specific stats to be added
-		$stats = $criteria['select'];
-		if ($meth = $this->ps->load_overloaded_method($criteria['select_overload_method'], $gametype, $modtype)) {
-			$meth->execute($stats);
-		}
-		
-		// combine everything into a string for our query
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
 		$fields = is_array($stats) ? implode(',', $stats) : $stats;
-		if (empty($fields)) {
-			$fields = '*';
-		}
 
-		// start basic query
 		$cmd =
 <<<CMD
 		SELECT $fields
@@ -73,18 +52,39 @@ class Psychostats_Method_Get_Role_Players extends Psychostats_Method {
 		WHERE d.roleid=? AND plr.plrid=d.plrid AND pp.uniqueid=plr.uniqueid
 CMD;
 
-		$sql .= $this->ps->where($criteria['where'], 'AND', true, ' AND ');
+		// apply is_ranked shortcut
+		if ($criteria['is_ranked']) {
+			$criteria['where'][] = $this->ps->is_ranked_sql;
+		}
+		
+		$cmd .= $this->ps->where($criteria['where'], 'AND', true, ' AND ');
 		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
 		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
 
-		$q = $ci->db->query($cmd, array($criteria['id']));
+		$q = $ci->db->query($cmd, $criteria['id']);
 
 		$list = array();		
 		if ($q->num_rows()) {
-			$list = $q->result_array();
+			foreach ($q->result_array() as $row) {
+				// remove id so it doesn't cause problems with
+				// some url generation.
+				unset($row['roleid']);
+				$list[] = $row;
+			}
 		}
 		$q->free_result();
 		return $list;
+	}
+
+	protected function get_sql() {
+		// non game specific stats
+		$sql = array(
+			'*' => 'd.*', 
+			'plr' => 'plr.*',
+			'pp' => 'pp.*', 
+			'kills_per_death' => 'ROUND(IFNULL(kills / deaths, 0),2) kills_per_death',
+		);
+		return $sql;
 	}
 } 
 

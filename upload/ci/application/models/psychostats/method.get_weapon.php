@@ -16,6 +16,7 @@ class Psychostats_Method_Get_Weapon extends Psychostats_Method {
 		$criteria += array(
 			'id'		=> 0,
 			'force_string'	=> false,
+			'select'	=> null,
 		);
 		
 		$id = isset($criteria['id']) ? $criteria['id'] : 0;
@@ -26,14 +27,11 @@ class Psychostats_Method_Get_Weapon extends Psychostats_Method {
 		$key = (is_numeric($criteria['id']) and !$criteria['force_string'])
 			? 'weaponid'
 			: 'name';
+
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
+		$fields = is_array($stats) ? implode(',', $stats) : $stats;
 		
-		// load the basic record first.
-		$sql = 
-<<<CMD
-		SELECT w.*, COALESCE(full_name, name) long_name
-		FROM $t_weapon w
-		WHERE w.$key = ?
-CMD;
+		$cmd = "SELECT $fields FROM $t_weapon wpn WHERE wpn.$key=?";
 
 		$ci =& get_instance();
 		$q = $ci->db->query($sql, $id);
@@ -48,6 +46,13 @@ CMD;
 
 		return $res;
 	} 
+
+	protected function get_sql() {
+		$sql = array(
+			'wpn' => 'wpn.*, COALESCE(full_name, name) long_name',
+		);
+		return $sql;
+	}
 } 
 
 ?>

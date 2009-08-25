@@ -1,20 +1,20 @@
 <?php
 /**
- * PsychoStats method role_nav_blocks()
+ * PsychoStats method map_nav_blocks()
  * $Id$
  *
  *
  */
 
-class Psychostats_Method_Role_Nav_Blocks_Halflife extends Psychostats_Method {
+class Psychostats_Method_Map_Nav_Blocks_Halflife extends Psychostats_Method {
 	public function execute(&$blocks, &$plr, &$stats) {
-		if (!isset($blocks['role_kill_profile'])) {
-			$blocks['role_kill_profile'] = array(
+		if (!isset($blocks['map_kill_profile'])) {
+			$blocks['map_kill_profile'] = array(
 				'title'	=> trans('Kill Profile'),
 				'rows' => array()
 			);
 		}
-		$blocks['role_kill_profile']['rows'] = array( 
+		$blocks['map_kill_profile']['rows'] = array( 
 			'kills' => array(
 				'row_class' => 'hdr',
 				'label' => trans('Kills'),
@@ -25,18 +25,27 @@ class Psychostats_Method_Role_Nav_Blocks_Halflife extends Psychostats_Method {
 				'label' => trans('Headshots'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['headshot_kills_pct']), number_format($stats['headshot_kills'])),
 			),
+			'backstab_kills' => array(
+				'row_class' => 'sub',
+				'label' => trans('Backstabs'),
+				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['backstab_kills_pct']), number_format($stats['backstab_kills'])),
+			),
 			'team_kills' => array(
 				'row_class' => 'sub',
 				'label' => trans('Friendly'),
 				'value' => number_format($stats['team_kills']),
+			),
+			'kills_per_minute' => array(
+				'row_class' => 'sub',
+				'label' => sprintf('<acronym title="%s">%s</acronym>', trans('Kills per Minute'), trans('KpM')),
+				'value' => $stats['kills_per_minute'],
 			),
 			'suicides' => array(
 				'row_class' => 'sub',
 				'label' => trans('Suicides'),
 				'value' => number_format($stats['suicides']),
 			),
-		) + $blocks['role_kill_profile']['rows'];
-
+		) + $blocks['map_kill_profile']['rows'];
 	} 
 } 
 

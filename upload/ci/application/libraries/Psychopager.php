@@ -144,6 +144,7 @@ class Psychopager {
 				}
 				$out .= implode($this->opts['separator'] . "\n", $list);
 				$out .= ($maxrange < $total - $this->opts['per_group']) ? $this->opts['middle_separator'] : $this->opts['separator'];
+				$out .= "\n"; // adds proper gap between middle and last group
 			} else {
 				$out .= $this->opts['middle_separator'] . "\n";
 			}

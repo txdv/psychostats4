@@ -275,7 +275,6 @@ class MY_Controller extends Controller {
 			$page = 'clan';
 			$path = $data['clanid'];
 		} elseif (isset($data['weaponid'])) {
-			// must come after 'plrid'
 			$page = 'wpn';
 			$path = $data['weaponid'];
 		} elseif (isset($data['srvid'])) {

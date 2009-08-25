@@ -26,13 +26,10 @@ class Psychostats_Method_Get_Total_Players extends Psychostats_Method {
 		}
 
 		$t_plr = $this->ps->tbl('plr', false);
-		$c_plr_data = $ci->db->dbprefix('c_plr_data_' . $gametype);
-		if ($modtype) {
-			$c_plr_data .= '_' . $modtype;
-		}
+		$c_plr_data = $this->ps->tbl('c_plr_data', $gametype, $modtype);
 		
 		// start basic query
-		$sql = "SELECT COUNT(*) total FROM $t_plr plr,$c_plr_data d WHERE ";
+		$cmd = "SELECT COUNT(*) total FROM $t_plr plr,$c_plr_data d WHERE ";
 		
 		// add join clause for tables
 		$criteria['where'][] = 'd.plrid=plr.plrid';
@@ -42,9 +39,9 @@ class Psychostats_Method_Get_Total_Players extends Psychostats_Method {
 			$criteria['where'][] = $this->ps->is_ranked_sql;
 		}
 
-		$sql .= $this->ps->where($criteria['where']);
+		$cmd .= $this->ps->where($criteria['where']);
 
-		$q = $ci->db->query($sql);
+		$q = $ci->db->query($cmd);
 
 		$count = 0;
 		if ($q->num_rows()) {

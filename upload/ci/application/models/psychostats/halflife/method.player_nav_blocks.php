@@ -14,6 +14,7 @@ class Psychostats_Method_Player_Nav_Blocks_Halflife extends Psychostats_Method {
 				'rows' => array()
 			);
 		}
+
 		$blocks['player_kill_profile']['rows'] = array( 
 			'kills' => array(
 				'row_class' => 'hdr',
@@ -70,6 +71,15 @@ class Psychostats_Method_Player_Nav_Blocks_Halflife extends Psychostats_Method {
 				'label' => trans('Suicides'),
 				'value' => number_format($stats['suicides']),
 			),
+		) + $blocks['player_kill_profile']['rows'];
+
+		if (!isset($blocks['player_accuracy_profile'])) {
+			$blocks['player_accuracy_profile'] = array(
+				'title'	=> trans('Accuracy Profile'),
+				'rows' => array()
+			);
+		}
+		$blocks['player_accuracy_profile']['rows'] = array( 
 			'accuracy' => array(
 				'row_class' => 'hdr',
 				'label' => trans('Accuracy'),
@@ -85,45 +95,46 @@ class Psychostats_Method_Player_Nav_Blocks_Halflife extends Psychostats_Method {
 				'label' => trans('Hits'),
 				'value' => number_format($stats['hits']),
 			),
-		) + $blocks['player_kill_profile']['rows'];
+
+		) + $blocks['player_accuracy_profile']['rows'];
 
 		// add overall hitbox totals
 		if (true or $stats['hits']) {
-			$blocks['player_kill_profile']['rows']['hitbox'] = array(
+			$blocks['player_accuracy_profile']['rows']['hitbox'] = array(
 				'row_class' => 'hdr',
 				'label' => trans('Hitbox'),
 			);
-			$blocks['player_kill_profile']['rows']['hit_head'] = array(
+			$blocks['player_accuracy_profile']['rows']['hit_head'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Head'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['hit_head_pct']), number_format($stats['hit_head'])),
 			);
-			$blocks['player_kill_profile']['rows']['hit_chest'] = array(
+			$blocks['player_accuracy_profile']['rows']['hit_chest'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Chest'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['hit_chest_pct']), number_format($stats['hit_chest'])),
 			);
-			$blocks['player_kill_profile']['rows']['hit_leftarm'] = array(
+			$blocks['player_accuracy_profile']['rows']['hit_leftarm'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Left Arm'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['hit_leftarm_pct']), number_format($stats['hit_leftarm'])),
 			);
-			$blocks['player_kill_profile']['rows']['hit_rightarm'] = array(
+			$blocks['player_accuracy_profile']['rows']['hit_rightarm'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Right Arm'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['hit_rightarm_pct']), number_format($stats['hit_rightarm'])),
 			);
-			$blocks['player_kill_profile']['rows']['hit_stomach'] = array(
+			$blocks['player_accuracy_profile']['rows']['hit_stomach'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Stomach'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['hit_stomach_pct']), number_format($stats['hit_stomach'])),
 			);
-			$blocks['player_kill_profile']['rows']['hit_leftleg'] = array(
+			$blocks['player_accuracy_profile']['rows']['hit_leftleg'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Left Leg'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['hit_leftleg_pct']), number_format($stats['hit_leftleg'])),
 			);
-			$blocks['player_kill_profile']['rows']['hit_rightleg'] = array(
+			$blocks['player_accuracy_profile']['rows']['hit_rightleg'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Right Leg'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['hit_rightleg_pct']), number_format($stats['hit_rightleg'])),
@@ -131,41 +142,41 @@ class Psychostats_Method_Player_Nav_Blocks_Halflife extends Psychostats_Method {
 		}
 
 		if (true or $stats['damage']) {
-			$blocks['player_kill_profile']['rows']['dmgbox'] = array(
+			$blocks['player_accuracy_profile']['rows']['dmgbox'] = array(
 				'row_class' => 'hdr',
 				'label' => sprintf('<acronym title="%s">%s</acronym>', trans('Damage Hitbox'), trans('Dmgbox')),
 			);
-			$blocks['player_kill_profile']['rows']['dmg_head'] = array(
+			$blocks['player_accuracy_profile']['rows']['dmg_head'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Head'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['dmg_head_pct']), abbrnum($stats['dmg_head'], 2)),
 			);
-			$blocks['player_kill_profile']['rows']['dmg_chest'] = array(
+			$blocks['player_accuracy_profile']['rows']['dmg_chest'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Chest'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['dmg_chest_pct']), number_format($stats['dmg_chest'])),
 			);
-			$blocks['player_kill_profile']['rows']['dmg_leftarm'] = array(
+			$blocks['player_accuracy_profile']['rows']['dmg_leftarm'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Left Arm'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['dmg_leftarm_pct']), number_format($stats['dmg_leftarm'])),
 			);
-			$blocks['player_kill_profile']['rows']['dmg_rightarm'] = array(
+			$blocks['player_accuracy_profile']['rows']['dmg_rightarm'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Right Arm'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['dmg_rightarm_pct']), number_format($stats['dmg_rightarm'])),
 			);
-			$blocks['player_kill_profile']['rows']['dmg_stomach'] = array(
+			$blocks['player_accuracy_profile']['rows']['dmg_stomach'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Stomach'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['dmg_stomach_pct']), number_format($stats['dmg_stomach'])),
 			);
-			$blocks['player_kill_profile']['rows']['dmg_leftleg'] = array(
+			$blocks['player_accuracy_profile']['rows']['dmg_leftleg'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Left Leg'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['dmg_leftleg_pct']), number_format($stats['dmg_leftleg'])),
 			);
-			$blocks['player_kill_profile']['rows']['dmg_rightleg'] = array(
+			$blocks['player_accuracy_profile']['rows']['dmg_rightleg'] = array(
 				'row_class' => 'sub',
 				'label' => trans('Right Leg'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['dmg_rightleg_pct']), number_format($stats['dmg_rightleg'])),

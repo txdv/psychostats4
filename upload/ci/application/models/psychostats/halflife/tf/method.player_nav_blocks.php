@@ -13,11 +13,11 @@ extends Psychostats_Method_Player_Nav_Blocks_Halflife {
 	public function execute(&$blocks, &$plr, &$stats) {
 		parent::execute($blocks, $plr, $stats);
 
-		if (!isset($blocks['player_actions'])) {
-			$blocks['player_actions'] = array(
+		if (!array_key_exists('player_actions', $blocks)) {
+			array_push_after($blocks, 'player_kill_profile', array(
 				'title' => trans('Player Actions'),
 				'rows' => array(),
-			);
+			), 'player_actions');
 		}
 		
 		// dual_bar defaults
@@ -154,7 +154,7 @@ extends Psychostats_Method_Player_Nav_Blocks_Halflife {
 					'value' => number_format($stats['domination']), 
 					//'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
 				 ),
-				 'domation'
+				 'domination'
 		);
 
 		array_push_after($blocks['player_kill_profile']['rows'],

@@ -19,7 +19,7 @@ class Psychostats_Method_Get_Player_Sessions extends Psychostats_Method {
 			'order' 	=> 'desc',
 			'limit' 	=> null,
 			'start' 	=> 0,
-			'fields'	=> null,	// extra fields to select
+			'select'	=> null,
 		);
 		
 		$ci =& get_instance();
@@ -38,40 +38,51 @@ class Psychostats_Method_Get_Player_Sessions extends Psychostats_Method {
 		$t_session = $this->ps->tbl('plr_sessions', false);
 		$t_data = $this->ps->tbl('plr_sessions', $gametype, $modtype);
 
-		// load the compiled stats
-		$sql =
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
+		$fields = is_array($stats) ? implode(',', $stats) : $stats;
+
+		$cmd =
 <<<CMD
-		SELECT
-		m.name, s.mapid, s.session_start, s.session_end,
-		s.session_end - s.session_start AS session_seconds,
-		(s.session_end - s.session_start) / 60 AS session_minutes,
-		IFNULL(s.skill - s.skill_prev, 0) AS skill_diff,
-		CASE
-			WHEN s.skill > s.skill_prev THEN 'up'
-			WHEN s.skill < s.skill_prev THEN 'down'
-			ELSE 'same'
-		END AS skill_change,
-		s.skill, s.skill_prev, d.*
-		FROM ($t_session s, $t_data d)
-		LEFT JOIN $t_map m ON m.mapid = s.mapid
-		WHERE s.dataid = d.dataid AND s.plrid = ?
+		SELECT $fields
+		FROM ($t_session sess, $t_data d)
+		LEFT JOIN $t_map m ON m.mapid = sess.mapid
+		WHERE sess.dataid = d.dataid AND sess.plrid = ?
 CMD;
 
-		$sql .= $this->ps->order_by($criteria['sort'], $criteria['order']);
-		$sql .= $this->ps->limit($criteria['limit'], $criteria['start']);
+		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
+		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
 
-		$q = $ci->db->query($sql, $id);
+		$q = $ci->db->query($cmd, $id);
 
-		$res = array();
+		$list = array();
 		if ($q->num_rows()) {
 			foreach ($q->result_array() as $row) {
-				$res[] = $row;
+				$list[] = $row;
 			}
 		}
 		$q->free_result();
 
-		return $res;
+		return $list;
 	} 
-} 
+
+	protected function get_sql() {
+		$sql = array(
+			'*' =>
+<<<CMD
+				m.name, sess.mapid, sess.session_start, sess.session_end,
+				sess.session_end - sess.session_start AS session_seconds,
+				(sess.session_end - sess.session_start) / 60 AS session_minutes,
+				IFNULL(sess.skill - sess.skill_prev, 0) AS skill_diff,
+				CASE
+					WHEN sess.skill > sess.skill_prev THEN 'up'
+					WHEN sess.skill < sess.skill_prev THEN 'down'
+					ELSE 'same'
+				END AS skill_change,
+				sess.skill, sess.skill_prev, d.*
+CMD
+		);
+		return $sql;
+	}
+}
 
 ?>

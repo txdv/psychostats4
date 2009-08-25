@@ -14,6 +14,12 @@ extends Psychostats_Method {
 				       'number_format',
 				       array( 'tooltip' => trans('Custom Kills') )
 			)
+			->column_after('custom_kills',
+					'custom_kills_pct',
+					trans('CK%'),
+					array($this->ps->controller, '_cb_pct'),
+					array( 'tooltip' => trans('Custom Kills Percentage') )
+			)
 			->column_remove('headshot_kills')
 			;
 	}

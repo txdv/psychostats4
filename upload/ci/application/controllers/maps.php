@@ -47,23 +47,7 @@ class Maps extends MY_Controller {
 
 		$c_maps = $this->ps->tbl('c_map_data', $this->get['gametype'], $this->get['modtype']);
 
-		// non game specific stats		
-		$stats = array(
-			// basic information
-			'map.name',
-
-			// static stats
-			'd.*',
-
-			// calculated stats
-			"IFNULL(d.online_time / (SELECT MAX(online_time) FROM $c_maps) * 100, 0) online_time_scaled_pct",
-			"IFNULL(d.online_time / (SELECT SUM(online_time) FROM $c_maps) * 100, 0) online_time_pct",
-			"IFNULL(d.kills / (SELECT MAX(kills) FROM $c_maps) * 100, 0) kills_scaled_pct",
-			"IFNULL(d.kills / (SELECT SUM(kills) FROM $c_maps) * 100, 0) kills_pct",
-		);
-		
 		$criteria = array(
-			'select'=> $stats,
 			'limit' => $this->get['limit'],
 			'start' => $this->get['start'],
 			'sort'	=> $this->get['sort'],

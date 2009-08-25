@@ -36,13 +36,12 @@ class Plr extends MY_Controller {
 	protected $default_table;
 	protected $default_pager;
 	protected $blocks;
+	protected $controller;
 	
 	function Plr()
 	{
 		parent::MY_Controller();
 	}
-	
-	//function index() {	}
 	
 	function view($id = null)
 	{
@@ -52,6 +51,11 @@ class Plr extends MY_Controller {
 		$this->load->library('psychotable');
 		$this->load->helper('get');
 		//$config =& get_config();
+
+		// assign ourself to the PS object so overloaded methods
+		// within PS will be able to use callbacks in the MY_Controller
+		// object.
+		$this->ps->controller = $this;
 
 		$this->base_url = "$id/"; 	// used by build_query_string()
 		$this->get_defaults = array(
@@ -197,7 +201,13 @@ class Plr extends MY_Controller {
 					'skill' => array(
 						'row_class' => 'hdr',
 						'label' => trans('Skill'),
-						'value' => $this->plr['skill'] . ' ' . skill_change($this->plr),
+						//'value' => $this->plr['skill'] . ' ' . skill_change($this->plr),
+						'value' => sprintf('<div class="pct-text%s">%s%s%%</div>',
+								   $this->plr['skill_change_pct'] >= 0.0 ? ' pct-text-up' : ' pct-text-down',
+								   $this->plr['skill_change_pct'] > 0.0 ? '+' : '', 
+								   $this->plr['skill_change_pct']
+								   )
+								. $this->plr['skill'] . ' ' . skill_change($this->plr),
 					),
 					'skill_prev' => array(
 						'row_class' => 'sub',
@@ -237,7 +247,7 @@ class Plr extends MY_Controller {
 			
 			// allow game specific updates to the blocks ...
 			// load method if available
-			$method = $this->ps->load_overloaded_method('player_nav_blocks', $this->plr['gametype'], $this->plr['modtype']);
+			$method = $this->ps->load_overloaded_method('nav_blocks_player', $this->plr['gametype'], $this->plr['modtype']);
 			$nav_block_html = $this->smarty->render_blocks(
 				$method, $this->nav_blocks, 
 				array(&$this->plr, &$this->player_stats)
@@ -296,7 +306,7 @@ class Plr extends MY_Controller {
 		$params = array(
 			'lineColor'		=> '4444cc',
 			'showAnchors'		=> 1,
-			'anchorAlpha'		=> 0,	// hide anhors but allow hover to work
+			'anchorAlpha'		=> 0,	// hide anchors but allow hover to work
 			'anchorRadius'		=> 4,
 			'showValues'		=> 0,
 			'xAxisName'		=> '',
@@ -325,7 +335,7 @@ class Plr extends MY_Controller {
 			'keyed' 	=> true,
 			'fill_gaps' 	=> true,
 			'start_date'	=> date('Y-m-d', $dates['max']),
-			'fields'	=> 'skill',
+			'select'	=> 'skill',
 			'sort'		=> 'statdate',
 			'order'		=> 'desc',
 			'limit'		=> $max_days,
@@ -389,12 +399,15 @@ class Plr extends MY_Controller {
 			->column('session_start',	trans('Session Start'),	array($this, '_cb_datetime'))
 			->column('session_seconds',	trans('Length'), 	array($this, '_cb_session_length'))
 			->column('name',		trans('Map'), 		array($this, '_cb_name_link'))
-			->column('kills',		trans('Kills'), 	'number_format')
-			->column('deaths',		trans('Deaths'), 	'number_format')
+			->column('kills',		trans('K'), 	'number_format')
+			->column('deaths',		trans('D'), 	'number_format')
 			->column('headshot_kills', 	trans('HS'),	 	'number_format')
 			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
 			//->data_attr('session_start', 'class', 'name')
 			->data_attr('skill', 'class', 'skill')
+			->data_attr('session_start', 'class', 'nowrap')
+			->header_attr('kills', array( 'tooltip' => trans('Kills') ))
+			->header_attr('deaths', array( 'tooltip' => trans('Deaths') ))
 			->header_attr('headshot_kills', array( 'tooltip' => trans('Headshot Kills') ))
 			;
 		
@@ -726,6 +739,8 @@ class Plr extends MY_Controller {
 			->data_attr('rank', 'class', 'rank')
 			->data_attr('name', 'class', 'name')
 			->data_attr('skill', 'class', 'skill')
+			->header_attr('kills', 			array( 'tooltip' => trans('You killed them') ))
+			->header_attr('deaths', 		array( 'tooltip' => trans('They killed you') ))
 			->header_attr('kills_scaled_pct', 	array( 'tooltip' => trans('Kill Percentage') ))
 			->header_attr('kills_per_death', 	array( 'tooltip' => trans('Kills per Death') ))
 			->header_attr('headshot_kills', 	array( 'tooltip' => trans('Headshot Kills') ))

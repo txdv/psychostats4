@@ -19,7 +19,9 @@ class Psychostats_Method_Get_Player_Victims extends Psychostats_Method {
 			'order' 	=> 'desc',
 			'limit' 	=> null,
 			'start' 	=> 0,
-			'fields'	=> null,	// extra fields to select
+			'where'		=> null,
+			'is_ranked'	=> null,
+			'select'	=> null,
 		);
 		
 		$ci =& get_instance();
@@ -34,54 +36,60 @@ class Psychostats_Method_Get_Player_Victims extends Psychostats_Method {
 			list($gametype, $modtype) = $g;
 		}
 
-		$t_victim = $this->ps->tbl('plr', false);
+		$t_plr = $this->ps->tbl('plr', false);
 		$t_profile = $this->ps->tbl('plr_profile', false);
 		$t_data = $this->ps->tbl('c_plr_data', $gametype, $modtype);
 		$t_victims = $this->ps->tbl('c_plr_victims', $gametype, $modtype);
 
-		// non game specific stats
-		$stats = array(
-			'v.*, pp.*, d.*',
-			'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
-			"IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_victims d3 WHERE d3.plrid=d.plrid) * 100, 0) kills_scaled_pct",
-			'IFNULL(d.kills / d2.kills * 100, 0) kills_pct'
-		);
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
+		$fields = is_array($stats) ? implode(',', $stats) : $stats;
 
-		// allow game::mod specific stats to be added
-		if ($meth = $this->ps->load_overloaded_method('get_player_victims_sql', $gametype, $modtype)) {
-			$meth->execute($stats);
-		}
-		
-		// combine everything into a string for our query
-		$fields = implode(',', $stats);
-				
-		// load the compiled stats
-		$sql =
+		$cmd =
 <<<CMD
 		SELECT $fields
-		FROM ($t_victims d, $t_victim v)
-		LEFT JOIN $t_profile pp ON pp.uniqueid = v.uniqueid
-		LEFT JOIN $t_data d2 ON d2.plrid=d.plrid
-		WHERE v.plrid = d.victimid AND d.plrid = ?
+		FROM ($t_victims d, $t_plr plr)
+		LEFT JOIN $t_profile pp ON pp.uniqueid = plr.uniqueid
+		WHERE plr.plrid = d.victimid AND d.plrid = ?
 CMD;
 
-		$sql .= $this->ps->order_by($criteria['sort'], $criteria['order']);
-		$sql .= $this->ps->limit($criteria['limit'], $criteria['start']);
+		// apply is_ranked shortcut
+		if ($criteria['is_ranked']) {
+			$criteria['where'][] = $this->ps->is_ranked_sql;
+		}
 		
-		$q = $ci->db->query($sql, $id);
+		$cmd .= $this->ps->where($criteria['where'], 'AND', true, ' AND ');
+		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
+		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
+		
+		$q = $ci->db->query($cmd, $id);
 
-		$res = array();
+		$list = array();
 		if ($q->num_rows()) {
 			foreach ($q->result_array() as $row) {
 				// remove useless fields
 				unset($row['plrid'], $row['gametype'], $row['modtype']);
-				$res[] = $row;
+				$list[] = $row;
 			}
 		}
 		$q->free_result();
 
-		return $res;
+		return $list;
 	} 
+
+	protected function get_sql() {
+		$t_victims = $this->ps->tbl('c_plr_victims', $this->ps->gametype(), $this->ps->modtype());
+
+		// non game specific stats
+		$sql = array(
+			'*' 			=> 'd.*',
+			'plr' 			=> 'plr.*',
+			'pp' 			=> 'pp.*',
+			'kills_per_death' 	=> 'ROUND(IFNULL(kills / deaths, 0),2) kills_per_death',
+			'kills_scaled_pct' 	=> "IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_victims d3 WHERE d3.plrid=d.plrid) * 100, 0) kills_scaled_pct",
+			'kills_pct' 		=> "IFNULL(d.kills / (SELECT SUM(d2.kills) FROM $t_victims d2) * 100, 0) kills_pct",
+		);
+		return $sql;
+	}
 } 
 
 ?>

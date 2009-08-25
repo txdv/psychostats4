@@ -20,13 +20,12 @@ class Psychostats_Method_Get_Maps extends Psychostats_Method {
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
 		// set defaults
 		$criteria += array(
-			'select' 	=> null,
-			'select_overload_method'=> 'get_maps_sql',
 			'limit' 	=> null,
 			'start' 	=> null,
 			'sort'		=> null,
 			'order' 	=> null,
 			'where' 	=> null,
+			'select' 	=> null,
 		);
 		
 		$ci =& get_instance();
@@ -39,46 +38,51 @@ class Psychostats_Method_Get_Maps extends Psychostats_Method {
 
 		// setup table names
 		$t_map = $this->ps->tbl('map', false);
-		$c_map_data = $ci->db->dbprefix('c_map_data_' . $gametype);
-		if ($modtype) {
-			$c_map_data .= '_' . $modtype;
-		}
+		$c_map_data = $this->ps->tbl('c_map_data', $gametype, $modtype);
 
-		// allow game::mod specific stats to be added
-		$stats = $criteria['select'];
-		if ($meth = $this->ps->load_overloaded_method($criteria['select_overload_method'], $gametype, $modtype)) {
-			$meth->execute($stats);
-		}
-		
-		// combine everything into a string for our query
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
 		$fields = is_array($stats) ? implode(',', $stats) : $stats;
-		if (empty($fields)) {
-			$fields = '*';
-		}
 
 		// start basic query
-		$sql = "SELECT $fields FROM $t_map map, $c_map_data d WHERE ";
+		$cmd = "SELECT $fields FROM $t_map map, $c_map_data d WHERE ";
 
 		// add join clause for tables
 		$criteria['where'][] = 'd.mapid=map.mapid';
 		
 		// apply sql clauses
-		$sql .= $this->ps->where($criteria['where']);
-		$sql .= $this->ps->order_by($criteria['sort'], $criteria['order']);
-		$sql .= $this->ps->limit($criteria['limit'], $criteria['start']);
+		$cmd .= $this->ps->where($criteria['where']);
+		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
+		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
 
-		$q = $ci->db->query($sql);
+		$q = $ci->db->query($cmd);
 
-		$res = array();
+		$list = array();
 		if ($q->num_rows()) {
 			foreach ($q->result_array() as $row) {
-				$res[] = $row;
+				$list[] = $row;
 			}
 		}
 		$q->free_result();
 
-		return $res;
+		return $list;
 	}
+
+	protected function get_sql() {
+		$c_maps = $this->ps->tbl('c_map_data');
+
+		$sql = array(
+			'*' => 'd.*',
+			'map' => 'map.name',
+
+			'online_time_scaled_pct' => "IFNULL(d.online_time / (SELECT MAX(online_time) FROM $c_maps) * 100, 0) online_time_scaled_pct",
+			'online_time_pct' => "IFNULL(d.online_time / (SELECT SUM(online_time) FROM $c_maps) * 100, 0) online_time_pct",
+			'kills_scaled_pct' => "IFNULL(d.kills / (SELECT MAX(kills) FROM $c_maps) * 100, 0) kills_scaled_pct",
+			'kills_pct' => "IFNULL(d.kills / (SELECT SUM(kills) FROM $c_maps) * 100, 0) kills_pct",
+		);
+		
+		return $sql;
+	}
+
 } 
 
 ?>

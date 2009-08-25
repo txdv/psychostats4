@@ -34,9 +34,10 @@ class Psychostats_Method_Get_Player_Total extends Psychostats_Method {
 		} else {
 			$tbl = $this->ps->tbl('c_plr_' . $table, $gametype, $modtype);
 		}
-		$sql = "SELECT COUNT(plrid) total FROM $tbl WHERE plrid=?";
 		
-		$q = $ci->db->query($sql, $id);
+		$cmd = "SELECT COUNT(plrid) total FROM $tbl WHERE plrid=?";
+		
+		$q = $ci->db->query($cmd, $id);
 
 		$res = 0;
 		if ($q->num_rows()) {

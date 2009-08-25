@@ -40,25 +40,8 @@ class Players extends MY_Controller {
 		$total_players = $this->ps->get_total_players();
 		$total_ranked  = $this->ps->get_total_players(array('is_ranked' => true));
 
-
-		// non game specific stats		
-		$stats = array(
-			// basic player information
-			'plr.plrid, plr.uniqueid, plr.activity, ' . 
-			'plr.skill, plr.skill_prev, plr.rank, plr.rank_prev, ' .
-			'plr.clanid, pp.name, pp.avatar, pp.cc',
-
-			// static stats
-			'kills, deaths, headshot_kills, online_time',
-
-			// calculated stats
-			'ROUND(IFNULL(kills / deaths, 0), 2) AS kills_per_death',
-			'ROUND(IFNULL(kills / (online_time/60), 0), 2) AS kills_per_minute', 
-			'ROUND(IFNULL(headshot_kills / kills * 100, 0), 0) AS headshot_kills_pct',
-		);
-
 		$criteria = array(
-			'select'=> $stats,
+			//'select'=> $stats,
 			'limit' => $this->get['limit'],
 			'start' => $this->get['start'],
 			'sort'	=> $this->get['sort'] . ($this->get['sort'] != 'kills' ? ', kills desc' : ''),

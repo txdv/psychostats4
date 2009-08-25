@@ -68,6 +68,7 @@ class Role extends MY_Controller {
 			'sort' => $this->get['ks'],
 			'order' => $this->get['ko'],
 			'limit' => $limit,
+			//'is_ranked' => true
 		));
 
 		$this->topten_kills_table = $this->default_table->create()
@@ -112,7 +113,7 @@ class Role extends MY_Controller {
 		
 		// allow game specific updates to the blocks ...
 		// load method if available
-		$method = $this->ps->load_overloaded_method('role_nav_blocks', $this->role['gametype'], $this->role['modtype']);
+		$method = $this->ps->load_overloaded_method('nav_blocks_role', $this->role['gametype'], $this->role['modtype']);
 		$nav_block_html = $this->smarty->render_blocks(
 			$method, $this->nav_blocks, 
 			array(&$this->role, &$this->role_stats)

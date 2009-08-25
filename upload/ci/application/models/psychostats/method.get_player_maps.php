@@ -19,7 +19,7 @@ class Psychostats_Method_Get_Player_Maps extends Psychostats_Method {
 			'order' 	=> 'desc',
 			'limit' 	=> null,
 			'start' 	=> 0,
-			'fields'	=> null,	// extra fields to select
+			'select'	=> null,
 		);
 		
 		$ci =& get_instance();
@@ -38,50 +38,55 @@ class Psychostats_Method_Get_Player_Maps extends Psychostats_Method {
 		$t_maps = $this->ps->tbl('c_plr_maps', $gametype, $modtype);
 		$t_map = $this->ps->tbl('map', false);
 
-		// non game specific stats
-		$stats = array(
-			'd.*, m.name',
-			'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
-			'ROUND(IFNULL(d.kills / (d.online_time / 60), 0),2) kills_per_minute',
-			"IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_maps d3 WHERE d3.plrid=d.plrid) * 100, 0) kills_scaled_pct",
-			'IFNULL(d.kills / d2.kills * 100, 0) kills_pct',
-			'IFNULL(d.wins / d.losses, d.wins) win_ratio',
-			'IFNULL(d.wins / (d.wins + d.losses) * 100, 0) win_pct',
-		);
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
+		$fields = is_array($stats) ? implode(',', $stats) : $stats;
 
-		// allow game::mod specific stats to be added
-		if ($meth = $this->ps->load_overloaded_method('get_player_maps_sql', $gametype, $modtype)) {
-			$meth->execute($stats);
-		}
-		
-		// combine everything into a string for our query
-		$fields = implode(',', $stats);
-		
-		// load the compiled stats
-		$sql =
+		$cmd =
 <<<CMD
 		SELECT $fields
-		FROM ($t_maps d, $t_map m)
-		LEFT JOIN $t_data d2 ON d2.plrid=d.plrid
-		WHERE m.mapid = d.mapid AND d.plrid = ?
+		FROM ($t_maps d, $t_map map)
+		WHERE map.mapid = d.mapid AND d.plrid = ?
 CMD;
 
-		$sql .= $this->ps->order_by($criteria['sort'], $criteria['order']);
-		$sql .= $this->ps->limit($criteria['limit'], $criteria['start']);
-		$q = $ci->db->query($sql, $id);
+		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
+		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
 
-		$res = array();
+		$q = $ci->db->query($cmd, $id);
+
+		$list = array();
 		if ($q->num_rows()) {
 			foreach ($q->result_array() as $row) {
-				// remove useless fields
+				// remove id so it doesn't cause problems with
+				// some url generation.
 				unset($row['plrid']);
-				$res[] = $row;
+				$list[] = $row;
 			}
 		}
 		$q->free_result();
 
-		return $res;
+		return $list;
 	} 
+
+	protected function get_sql() {
+		$t_maps = $this->ps->tbl('c_plr_maps', $this->ps->gametype(), $this->ps->modtype());
+
+		// non game specific stats
+		$sql = array(
+			'*' 			=> 'd.*',
+			'map'			=> 'map.name',
+			'kills_per_death' 	=> 'ROUND(IFNULL(kills / deaths, 0),2) kills_per_death',
+			'kills_per_minute' 	=> 'ROUND(IFNULL(kills / (online_time/60), 0),2) kills_per_minute',
+
+			'headshot_kills_pct' 	=> 'IFNULL(headshot_kills / kills * 100, 0) headshot_kills_pct',
+			'headshot_deaths_pct' 	=> 'IFNULL(headshot_deaths / deaths * 100, 0) headshot_deaths_pct',
+
+			'kills_scaled_pct' 	=> "IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_maps d3 WHERE d3.plrid=d.plrid) * 100, 0) kills_scaled_pct",
+			'kills_pct' 		=> "IFNULL(d.kills / (SELECT SUM(d2.kills) FROM $t_maps d2) * 100, 0) kills_pct",
+			'win_ratio' 		=> 'IFNULL(wins / losses, wins) win_ratio',
+			'win_pct' 		=> 'IFNULL(wins / (wins + losses) * 100, 0) win_pct',
+		);
+		return $sql;
+	}
 } 
 
 ?>

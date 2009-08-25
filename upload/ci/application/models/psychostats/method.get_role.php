@@ -16,6 +16,7 @@ class Psychostats_Method_Get_Role extends Psychostats_Method {
 		$criteria += array(
 			'id'		=> 0,
 			'force_string'	=> false,
+			'select'	=> null,
 		);
 		
 		$id = isset($criteria['id']) ? $criteria['id'] : 0;
@@ -26,17 +27,14 @@ class Psychostats_Method_Get_Role extends Psychostats_Method {
 		$key = (is_numeric($criteria['id']) and !$criteria['force_string'])
 			? 'roleid'
 			: 'name';
+
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
+		$fields = is_array($stats) ? implode(',', $stats) : $stats;
 		
-		// load the basic record first.
-		$sql = 
-<<<CMD
-		SELECT role.*, COALESCE(full_name, name) long_name
-		FROM $t_role role
-		WHERE role.$key = ?
-CMD;
+		$cmd = "SELECT $fields FROM $t_role role WHERE role.$key=?";
 
 		$ci =& get_instance();
-		$q = $ci->db->query($sql, $id);
+		$q = $ci->db->query($cmd, $id);
 
 		if ($q->num_rows() == 0) {
 			// not found
@@ -47,7 +45,15 @@ CMD;
 		$q->free_result();
 
 		return $res;
-	} 
+	}
+
+	protected function get_sql() {
+		// non game specific stats
+		$sql = array(
+			'*' => 'role.*, COALESCE(full_name, name) long_name',
+		);
+		return $sql;
+	}
 } 
 
 ?>

@@ -1,7 +1,7 @@
 <?php
 /**
  * Psychostats game specific method to modify the main roles table.
- * $Id: method.mod_table_roles.php 624 2009-08-20 11:16:44Z lifo $
+ * $Id$
  */
 
 class Psychostats_Method_Mod_Table_Roles_Halflife_Tf

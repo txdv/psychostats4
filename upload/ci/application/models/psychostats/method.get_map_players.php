@@ -21,12 +21,11 @@ class Psychostats_Method_Get_Map_Players extends Psychostats_Method {
 		// set defaults
 		$criteria += array(
 			'id'		=> 0,		// mapid
-			'select' 	=> null,
-			'select_overload_method' => 'get_map_players_sql',
 			'limit' 	=> null,
 			'start' 	=> null,
 			'order' 	=> null,
 			'where' 	=> null,
+			'select' 	=> null,
 		);
 		
 		$ci =& get_instance();
@@ -38,31 +37,18 @@ class Psychostats_Method_Get_Map_Players extends Psychostats_Method {
 		}
 
 		if (empty($criteria['select'])) {
-			$criteria['select'] = array(
-				'plr.*, pp.*, d.*',
-				'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
-			);
+			$stats = $this->get_sql();
+		} else {
+			$stats = $criteria['select'];
 		}
 
 		// setup table names
 		$t_plr = $this->ps->tbl('plr', false);
 		$t_plr_profile = $this->ps->tbl('plr_profile', false);
-		$t_plr_maps = $ci->db->dbprefix('c_plr_maps_' . $gametype);
-		if ($modtype) {
-			$t_plr_maps .= '_' . $modtype;
-		}
+		$t_plr_maps = $this->ps->tbl('c_plr_maps', $gametype, $modtype);
 
-		// allow game::mod specific stats to be added
-		$stats = $criteria['select'];
-		if ($meth = $this->ps->load_overloaded_method($criteria['select_overload_method'], $gametype, $modtype)) {
-			$meth->execute($stats);
-		}
-		
-		// combine everything into a string for our query
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
 		$fields = is_array($stats) ? implode(',', $stats) : $stats;
-		if (empty($fields)) {
-			$fields = '*';
-		}
 
 		// start basic query
 		$cmd =
@@ -72,18 +58,33 @@ class Psychostats_Method_Get_Map_Players extends Psychostats_Method {
 		WHERE d.mapid=? AND plr.plrid=d.plrid AND pp.uniqueid=plr.uniqueid
 CMD;
 
-		$sql .= $this->ps->where($criteria['where'], 'AND', true, ' AND ');
+		$cmd .= $this->ps->where($criteria['where'], 'AND', true, ' AND ');
 		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
 		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
 
-		$q = $ci->db->query($cmd, array($criteria['id']));
+		$q = $ci->db->query($cmd, $criteria['id']);
 
 		$list = array();		
 		if ($q->num_rows()) {
-			$list = $q->result_array();
+			foreach ($q->result_array() as $row) {
+				// remove id so it doesn't cause problems with
+				// some url generation.
+				unset($row['mapid']);
+				$list[] = $row;
+			}
 		}
 		$q->free_result();
 		return $list;
+	}
+
+	protected function get_sql() {
+		$sql = array(
+			'plr' => 'plr.*',
+			'pp' => 'pp.*',
+			'd' => 'd.*',
+			'kills_per_death' => 'ROUND(IFNULL(d.kills / d.deaths, 0),2) kills_per_death',
+		);
+		return $sql;
 	}
 } 
 

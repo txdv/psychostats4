@@ -69,7 +69,7 @@ class Map extends MY_Controller {
 			'order' => $this->get['ko'],
 			'limit' => $limit,
 		));
-
+		
 		$this->topten_kills_table = $this->default_table->create()
 			->set_data($this->topten_kills)
 			->set_sort($this->get['ks'], $this->get['ko'], array($this, '_sort_header_callback'))
@@ -109,12 +109,32 @@ class Map extends MY_Controller {
 					'value' => htmlentities($this->map['long_name'], ENT_COMPAT, 'UTF-8'),
 					'value_nowrap' => true,
 				),
+				'online_time' => array(
+					'label' => trans('Online Time'),
+					'value' => compact_time($this->map_stats['online_time']),
+				),
+				//'firstseen' => array(
+				//	'label' => trans('First Seen'),
+				//	'value' => strftime('%b %e, %Y @ %R', $this->map['firstseen']),
+				//),
+				//'lastseen' => array(
+				//	'label' => trans('Last Seen'),
+				//	'value' => strftime('%b %e, %Y @ %R', $this->map['lastseen']),
+				//),
+				'games' => array(
+					'label' => trans('Games'),
+					'value' => number_format($this->map_stats['games']),
+				),
+				'rounds' => array(
+					'label' => trans('Rounds'),
+					'value' => number_format($this->map_stats['rounds']),
+				),
 			),
 		);
 		
 		// allow game specific updates to the blocks ...
 		// load method if available
-		$method = $this->ps->load_overloaded_method('map_nav_blocks', $this->map['gametype'], $this->map['modtype']);
+		$method = $this->ps->load_overloaded_method('nav_blocks_map', $this->map['gametype'], $this->map['modtype']);
 		$nav_block_html = $this->smarty->render_blocks(
 			$method, $this->nav_blocks, 
 			array(&$this->map, &$this->map_stats)

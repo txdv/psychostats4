@@ -19,10 +19,10 @@ class Psychostats_Method_Get_Player_History extends Psychostats_Method {
 			'order' 	=> 'desc',
 			'limit' 	=> 31,
 			'start' 	=> 0,
-			'fields'	=> '*',		// fields to select
 			'keyed'		=> false,	// if true data is keyed by statdate
 			'fill_gaps'	=> false,	// fill in missing dates with null data? ('keyed' must be true)
 			'start_date'	=> date('Y-m-d'),
+			'select'	=> null,
 		);
 		
 		$ci =& get_instance();
@@ -38,10 +38,10 @@ class Psychostats_Method_Get_Player_History extends Psychostats_Method {
 		}
 
 		// determine what fields are going to be selected
-		$fields = '*';
-		if ($criteria['fields']) {
+		$fields = 'd.*';
+		if ($criteria['select']) {
 			$fields = '';
-			$list = array_unique(array_map('trim', explode(',', $criteria['fields'])));
+			$list = array_unique(array_map('trim', explode(',', $criteria['select'])));
 			foreach ($list as $f) {
 				$fields .= $f != '*' ? $ci->db->protect_identifiers($f) . ',' : $f;
 			}
@@ -52,16 +52,16 @@ class Psychostats_Method_Get_Player_History extends Psychostats_Method {
 		$t_data2 = $this->ps->tbl('plr_data', $gametype, $modtype);
 		
 		// load the compiled stats
-		$sql =
+		$cmd =
 <<<CMD
 		SELECT statdate,UNIX_TIMESTAMP(statdate) date,$fields
 		FROM ($t_data d, $t_data2 d2)
 		WHERE d.plrid = ? AND d.dataid=d2.dataid
 CMD;
 
-		$sql .= $this->ps->order_by($criteria['sort'], $criteria['order']);
-		$sql .= $this->ps->limit($criteria['limit'], $criteria['start']);
-		$q = $ci->db->query($sql, $id);
+		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
+		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
+		$q = $ci->db->query($cmd, $id);
 
 		$res = array();
 		if ($q->num_rows()) {

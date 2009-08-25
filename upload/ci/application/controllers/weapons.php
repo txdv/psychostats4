@@ -47,39 +47,7 @@ class Weapons extends MY_Controller {
 		// determine the total players available
 		$total_players = $this->ps->get_total_players();
 
-		$t_weapons = $this->ps->tbl('c_weapon_data', $this->get['gametype'], $this->get['modtype']);
-
-		// non game specific stats		
-		$stats = array(
-			// basic information
-			'name, full_name, weight, class',
-
-			// static stats
-			'd.*',
-
-			// calculated stats
-			"IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_weapons d3) * 100, 0) kills_scaled_pct",
-			"IFNULL(d.kills / (SELECT SUM(d2.kills) FROM $t_weapons d2) * 100, 0) kills_pct",
-			'ROUND(IFNULL(headshot_kills / kills * 100, 0), 0) headshot_kills_pct',
-			'IFNULL(d.shots / d.hits * 100, 0) accuracy',
-			'IFNULL(d.hit_head / d.hits * 100, 0) hit_head_pct',
-			'IFNULL(d.hit_chest / d.hits * 100, 0) hit_chest_pct',
-			'IFNULL(d.hit_leftarm / d.hits * 100, 0) hit_leftarm_pct',
-			'IFNULL(d.hit_rightarm / d.hits * 100, 0) hit_rightarm_pct',
-			'IFNULL(d.hit_stomach / d.hits * 100, 0) hit_stomach_pct',
-			'IFNULL(d.hit_leftleg / d.hits * 100, 0) hit_leftleg_pct',
-			'IFNULL(d.hit_rightleg / d.hits * 100, 0) hit_rightleg_pct',
-			'IFNULL(d.dmg_head / d.damage * 100, 0) dmg_head_pct',
-			'IFNULL(d.dmg_chest / d.damage * 100, 0) dmg_chest_pct',
-			'IFNULL(d.dmg_leftarm / d.damage * 100, 0) dmg_leftarm_pct',
-			'IFNULL(d.dmg_rightarm / d.damage * 100, 0) dmg_rightarm_pct',
-			'IFNULL(d.dmg_stomach / d.damage * 100, 0) dmg_stomach_pct',
-			'IFNULL(d.dmg_leftleg / d.damage * 100, 0) dmg_leftleg_pct',
-			'IFNULL(d.dmg_rightleg / d.damage * 100, 0) dmg_rightleg_pct',
-		);
-		
 		$criteria = array(
-			'select'=> $stats,
 			'limit' => $this->get['limit'],
 			'start' => $this->get['start'],
 			'sort'	=> $this->get['sort'],
@@ -98,7 +66,7 @@ class Weapons extends MY_Controller {
 			->column('headshot_kills', 	trans('HS'),	 	'number_format')
 			->column('headshot_kills_pct', 	trans('HS%'),	 	array($this, '_cb_pct'))
 			->column('accuracy', 		trans('Accuracy'), 	array($this, '_cb_pct2'))
-			->column('Damage',		trans('Damage'), 	array($this, '_cb_abbrnum'))
+			->column('damage',		trans('Damage'), 	array($this, '_cb_abbrnum'))
 			->data_attr('name', 'class', 'name')
 			->data_attr('img', 'class', 'img')
 			->header_attr('img', 'nosort', true)

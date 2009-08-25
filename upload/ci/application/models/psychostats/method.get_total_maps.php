@@ -14,7 +14,8 @@ class Psychostats_Method_Get_Total_Maps extends Psychostats_Method {
 			$criteria = array();
 		}
 		$criteria += array(
-			'where' 	=> null
+			'where' 	=> null,
+			'is_ranked'	=> null
 		);
 
 		$ci =& get_instance();
@@ -26,20 +27,22 @@ class Psychostats_Method_Get_Total_Maps extends Psychostats_Method {
 		}
 
 		$t_map = $this->ps->tbl('map', false);
-		$c_map_data = $ci->db->dbprefix('c_map_data_' . $gametype);
-		if ($modtype) {
-			$c_map_data .= '_' . $modtype;
-		}
+		$c_map_data = $this->ps->tbl('c_map_data', $gametype, $modtype);
 		
 		// start basic query
-		$sql = "SELECT COUNT(*) total FROM $t_map map,$c_map_data d WHERE ";
+		$cmd = "SELECT COUNT(*) total FROM $t_map map,$c_map_data d WHERE ";
 		
 		// add join clause for tables
 		$criteria['where'][] = 'd.mapid=map.mapid';
 
-		$sql .= $this->ps->where($criteria['where']);
+		// apply is_ranked shortcut
+		if ($criteria['is_ranked']) {
+			$criteria['where'][] = $this->ps->is_ranked_sql;
+		}
+		
+		$cmd .= $this->ps->where($criteria['where']);
 
-		$q = $ci->db->query($sql);
+		$q = $ci->db->query($cmd);
 
 		$count = 0;
 		if ($q->num_rows()) {

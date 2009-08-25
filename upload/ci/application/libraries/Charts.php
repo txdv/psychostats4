@@ -11,6 +11,7 @@ class Charts {
 	 * @param string $chart_type Type of chart to create.
 	 * @param int $width Width of the chart.
 	 * @param int $height Height of the chart.
+	 * @param array Optional array of paramaters to initialize chart.
 	 *
 	 */
 	function create($chart_type ='column3d', $width = 320, $height = 240, $params = array()) {
@@ -21,7 +22,7 @@ class Charts {
 			// ability to send headers. I can't figure it out, so
 			// for now I do this.
 			ob_start();
-			require_once "charts/FusionCharts_Gen.php";
+			require 'charts/FusionCharts_Gen.php';
 			ob_end_clean();
 			$loaded = true;
 		}

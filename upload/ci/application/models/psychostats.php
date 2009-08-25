@@ -179,7 +179,11 @@ class Psychostats extends Model {
 			} 
 			include $methods_dir . $filename;
 			if (!class_exists($class_name, false)) {
-				throw new Exception("Method file $filename does not define class $class_name");
+				if ($missing_allowed) {
+					return false;
+				} else {
+					throw new Exception("Method file $filename does not define class $class_name");
+				}
 			}
 			$this->loaded_methods[$name] = new $class_name($this);
 		}
@@ -216,6 +220,13 @@ class Psychostats extends Model {
 			}
 			array_pop($parts);
 		}
+
+		// attempt to load base method since an overloaded method was
+		// not found above.
+		if ($method = $this->load_method($func, null, true)) {
+			return $method;
+		}
+		
 		return false;
 	}
 	
@@ -230,8 +241,8 @@ class Psychostats extends Model {
 	 */
 	public function mod_table($table, $func, $gametype, $modtype = null) {
 		$name = 'mod_table_' . $func;
-		if ($this->load_overloaded_method($name, $gametype, $modtype)) {
-			return $this->__call($name, array( $table, $gametype, $modtype ));
+		if ($meth = $this->load_overloaded_method($name, $gametype, $modtype)) {
+			$meth->execute($table, $gametype, $modtype);
 		}
 		return false;
 
@@ -455,7 +466,11 @@ class Psychostats extends Model {
 	public function __call($name, $args) {
 		if (!array_key_exists($name, $this->loaded_methods)) {
 			if ($this->allow_autoload_methods) {
-				$this->load_method($name);
+				if ($this->gametype) {
+					$this->load_overloaded_method($name, $this->gametype, $this->modtype);
+				} else {
+					$this->load_method($name);
+				}
 			} else {
 				$caller = debug_backtrace();
 				trigger_error('Call to undefined method '

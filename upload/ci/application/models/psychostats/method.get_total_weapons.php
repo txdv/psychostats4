@@ -25,20 +25,17 @@ class Psychostats_Method_Get_Total_Weapons extends Psychostats_Method {
 		}
 
 		$t_weapon = $this->ps->tbl('weapon', false);
-		$c_weapon_data = $ci->db->dbprefix('c_weapon_data_' . $gametype);
-		if ($modtype) {
-			$c_weapon_data .= '_' . $modtype;
-		}
+		$c_weapon_data = $this->ps->tbl('c_weapon_data', $gametype, $modtype);
 		
 		// start basic query
-		$sql = "SELECT COUNT(*) total FROM $t_weapon weapon,$c_weapon_data d WHERE ";
+		$cmd = "SELECT COUNT(*) total FROM $c_weapon_data d,$t_weapon wpn WHERE ";
 		
 		// add join clause for tables
-		$criteria['where'][] = 'd.weaponid=weapon.weaponid';
+		$criteria['where'][] = 'd.weaponid=wpn.weaponid';
 
-		$sql .= $this->ps->where($criteria['where']);
+		$cmd .= $this->ps->where($criteria['where']);
 
-		$q = $ci->db->query($sql);
+		$q = $ci->db->query($cmd);
 
 		$count = 0;
 		if ($q->num_rows()) {

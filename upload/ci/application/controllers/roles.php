@@ -47,26 +47,7 @@ class Roles extends MY_Controller {
 		// determine the total players available
 		$total_players = $this->ps->get_total_players();
 
-		$t_roles = $this->ps->tbl('c_role_data', $this->get['gametype'], $this->get['modtype']);
-
-		// non game specific stats		
-		$stats = array(
-			// basic information
-			'name, full_name',
-
-			// static stats
-			'd.*',
-
-			// calculated stats
-			"IFNULL(d.kills / (SELECT MAX(d3.kills) FROM $t_roles d3) * 100, 0) kills_scaled_pct",
-			"IFNULL(d.kills / (SELECT SUM(d2.kills) FROM $t_roles d2) * 100, 0) kills_pct",
-			'ROUND(IFNULL(d.kills / d.deaths, 0), 2) kills_per_death',
-			'ROUND(IFNULL(headshot_kills / kills * 100, 0), 0) headshot_kills_pct',
-			//'IFNULL(d.shots / d.hits * 100, 0) accuracy',
-		);
-		
 		$criteria = array(
-			'select'=> $stats,
 			'limit' => $this->get['limit'],
 			'start' => $this->get['start'],
 			'sort'	=> $this->get['sort'],

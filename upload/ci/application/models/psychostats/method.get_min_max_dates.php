@@ -23,16 +23,16 @@ class Psychostats_Method_Get_Min_Max_Dates extends Psychostats_Method {
 			$max = "MAX(statdate)";
 		}
 
-		$sql =
+		$cmd =
 <<<CMD
 		SELECT $min min,$max max
 		FROM $t_maps d, $t_map m
 		WHERE d.mapid=m.mapid AND gametype=? AND modtype
 CMD;
-		$sql .= $modtype ? '=?' : ' IS ?';
+		$cmd .= $modtype ? '=?' : ' IS ?';
 		
 		$ci =& get_instance();
-		$q = $ci->db->query($sql, array($gametype, $modtype));
+		$q = $ci->db->query($cmd, array($gametype, $modtype));
 
 		$res = array();
 		if ($q->num_rows()) {

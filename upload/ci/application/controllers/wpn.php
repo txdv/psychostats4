@@ -10,6 +10,8 @@ class Wpn extends MY_Controller {
 	protected $default_table;
 	protected $default_pager;
 	protected $blocks;
+
+	protected $limit_players = 25;
 	
 	function Wpn()
 	{
@@ -60,14 +62,12 @@ class Wpn extends MY_Controller {
 			->set_template('table_open', '<table class="neat">')
 			;
 
-		$limit = 25;
-
 		$this->weapon_stats = $this->ps->get_weapon_stats($id);
 		$this->topten_kills = $this->ps->get_weapon_players(array(
 			'id' => $id,
 			'sort' => $this->get['ks'],
 			'order' => $this->get['ko'],
-			'limit' => $limit,
+			'limit' => $this->limit_players,
 		));
 
 		$this->topten_kills_table = $this->default_table->create()
@@ -121,7 +121,7 @@ class Wpn extends MY_Controller {
 		
 		// allow game specific updates to the blocks ...
 		// load method if available
-		$method = $this->ps->load_overloaded_method('weapon_nav_blocks', $this->wpn['gametype'], $this->wpn['modtype']);
+		$method = $this->ps->load_overloaded_method('nav_blocks_weapon', $this->wpn['gametype'], $this->wpn['modtype']);
 		$nav_block_html = $this->smarty->render_blocks(
 			$method, $this->nav_blocks, 
 			array(&$this->wpn, &$this->weapon_stats)

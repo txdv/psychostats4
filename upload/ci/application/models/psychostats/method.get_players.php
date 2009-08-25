@@ -38,37 +38,18 @@ class Psychostats_Method_Get_Players extends Psychostats_Method {
 			$modtype = $this->ps->modtype();
 		}
 
-		// add the game::mod to our where clause
-		if ($gametype) {
-			$criteria['where']['gametype'] = $gametype;
-			$criteria['where']['modtype']  = $modtype;
-		}
-
 		// setup table names
 		$t_plr = $this->ps->tbl('plr', false);
 		$t_plr_profile = $this->ps->tbl('plr_profile', false);
-		$c_plr_data = $ci->db->dbprefix('c_plr_data_' . $gametype);
-		if ($modtype) {
-			$c_plr_data .= '_' . $modtype;
-		}
+		$c_plr_data = $this->ps->tbl('c_plr_data', $gametype, $modtype);
 
-		// allow game::mod specific stats to be added
-		$stats = $criteria['select'];
-		if ($meth = $this->ps->load_overloaded_method($criteria['select_overload_method'], $gametype, $modtype)) {
-			$meth->execute($stats);
-		}
-		
-		// combine everything into a string for our query
+		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
 		$fields = is_array($stats) ? implode(',', $stats) : $stats;
-		if (empty($fields)) {
-			$fields = '*';
-		}
 
-		// start basic query
-		$sql =
+		$cmd =
 <<<CMD
 		SELECT $fields
-		FROM ($t_plr plr, $c_plr_data d)
+		FROM ($c_plr_data d, $t_plr plr)
 		LEFT JOIN $t_plr_profile pp ON plr.uniqueid=pp.uniqueid
 		WHERE
 CMD;
@@ -83,11 +64,11 @@ CMD;
 		}
 		
 		// apply sql clauses
-		$sql .= $this->ps->where($criteria['where']);
-		$sql .= $this->ps->order_by($criteria['sort'], $criteria['order']);
-		$sql .= $this->ps->limit($criteria['limit'], $criteria['start']);
-		
-		$q = $ci->db->query($sql);
+		$cmd .= $this->ps->where($criteria['where']);
+		$cmd .= $this->ps->order_by($criteria['sort'], $criteria['order']);
+		$cmd .= $this->ps->limit($criteria['limit'], $criteria['start']);
+
+		$q = $ci->db->query($cmd);
 
 		$res = array();
 		if ($q->num_rows()) {
@@ -98,6 +79,25 @@ CMD;
 		$q->free_result();
 
 		return $res;
+	}
+
+	protected function get_sql() {
+		$sql = array(
+			// basic player information
+			'plr' 	=> 'plr.plrid, plr.uniqueid, plr.activity, plr.clanid, ' .
+				   'plr.skill, plr.skill_prev, plr.rank, plr.rank_prev',
+			'pp' 	=> 'pp.name, pp.avatar, pp.cc',
+
+			// static stats
+			'static' => 'kills, deaths, headshot_kills, online_time',
+
+			// calculated stats
+			'kills_per_death' 	=> 'ROUND(IFNULL(kills / deaths, 0), 2) kills_per_death',
+			'kills_per_minute' 	=> 'ROUND(IFNULL(kills / (online_time/60), 0), 2) kills_per_minute', 
+			'headshot_kills_pct' 	=> 'ROUND(IFNULL(headshot_kills / kills * 100, 0), 0) headshot_kills_pct',
+		);
+
+		return $sql;
 	}
 } 
 
