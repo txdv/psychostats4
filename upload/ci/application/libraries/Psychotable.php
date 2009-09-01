@@ -114,6 +114,11 @@ class Psychotable {
 		}
 		$col = $this->_new_column($name, $label, $modifiers, $attr, 'header');
 		$this->columns += array($name => $col);
+		
+		if ($name == '+') {
+			// force no sort for special increment column
+			$this->header_attr('+', array('nosort' => true));
+		}
 		return $this;
 	}
 
@@ -130,6 +135,11 @@ class Psychotable {
 		}
 		$col = $this->_new_column($name, $label, $modifiers, $attr, 'header');
 		$this->columns = array($name => $col) + $this->columns;
+
+		if ($name == '+') {
+			// force no sort for special increment column
+			$this->header_attr('+', array('nosort' => true));
+		}
 		return $this;
 	}
 
@@ -157,6 +167,11 @@ class Psychotable {
 			}
 			$this->columns = $new;
 		}
+
+		if ($name == '+') {
+			// force no sort for special increment column
+			$this->header_attr('+', array('nosort' => true));
+		}
 		return $this;
 	}
 
@@ -183,6 +198,11 @@ class Psychotable {
 				}
 			}
 			$this->columns = $new;
+		}
+
+		if ($name == '+') {
+			// force no sort for special increment column
+			$this->header_attr('+', array('nosort' => true));
 		}
 		return $this;
 	}
@@ -401,13 +421,18 @@ class Psychotable {
 					$attr = isset($col['attr']['data']) ? $col['attr']['data'] : null;
 					$td = new Psychotable_Tag($this->template[$part], $attr);
 
-					$value = isset($record[$name]) ? $record[$name] : null;
-
-					// callback prototype:
-					// func(name, value, record, TD, TABLE)
-					$content = $this->modify(
-						$name, $value, $record, $td
-					);
+					if ($name == '+') {
+						// auto-increment column
+						$content = $i + $this->columns[$name]['mods'];
+					} else {
+						$value = isset($record[$name]) ? $record[$name] : null;
+						
+						// callback prototype:
+						// func(name, value, record, TD, TABLE)
+						$content = $this->modify(
+							$name, $value, $record, $td
+						);
+					}
 
 					if (!isset($content)) {
 						$content = $this->empty_cell;
