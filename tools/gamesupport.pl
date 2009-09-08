@@ -94,9 +94,11 @@ my @tables =
 warn 'Enabling PsychoStats DB support for ' . $opt->gametype . '::' . $opt->modtype . ".\n";
 my $total = 0;
 foreach my $tbl (@tables) {
-	$total += add_type($tbl, 'gametype', trim($opt->gametype));
-	$total += add_type($tbl, 'modtype',  trim($opt->modtype));
-	$db->optimize($tbl) if $total;
+	my $t;
+	$t += add_type($tbl, 'gametype', trim($opt->gametype));
+	$t += add_type($tbl, 'modtype',  trim($opt->modtype));
+	$total += $t if $t;
+	$db->optimize($tbl) if $t;
 }
 if (!$total) {
 	warn "No changes required.\n";

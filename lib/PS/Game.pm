@@ -86,8 +86,9 @@ sub init {
 	# prepare any queries we'll be running repeatedly...
 	#$db->prepare('get_clantags', 	'SELECT * FROM t_config_clantags WHERE type=? ORDER BY idx');
 	$db->prepare('get_clantags', 	'SELECT id,clantag,alias,pos,type,blacklist FROM t_config_clantags ORDER BY idx');
-	$db->prepare('get_clan', 	'SELECT clanid,locked,rank,firstseen FROM t_clan WHERE clantag=? LIMIT 1');
-	$db->prepare('insert_clan', 	'INSERT INTO t_clan (clantag, firstseen) VALUES (?,?)');
+	$db->prepare('get_clan', 	'SELECT clanid,locked,rank,firstseen FROM t_clan WHERE clantag=? AND gametype=? AND modtype=? LIMIT 1');
+	#$db->prepare('inc_clan_members','UPDATE t_clan SET total_members=total_members+? WHERE clanid=?');
+	$db->prepare('insert_clan', 	'INSERT INTO t_clan (clantag, firstseen, gametype, modtype) VALUES (?,?,?,?)');
 	$db->prepare('insert_clan_profile', 'INSERT INTO t_clan_profile SET clantag=?');
 	$db->prepare('get_plr_alias', 	'SELECT to_uniqueid FROM t_config_plraliases WHERE from_uniqueid=? LIMIT 1');
 
@@ -270,8 +271,11 @@ sub scan_for_clantag {
 	if (defined $match) {
 		;;; warn "  Matches: $match\n" if $clantag_debug;
 		$tag = defined $ct->[5] ? $ct->[5] : $match;		# use alias if defined
+		$clan = $self->get_clan($tag);
+		# increment the total member count for this clan
+		#$self->{db}->execute('inc_clan_members', 1, $clan->{clanid});
 		if (wantarray) {
-			return ($tag, $self->get_clan($tag));
+			return ($tag, $clan);
 		} else {
 			return $tag;
 		}
@@ -291,14 +295,14 @@ sub get_clan {
 	}
 	
 	$clan = $self->{_clans}{$clantag}
-		|| $self->{db}->execute_fetchrow('get_clan', $clantag);
+		|| $self->{db}->execute_fetchrow('get_clan', $clantag, $self->{gametype}, $self->{modtype});
 	if ($clan or $check_only) {
 		return $self->{_clans}{$clantag} = $clan;
 	}
 
 	my $time = $self->{timestamp} || timegm(localtime);
 	# create the clan record
-	if (!$self->{db}->execute('insert_clan', $clantag, $time)) {
+	if (!$self->{db}->execute('insert_clan', $clantag, $time, $self->{gametype}, $self->{modtype})) {
 		$self->warn("Error inserting clan '$clantag' into DB: " . $self->{db}->lasterr);
 		return;
 	}
@@ -2203,7 +2207,7 @@ MAXDAYS_DONE:
 sub rescan_clans {
 	my $self = shift;
 	my $db = $self->{db};
-	my $total = $db->count($db->{t_plr}, [ allowrank => 1, clanid => 0 ]);
+	my $total = $db->count($db->{t_plr}, [ allowrank => 1, clanid => undef ]);
 	$self->info("$total ranked players will be scanned.");
 
 	my $clanid;
@@ -2239,7 +2243,7 @@ sub delete_clans {
 	my $self = shift;
 	my $profile_too = shift;
 	my $db = $self->{db};
-	$db->query("UPDATE $db->{t_plr} SET clanid=0 WHERE clanid <> 0");
+	$db->query("UPDATE $db->{t_plr} SET clanid=NULL WHERE clanid IS NOT NULL");
 	$db->truncate($db->{t_clan});
 	$db->truncate($db->{t_clan_profile}) if $profile_too;
 }
