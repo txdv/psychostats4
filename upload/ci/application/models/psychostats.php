@@ -10,7 +10,8 @@ class Psychostats extends Model {
 	// If false load_method() must be called explicitly.
 	public $allow_autoload_methods = true;
 	// @var string SQL string used to limit SQL results to players that are ranked.
-	public $is_ranked_sql = '(rank IS NOT NULL AND rank <> 0)';
+	public $is_ranked_sql = '(plr.rank IS NOT NULL AND plr.rank <> 0)';
+	public $is_clan_ranked_sql = '(clan.rank IS NOT NULL)';
 	// @var array Array of methods that have been loaded.
 	protected $loaded_methods = array();
 	// @var array PsychoStats configuration that has been loaded from DB.
@@ -117,6 +118,9 @@ class Psychostats extends Model {
 		}
 	}
 
+	/**
+	 * Returns the current default for gametype
+	 */
 	public function gametype() {
 		return $this->gametype;
 	}
@@ -137,6 +141,9 @@ class Psychostats extends Model {
 		$this->modtype = $modtype;
 	}
 
+	/**
+	 * Returns the current default for modtype
+	 */
 	public function modtype() {
 		return $this->modtype;
 	}
@@ -310,8 +317,8 @@ class Psychostats extends Model {
 
 	/**
 	 * Shortcut for ORDER BY x y.
-	 * $sort can be a comma separated string of fields to sort and the
-	 * $order will be added, as needed. 
+	 * @param string $sort A comma separated string of fields to sort by
+	 * @param string $order 'asc' or 'desc' order applied to the $sort.
 	 */
 	public function order_by($sort, $order = 'asc') {
 		$ci =& get_instance();
@@ -339,7 +346,7 @@ class Psychostats extends Model {
 	}
 	
 	/**
-	 * Shortcut for LIMIT x,y
+	 * Shortcut for LIMIT x,y. Returns a string for use in SQL queries.
 	 */
 	public function limit($limit, $start = null) {
 		$ci =& get_instance();
@@ -438,7 +445,13 @@ class Psychostats extends Model {
 		return preg_match('/[ <>!=]|is (?:not )?null|between/', $key) ? true : false;
 	}
 
-
+	/**
+	 * Returns a fully qualified table name with proper prefix and suffix.
+	 * @param string $tbl Base table name.
+	 * @param string $gametype Optional gametype. Leave null for current default.
+	 * @param string $modtype Optional modtype. Leave null for current default.
+	 *
+	 */
 	public function tbl($tbl, $gametype = null, $modtype = null) {
 		if ($gametype === null) {
 			$gametype = $this->gametype;
@@ -457,6 +470,76 @@ class Psychostats extends Model {
 			}
 		}
 		return $tbl;
+	}
+	
+	/**
+	 * Returns an array of column names for the table specified.
+	 * @param boolean $keyed If true an assoc array is returned where the
+	 * 			 key is the column name that points to a sub
+	 * 			 array with the create info for the column.
+	 * 			 Default is FALSE.
+	 * @param array $exclude A list of column names to exclude from result.
+	 */
+	public function get_columns($tbl, $keyed = false, $exclude = array()) {
+		static $cache = array();
+		if (array_key_exists($tbl, $cache) and array_key_exists($keyed?1:0, $cache[$tbl])) {
+			print "returning cache!\n";
+			return $cache[$tbl][$keyed?1:0];
+		}
+		
+		$ci =& get_instance();
+		$q = $ci->db->query("EXPLAIN $tbl");
+
+		if (!is_array($exclude)) {
+			$exclude = $exclude ? array($exclude) : array();
+		}
+
+		$res = array();
+		if ($q->num_rows()) {
+			foreach ($q->result_array() as $row) {
+				if ($exclude and in_array($row['Field'], $exclude)) {
+					// ignore excluded fields
+					continue;
+				}
+				
+				if ($keyed) {
+					$res[ $row['Field'] ] = $row;
+				} else {
+					$res[] = $row['Field'];
+				}
+			}
+		}
+		$q->free_result();
+
+		$cache[$tbl][$keyed?1:0] = $res;
+		return $res;
+		
+	}
+
+	/**
+	 * Returns the is_ranked_sql string for players with a different
+	 * prefix string.
+	 * @param string $prefix Optional player prefix string.
+	 *
+	 */
+	public function is_ranked_sql($prefix = 'plr') {
+		if ($prefix == 'plr') {
+			return $this->is_ranked_sql;
+		}
+		return str_replace('plr.', $prefix.'.', $this->is_ranked_sql);
+	}
+
+	/**
+	 * Returns the is_clan_ranked_sql string for clans with a different
+	 * prefix string.
+	 * @param string $prefix Optional clan prefix string.
+	 *
+	 */
+	public function is_clan_ranked_sql($prefix = 'clan') {
+		if ($prefix == 'clan') {
+			return $this->is_clan_ranked_sql;
+		}
+		return str_replace('clan.', $prefix.'.', $this->is_clan_ranked_sql);
 	}
 	
 	/**

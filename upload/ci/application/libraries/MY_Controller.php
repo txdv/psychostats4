@@ -289,6 +289,10 @@ class MY_Controller extends Controller {
 		);
 	}
 
+	function _cb_clan_link($name, $val, $data, $td, $table) {
+		return $this->_cb_name_link($name, $val == '' ? '-' : $val, $data, $td, $table);
+	}
+
 	// same as cb_plr_name except the name will not wrap in the table cell.
 	function _cb_name_link_no_wrap($name, $val, $plr, $td, $table) {
 		$link = $this->_cb_name_link($name, $val, $plr, $td, $table);

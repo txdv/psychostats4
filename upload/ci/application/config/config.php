@@ -13,6 +13,7 @@ $config['base_url'] = 'http://liche.net/ps/';
 $config['plr_url'] = 'plr';
 $config['wpn_url'] = 'wpn';
 $config['map_url'] = 'map';
+$config['clan_url'] = 'clan';
 $config['role_url'] = 'role';
 
 // URL to your themes WITH trailing slash. This is used to fetch static content
@@ -29,7 +30,7 @@ $config['charts_url'] = '/ps/charts/';
 // Absolute file path were themes are stored on the server
 $config['theme_dir'] = dirname(FCPATH) . DIRECTORY_SEPARATOR . 'themes';
 
-// Absolute root file path where the stock images on the server. 
+// Absolute root file path where the stock images are on the server. 
 $config['img_dir'] = dirname(FCPATH) . DIRECTORY_SEPARATOR . 'img';
 
 // Directory name for the different types of images within the img_dir path.

@@ -21,7 +21,6 @@ class Psychostats_Method_Get_Players extends Psychostats_Method {
 		// set defaults
 		$criteria += array(
 			'select' 	=> null,
-			'select_overload_method'=> 'get_players_sql',
 			'limit' 	=> null,
 			'start' 	=> null,
 			'sort'		=> null,

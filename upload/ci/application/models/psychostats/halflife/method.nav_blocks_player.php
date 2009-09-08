@@ -1,12 +1,13 @@
 <?php
 /**
- * PsychoStats method player_nav_blocks()
+ * PsychoStats method Nav_Blocks_Player()
  * $Id$
  *
  *
  */
 
-class Psychostats_Method_Player_Nav_Blocks_Halflife extends Psychostats_Method {
+class Psychostats_Method_Nav_Blocks_Player_Halflife
+extends Psychostats_Method {
 	public function execute(&$blocks, &$plr, &$stats) {
 		if (!isset($blocks['player_kill_profile'])) {
 			$blocks['player_kill_profile'] = array(

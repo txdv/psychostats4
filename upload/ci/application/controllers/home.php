@@ -61,7 +61,6 @@ class Home extends MY_Controller {
 		);
 		$criteria = array(
 			'select' => $select,
-			'select_overload_method' => null,
 			'limit' => 5,
 			'start' => 0,
 			'sort' => 'rank asc, kills desc', 
