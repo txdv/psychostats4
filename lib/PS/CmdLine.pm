@@ -120,7 +120,7 @@ sub _getOptions {
 
 		# CLAN OPTIONS
 		'scanclantags|clantags:s' => \$self->{param}{scanclantags},	# SCAN clans; matching players to clantags
-#		'deleteclans'	=> \$self->{param}{deleteclans},	# DELETE clans; plr.clanid=0 (profiles remain intact)
+		'deleteclans:s'	=> \$self->{param}{deleteclans},		# DELETE clans; plr.clanid=NULL
 
 		# DATABASE OPTIONS
 		'dbinit'	=> \$self->{param}{dbinit},
@@ -166,7 +166,7 @@ sub _sanitize {
 	}
 
 	# lowercase the following
-	my @list = qw( daily gametype modtype scanclantags );
+	my @list = qw( daily gametype modtype scanclantags deleteclans );
 	foreach (@list) {
 		next unless defined $self->{param}{$_};
 		$self->{param}{$_} = lc $self->{param}{$_};
@@ -185,6 +185,11 @@ sub _sanitize {
 	# if update is specified but it's blank or 0 default it to "all"
 	if (defined $self->{param}{update} and !$self->{param}{update}) {
 		$self->{param}{update} = 'all';
+	}
+
+	# if deleteclans is specified but it's blank or 0 default it to 1
+	if (defined $self->{param}{deleteclans} and !$self->{param}{deleteclans}) {
+		$self->{param}{deleteclans} = 1;
 	}
 
 	if (defined $self->{param}{scanclantags}) {

@@ -26,6 +26,7 @@ use warnings;
 use Carp;
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERBOSE = 0;
 
 our $ANSI = 0;
 #eval "use Term::ANSIColor";
@@ -78,7 +79,7 @@ sub log {
 		$msg = "Called from $plaintrace >>>\n" . $msg unless $notrace;
 	}
 
-	if (((ref $self and $self->{_verbose}) or !ref $self) or $severity ne 'info') {
+	if (((ref $self and ($self->{_verbose} || $VERBOSE)) or !ref $self) or $severity ne 'info') {
 		my $prefix = '';
 		if ($severity ne 'info') {
 			if ($ANSI) {
@@ -169,14 +170,18 @@ sub truncate {
 # the config
 sub verbose {
 	my ($self, $msg, $no_newline) = @_;
-	return unless $self->{_verbose};
+	return unless $VERBOSE || $self->{_verbose};
 	print $msg;
 	print "\n" if (!$no_newline and $msg !~ /\n$/);
 }
 
 sub set_verbose {
 	my ($self, $new) = @_;
-	$self->{_verbose} = $new;
+	if (ref $self) {
+		$self->{_verbose} = $new;
+	} else {
+		$VERBOSE = $new;
+	}
 }
 
 sub get_verbose {

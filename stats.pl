@@ -102,6 +102,7 @@ BEGIN { # do checks for required modules
 }
 
 use util qw( compacttime print_r abbrnum commify );
+use PS::Core;
 use PS::SourceFilter;
 use PS::CmdLine;
 use PS::DBI;
@@ -212,7 +213,9 @@ $db->do('SET time_zone = \'+00:00\'');	# Make sure Mysql treats all times as UTC
 
 $conf = new PS::Conf($db, 'main', $opt);
 $ERR = new PS::ErrLog($db, $conf);	# Errors will be logged to the DB
-$ERR->set_verbose($opt->verbose and !$opt->quiet);
+PS::Core->set_verbose($opt->verbose and !$opt->quiet);
+PS::ErrLog->set_verbose($opt->verbose and !$opt->quiet);
+#$ERR->set_verbose($opt->verbose and !$opt->quiet);
 
 # Setup global helpers for important objects. This simplifies the initialization
 # of these objects since they all use the same helpers (for the most part).
@@ -259,6 +262,34 @@ if (defined $opt->reset) {
 	}
 	
 	undef $ERR; # prevent END block from saying anything
+	exit;
+}
+
+if ($opt->deleteclans and !$opt->scanclantags) {
+	$ERR->info('Deleting clans ... ');
+	my $game = new PS::Game($opt->gametype, $opt->modtype, $db);
+	$game->delete_clans;
+	exit;
+}
+
+if ($opt->scanclantags) {
+	# load the game engine.
+	my $game = new PS::Game($opt->gametype, $opt->modtype, $db);
+
+	if ($opt->deleteclans) {
+		$ERR->info('Deleting clans ... ');
+		$game->delete_clans;
+	}
+	
+	$ERR->info('Rescanning clantags ... ');
+	
+
+	# make sure clantags are loaded, regardless of 'clantag_detection' being
+	# enabled or not.
+	$game->load_clantags unless defined $game->{clantags} and @{$game->{clantags}};
+
+	# scan all players for the gametype::modtype specified
+	$game->rescan_clans($opt->gametype, $opt->modtype);
 	exit;
 }
 

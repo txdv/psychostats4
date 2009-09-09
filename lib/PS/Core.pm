@@ -27,6 +27,7 @@ use PS::ErrLog;
 use PS::SourceFilter;
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERBOSE = 0;
 
 # may be called as a class or package method
 sub debug {
@@ -104,14 +105,18 @@ sub fatal_safe  { shift->errlog_safe(shift, 'fatal') }
 # the config
 sub verbose {
 	my ($self, $msg, $no_newline) = @_;
-	return unless $self->{_verbose};
+	return unless $VERBOSE || $self->{_verbose};
 	print $msg;
 	print "\n" if (!$no_newline and $msg !~ /\n$/);
 }
 
 sub set_verbose {
 	my ($self, $new) = @_;
-	$self->{_verbose} = $new;
+	if (ref $self) {
+		$self->{_verbose} = $new;
+	} else {
+		$VERBOSE = $new;
+	}
 }
 
 1;

@@ -30,6 +30,7 @@ use FindBin;
 use File::Spec::Functions;
 use POSIX qw(floor strftime mktime);
 use Time::Local;
+use Time::HiRes;
 use Safe;
 use Encode qw( encode_utf8 decode_utf8 );
 
@@ -90,6 +91,7 @@ sub init {
 	#$db->prepare('inc_clan_members','UPDATE t_clan SET total_members=total_members+? WHERE clanid=?');
 	$db->prepare('insert_clan', 	'INSERT INTO t_clan (clantag, firstseen, gametype, modtype) VALUES (?,?,?,?)');
 	$db->prepare('insert_clan_profile', 'INSERT INTO t_clan_profile SET clantag=?');
+	$db->prepare('clan_profile_exists', 'SELECT 1 FROM t_clan_profile WHERE clantag=?');
 	$db->prepare('get_plr_alias', 	'SELECT to_uniqueid FROM t_config_plraliases WHERE from_uniqueid=? LIMIT 1');
 
 	# initialize game event pattern matching ...
@@ -315,9 +317,12 @@ sub get_clan {
 		firstseen => $time
 	};
 
-	# create the clan profile. This will silently ignore duplicate entries
-	if (!$self->{db}->execute('insert_clan_profile', $clantag)) {
-		$self->warn("Error inserting clan profile for '$clantag' into DB: " . $self->{db}->lasterr);
+	# create the clan profile if it doesn't exist
+	my $exists = $self->{db}->execute_selectcol('clan_profile_exists', $clantag);
+	if (!$exists) {
+		if (!$self->{db}->execute('insert_clan_profile', $clantag)) {
+			$self->warn("Error inserting clan profile for '$clantag' into DB: " . $self->{db}->lasterr);
+		}
 	}
 	
 	return $clan;
@@ -2206,35 +2211,72 @@ MAXDAYS_DONE:
 # rescans for player -> clan relationships and rebuilds the clan database
 sub rescan_clans {
 	my $self = shift;
+	my ($gametype, $modtype) = @_;
 	my $db = $self->{db};
-	my $total = $db->count($db->{t_plr}, [ allowrank => 1, clanid => undef ]);
-	$self->info("$total ranked players will be scanned.");
+	my $where = [ '(clanid IS NULL OR clanid=0)' => undef ];
+	push(@$where, (gametype => $gametype)) if $gametype;
+	push(@$where, (modtype => $modtype)) if $modtype;
+	
+	my $total = $db->count($db->{t_plr}, $where);
+	$self->info("$total players will be scanned for clantags.");
 
-	my $clanid;
 	my $cur = 0;
 	my $clans = {};
+	my $total_clans = 0;
 	my $members = 0;
-	my $time = time - 1;
-	my $sth = $db->query(
-		"SELECT p.plrid,pp.uniqueid,pp.name " .
-		"FROM $db->{t_plr} p, $db->{t_plr_profile} pp " .
-		"WHERE p.uniqueid=pp.uniqueid and p.allowrank=1 and p.clanid=0"
-	);
-	while (my ($plrid,$uniqueid,$name) = $sth->fetchrow_array) {
+	my $time = Time::HiRes::time - 1;
+	my $cmd = qq{
+		SELECT p.plrid, pp.name
+		FROM $db->{t_plr} p
+		LEFT JOIN $db->{t_plr_profile} pp ON p.uniqueid=pp.uniqueid
+		WHERE
+	};
+	$cmd .= $db->where($where);
+	my $sth = $db->query($cmd);
+	
+	my ($plrid,$name);
+	$sth->bind_columns(\$plrid, \$name);
+	while ($sth->fetch) {
 		local $| = 1;	# do not buffer STDOUT
 		$cur++;
-		if ($time != time or $cur == $total) { # only update every second
-			$time = time;
+		next unless defined $name;
+
+		# throttle verbose output ... 		
+		if (Time::HiRes::time - $time >= 0.5 or $cur >= $total) {
+			$time = Time::HiRes::time;
 			$self->verbose(sprintf("Scanning player %d / %d [%6.2f%%]\r", $cur, $total, $cur / $total * 100), 1);
 		}
-		$clanid = $self->scan_for_clantag($name) || next;
-		$clans->{$clanid}++;
-		$members++;
-		$db->update($db->{t_plr}, { clanid => $clanid }, [ plrid => $plrid ]);
-	}
-	$self->verbose("");
-	$self->info(sprintf("%d clans with %d members found.", scalar keys %$clans, $members));
+		
+		# scan player name for a clantag
+		$name = decode_utf8($name); # must decode the name
+		my ($tag, $clan) = $self->scan_for_clantag($name);
+		next unless $clan;
 
+		# track which clans have members
+		push(@{$clans->{$clan->{clanid}}}, $plrid);
+		$total_clans++;
+		$members++;
+
+		#$db->update($db->{t_plr}, { clanid => $clan->{clanid} }, [ plrid => $plrid ]);
+	}
+	$self->verbose('');
+	
+	# batch update players; to limit the number of UPDATE's
+	if (keys %$clans) {
+		$self->verbose('Updating players ...');
+		foreach my $clanid (keys %$clans) {
+			my $cmd = "UPDATE $db->{t_plr} SET clanid=$clanid WHERE plrid IN (" .
+				join(',', @{$clans->{$clanid}}) . ')';
+			if (!$db->do($cmd)) {
+				$self->warn("Error adding players to clan #$clanid: " . $db->{dbh}->errstr);
+			}
+		}
+		
+		$self->info(sprintf("%d clans updated with %d members.", $total_clans, $members));
+	} else {
+		$self->info('No new clans found.');
+	}
+	
 	return ($clans, $members);
 }
 

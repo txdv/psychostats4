@@ -459,11 +459,27 @@ sub where {
 	my $andor = shift || 'AND';
 	my $where = '';
 	for (my $i=0; $i < @$matches; $i+=2) {
-		$where .= $self->{dbh}->quote_identifier($matches->[$i]) . (defined $matches->[$i+1] ? "=" . $self->{dbh}->quote($matches->[$i+1]) : " IS NULL");
+		my $key = $matches->[$i];
+		my $has_op = $self->has_op($key);
+		
+		# don't quote the key if there's an operator on it
+		$where .= $has_op ? $key : $self->{dbh}->quote_identifier($key);
+		if ($has_op) {
+			$where .= $self->{dbh}->quote($matches->[$i+1]) if defined $matches->[$i+1];
+		} else {
+			$where .= defined $matches->[$i+1]
+				? '=' . $self->{dbh}->quote($matches->[$i+1])
+				: ' IS NULL';
+		}
 		$where .= " $andor " if $i+2 < @$matches;
 	}
 	$where = '1' if $where eq '';			# match anything 
 	return $where;
+}
+
+# returns true if the SQL fragment given has an operator, ie: "key !=" is true
+sub has_op {
+	(lc $_[1] =~ /[ <>!=]|is (?:not )?null|between/);
 }
 
 # Inserts a row into the table. 2nd parameter is a hash or array ref of (field
