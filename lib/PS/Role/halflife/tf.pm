@@ -33,13 +33,36 @@ BEGIN {
 		(map { $_ => '+' } qw(
 			assisted_kills
 			dominations
-			custom_kills		custom_deaths
-			backstab_kills		backstab_deaths
-			structures_built	structures_destroyed
+			custom_kills			custom_deaths
+			backstab_kills			backstab_deaths
+			destroyed_objects		built_objects
+			destroyed_dispenser		built_dispenser
+			destroyed_sentrygun		built_sentrygun
+			destroyed_attachment_sapper 	built_attachment_sapper
+			destroyed_teleporter_entrance 	built_teleporter_entrance
+			destroyed_teleporter_exit	built_teleporter_exit
 		 ))
 	);
 }
 
+# A player created an object (sentry guns, dispensers, etc)
+sub action_created_object {
+	my ($self, $game, $object, $owner, $props) = @_;
+	my @vars = ( 'built_' . $object, 'built_objects' );
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{$_}++ for @vars;
+}
+
+sub action_destroyed_object {
+	my ($self, $game, $object, $plr, $owner, $weapon, $props) = @_;
+	#my $w = $weapon ? $weapon->id : undef;
+	#my $v = $owner ? $owner->id : undef;
+	my @vars = ( 'destroyed_' . $object, 'destroyed_objects' );
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{$_}++ for @vars;
+}
 
 # a player role was killed by someone
 sub action_death {

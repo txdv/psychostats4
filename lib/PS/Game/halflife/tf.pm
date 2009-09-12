@@ -126,8 +126,11 @@ sub event_plrtrigger {
 		my $p2 = $props->{objectowner} ? $self->get_plr($props->{objectowner}) : undef;
 		my $w  = $props->{weapon} ? $self->get_weapon($props->{weapon}) : undef;
 		my $obj = lc substr($props->{object}, 4); # strip off "OBJ_"
+		my $r = $self->get_role($p->role, $p->team);
 
 		$p->action_destroyed_object($self, $obj, $p2, $w, $m, $props);
+		$m->action_destroyed_object($self, $obj, $p, $p2, $w, $props);
+		$r->action_destroyed_object($self, $obj, $p, $p2, $w, $props) if $r;
 
 		# no bonus to the object owner if they destroy their own object.
 		if (!$p2 or ($p->id != $p2->id)) {
@@ -139,7 +142,11 @@ sub event_plrtrigger {
 	} elsif ($trigger eq 'builtobject') {
 		return unless $self->minconnected;
 		my $obj = lc substr($props->{object}, 4); # strip off "OBJ_"
+		my $r = $self->get_role($p->role, $p->team);
+
 		$p->action_created_object($self, $obj, $m, $props);
+		$m->action_created_object($self, $obj, $p, $props);
+		$r->action_created_object($self, $obj, $p, $props) if $r;
 
 		$self->plrbonus('built_' . $obj, 'enactor', $p);
 

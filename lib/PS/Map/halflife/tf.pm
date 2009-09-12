@@ -47,6 +47,12 @@ BEGIN {
 			red_flag_captured		blue_flag_captured
 			red_flag_defended		blue_flag_defended
 			point_captured			blocked_capture
+			destroyed_objects		built_objects
+			destroyed_dispenser		built_dispenser
+			destroyed_sentrygun		built_sentrygun
+			destroyed_attachment_sapper 	built_attachment_sapper
+			destroyed_teleporter_entrance 	built_teleporter_entrance
+			destroyed_teleporter_exit	built_teleporter_exit
 		 ))
 	);
 }
@@ -64,6 +70,25 @@ sub action_captured_point {
 	$self->timestamp($props->{timestamp});
 
 	$self->{data}{point_captured}++;
+}
+
+# A player created an object (sentry guns, dispensers, etc)
+sub action_created_object {
+	my ($self, $game, $object, $owner, $props) = @_;
+	my @vars = ( 'built_' . $object, 'built_objects' );
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{$_}++ for @vars;
+}
+
+sub action_destroyed_object {
+	my ($self, $game, $object, $plr, $owner, $weapon, $props) = @_;
+	#my $w = $weapon ? $weapon->id : undef;
+	#my $v = $owner ? $owner->id : undef;
+	my @vars = ( 'destroyed_' . $object, 'destroyed_objects' );
+	$self->timestamp($props->{timestamp});
+
+	$self->{data}{$_}++ for @vars;
 }
 
 # A player did something with a flag (captured, picked up, dropped, etc)
