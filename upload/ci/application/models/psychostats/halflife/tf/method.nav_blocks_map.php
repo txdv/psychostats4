@@ -1,6 +1,6 @@
 <?php
 /**
- * PsychoStats method Nav_Blocks_Player()
+ * PsychoStats method Nav_Blocks_map()
  * $Id$
  *
  *
@@ -8,25 +8,25 @@
 
 include dirname(__FILE__) . '/../' . basename(__FILE__);
 
-class   Psychostats_Method_Nav_Blocks_Player_Halflife_Tf
-extends Psychostats_Method_Nav_Blocks_Player_Halflife {
-	public function execute(&$blocks, &$plr, &$stats) {
-		parent::execute($blocks, $plr, $stats);
+class   Psychostats_Method_Nav_Blocks_Map_Halflife_Tf
+extends Psychostats_Method_Nav_Blocks_Map_Halflife {
+	public function execute(&$blocks, &$map, &$stats) {
+		parent::execute($blocks, $map, $stats);
 
+		if (!array_key_exists('map_actions', $blocks)) {
+			array_push_after($blocks, 'map_kill_profile', array(
+				'title' => trans('Map Actions'),
+				'rows' => array(),
+			), 'map_actions');
+		}
+		
 		// dual_bar defaults
 		$bar = array(
 			'color1' => '0000CC',
 			'color2' => 'CC0000',
 		);
 		
-		if (!array_key_exists('player_actions', $blocks)) {
-			array_push_after($blocks, 'player_kill_profile', array(
-				'title' => trans('Player Actions'),
-				'rows' => array(),
-			), 'player_actions');
-		}
-		
-		$blocks['player_actions']['rows'] += array(
+		$blocks['map_actions']['rows'] += array(
 			'flags' => array(
 				'row_class' => 'hdr',
 				'label' => trans('Flags'),
@@ -96,7 +96,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				//	)) : '',
 				//	number_format($stats['blocked_capture'])),
 			),
-
+			
 			'built_objects' => array(
 				'row_class' => 'hdr',
 				'label' => trans('Built'),
@@ -160,7 +160,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 			),
 		);
 			
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['map_kill_profile']['rows'],
 				 'kills',
 				 array( 
 					'row_class' => 'sub',
@@ -177,29 +177,29 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				 'killed'
 		);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_kills',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Dominations'),
-					'value' => number_format($stats['domination']), 
-					//'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
-				 ),
-				 'domination'
-		);
+		//array_push_after($blocks['map_kill_profile']['rows'],
+		//		 'headshot_kills',
+		//		 array( 
+		//			'row_class' => 'sub',
+		//			'label' => trans('Dominations'),
+		//			'value' => number_format($stats['domination']), 
+		//			//'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
+		//		 ),
+		//		 'domination'
+		//);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_kills',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Revenges'),
-					'value' => number_format($stats['revenge']), 
-					//'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
-				 ),
-				 'revenge'
-		);
+		//array_push_after($blocks['map_kill_profile']['rows'],
+		//		 'headshot_kills',
+		//		 array( 
+		//			'row_class' => 'sub',
+		//			'label' => trans('Revenges'),
+		//			'value' => number_format($stats['revenge']), 
+		//			//'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
+		//		 ),
+		//		 'revenge'
+		//);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['map_kill_profile']['rows'],
 				 'headshot_kills',
 				 array( 
 					'row_class' => 'sub',
@@ -209,46 +209,15 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				 'backstab_kills'
 		);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_kills',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Assists'),
-					'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
-				 ),
-				 'assisted_kills'
-		);
-
-
-		// deaths
-		array_push_after($blocks['player_kill_profile']['rows'],
-				 'deaths',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Deaths From'),
-					'value' => sprintf('<div class="pct-stat">%s</div>&nbsp;',
-						$stats['deaths'] ? dual_bar($bar + array(
-							'pct1'	=> $stats['deathsby_blue'] / $stats['deaths'] * 100,
-							'pct2'	=> $stats['deathsby_red'] / $stats['deaths'] * 100,
-							'title1'=> trans('%s deaths from Blu', number_format($stats['deathsby_blue'])),
-							'title2'=> trans('%s deaths from Red', number_format($stats['deathsby_red'])),
-						)) : ''
-					),
-				 ),
-				 'deathsby'
-		);
-
-		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_deaths',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Backstabs'),
-					'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['backstab_deaths_pct']), number_format($stats['backstab_deaths'])),
-				 ),
-				 'backstab_deaths'
-		);
-
-	
+		//array_push_after($blocks['map_kill_profile']['rows'],
+		//		 'headshot_kills',
+		//		 array( 
+		//			'row_class' => 'sub',
+		//			'label' => trans('Assists'),
+		//			'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
+		//		 ),
+		//		 'assisted_kills'
+		//);
 	}
 }
 

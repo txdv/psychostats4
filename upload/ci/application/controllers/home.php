@@ -49,10 +49,11 @@ class Home extends MY_Controller {
 		// set the default game/mod
 		$this->ps->set_gametype($this->get['gametype'], $this->get['modtype']);
 
-		// determine the total players available
 		$total_players = $this->ps->get_total_players();
-		//$total_ranked  = $this->ps->get_total_players(array('is_ranked' => true));
+		$total_clans   = $this->ps->get_total_clans(array('min_members' => 2));
+		$total_weapons = $this->ps->get_total_weapons();
 
+		// PLAYERS
 		$select = array(
 			'plr.plrid, plr.skill, plr.skill_prev', 
 			'plr.rank, plr.rank_prev', 
@@ -71,7 +72,7 @@ class Home extends MY_Controller {
 			->set_template('table_open', '<table class="neat">')
 			->set_caption(sprintf('<a href="%s">%s</a>',
 					      rel_site_url('players'),
-					      trans("Top %d players out of %s total",
+					      trans("Top %d players out of %s",
 						    count($players),
 						    number_format($total_players))))
 			->set_data($players)
@@ -86,10 +87,79 @@ class Home extends MY_Controller {
 			;
 		$this->ps->mod_table($players_table, 'players_top5', $this->get['gametype'], $this->get['modtype']);
 
+		// CLANS
+		//$select = array(
+		//	'*' => 'SUM(kills) kills,AVG(rank) rank, AVG(skill) skill',
+		//	'clan' => 'clan.clanid',
+		//	'cp' => 'cp.*',
+		//);
+		$criteria = array(
+			'select' => null,
+			'limit' => 5,
+			'start' => 0,
+			'sort' => 'skill desc', 
+		);
+		$clans = $this->ps->get_clans($criteria);
+
+		$clans_table = $this->psychotable->create()
+			->set_template('table_open', '<table class="neat">')
+			->set_caption(sprintf('<a href="%s">%s</a>',
+					      rel_site_url('clans'),
+					      trans("Top %d clans out of %s",
+						    count($clans),
+						    number_format($total_clans))))
+			->set_data($clans)
+			->set_sort('skill', 'desc')
+			->column('+', 			'#', 		'')
+			->column('clantag',		trans('Clan'), 	array($this, '_cb_name_link_no_wrap'))
+			->column('total_members',	trans('Mem'), 'number_format')
+			->column('kills',		trans('Kills'),	'number_format')
+			->column('skill',		trans('Skill'),	array($this, '_cb_clan_skill'))
+			->data_attr('+', 'class', 'rank')
+			->data_attr('clantag', 'class', 'link')
+			->data_attr('skill', 'class', 'skill')
+			->header_attr('total_members', array( 'tooltip' => trans('Total Members')))
+			;
+		$this->ps->mod_table($clans_table, 'clans_top5', $this->get['gametype'], $this->get['modtype']);
+
+		// WEAPONS
+		$criteria = array(
+			'select' => null,
+			'limit' => 5,
+			'start' => 0,
+			'sort' => 'kills desc', 
+		);
+		$weapons = $this->ps->get_weapons($criteria);
+
+		$weapons_table = $this->psychotable->create()
+			->set_template('table_open', '<table class="neat">')
+			->set_caption(sprintf('<a href="%s">%s</a>',
+					      rel_site_url('weapons'),
+					      trans("Top %d weapons out of %s",
+						    count($weapons),
+						    number_format($total_weapons))))
+			->set_data($weapons)
+			->set_sort('rank', 'asc')
+			->column('+', 			'#', 			'')
+			//->column('img',			false,		 	array($this, '_cb_weapon_img'))
+			->column('name',		trans('Weapon'), 	array($this, '_cb_name_link_no_wrap'))
+			->column('kills',		trans('Kills'), 	'number_format')
+			->column('headshot_kills',	trans('HS'),	 	'number_format')
+			->data_attr('img', 'class', 'img')
+			->data_attr('name', 'class', 'link')
+			//->header_attr('name', 'colspan', 2)
+			;
+		$this->ps->mod_table($weapons_table, 'weapons_top5', $this->get['gametype'], $this->get['modtype']);
+
+
+
 		$data = array(
 			'total_players' => $total_players,
-			//'total_ranked' => $total_ranked,
+			'total_clans' 	=> $total_clans,
+			'total_weapons'	=> $total_weapons,
 			'players_table'	=> $players_table->render(),
+			'clans_table'	=> $clans_table->render(),
+			'weapons_table'	=> $weapons_table->render(),
 		);
 
 		

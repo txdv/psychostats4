@@ -1,6 +1,6 @@
 <?php
 /**
- * PsychoStats method Nav_Blocks_Player()
+ * PsychoStats method Nav_Blocks_Clan()
  * $Id$
  *
  *
@@ -8,25 +8,25 @@
 
 include dirname(__FILE__) . '/../' . basename(__FILE__);
 
-class   Psychostats_Method_Nav_Blocks_Player_Halflife_Tf
-extends Psychostats_Method_Nav_Blocks_Player_Halflife {
-	public function execute(&$blocks, &$plr, &$stats) {
-		parent::execute($blocks, $plr, $stats);
+class   Psychostats_Method_Nav_Blocks_Clan_Halflife_Tf
+extends Psychostats_Method_Nav_Blocks_Clan_Halflife {
+	public function execute(&$blocks, &$clan, &$stats) {
+		parent::execute($blocks, $clan, $stats);
 
+		if (!array_key_exists('clan_actions', $blocks)) {
+			array_push_after($blocks, 'clan_kill_profile', array(
+				'title' => trans('Clan Actions'),
+				'rows' => array(),
+			), 'clan_actions');
+		}
+		
 		// dual_bar defaults
 		$bar = array(
 			'color1' => '0000CC',
 			'color2' => 'CC0000',
 		);
 		
-		if (!array_key_exists('player_actions', $blocks)) {
-			array_push_after($blocks, 'player_kill_profile', array(
-				'title' => trans('Player Actions'),
-				'rows' => array(),
-			), 'player_actions');
-		}
-		
-		$blocks['player_actions']['rows'] += array(
+		$blocks['clan_actions']['rows'] += array(
 			'flags' => array(
 				'row_class' => 'hdr',
 				'label' => trans('Flags'),
@@ -160,7 +160,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 			),
 		);
 			
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['clan_kill_profile']['rows'],
 				 'kills',
 				 array( 
 					'row_class' => 'sub',
@@ -177,7 +177,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				 'killed'
 		);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['clan_kill_profile']['rows'],
 				 'headshot_kills',
 				 array( 
 					'row_class' => 'sub',
@@ -188,7 +188,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				 'domination'
 		);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['clan_kill_profile']['rows'],
 				 'headshot_kills',
 				 array( 
 					'row_class' => 'sub',
@@ -199,7 +199,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				 'revenge'
 		);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['clan_kill_profile']['rows'],
 				 'headshot_kills',
 				 array( 
 					'row_class' => 'sub',
@@ -209,7 +209,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				 'backstab_kills'
 		);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['clan_kill_profile']['rows'],
 				 'headshot_kills',
 				 array( 
 					'row_class' => 'sub',
@@ -221,7 +221,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 
 
 		// deaths
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['clan_kill_profile']['rows'],
 				 'deaths',
 				 array( 
 					'row_class' => 'sub',
@@ -238,7 +238,7 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				 'deathsby'
 		);
 
-		array_push_after($blocks['player_kill_profile']['rows'],
+		array_push_after($blocks['clan_kill_profile']['rows'],
 				 'headshot_deaths',
 				 array( 
 					'row_class' => 'sub',

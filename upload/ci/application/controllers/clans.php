@@ -18,7 +18,7 @@ class Clans extends MY_Controller {
 		$this->get_defaults = array(
 			'gametype'	=> $config['default_gametype'],
 			'modtype'	=> $config['default_modtype'],
-			'sort'		=> 'total_members',
+			'sort'		=> 'skill',
 			'order'		=> 'desc',
 			'limit' 	=> 100,
 			'start'		=> 0,
@@ -54,7 +54,7 @@ class Clans extends MY_Controller {
 			'where' => null
 		);
 		$clans = $this->ps->get_clans($criteria);
-		
+
 		$table = $this->psychotable->create()
 			->set_template('table_open', '<table class="neat">')
 			->set_sort($this->get['sort'], $this->get['order'], array($this, '_sort_header_callback'))

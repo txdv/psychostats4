@@ -444,6 +444,13 @@ table.neat td {
 	padding: 0 3px;
 	text-align: center;	
 }
+table.neat td.nodata {
+	padding: 0.5em;
+	font-size: 125%;
+	font-weight: bold;
+	text-align: center;
+	color: #666;
+}
 table.neat th p {
 	margin: 0;
 }

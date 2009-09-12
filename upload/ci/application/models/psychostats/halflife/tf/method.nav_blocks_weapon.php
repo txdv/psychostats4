@@ -6,10 +6,10 @@
  *
  */
 
-include dirname(__FILE__) . '/../method.weapon_nav_blocks.php';
+include dirname(__FILE__) . '/../' . basename(__FILE__);
 
-class   Psychostats_Method_Weapon_Nav_Blocks_Halflife_Tf
-extends Psychostats_Method_Weapon_Nav_Blocks_Halflife {
+class   Psychostats_Method_Nav_Blocks_Weapon_Halflife_Tf
+extends Psychostats_Method_Nav_Blocks_Weapon_Halflife {
 	public function execute(&$blocks, &$plr, &$stats) {
 		parent::execute($blocks, $plr, $stats);
 

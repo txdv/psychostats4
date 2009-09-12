@@ -1,5 +1,6 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
+// The name of your web site.
 $config['site_name'] = 'Testing';
 
 // The domain name of your site. This is primarily used when sending email.
@@ -7,14 +8,6 @@ $config['domain_name'] = 'liche.net';
 
 // Fully qualified URL for your stats website (including http:// prefix)
 $config['base_url'] = 'http://liche.net/ps/';
-
-// URL fragments used for various pages. Change these if you override any of
-// the stock stats pages within Psychostats.
-$config['plr_url'] = 'plr';
-$config['wpn_url'] = 'wpn';
-$config['map_url'] = 'map';
-$config['clan_url'] = 'clan';
-$config['role_url'] = 'role';
 
 // URL to your themes WITH trailing slash. This is used to fetch static content
 // from themes.
@@ -65,6 +58,14 @@ $config['gametypes']['cod'] = array();
 $config['default_gametype'] = 'halflife';
 $config['default_modtype']  = 'tf';
 
+// URL fragments used for various pages.
+// Change these if you override any of the stock pages within Psychostats.
+$config['plr_url'] = 'plr';
+$config['wpn_url'] = 'wpn';
+$config['map_url'] = 'map';
+$config['clan_url'] = 'clan';
+$config['role_url'] = 'role';
+
 // Overall header menu (order matters). The 'Label' is translated.
 // ['url'] = 'Label'
 $config['header_menu']['home'] = 'Home';
@@ -76,6 +77,12 @@ $config['header_menu']['roles'] = 'Roles';
 $config['header_menu']['awards'] = 'Awards';
 $config['header_menu']['servers'] = 'Servers';
 $config['header_menu']['admin'] = 'Admin'; // auto removed for non-admins
+
+// Should page output be compressed (gzip, deflate)? This is a per-client
+// setting and is ignored for clients that do not support compression. It
+// should be safe to always leave this enabled, unless you are embedding
+// your stats into another page.
+$config['compress_output'] = true;
 
 /*
 |--------------------------------------------------------------------------

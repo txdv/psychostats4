@@ -1,12 +1,12 @@
 <?php
 /**
- * PsychoStats method map_nav_blocks()
+ * PsychoStats method nav_blocks_map()
  * $Id$
  *
  *
  */
 
-class Psychostats_Method_Map_Nav_Blocks_Halflife extends Psychostats_Method {
+class Psychostats_Method_Nav_Blocks_Map_Halflife extends Psychostats_Method {
 	public function execute(&$blocks, &$plr, &$stats) {
 		if (!isset($blocks['map_kill_profile'])) {
 			$blocks['map_kill_profile'] = array(

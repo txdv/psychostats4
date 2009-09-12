@@ -50,7 +50,7 @@ extends Psychostats_Method {
 	protected function get_sql() {
 		// non-game specific stats
 		$sql = array(
-			'*' => '*',
+			'*' => 'd.*',
 			'kills_per_minute' => 'ROUND(IFNULL(d.kills / (d.online_time / 60), 0),2) kills_per_minute',
 		);
 		

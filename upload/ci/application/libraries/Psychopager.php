@@ -1,5 +1,10 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
-
+/**
+ *	Psychostats "Pagination" library
+ *	
+ *	$Id$
+ *	
+ */
 class Psychopager {
 	protected $opts = array();
 	

@@ -1,44 +1,39 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
-class Plr extends MY_Controller {
-	protected $player_stats;
-	protected $player_skill_chart;
-	protected $player_sessions;
-	protected $player_sessions_pager;
-	protected $player_sessions_table;
-	protected $player_sessions_total;
-	protected $player_weapons;
-	protected $player_weapons_pager;
-	protected $player_weapons_table;
-	protected $player_weapons_total;
-	protected $player_weapons_chart;
-	protected $player_maps;
-	protected $player_maps_pager;
-	protected $player_maps_table;
-	protected $player_maps_total;
-	protected $player_maps_chart;
-	protected $player_map_wins_chart;
-	protected $player_roles;
-	protected $player_roles_pager;
-	protected $player_roles_table;
-	protected $player_roles_total;
-	protected $player_roles_chart;
-	protected $player_victims;
-	protected $player_victims_pager;
-	protected $player_victims_table;
-	protected $player_victims_total;
-	protected $player_victims_chart;
+class Clan extends MY_Controller {
+	protected $clan_stats;
+	protected $clan_weapons;
+	protected $clan_weapons_pager;
+	protected $clan_weapons_table;
+	protected $clan_weapons_total;
+	protected $clan_weapons_chart;
+	protected $clan_maps;
+	protected $clan_maps_pager;
+	protected $clan_maps_table;
+	protected $clan_maps_total;
+	protected $clan_maps_chart;
+	protected $clan_map_wins_chart;
+	protected $clan_roles;
+	protected $clan_roles_pager;
+	protected $clan_roles_table;
+	protected $clan_roles_total;
+	protected $clan_roles_chart;
+	//protected $clan_victims;
+	//protected $clan_victims_pager;
+	//protected $clan_victims_table;
+	//protected $clan_victims_total;
+	//protected $clan_victims_chart;
 	
 	protected $base_url;
 	protected $get_defaults;
 	protected $get;
-	protected $plr;
+	protected $clan;
 	protected $default_table;
 	protected $default_pager;
 	protected $blocks;
 	protected $controller;
 	
-	function Plr()
+	function Clan()
 	{
 		parent::MY_Controller();
 	}
@@ -46,6 +41,9 @@ class Plr extends MY_Controller {
 	function view($id = null)
 	{
 		list($id) = parent::view(func_get_args());
+		
+		$this->per_page_limit = 10;
+		$min_members = 2;
 
 		$this->load->library('charts');
 		$this->load->library('psychotable');
@@ -59,21 +57,24 @@ class Plr extends MY_Controller {
 
 		$this->base_url = "$id/"; 	// used by build_query_string()
 		$this->get_defaults = array(
-			'ss'	=> 'session_start',	// sort
+			'ps'	=> 'session_start',	// sort
 			'ws'	=> 'kills',
 			'ms'	=> 'kills',
 			'rs'	=> 'kills',
-			'vs'	=> 'kills',
+			'ps'	=> 'kills',
+			'us'	=> 'kills',
 			'so'	=> 'desc',		// order
 			'wo'	=> 'desc',
 			'mo'	=> 'desc',
 			'ro'	=> 'desc',
-			'vo'	=> 'desc',
+			'po'	=> 'desc',
+			'uo'	=> 'desc',
 			'sst'	=> 0,			// start
 			'wst'	=> 0,
 			'mst'	=> 0,
 			'rst'	=> 0,
-			'vst'	=> 0,
+			'pst'	=> 0,
+			'ust'	=> 0,
 			'js'	=> '',			// ajax call
 			'v'	=> '',			// view
 		);
@@ -82,23 +83,23 @@ class Plr extends MY_Controller {
 		
 		$ajax = $this->get['js'];
 
-		// Load the player record ... If it doesn't exist then silently
-		// redirect to the players list ...
+		// Load the clan record ... If it doesn't exist then silently
+		// redirect to the clans list ...
 		if ($id and is_numeric($id)) {
-			$this->plr = $this->ps->get_player($id);
+			$this->clan = $this->ps->get_clan($id);
 		}
-		if (!$this->plr) {
+		if (!$this->clan) {
 			if ($ajax) {
 				echo 'Bad request.';
 				exit;
 			} else{
-				redirect_previous('players');
+				redirect_previous('clans');
 			}
 		}
 
 		// set the default game/mod so we don't have to pass it around
-		// to every player function below...
-		$this->ps->set_gametype($this->plr['gametype'], $this->plr['modtype']);
+		// to every clan function below...
+		$this->ps->set_gametype($this->clan['gametype'], $this->clan['modtype']);
 
 		// define a base table that all other tables will inherit from
 		$this->default_table = $this->psychotable->create()
@@ -107,7 +108,7 @@ class Plr extends MY_Controller {
 
 		// define a base pager that all other pagers will inherit from
 		$this->default_pager = $this->pager->create(array(
-			'per_page' => 10,
+			'per_page' => $this->per_page_limit,
 			'force_prev_next' => true,
 			'base_url' => page_url($this->base_url .
 					       build_query_string($this->get,
@@ -115,43 +116,48 @@ class Plr extends MY_Controller {
 								  array('js'))),
 		));
 		
-		// basic player stats ...		
+		// basic clan stats ...		
 		if (!$ajax) {
-			$this->player_stats = $this->ps->get_player_stats($id);
-			$this->_load_skill_chart($id);
+			$this->clan_stats = $this->ps->get_clan_stats($id);
+			//$this->_load_skill_chart($id);
 		}
 
-		// sessions stats ...
-		if (!$ajax or $ajax == 'sessions') {
-			$this->_load_player_sessions($id);
+		// players stats ...
+		if (!$ajax or $ajax == 'players') {
+			$this->_load_clan_players($id);
+		}
+		
+		// unranked players ...
+		if (!$ajax or $ajax == 'unranked') {
+			$this->_load_clan_unranked($id);
 		}
 
 		// weapons stats ...
 		if (!$ajax or $ajax == 'weapons') {
-			$this->_load_player_weapons($id);
+			$this->_load_clan_weapons($id);
 		}
 
 		// maps stats ...
 		if (!$ajax or $ajax == 'maps') {
-			$this->_load_player_maps($id);
+			$this->_load_clan_maps($id);
 		}
 
 		// roles stats ...
 		if (!$ajax or $ajax == 'roles') {
-			$this->_load_player_roles($id);
+			$this->_load_clan_roles($id);
 		}
 		
 		// victims stats ...
-		if (!$ajax or $ajax == 'victims') {
-			$this->_load_player_victims($id);
-		}
+		//if (!$ajax or $ajax == 'victims') {
+		//	$this->_load_clan_victims($id);
+		//}
 
 		// If an ajax call was made we only want to update the specified
 		// table and return a JSON record.
-		if (in_array($ajax, array('sessions','weapons','maps','roles','victims'))) {
+		if (in_array($ajax, array('players','unranked','weapons','maps','roles','victims'))) {
 			// soft reference variables
-			$t = 'player_' . $ajax . '_table';
-			$p = 'player_' . $ajax . '_pager';
+			$t = 'clan_' . $ajax . '_table';
+			$p = 'clan_' . $ajax . '_pager';
 
 			header("Content-Type: application/x-javascript", true);
 
@@ -170,131 +176,143 @@ class Plr extends MY_Controller {
 		} else {
 			// a normal page display will include all data ...
 
-			$total_ranked = $this->ps->get_total_players(array('is_ranked' => true));
+			//$total_clans_ranked = $this->ps->get_total_clans(array('min_members' => $min_members, 'is_ranked' => true));
+			$total_unranked = $this->ps->get_clan_total(
+				array(
+					'id' => $id,
+					'is_ranked' => false,
+					'where' => array('rank IS NULL')
+				),
+				'players'
+			);
 
-			$title = trans('Player "%s"', $this->plr['name']);		
-			if ($this->plr['rank']) {
-				$page_subtitle = trans('Ranked <strong>%s</strong> of <strong>%s</strong> with a skill of <strong>%s</strong>',
-					number_format($this->plr['rank']),
-					number_format($total_ranked),
-					$this->plr['skill']
+			$title = trans('Clan "%s"', $this->clan['clantag']);
+			$page_subtitle = '';
+			if ($total_unranked) {
+				$total = $this->clan_stats['total_members'] + $total_unranked;
+				$page_subtitle = trans('Clan has <strong>%s</strong> ranked and <strong>%s</strong> unranked members <small>(%0.0f%%)</small>',
+					number_format($this->clan_stats['total_members']),
+					number_format($total_unranked),
+					$this->clan_stats['total_members'] / $total * 100
 				);
 			} else {
-				$page_subtitle = trans('This player is not ranked');
+				$page_subtitle = trans('Clan has <strong>%s</strong> ranked members <small>(%0.0f%%)</small>',
+					number_format($this->clan_stats['total_members']),
+					100
+				);
 			}
 			
 			// load blocks of data for the side nav area
 			$this->nav_blocks = array();
-			$this->nav_blocks['player_vitals'] = array(
-				'title' => trans('Player Vitals'),
+			$this->nav_blocks['clan_vitals'] = array(
+				'title' => trans('Clan Vitals'),
 				'rows' => array(
 					'rank' => array(
 						'row_class' => 'hdr',
 						'label' => trans('Rank'),
-						'value' => $this->plr['rank'] . ' ' . rank_change($this->plr),
+						'value' => $this->clan_stats['rank'] . ' ' . rank_change($this->clan_stats),
 					),
 					'rank_prev' => array(
 						'row_class' => 'sub',
 						'label' => trans('Previous'),
-						'value' => $this->plr['rank_prev'],
+						'value' => $this->clan_stats['rank_prev'],
 					),
 					'skill' => array(
 						'row_class' => 'hdr',
 						'label' => trans('Skill'),
-						//'value' => $this->plr['skill'] . ' ' . skill_change($this->plr),
+						//'value' => $this->clan_stats['skill'] . ' ' . skill_change($this->clan_stats),
 						'value' => sprintf('<div class="pct-text%s">%s%s%%</div>',
-								   $this->plr['skill_change_pct'] >= 0.0 ? ' pct-text-up' : ' pct-text-down',
-								   $this->plr['skill_change_pct'] > 0.0 ? '+' : '', 
-								   $this->plr['skill_change_pct']
+								   $this->clan_stats['skill_change_pct'] >= 0.0 ? ' pct-text-up' : ' pct-text-down',
+								   $this->clan_stats['skill_change_pct'] > 0.0 ? '+' : '', 
+								   $this->clan_stats['skill_change_pct']
 								   )
-								. $this->plr['skill'] . ' ' . skill_change($this->plr),
+								. $this->clan_stats['skill'] . ' ' . skill_change($this->clan_stats),
 					),
 					'skill_prev' => array(
 						'row_class' => 'sub',
 						'label' => trans('Previous'),
-						'value' => $this->plr['skill_prev'],
+						'value' => $this->clan_stats['skill_prev'],
 					),
-					'points' => array(
-						'label' => trans('Points'),
-						'value' => number_format($this->plr['points']),
-					),
-					'activity' => array(
-						'label' => trans('Activity'),
-						'value' => sprintf('<div class="pct-stat">%s</div>%s%%', pct_bar($this->plr['activity']), $this->plr['activity']),
-					),
+					//'activity' => array(
+					//	'label' => trans('Activity'),
+					//	'value' => sprintf('<div class="pct-stat">%s</div>%s%%', pct_bar($this->clan['activity']), $this->clan['activity']),
+					//),
 					'online_time' => array(
 						'label' => trans('Online Time'),
-						'value' => compact_time($this->player_stats['online_time']),
+						'value' => compact_time($this->clan_stats['online_time']),
 					),
 					'firstseen' => array(
 						'label' => trans('First Seen'),
-						'value' => strftime('%b %e, %Y @ %R', $this->plr['firstseen']),
+						'value' => strftime('%b %e, %Y @ %R', $this->clan['firstseen']),
 					),
-					'lastseen' => array(
-						'label' => trans('Last Seen'),
-						'value' => strftime('%b %e, %Y @ %R', $this->plr['lastseen']),
-					),
+					//'lastseen' => array(
+					//	'label' => trans('Last Seen'),
+					//	'value' => strftime('%b %e, %Y @ %R', $this->clan['lastseen']),
+					//),
 					'games' => array(
 						'label' => trans('Games'),
-						'value' => number_format($this->player_stats['games']),
+						'value' => number_format($this->clan_stats['games']),
 					),
 					'rounds' => array(
 						'label' => trans('Rounds'),
-						'value' => number_format($this->player_stats['rounds']),
+						'value' => number_format($this->clan_stats['rounds']),
 					),
 				),
 			);
 			
 			// allow game specific updates to the blocks ...
 			// load method if available
-			$method = $this->ps->load_overloaded_method('nav_blocks_player', $this->plr['gametype'], $this->plr['modtype']);
+			$method = $this->ps->load_overloaded_method('nav_blocks_clan', $this->clan['gametype'], $this->clan['modtype']);
 			$nav_block_html = $this->smarty->render_blocks(
 				$method, $this->nav_blocks, 
-				array(&$this->plr, &$this->player_stats)
+				array(&$this->clan, &$this->clan_stats)
 			);
-			
+
 			$data = array(
 				'title'		=> $title,
 				'page_title' 	=> $title,
 				'page_subtitle' => $page_subtitle,
-				'plr'		=> &$this->plr,
-				'stats'		=> &$this->player_stats,
+				'plr'		=> &$this->clan,
+				'stats'		=> &$this->clan_stats,
 				'nav_block_html'=> &$nav_block_html,
 
-				'sessions'	=> &$this->player_sessions,
-				'sessions_total'=> $this->player_sessions_total,
-				'sessions_table'=> $this->player_sessions_table->render(),
-				'sessions_pager'=> $this->player_sessions_pager->render(),
+				'players'	=> &$this->clan_players,
+				'players_total'	=> $this->clan_players_total,
+				'players_table'	=> $this->clan_players_table->render(),
+				'players_pager'	=> $this->clan_players_pager->render(),
 
-				'weapons'	=> &$this->player_weapons,
-				'weapons_total'	=> $this->player_weapons_total,
-				'weapons_table'	=> $this->player_weapons_table->render(),
-				'weapons_pager'	=> $this->player_weapons_pager->render(),
-				'weapons_chart'	=> $this->player_weapons_chart,
+				'unranked'	=> &$this->clan_unranked,
+				'unranked_total'=> $this->clan_unranked_total,
+				'unranked_table'=> $this->clan_unranked_table->render(),
+				'unranked_pager'=> $this->clan_unranked_pager->render(),
 
-				'maps'		=> &$this->player_maps,
-				'maps_total'	=> $this->player_maps_total,
-				'maps_table'	=> $this->player_maps_table->render(),
-				'maps_pager'	=> $this->player_maps_pager->render(),
-				'maps_chart'	=> $this->player_maps_chart,
-				'map_wins_chart'=> $this->player_map_wins_chart,
+				'weapons'	=> &$this->clan_weapons,
+				'weapons_total'	=> $this->clan_weapons_total,
+				'weapons_table'	=> $this->clan_weapons_table->render(),
+				'weapons_pager'	=> $this->clan_weapons_pager->render(),
+				'weapons_chart'	=> $this->clan_weapons_chart,
 
-				'roles'		=> &$this->player_roles,
-				'roles_total'	=> $this->player_roles_total,
-				'roles_table'	=> $this->player_roles_table->render(),
-				'roles_pager'	=> $this->player_roles_pager->render(),
-				'roles_chart'	=> $this->player_roles_chart,
+				'maps'		=> &$this->clan_maps,
+				'maps_total'	=> $this->clan_maps_total,
+				'maps_table'	=> $this->clan_maps_table->render(),
+				'maps_pager'	=> $this->clan_maps_pager->render(),
+				'maps_chart'	=> $this->clan_maps_chart,
+				'map_wins_chart'=> $this->clan_map_wins_chart,
 
-				'victims'	=> &$this->player_victims,
-				'victims_total'	=> $this->player_victims_total,
-				'victims_table'	=> $this->player_victims_table->render(),
-				'victims_pager'	=> $this->player_victims_pager->render(),
-				'victims_chart'	=> $this->player_victims_chart,
+				'roles'		=> &$this->clan_roles,
+				'roles_total'	=> $this->clan_roles_total,
+				'roles_table'	=> $this->clan_roles_table->render(),
+				'roles_pager'	=> $this->clan_roles_pager->render(),
+				'roles_chart'	=> $this->clan_roles_chart,
 
-				'skill_chart'	=> $this->player_skill_chart,
+				//'victims'	=> &$this->clan_victims,
+				//'victims_total'	=> $this->clan_victims_total,
+				//'victims_table'	=> $this->clan_victims_table->render(),
+				//'victims_pager'	=> $this->clan_victims_pager->render(),
+				//'victims_chart'	=> $this->clan_victims_chart,
 			);
 		}
-		
+
 		define('BODY_LAYOUT', $this->smarty->page_layout('300left'));
 		define('PAGE', strtolower(get_class()));
 		define('TEMPLATE', PAGE);
@@ -302,140 +320,19 @@ class Plr extends MY_Controller {
 		$this->load->view('full_page', array('params' => $data));
 	}
 
-	function _load_skill_chart($id) {
-		$params = array(
-			'lineColor'		=> '4444cc',
-			'showAnchors'		=> 1,
-			'anchorAlpha'		=> 0,	// hide anchors but allow hover to work
-			'anchorRadius'		=> 4,
-			'showValues'		=> 0,
-			'xAxisName'		=> '',
-			'lineThickness'		=> 3,
-			'shadowThickness'	=> 2,
-			'shadowXShift'		=> 2,
-			'shadowYShift'		=> 2,
-			'formatNumberScale'	=> 0,
-			'thousandSeparator'	=> '',
-			'canvasBgAlpha'		=> 75,
-			'canvasBorderThickness'	=> 1,
-			'rotateNames'		=> 1,
-			//'chartTopMargin'	=> 10,
-			'chartRightMargin'	=> 4,
-			'chartBottomMargin'	=> 1,
-			'chartLeftMargin'	=> 1,
-			//'decimalPrecision'	=> 0,
-		);
-		$fc = $this->charts->create('line', 275, 150, $params);
-	
-		$dates = $this->ps->get_min_max_dates($this->plr['gametype'], $this->plr['modtype'], true);
-		
-		$max_days = 31;
-		$list = $this->ps->get_player_history(array(
-			'id'		=> $id,
-			'keyed' 	=> true,
-			'fill_gaps' 	=> true,
-			'start_date'	=> date('Y-m-d', $dates['max']),
-			'select'	=> 'skill',
-			'sort'		=> 'statdate',
-			'order'		=> 'desc',
-			'limit'		=> $max_days,
-		));
-
-		// reverse it so the chart will go from oldest -> newest
-		$list = array_reverse($list);
-	
-		$sum = 0;
-		$total = 0;
-		$avg = 0;
-		$i = 0;
-		$first = array();
-		$last = array();
-		foreach($list as $v){
-			$settings = sprintf('name=%s;showName=%d;hoverText=%s;',
-				date('M d', $v['date']),
-				$i++ % 2 == 0, // show every other label
-				date('M jS Y', $v['date'])
-			);
-			$fc->addChartData($v['skill'], $settings);
-			if (!is_null($v['skill'])) {
-				// only count values that are present for avg
-				$total++;
-				$sum += $v['skill'];
-				if (!$first) {
-					$first = $v;
-				}
-				$last = $v;
-			}
-		}
-		$avg = $total ? $sum / $total : 0;
-		if ($avg) {
-			$fc->addTrendLine("startValue=$avg;color=44cc44;alpha=50;showOnTop=1;displayValue=" .
-					  trans('Avg'));
-		}
-		//$fc->addTrendLine(sprintf("startValue=%f;endValue=%f;color=cc4444;isTrendZone=0;displayValue=%s",
-		//		  $first['skill'],
-		//		  $last['skill'],
-		//		  trans('Trend')));
-
-		$this->player_skill_chart = $fc->renderChart(false,false);
-	}
-
-	// Load player sessions array, total, table, and pager.
-	function _load_player_sessions($id) {
-		$this->player_sessions = $this->ps->get_player_sessions(array(
-			'id' => $id,
-			'sort'	=> $this->get['ss'],
-			'order' => $this->get['so'],
-			'start' => $this->get['sst'],
-			'limit' => 10
-		));
-
-		$this->player_sessions_total = $this->ps->get_player_total($id, 'sessions');
-
-		$this->player_sessions_table = $this->default_table->create()
-			->set_data($this->player_sessions)
-			->set_sort($this->get['ss'], $this->get['so'], array($this, '_sort_header_callback'))
-			->set_sort_names(array('sort' => 'ss', 'order' => 'so', 'start' => 'sst'))
-			->column('session_start',	trans('Session Start'),	array($this, '_cb_datetime'))
-			->column('session_seconds',	trans('Length'), 	array($this, '_cb_session_length'))
-			->column('name',		trans('Map'), 		array($this, '_cb_name_link'))
-			->column('kills',		trans('K'), 	'number_format')
-			->column('deaths',		trans('D'), 	'number_format')
-			->column('headshot_kills', 	trans('HS'),	 	'number_format')
-			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
-			//->data_attr('session_start', 'class', 'name')
-			->data_attr('skill', 'class', 'skill')
-			->data_attr('session_start', 'class', 'nowrap')
-			->header_attr('kills', array( 'tooltip' => trans('Kills') ))
-			->header_attr('deaths', array( 'tooltip' => trans('Deaths') ))
-			->header_attr('headshot_kills', array( 'tooltip' => trans('Headshot Kills') ))
-			;
-		
-		// allow game::mod's to change the table layout
-		$this->ps->mod_table($this->player_sessions_table, 'player_sessions',
-				     $this->plr['gametype'], $this->plr['modtype']);
-
-		$this->player_sessions_pager = $this->default_pager->create(array(
-			'total'	=> $this->player_sessions_total,
-			'start'	=> $this->get['sst'],
-			'start_var' => 'sst',
-			'urltail' => '#sessions'
-		));
-	}
-
-	function _load_player_weapons($id) {
-		$this->player_weapons = $this->ps->get_player_weapons(array(
+	function _load_clan_weapons($id) {
+		$this->clan_weapons = $this->ps->get_clan_weapons(array(
 			'id' => $id,
 			'sort'	=> $this->get['ws'],
 			'order' => $this->get['wo'],
 			'start' => $this->get['wst'],
-			'limit'	=> 10,
+			'limit'	=> $this->per_page_limit,
 		));
 		
-		$this->player_weapons_total = $this->ps->get_player_total($id, 'weapons');
+		$this->clan_weapons_total = $this->ps->get_clan_total($id, 'weapons');
 		
-		$this->player_weapons_table = $this->default_table->create()
-			->set_data($this->player_weapons)
+		$this->clan_weapons_table = $this->default_table->create()
+			->set_data($this->clan_weapons)
 			->set_sort($this->get['ws'], $this->get['wo'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'ws', 'order' => 'wo', 'start' => 'wst'))
 			->column('img',			trans('Weapon'), 	array($this, '_cb_weapon_img'))
@@ -455,33 +352,33 @@ class Plr extends MY_Controller {
 			//->header_attr('headshot_kills_pct', 	array( 'tooltip' => trans('Headshot Kills Percentage') ))
 			;
 
-		$this->ps->mod_table($this->player_weapons_table, 'player_weapons',
-				     $this->plr['gametype'], $this->plr['modtype']);
+		$this->ps->mod_table($this->clan_weapons_table, 'clan_weapons',
+				     $this->clan['gametype'], $this->clan['modtype']);
 		
-		$this->player_weapons_pager = $this->default_pager->create(array(
-			'total'	=> $this->player_weapons_total,
+		$this->clan_weapons_pager = $this->default_pager->create(array(
+			'total'	=> $this->clan_weapons_total,
 			'start'	=> $this->get['wst'],
 			'start_var' => 'wst',
 			'urltail' => '#weapons'
 		));
 
 
-		// build a PIE chart for the top 10 player weapons
+		// build a PIE chart for the top 10 clan weapons
 		if (!$this->get['js']) {
 			$by = 'kills';
 			$by_trans = trans('kills');
 
-			$list =& $this->player_weapons;
+			$list =& $this->clan_weapons;
 			if ($this->get['ws'] != $by or
 			    $this->get['wo'] != 'desc' or
 			    $this->get['wst'] != 0) {
 				// get a new list if our current sort isn't the
 				// top 10 based on kills.
-				$list = $this->ps->get_player_weapons(array(
+				$list = $this->ps->get_clan_weapons(array(
 					'id' => $id,
 					'sort'	=> $by,
 					'order' => 'desc',
-					'limit'	=> 10,
+					'limit'	=> $this->per_page_limit,
 				));
 			}
 
@@ -505,26 +402,26 @@ class Plr extends MY_Controller {
 					ps_site_url('wpn', $d['name'])
 				);
 				$fc->addChartData($d[$by], $settings);
-				if ($i>=10) break;
+				if ($i>=$this->per_page_limit) break;
 			}
 			
-			$this->player_weapons_chart = $fc->renderChart(false,false);
+			$this->clan_weapons_chart = $fc->renderChart(false,false);
 		}
 	}
 
-	function _load_player_maps($id) {
-		$this->player_maps = $this->ps->get_player_maps(array(
+	function _load_clan_maps($id) {
+		$this->clan_maps = $this->ps->get_clan_maps(array(
 			'id' => $id,
 			'sort'	=> $this->get['ms'],
 			'order' => $this->get['mo'],
 			'start' => $this->get['mst'],
-			'limit' => 10,
+			'limit' => $this->per_page_limit,
 		));
 
-		$this->player_maps_total = $this->ps->get_player_total($id, 'maps');
+		$this->clan_maps_total = $this->ps->get_clan_total($id, 'maps');
 
-		$this->player_maps_table = $this->default_table->create()
-			->set_data($this->player_maps)
+		$this->clan_maps_table = $this->default_table->create()
+			->set_data($this->clan_maps)
 			->set_sort($this->get['ms'], $this->get['mo'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'ms', 'order' => 'mo', 'start' => 'mst'))
 			->column('img',			trans('Map'),	 	array($this, '_cb_map_img'))
@@ -542,11 +439,11 @@ class Plr extends MY_Controller {
 			//->header_attr('kills_per_minute', 	array( 'tooltip' => trans('Kills per Minute') ))
 			;
 
-		$this->ps->mod_table($this->player_maps_table, 'player_maps',
-				     $this->plr['gametype'], $this->plr['modtype']);
+		$this->ps->mod_table($this->clan_maps_table, 'clan_maps',
+				     $this->clan['gametype'], $this->clan['modtype']);
 
-		$this->player_maps_pager = $this->default_pager->create(array(
-			'total'	=> $this->player_maps_total,
+		$this->clan_maps_pager = $this->default_pager->create(array(
+			'total'	=> $this->clan_maps_total,
 			'start'	=> $this->get['mst'],
 			'start_var' => 'mst',
 			'urltail' => '#maps'
@@ -557,17 +454,17 @@ class Plr extends MY_Controller {
 			$by = 'kills';
 			$by_trans = trans('kills');
 
-			$list =& $this->player_maps;
+			$list =& $this->clan_maps;
 			if ($this->get['ms'] != $by or
 			    $this->get['mo'] != 'desc' or
 			    $this->get['mst'] != 0) {
 				// get a new list if our current sort isn't the
 				// top 10 based on kills.
-				$list = $this->ps->get_player_maps(array(
+				$list = $this->ps->get_clan_maps(array(
 					'id' => $id,
 					'sort'	=> $by,
 					'order' => 'desc',
-					'limit'	=> 10,
+					'limit'	=> $this->per_page_limit,
 				));
 			}
 
@@ -593,15 +490,14 @@ class Plr extends MY_Controller {
 					ps_site_url('map', $d['name'])
 				);
 				$fc->addChartData($d['kills'], $settings);
-				if ($i>=10) break;
+				if ($i>=$this->per_page_limit) break;
 			}
 			
-			$this->player_maps_chart = $fc->renderChart(false,false);
+			$this->clan_maps_chart = $fc->renderChart(false,false);
 
 			// create a column chart with the win ratio for the plr
 			// but only if 'wins' is a column in the database.
-			if (array_key_exists('wins', $this->player_stats)) {
-			    //and ($this->player_stats['wins'] or $this->player_stats['losses'])) {
+			if (array_key_exists('wins', $this->clan_stats)) {
 				$params = array(
 					'caption'		=> trans('Win Ratio'),
 					'yAxisMinValue'		=> 0,
@@ -611,39 +507,37 @@ class Plr extends MY_Controller {
 				
 				$fc = $this->charts->create('column3d', 300, 200, $params);
 
-				$wins = $this->player_stats['wins'];
-				$losses = $this->player_stats['losses'];
-
-				if ($wins or $losses) {
-					$fc->addChartData($wins / ($wins + $losses) * 100,
-							  sprintf("name=%s;hoverText=%s;color=00aa00",
-								  trans('Wins'),
-								  trans('%d wins', $wins)));
-					$fc->addChartData($losses / ($wins + $losses) * 100,
-							  sprintf("name=%s;hoverText=%s;color=aa0000",
-								  trans('Losses'),
-								  trans('%d losses', $losses)));
-				}
+				$wins = $this->clan_stats['wins'];
+				$losses = $this->clan_stats['losses'];
 				
-				$this->player_map_wins_chart = $fc->renderChart(false,false);
+				$fc->addChartData($wins / ($wins + $losses) * 100,
+						  sprintf("name=%s;hoverText=%s;color=00aa00",
+							  trans('Wins'),
+							  trans('%d wins', $wins)));
+				$fc->addChartData($losses / ($wins + $losses) * 100,
+						  sprintf("name=%s;hoverText=%s;color=aa0000",
+							  trans('Losses'),
+							  trans('%d losses', $losses)));
+
+				$this->clan_map_wins_chart = $fc->renderChart(false,false);
 			}
 		}
 		
 	}
 
-	function _load_player_roles($id) {
-		$this->player_roles = $this->ps->get_player_roles(array(
+	function _load_clan_roles($id) {
+		$this->clan_roles = $this->ps->get_clan_roles(array(
 			'id' => $id,
 			'sort'	=> $this->get['rs'],
 			'order' => $this->get['ro'],
 			'start' => $this->get['rst'],
-			'limit'	=> 10,
+			'limit'	=> $this->per_page_limit,
 		));
 		
-		$this->player_roles_total = $this->ps->get_player_total($id, 'roles');
+		$this->clan_roles_total = $this->ps->get_clan_total($id, 'roles');
 		
-		$this->player_roles_table = $this->default_table->create()
-			->set_data($this->player_roles)
+		$this->clan_roles_table = $this->default_table->create()
+			->set_data($this->clan_roles)
 			->set_sort($this->get['rs'], $this->get['ro'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'rs', 'order' => 'ro', 'start' => 'rst'))
 			->column('name',		trans('Role'),	 	array($this, '_cb_name_link'))
@@ -660,33 +554,33 @@ class Plr extends MY_Controller {
 			//->header_attr('headshot_kills_pct', 	array( 'tooltip' => trans('Headshot Kills Percentage') ))
 			;
 
-		$this->ps->mod_table($this->player_roles_table, 'player_roles',
-				     $this->plr['gametype'], $this->plr['modtype']);
+		$this->ps->mod_table($this->clan_roles_table, 'clan_roles',
+				     $this->clan['gametype'], $this->clan['modtype']);
 		
-		$this->player_roles_pager = $this->default_pager->create(array(
-			'total'	=> $this->player_roles_total,
+		$this->clan_roles_pager = $this->default_pager->create(array(
+			'total'	=> $this->clan_roles_total,
 			'start'	=> $this->get['rst'],
 			'start_var' => 'rst',
 			'urltail' => '#roles'
 		));
 
 
-		// build a PIE chart for the top 10 player roles
+		// build a PIE chart for the top 10 clan roles
 		if (!$this->get['js']) {
 			$by = 'kills';
 			$by_trans = trans('kills');
 
-			$list =& $this->player_roles;
+			$list =& $this->clan_roles;
 			if ($this->get['rs'] != $by or
 			    $this->get['ro'] != 'desc' or
 			    $this->get['rst'] != 0) {
 				// get a new list if our current sort isn't the
 				// top 10 based on kills.
-				$list = $this->ps->get_player_roles(array(
+				$list = $this->ps->get_clan_roles(array(
 					'id' => $id,
 					'sort'	=> $by,
 					'order' => 'desc',
-					'limit'	=> 10,
+					'limit'	=> $this->per_page_limit,
 				));
 			}
 
@@ -710,26 +604,26 @@ class Plr extends MY_Controller {
 					ps_site_url('role', $d['name'])
 				);
 				$fc->addChartData($d[$by], $settings);
-				if ($i>=10) break;
+				if ($i>=$this->per_page_limit) break;
 			}
 			
-			$this->player_roles_chart = $fc->renderChart(false,false);
+			$this->clan_roles_chart = $fc->renderChart(false,false);
 		}
 	}
 
-	function _load_player_victims($id) {
-		$this->player_victims = $this->ps->get_player_victims(array(
+	function _load_clan_victims($id) {
+		$this->clan_victims = $this->ps->get_clan_victims(array(
 			'id' => $id,
 			'sort'	=> $this->get['vs'],
 			'order' => $this->get['vo'],
 			'start' => $this->get['vst'],
-			'limit' => 10,
+			'limit' => $this->per_page_limit,
 		));
 		
-		$this->player_victims_total = $this->ps->get_player_total($id, 'victims');
+		$this->clan_victims_total = $this->ps->get_clan_total($id, 'victims');
 		
-		$this->player_victims_table = $this->default_table->create()
-			->set_data($this->player_victims)
+		$this->clan_victims_table = $this->default_table->create()
+			->set_data($this->clan_victims)
 			->set_sort($this->get['vs'], $this->get['vo'], array($this, '_sort_header_callback'))
 			->set_sort_names(array('sort' => 'vs', 'order' => 'vo', 'start' => 'vst'))
 			->column('rank', 		trans('Rank'), 		array($this, '_cb_plr_rank'))
@@ -750,11 +644,11 @@ class Plr extends MY_Controller {
 			->header_attr('headshot_kills', 	array( 'tooltip' => trans('Headshot Kills') ))
 			;
 
-		$this->ps->mod_table($this->player_victims_table, 'player_victims',
-				     $this->plr['gametype'], $this->plr['modtype']);
+		$this->ps->mod_table($this->clan_victims_table, 'clan_victims',
+				     $this->clan['gametype'], $this->clan['modtype']);
 
-		$this->player_victims_pager = $this->default_pager->create(array(
-			'total'	=> $this->player_victims_total,
+		$this->clan_victims_pager = $this->default_pager->create(array(
+			'total'	=> $this->clan_victims_total,
 			'start'	=> $this->get['vst'],
 			'start_var' => 'vst',
 			'urltail' => '#victims'
@@ -765,17 +659,17 @@ class Plr extends MY_Controller {
 			$by = 'kills';
 			$by_trans = trans('kills');
 
-			$list =& $this->player_victims;
+			$list =& $this->clan_victims;
 			if ($this->get['vs'] != $by or
 			    $this->get['vo'] != 'desc' or
 			    $this->get['vst'] != 0) {
 				// get a new list if our current sort isn't the
 				// top 10 based on kills.
-				$list = $this->ps->get_player_victims(array(
+				$list = $this->ps->get_clan_victims(array(
 					'id' => $id,
 					'sort'	=> $by,
 					'order' => 'desc',
-					'limit'	=> 10,
+					'limit'	=> $this->per_page_limit,
 				));
 			}
 			
@@ -800,20 +694,106 @@ class Plr extends MY_Controller {
 					ps_site_url('plr', $d['victimid'])
 				);
 				$fc->addChartData($d[$by], $settings);
-				if ($i>=10) break;
+				if ($i>=$this->per_page_limit) break;
 			}
 			
-			$this->player_victims_chart = $fc->renderChart(false,false);
+			$this->clan_victims_chart = $fc->renderChart(false,false);
 		}
 	}
 
-	function _cb_session_length($name, $val, $data, $td, $table) {
-		if ($data['session_seconds'] >= 60) {
-			$text = trans('%d minutes', ceil($data['session_minutes']));
-		} else {
-			$text = '&lt; ' . trans('%d minute', 1);
-		}
-		return $text;
+	function _load_clan_players($id) {
+		$this->clan_players = $this->ps->get_clan_players(array(
+			'id' => $id,
+			'sort'	=> $this->get['ps'],
+			'order' => $this->get['po'],
+			'start' => $this->get['pst'],
+			'limit' => $this->per_page_limit,
+		));
+
+		$this->clan_players_total = $this->ps->get_clan_total($id, 'players');
+
+		$this->clan_players_table = $this->default_table->create()
+			->set_data($this->clan_players)
+			->set_sort($this->get['ps'], $this->get['po'], array($this, '_sort_header_callback'))
+			->set_sort_names(array('sort' => 'ps', 'order' => 'po', 'start' => 'pst'))
+			->column('rank', 		trans('Rank'), 		array($this, '_cb_plr_rank'))
+			->column('name',		trans('Player'), 	array($this, '_cb_name_link'))
+			->column('kills',		trans('Kills'), 	'number_format')
+			->column('deaths',		trans('Deaths'), 	'number_format')
+			->column('kills_per_death',	trans('KpD'),	 	'')
+			->column('headshot_kills', 	trans('HS'),	 	'number_format')
+			->column('activity',		trans('Activity'), 	array($this, '_cb_pct_bar'))
+			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
+			->data_attr('rank', 'class', 'rank')
+			->data_attr('name', 'class', 'name')
+			->data_attr('skill', 'class', 'skill')
+			->header_attr('kills_per_death', 	array( 'tooltip' => trans('Kills per Death') ))
+			->header_attr('headshot_kills', 	array( 'tooltip' => trans('Headshot Kills') ))
+			;
+
+		$this->ps->mod_table($this->clan_players_table, 'clan_players',
+				     $this->clan['gametype'], $this->clan['modtype']);
+
+		$this->clan_players_pager = $this->default_pager->create(array(
+			'total'	=> $this->clan_players_total,
+			'start'	=> $this->get['pst'],
+			'start_var' => 'pst',
+			'urltail' => '#players'
+		));
+	}
+
+	function _load_clan_unranked($id) {
+		$this->clan_unranked = $this->ps->get_clan_players(array(
+			'id' => $id,
+			'sort'	=> $this->get['us'],
+			'order' => $this->get['uo'],
+			'start' => $this->get['ust'],
+			'limit' => $this->per_page_limit,
+			'is_ranked' => false,			// this will return all members...
+			'where' => array('rank IS NULL')	// this will only return UNRANKED players.
+		));
+		
+		$this->clan_unranked_total = $this->ps->get_clan_total(
+			array(
+				'id' => $id,
+				'is_ranked' => false,
+				'where' => array('rank IS NULL')
+			),
+			'players'
+		);
+
+		$this->clan_unranked_table = $this->default_table->create()
+			->set_data($this->clan_unranked)
+			->set_sort($this->get['us'], $this->get['uo'], array($this, '_sort_header_callback'))
+			->set_sort_names(array('sort' => 'us', 'order' => 'uo', 'start' => 'ust'))
+			->set_no_data(trans('No players found'))
+			->column('rank', 		trans('Rank'), 		array($this, '_cb_plr_rank'))
+			->column('name',		trans('Player'), 	array($this, '_cb_name_link'))
+			->column('kills',		trans('Kills'), 	'number_format')
+			->column('deaths',		trans('Deaths'), 	'number_format')
+			->column('kills_per_death',	trans('KpD'),	 	'')
+			->column('headshot_kills', 	trans('HS'),	 	'number_format')
+			->column('activity',		trans('Activity'), 	array($this, '_cb_pct_bar'))
+			->column('skill',		trans('Skill'), 	array($this, '_cb_plr_skill'))
+			->data_attr('rank', 'class', 'rank')
+			->data_attr('name', 'class', 'name')
+			->data_attr('skill', 'class', 'skill')
+			->header_attr('kills_per_death', 	array( 'tooltip' => trans('Kills per Death') ))
+			->header_attr('headshot_kills', 	array( 'tooltip' => trans('Headshot Kills') ))
+			;
+
+			;
+
+		$this->ps->mod_table($this->clan_unranked_table, 'clan_players',
+				     $this->clan['gametype'], $this->clan['modtype']);
+
+		$this->clan_unranked_pager = $this->default_pager->create(array(
+			'total'	=> $this->clan_unranked_total,
+			'start'	=> $this->get['ust'],
+			'start_var' => 'ust',
+			'urltail' => '#unranked'
+		));
+		
 	}
 
 }

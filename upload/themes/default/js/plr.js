@@ -5,7 +5,7 @@ $(function(){
 	$('span.pager a').live('click', click_table);	
 	$('table.neat tr.hdr th a').live('click', click_table);
 	
-	// enable cookie support for tabs to make them persistent.
+	// enable tab support
 	$('div.tabs').simpleTabs({ cookie: { expires: 30 } });
 	
 });

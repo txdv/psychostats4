@@ -3,7 +3,7 @@
  * PsychoStats method get_total_clans()
  * $Id$
  *
- * Returns the total players that have stats based on the criteria given.
+ * Returns the total clans that have stats based on the criteria given.
  *
  */
 class Psychostats_Method_Get_Total_Clans extends Psychostats_Method {

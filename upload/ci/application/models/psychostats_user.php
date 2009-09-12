@@ -1,8 +1,8 @@
-<?php
+<?php if (!defined('BASEPATH')) exit('No direct script access allowed');
 /**
  *	Main Psychostats User model.
+ *	$Id$
  */
-
 class Psychostats_user extends MY_Model {
 	// @var array Stores the currently loaded user information. Only valid
 	// column names belong in this array.

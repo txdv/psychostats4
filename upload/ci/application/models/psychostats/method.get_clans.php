@@ -59,6 +59,7 @@ class Psychostats_Method_Get_Clans extends Psychostats_Method {
 		SELECT $fields
 		FROM ($t_clan clan, $t_plr plr)
 		LEFT JOIN $c_plr_data d ON d.plrid=plr.plrid
+		LEFT JOIN $t_clan_profile cp ON cp.clantag=clan.clantag
 		WHERE
 CMD;
 		//$cmd = preg_replace('/^\s+/m', '', $cmd); // remove leading whitespace (I'm OCD)
@@ -109,13 +110,13 @@ CMD;
 
 	protected function get_sql() {
 		$sql = array(
-			// basic player information
-			'clan' 	=> 'clan.clanid, clan.clantag',
-			//'cp' 	=> 'cp.name, cp.icon, cp.cc',
+			'*' => '',
+			//'*' => 'SUM(kills) kills, SUM(deaths) deaths, SUM(headshot_kills) headshot_kills', 
 
-			// static stats
+			'clan' 	=> 'clan.clanid, clan.clantag',
+			'cp' 	=> 'cp.name, cp.icon, cp.cc',
+
 			'total_members' => 'COUNT(DISTINCT plr.plrid) total_members',
-			'static' => 'SUM(kills) kills, SUM(deaths) deaths', 
 			'skill' => 'ROUND(AVG(skill),4) skill',
 
 			// calculated stats
@@ -124,14 +125,23 @@ CMD;
 			'headshot_kills_pct' 	=> 'ROUND(IFNULL(SUM(headshot_kills) / SUM(kills) * 100, 0), 2) headshot_kills_pct',
 		);
 
-		//// convert most column names into SUM(col)
-		//$tbl = $this->ps->tbl('c_plr_data');
-		//$cols = array_flip($this->ps->get_columns($tbl, false, array('plrid')));
-		//
-		//reset($sql);
-		//while (list($key, $str) = each($sql)) {
-		//	// BLAARRGGHH!!!!
-		//}
+		$t_plr_data = $this->ps->tbl('c_plr_data', $this->ps->gametype(), $this->ps->modtype());
+		$cols = $this->ps->get_columns($t_plr_data, false, array( 'plrid' ));
+
+		// aggregate static columns for all members
+		foreach ($cols as $c) {
+			$func = '';
+			if (substr($c, -7) == '_streak') {
+				// if streak is at the end of the column name
+				// then we want the maximum value instead of
+				// a summary.
+				$func = 'MAX';
+			} else {
+				$func = 'SUM';
+			}
+			$sql['*'] .= "$func($c) $c,";
+		}
+		$sql['*'] = substr($sql['*'], 0, -1); // remove trailing comma
 
 		return $sql;
 	}

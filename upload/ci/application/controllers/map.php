@@ -121,6 +121,10 @@ class Map extends MY_Controller {
 				//	'label' => trans('Last Seen'),
 				//	'value' => strftime('%b %e, %Y @ %R', $this->map['lastseen']),
 				//),
+				'connections' => array(
+					'label' => trans('Connections'),
+					'value' => number_format($this->map_stats['connections']),
+				),
 				'games' => array(
 					'label' => trans('Games'),
 					'value' => number_format($this->map_stats['games']),

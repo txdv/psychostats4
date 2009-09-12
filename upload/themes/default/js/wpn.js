@@ -1,4 +1,4 @@
 $(function(){
-	// enable cookie support for tabs to make them persistent.
+	// enable tab support
 	$('div.tabs').simpleTabs({ cookie: { expires: 30 } });
 });

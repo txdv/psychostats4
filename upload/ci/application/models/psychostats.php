@@ -1,8 +1,11 @@
-<?php
-/**
- *	Main Psychostats model.
- */
+<?php if (!defined('BASEPATH')) exit('No direct script access allowed');
 
+/**
+ *	Main Psychostats model
+ *	
+ *	$Id$
+ *	
+ */
 class Psychostats extends Model {
 	// @var string Path to directory where method files are located.
 	public $methods_dir = '';
@@ -265,6 +268,9 @@ class Psychostats extends Model {
 	public function get_player_gametype($id, $ret_obj = false) {
 		return $this->get_object_gametype($id, 'plr', 'plrid', $ret_obj);
 	}
+	public function get_clan_gametype($id, $ret_obj = false) {
+		return $this->get_object_gametype($id, 'clan', 'clanid', $ret_obj);
+	}
 	public function get_weapon_gametype($id, $ret_obj = false) {
 		return $this->get_object_gametype($id, 'weapon', 'weaponid', $ret_obj);
 	}
@@ -483,7 +489,6 @@ class Psychostats extends Model {
 	public function get_columns($tbl, $keyed = false, $exclude = array()) {
 		static $cache = array();
 		if (array_key_exists($tbl, $cache) and array_key_exists($keyed?1:0, $cache[$tbl])) {
-			print "returning cache!\n";
 			return $cache[$tbl][$keyed?1:0];
 		}
 		
@@ -565,7 +570,6 @@ class Psychostats extends Model {
 					. $caller[1]['line'],
 					E_USER_ERROR
 				);
-				return;
 			}
 		}
 		$ret = call_user_func_array(array($this->loaded_methods[$name], 'execute'), $args);

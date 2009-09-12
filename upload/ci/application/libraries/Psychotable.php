@@ -1,9 +1,10 @@
 <?php if (!defined('BASEPATH')) exit('No direct script access allowed');
-
 /**
-* @file system/application/libraries/Psychotable.php
-*/
-
+ *	Psychostats "Table" library
+ *	
+ *	$Id$
+ *	
+ */
 class Psychotable {
 	// @var array Table column definitions.
 	protected $columns 	= array();
@@ -12,6 +13,8 @@ class Psychotable {
 	
 	// @var array Internal array that holds the tabular data for the table.
 	protected $data;
+	
+	protected $no_data_str = '';
 
 	// @var array The internal template to use for table rendering.
 	protected $template;
@@ -446,6 +449,13 @@ class Psychotable {
 					$this->newline;
 			}
 			$out .= $rows;
+		} elseif (!empty($this->no_data_str)) {
+			$tr = new Psychotable_Tag($this->template['data_row_tag']);
+			$td = new Psychotable_Tag($this->template['data_cell_empty_tag'],
+						  array( 'colspan' => count($this->columns) ));
+			$out .= $this->indent(2) .
+				$tr->render($td->render($this->no_data_str)) .
+				$this->newline;
 		}
 		
 		if ($this->use_tbody) {
@@ -567,6 +577,16 @@ class Psychotable {
 	 */
 	public function set_data($data) {
 		$this->data = $data;		
+		return $this;
+	}
+
+	/**
+	 * Set the string to output if no data is available.
+	 * 
+	 * @param string $str String to display.
+	 */
+	public function set_no_data($str) {
+		$this->no_data_str = $str;		
 		return $this;
 	}
 
@@ -709,6 +729,7 @@ class Psychotable {
 			'header_cell_tag'		=> '<th>',
 			'header_cell_sorted_tag'	=> '<th class="sorted">',
 			'data_cell_tag'			=> '<td>',
+			'data_cell_empty_tag'		=> '<td class="nodata">',
 			'data_cell_even_tag'		=> '<td>',
 			'data_cell_sorted_tag'		=> '<td>',
 			'data_cell_sorted_even_tag' 	=> '<td>',

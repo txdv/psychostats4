@@ -1,39 +1,39 @@
 <?php
 /**
- * PsychoStats method get_weapon()
+ * PsychoStats method get_clan()
  * $Id$
  *
- * Fetches a single player record.
+ * Fetches a single clan record.
  *
  */
 
-class Psychostats_Method_Get_Weapon extends Psychostats_Method {
+class Psychostats_Method_Get_Clan extends Psychostats_Method {
 	public function execute($criteria = array()) {
+		$ci =& get_instance();
 		if (!is_array($criteria)) {
 			$criteria = array( 'id' => $criteria );
 		}
 		// set defaults
 		$criteria += array(
 			'id'		=> 0,
-			'force_string'	=> false,
 			'select'	=> null,
 		);
-		
 		$id = isset($criteria['id']) ? $criteria['id'] : 0;
 
-		$t_weapon = $this->ps->tbl('weapon', false);
-
-		// Match the record based on the numeric ID or its name
-		$key = (is_numeric($criteria['id']) and !$criteria['force_string'])
-			? 'weaponid'
-			: 'name';
+		$t_clan		= $this->ps->tbl('clan', false);
+		$t_profile	= $this->ps->tbl('clan_profile', false);
 
 		$stats = $criteria['select'] ? $criteria['select'] : $this->get_sql();
 		$fields = is_array($stats) ? implode(',', $stats) : $stats;
-		
-		$cmd = "SELECT $fields FROM $t_weapon wpn WHERE wpn.$key=?";
 
-		$ci =& get_instance();
+		$cmd = 
+<<<CMD
+		SELECT $fields
+		FROM ($t_clan clan)
+		LEFT JOIN $t_profile cp ON cp.clantag = clan.clantag
+		WHERE clan.clanid = ?
+CMD;
+
 		$q = $ci->db->query($cmd, $id);
 
 		if ($q->num_rows() == 0) {
@@ -44,13 +44,16 @@ class Psychostats_Method_Get_Weapon extends Psychostats_Method {
 		$res = $q->row_array();
 		$q->free_result();
 
-		return $res;
-	} 
+		// sanitize the clantag
+		//$res['clantag'] = htmlentities($res['clantag'], ENT_NOQUOTES, 'UTF-8');
 
+		return $res;
+	}
+	
 	protected function get_sql() {
 		$sql = array(
-			'wpn' => 'wpn.*',
-			'long_name' => 'COALESCE(full_name, name) long_name',
+			'clan' 			=> 'clan.*',
+			'cp'			=> 'cp.*',
 		);
 		return $sql;
 	}

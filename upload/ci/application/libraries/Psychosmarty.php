@@ -2,6 +2,12 @@
 
 require "smarty/Smarty.class.php";
 
+/**
+ * Psychostats "Smarty" subclass for themed output.
+ * 
+ * $Id$
+ * 
+ */
 class Psychosmarty extends Smarty
 {
 	var $CI;
@@ -9,6 +15,7 @@ class Psychosmarty extends Smarty
 	var $language_open	= '<#';
 	var $language_close	= '#>';
 	var $language_regex	= '/(?:<!--)?%s(.+?)%s(?:-->(.+?)<!---->)?/ms';
+	var $compress_output	= false;
 
 	function Psychosmarty()
 	{
@@ -42,6 +49,11 @@ class Psychosmarty extends Smarty
 			? $config['default_theme']
 			: 'default');
 
+		$this->compress_output = (bool)$config['compress_output'];
+
+		// allow open ended { ... } blocks to be treated as literal
+		// blocks (for css/js mainly) w/o having to use {literal} tags.
+		$this->auto_literal = true;
 
 		// Setup the prefilter so we can parse language strings
 		$this->load_filter('pre', 'translate_language');
@@ -92,8 +104,8 @@ class Psychosmarty extends Smarty
 	}
 	
 	/**
-	 * Returns true/false if the compile_dir exists and is writable
-	 * by the webserver user.
+	 * Checks to see if the compile_dir exists and is writable by the 
+	 * webserver user.
 	 * @param string $path Alternate path to verify. Uses $this->compile_dir by default.
 	 * @return boolean Returns true/false if the compile_dir is valid.
 	 */
@@ -127,7 +139,7 @@ class Psychosmarty extends Smarty
 			if (!@mkdir($path, 0777, true)) {
 				return false;
 			}
-		} elseif (!is_writable($path)) {
+		} elseif (!$this->verify_compile_dir($path)) {
 			// path exists but we can't write to it, try to chmod
 			// it so we can... 
 			if (!@chmod($path, 0777)) {
@@ -138,13 +150,14 @@ class Psychosmarty extends Smarty
 	}
 	
 	/**
-	 * Render a block of data and optionally using the PsychoStats_Method object.
+	 * Render a block of data and optionally using the Psychostats_Method object.
 	 * @param object $method Method to optionally call on the blocks.
 	 * @param array $blocks Array of blocks to render.
 	 * @param string $filename Template filename to use for html ('block-nav' by default)
 	 */
 	function render_blocks($method, &$blocks, $args = array(), $filename = 'block-nav') {
 		if ($method) {
+			// $method should be a Psychostats_Method object
 			array_unshift($args, &$blocks);
 			call_user_func_array(array($method, 'execute'), $args);
 		}
@@ -154,7 +167,7 @@ class Psychosmarty extends Smarty
 		foreach ($blocks as $b) {
 			$out .= $this->view(
 				$filename,
-				&$b,
+				$b,
 				null,
 				true
 			);
@@ -163,10 +176,10 @@ class Psychosmarty extends Smarty
 	}
 	
 	/**
-	 * Loads the template from the currently selected theme.
+	 * Loads the template from the selected theme.
 	 * @param string $filename Filename of template to load.
 	 * @param array $params Variables that will be passed to the template.
-	 * @param boolean $theme Optionally specify a theme to load the template from.
+	 * @param string $theme Optionally specify a theme to load the template from.
 	 * @param boolean $return Returns the output as a string if true.
 	 */
 	function view($filename, $params = array(), $theme = null, $return = false)
@@ -203,11 +216,20 @@ class Psychosmarty extends Smarty
 				'error_str' => $e->getMessage()
 			), $return);
 		}
+
 		
 		if ($return) {
+			// don't compress the output if we want the raw string
 			return $output;
 		} else {
-			echo $output;
+			if ($this->compress_output) {
+				echo $this->ob_gzhandler($output, PHP_OUTPUT_HANDLER_END);
+				//ob_start(array($this, 'ob_gzhandler'));
+				//echo $output;
+				//ob_end_flush();
+			} else {
+				echo $output;
+			}
 			return true;
 		}
 	}
@@ -250,11 +272,18 @@ class Psychosmarty extends Smarty
 		return is_dir($template_dir . DIRECTORY_SEPARATOR . $theme);
 	}
 	
+	/**
+	 * Set's the current theme to use for templates.
+	 */
 	function set_theme($theme)
 	{
 		$this->theme = $theme;
 	}
 
+	/**
+	 * Translates the string.
+	 * @param mixed $var1,$var2,... 1 or more sprintf values to use in the string.
+	 */
 	function trans($str)
 	{
 		$args = func_get_args();
@@ -266,9 +295,13 @@ class Psychosmarty extends Smarty
 		}
 	}
 	
-	// Changes the open and closing tags for filtering language phrases in
-	// the template.
-	// @return array original values
+	/**
+	 * Changes the open and closing tags for filtering language phrases in
+	 * the template.
+	 * @param string $open The opening tag.
+	 * @param string $close Optional closing tag.
+	 * @return array original values
+	 */
 	function language_tags($open, $close = null) {
 		$orig = array($this->language_open, $this->language_close);
 		if (is_array($open)) {
@@ -278,12 +311,73 @@ class Psychosmarty extends Smarty
 		if ($close) $this->language_close = $close;
 		return $orig;
 	}
-} // END class smarty_library
+
+	/**
+	 * Output buffer handler to support GZIP/DEFLATE compression of output.
+	 * enable using ob_start(array($this, 'ob_gzhandler')) or call directly:
+	 * $this->ob_gzhandler($buffer, PHP_OUTPUT_HANDLER_END);
+	 * Note the use of the flag PHP_OUTPUT_HANDLER_END, that is required
+	 * if you call the function directly.
+	 */
+	function ob_gzhandler($buffer, $flags) {
+		// don't do anything if the buffer isn't being closed or if
+		// headers were already sent.
+		if (($flags & PHP_OUTPUT_HANDLER_END != PHP_OUTPUT_HANDLER_END)
+		    || headers_sent()
+		    || empty($buffer)) {
+			return false;
+		}
+
+		$zipped = '';
+		$original_length = strlen($buffer);
+		$encoding = false;
+
+		// build an array of accepted encodings
+		$accept = (array)explode(',', str_replace(' ', '', strtolower($_SERVER['HTTP_ACCEPT_ENCODING'])));
+		if (in_array('gzip', $accept)) {
+			$zipped = gzencode($buffer);
+			$encoding = 'gzip';
+		} elseif (in_array('deflate', $accept)) {
+			$zipped = gzcompress($buffer);
+			$encoding = 'deflate';
+		} else {
+			$zipped =& $buffer;
+		}
+		$length = strlen($zipped);
+		
+		// don't send compressed output if the zipped length is
+		// greater than the original (only occurs on small output)
+		if ($length > $original_length) {
+			$zipped = false;
+			$length = strlen($buffer);
+		}
+		
+		// provide content-length to allow HTTP persistent connections.
+		// PHP's built in ob_gzhandler does not send this header
+		header("Content-Length: $length", true);
+		
+		if ($zipped) {
+			header("Vary: Accept-Encoding", true); 	// handle proxies
+			header("Content-Encoding: $encoding", true);
+			// add an informational value showing how much
+			// compression we actually achieved (debugging)
+			header(sprintf("X-Compression: %d/%d (%.0f:1) (%.02f%%)",
+				$length,
+				$original_length,
+				$original_length / $length,
+				abs($length / $original_length * 100 - 100)
+			), true);
+			return $zipped;
+		} else {
+			return $buffer;
+		}
+	}
+
+} // END class psychosmarty
 
 // Some global smarty functions are defined here, so we don't need to worry
 // about these being forgotten in the plugins directory. These functions are
 // used on almost all pages.
-
 
 function smarty_function_elapsed_time($params, $smarty, $template) {
         $ci =& get_instance();
@@ -291,7 +385,7 @@ function smarty_function_elapsed_time($params, $smarty, $template) {
 }
 
 /**
- * Generates the overall header menu for the theme.
+ * Generates the overall header menu for the theme. {ps_header_menu}
  */
 function smarty_function_ps_header_menu($params, $smarty, $template) {
         //$ci =& get_instance();
@@ -349,6 +443,7 @@ function smarty_function_asset($params, $smarty, $template)
 	if ($static) {
 		return $smarty->theme_url . $theme . '/' . $file;
 	} else {
+		// link to the theme_asset controller for the file
 		return rel_site_url("ta/$theme/$file");
 	}
 } 

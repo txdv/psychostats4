@@ -23,6 +23,10 @@ class MY_Controller extends Controller {
 	}
 
 	function _psychostats_init() {
+		// enable sane error reporting for all pages.
+		error_reporting(E_ALL & ~E_STRICT & ~E_NOTICE);
+		//error_reporting(E_ALL);
+		
 		// Most pages will have a DB connection. Some exceptions would
 		// be the initial installer setup and possibly more...
 		if (!defined('PS_NO_DATABASE')) {
