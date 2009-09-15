@@ -78,6 +78,12 @@ $config['header_menu']['awards'] = 'Awards';
 $config['header_menu']['servers'] = 'Servers';
 $config['header_menu']['admin'] = 'Admin'; // auto removed for non-admins
 
+// default color gradient for percent bars (range: 0 - 100).
+// Set only the indexes you want and the rest will be filled in automatically.
+$config['pct_bar'][  0] = 'AAAAFF';
+//$config['pct_bar'][ 25] = 'cccccc';
+$config['pct_bar'][100] = '003355';
+
 // Should page output be compressed (gzip, deflate)? This is a per-client
 // setting and is ignored for clients that do not support compression. It
 // should be safe to always leave this enabled, unless you are embedding

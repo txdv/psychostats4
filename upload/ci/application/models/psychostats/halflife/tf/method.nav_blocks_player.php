@@ -178,6 +178,16 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 		);
 
 		array_push_after($blocks['player_kill_profile']['rows'],
+				 'killed',
+				 array( 
+					'row_class' => 'sub',
+					'label' => trans('Assists'),
+					'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
+				 ),
+				 'assisted_kills'
+		);
+
+		array_push_after($blocks['player_kill_profile']['rows'],
 				 'headshot_kills',
 				 array( 
 					'row_class' => 'sub',
@@ -208,17 +218,6 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 				 ),
 				 'backstab_kills'
 		);
-
-		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_kills',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Assists'),
-					'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
-				 ),
-				 'assisted_kills'
-		);
-
 
 		// deaths
 		array_push_after($blocks['player_kill_profile']['rows'],

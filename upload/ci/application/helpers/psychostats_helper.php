@@ -81,46 +81,85 @@ if (!function_exists('pct_bar')) {
 		}
 		$args += array(
 			'pct'		=> 0,
-			'color1'	=> 'CC0000', // red
-			'color2'	=> '00CC00', // green
-			'degrees'	=> 2,
+			'colors'	=> array(),	// a list of colors to use (names or hex)
+			//'color1'	=> 'CC0000', 	// deprecated
+			//'color2'	=> '00CC00', 	// deprecated
 			'width'		=> null,
 			'class'		=> 'pct-bar',
 			'styles'	=> '',
 			'title'		=> null,
 		);
-		static $colors = array();
-		if (!empty($args['width']) and (!is_numeric($args['width']) or $args['width'] < 1)) $args['width'] = 100;
-		$w = $args['width'] ? $args['width'] : 100;
-		//$width = $args['pct'] / 100 * $w; 				// scaled width
-		$key = $args['color1'] . '-' . $args['color2'];
-		if (!isset($colors[$key])) {
+		static $colormap = array();
+		
+		// if no width was given or its invalid, default to 100
+		$w = $args['width'];
+		if (empty($w) or !is_numeric($w) or $w < 1) {
+			$w = 100;
+		}
+
+		// Initialize color map indexes.
+		// Using $color1 and $color2 is deprecated. Use $colors array
+		// instead.
+		$map = array();
+		if ($args['colors']) {
+			$map = $args['colors'];
+		} else {
+			$config =& get_config();
+			$map = $config['pct_bar'];
+			if (!is_array($map)) {
+				$map = explode(',', $map);
+			}
+			unset($config);
+		}
+		//$map = $args['colors']
+		//	? $args['colors']
+		//	: array(0 => $args['color1'],		// low
+		//		(int)$w/2-1 => 'CCCC00',	// mid
+		//		$w-1 => $args['color2']);	// high
+
+		// make sure the map has an index that matches the width so
+		// the proper number of color gradients are created.
+		if (($max = max(array_keys($map))) < $w-1) {
+			$map[$w-1] = $map[$max];
+		}
+		
+		// generate a key so we can lookup the static colormap
+		$key = md5(serialize($map));
+		
+		// create a colormap for the specified gradient
+		if (!isset($colormap[$key])) {
 			$ci =& get_instance();
 			$ci->load->library('color');
-			$ci->color->setColors($args['color1'], $args['color2']);
-			// 100 colors, no matter the width
-			$colors[$key] = $ci->color->getRange(100, $args['degrees']);
-			$colors[$key][0] = $args['color1'];
+			$c = $ci->color->create($map);
+			$c->SetRange(0, $w);	// 0 .. $width + 1
+			$colormap[$key] = $c;
+			// debugging; output the color gradient
 			//$i=0;
-			//foreach ($colors[$key] as $col) {
-			//	printf("<div style='color: white; background-color: %s'>%s (%d)</div>", $col, $col, $i++);
+			//foreach ($colormap[$key] as $col) {
+			//	printf("<div style='width: 150px; color: white; background-color: %s'>%s (%d)</div>", $col, $col, $i++);
 			//}
 		}
 	
+
 		$styles = !empty($args['styles']) ? $args['styles'] : '';
+		// if the original width was set then force the pctbar to it
 		if (!empty($args['width'])) {
-			$styles = " width: " . $args['width'] . "px;";
+			$styles .= ' width: ' . $args['width'] . 'px;';
 		}
+		// add wrapper around styles string
 		if (!empty($styles)) $styles = " style='$styles'";
-	
-		$int = intval($args['pct']);
-		if ($int > 0 and $int < 100) {
-			$color = $colors[$key][$int];
-		} else {
-			$color = ($int == 0) ? $args['color1'] : $args['color2'];
-		}
+
 		$title = !empty($args['title']) ? $args['title'] : (int)($args['pct']) . '%';
-		$out = sprintf("<span %s>%s</span><span %s title='%s'%s><span style='width: %s; background-color: #%s'></span></span>",
+
+		$color = 0;
+		$int = intval($args['pct']);
+		if (isset($colormap[$key][$int])) {
+			$color = $colormap[$key][$int];
+		} else {
+			$color = $colormap[$key][0];
+		}
+
+		$out = sprintf("<span %s>%s</span><span %s title='%s'%s><span style='width: %s; background-color: %s'></span></span>",
 			!empty($args['class']) ? "class='" . $args['class'] . "-text'" : "",
 			$title,
 			!empty($args['class']) ? "class='" . $args['class'] . "'" : "",
