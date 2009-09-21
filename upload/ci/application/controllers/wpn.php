@@ -58,9 +58,7 @@ class Wpn extends MY_Controller {
 		$this->ps->set_gametype($this->wpn['gametype'], $this->wpn['modtype']);
 
 		// define a base table that all other tables will inherit from
-		$this->default_table = $this->psychotable->create()
-			->set_template('table_open', '<table class="neat">')
-			;
+		$this->default_table = $this->psychotable->create();
 
 		$this->weapon_stats = $this->ps->get_weapon_stats($id);
 		$this->topten_kills = $this->ps->get_weapon_players(array(

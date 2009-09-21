@@ -84,6 +84,7 @@ if (!function_exists('pct_bar')) {
 			'colors'	=> array(),	// a list of colors to use (names or hex)
 			//'color1'	=> 'CC0000', 	// deprecated
 			//'color2'	=> '00CC00', 	// deprecated
+			'textcolor'	=> true, 	// if true an automatic contrast is used. If a string, its used literally
 			'width'		=> null,
 			'class'		=> 'pct-bar',
 			'styles'	=> '',
@@ -140,6 +141,18 @@ if (!function_exists('pct_bar')) {
 			//}
 		}
 	
+		$color = 0;
+		$int = intval($args['pct']);
+		if (isset($colormap[$key][$int])) {
+			$color = $colormap[$key][$int];
+		} else {
+			$color = $colormap[$key][0];
+		}
+
+		$textcolor = $args['textcolor'];
+		if ($textcolor === true) {
+			$textcolor = $colormap[$key]->GetContrast($color);
+		}
 
 		$styles = !empty($args['styles']) ? $args['styles'] : '';
 		// if the original width was set then force the pctbar to it
@@ -151,16 +164,9 @@ if (!function_exists('pct_bar')) {
 
 		$title = !empty($args['title']) ? $args['title'] : (int)($args['pct']) . '%';
 
-		$color = 0;
-		$int = intval($args['pct']);
-		if (isset($colormap[$key][$int])) {
-			$color = $colormap[$key][$int];
-		} else {
-			$color = $colormap[$key][0];
-		}
-
-		$out = sprintf("<span %s>%s</span><span %s title='%s'%s><span style='width: %s; background-color: %s'></span></span>",
+		$out = sprintf("<span %s%s>%s</span><span %s title='%s'%s><span style='width: %s; background-color: %s'></span></span>",
 			!empty($args['class']) ? "class='" . $args['class'] . "-text'" : "",
+			$textcolor ? "style='color: $textcolor'" : '',
 			$title,
 			!empty($args['class']) ? "class='" . $args['class'] . "'" : "",
 			$title,

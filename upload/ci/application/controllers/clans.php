@@ -56,7 +56,6 @@ class Clans extends MY_Controller {
 		$clans = $this->ps->get_clans($criteria);
 
 		$table = $this->psychotable->create()
-			->set_template('table_open', '<table class="neat">')
 			->set_sort($this->get['sort'], $this->get['order'], array($this, '_sort_header_callback'))
 			->column('+',			'#', 			$this->get['start'])
 			->column('clantag',		trans('Clan Tag'),	array($this, '_cb_name_link'))

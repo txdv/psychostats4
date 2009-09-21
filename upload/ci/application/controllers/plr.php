@@ -101,9 +101,7 @@ class Plr extends MY_Controller {
 		$this->ps->set_gametype($this->plr['gametype'], $this->plr['modtype']);
 
 		// define a base table that all other tables will inherit from
-		$this->default_table = $this->psychotable->create()
-			->set_template('table_open', '<table class="neat">')
-			;
+		$this->default_table = $this->psychotable->create();
 
 		// define a base pager that all other pagers will inherit from
 		$this->default_pager = $this->pager->create(array(

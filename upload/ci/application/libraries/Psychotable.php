@@ -693,7 +693,7 @@ class Psychotable {
 		$this->template = array(
 			// open/close tags are used AS-IS and are not
 			// filtered or processed in any way.
-			'table_open'			=> '<table>',
+			'table_open'			=> '<table class="neat">',
 			'table_close'			=> '</table>',
 							
 			'thead_open'			=> '<thead>',

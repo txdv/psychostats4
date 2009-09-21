@@ -57,7 +57,6 @@ class Roles extends MY_Controller {
 
 		$table = $this->psychotable->create()
 			->set_data($roles)
-			->set_template('table_open', '<table class="neat">')
 			->set_sort($this->get['sort'], $this->get['order'], array($this, '_sort_header_callback'))
 			->column('img',			false,		 	array($this, '_cb_role_img'))
 			->column('name',		trans('Role'),		array($this, '_cb_name_link'))

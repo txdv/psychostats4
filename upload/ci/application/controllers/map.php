@@ -56,9 +56,7 @@ class Map extends MY_Controller {
 		$this->ps->set_gametype($this->map['gametype'], $this->map['modtype']);
 
 		// define a base table that all other tables will inherit from
-		$this->default_table = $this->psychotable->create()
-			->set_template('table_open', '<table class="neat">')
-			;
+		$this->default_table = $this->psychotable->create();
 
 		$limit = 25;
 

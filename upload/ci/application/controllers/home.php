@@ -69,7 +69,6 @@ class Home extends MY_Controller {
 		$players = $this->ps->get_players($criteria);
 
 		$players_table = $this->psychotable->create()
-			->set_template('table_open', '<table class="neat">')
 			->set_caption(sprintf('<a href="%s">%s</a>',
 					      rel_site_url('players'),
 					      trans("Top %d players out of %s",
@@ -102,7 +101,6 @@ class Home extends MY_Controller {
 		$clans = $this->ps->get_clans($criteria);
 
 		$clans_table = $this->psychotable->create()
-			->set_template('table_open', '<table class="neat">')
 			->set_caption(sprintf('<a href="%s">%s</a>',
 					      rel_site_url('clans'),
 					      trans("Top %d clans out of %s",
@@ -132,7 +130,6 @@ class Home extends MY_Controller {
 		$weapons = $this->ps->get_weapons($criteria);
 
 		$weapons_table = $this->psychotable->create()
-			->set_template('table_open', '<table class="neat">')
 			->set_caption(sprintf('<a href="%s">%s</a>',
 					      rel_site_url('weapons'),
 					      trans("Top %d weapons out of %s",
