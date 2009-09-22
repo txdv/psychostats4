@@ -88,7 +88,7 @@ $config['pct_bar'][100] = '003355';
 // setting and is ignored for clients that do not support compression. It
 // should be safe to always leave this enabled, unless you are embedding
 // your stats into another page.
-$config['compress_output'] = true;
+$config['enable_compression'] = true;
 
 /*
 |--------------------------------------------------------------------------
@@ -352,7 +352,9 @@ $config['global_xss_filtering'] = FALSE;
 | by the output class.  Do not "echo" any values with compression enabled.
 |
 */
+// DO NOT ENABLE! WILL INTERFERE WITH enable_compression above!
 $config['compress_output'] = FALSE;
+// DO NOT ENABLE! WILL INTERFERE WITH enable_compression above!
 
 /*
 |--------------------------------------------------------------------------

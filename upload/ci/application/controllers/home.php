@@ -49,9 +49,12 @@ class Home extends MY_Controller {
 		// set the default game/mod
 		$this->ps->set_gametype($this->get['gametype'], $this->get['modtype']);
 
+		// get totals ...
 		$total_players = $this->ps->get_total_players();
 		$total_clans   = $this->ps->get_total_clans(array('min_members' => 2));
 		$total_weapons = $this->ps->get_total_weapons();
+		$total_maps    = $this->ps->get_total_maps();
+		$total_roles   = $this->ps->get_total_roles();
 
 		// PLAYERS
 		$select = array(
@@ -148,15 +151,69 @@ class Home extends MY_Controller {
 			;
 		$this->ps->mod_table($weapons_table, 'weapons_top5', $this->get['gametype'], $this->get['modtype']);
 
+		// MAPS
+		$criteria = array(
+			'select' => null,
+			'limit' => 5,
+			'start' => 0,
+			'sort' => 'kills desc', 
+		);
+		$maps = $this->ps->get_maps($criteria);
 
+		$maps_table = $this->psychotable->create()
+			->set_caption(sprintf('<a href="%s">%s</a>',
+					      rel_site_url('maps'),
+					      trans("Top %d maps out of %s",
+						    count($maps),
+						    number_format($total_maps))))
+			->set_data($maps)
+			->set_sort('kills', 'desc')
+			->column('+', 			'#', 			'')
+			//->column('img',		false,		 	array($this, '_cb_map_img'))
+			->column('name',		trans('Map'), 		array($this, '_cb_name_link_no_wrap'))
+			->column('kills',		trans('Kills'), 	'number_format')
+			->data_attr('img', 'class', 'img')
+			->data_attr('name', 'class', 'link')
+			//->header_attr('name', 'colspan', 2)
+			;
+		$this->ps->mod_table($maps_table, 'maps_top5', $this->get['gametype'], $this->get['modtype']);
+
+		// ROLES
+		$criteria = array(
+			'select' => null,
+			'limit' => 5,
+			'start' => 0,
+			'sort' => 'kills desc', 
+		);
+		$roles = $this->ps->get_roles($criteria);
+
+		$roles_table = $this->psychotable->create()
+			->set_caption(sprintf('<a href="%s">%s</a>',
+					      rel_site_url('roles'),
+					      trans("Top %d roles out of %s",
+						    count($roles),
+						    number_format($total_roles))))
+			->set_data($roles)
+			->set_sort('kills', 'desc')
+			->column('+', 			'#', 			'')
+			->column('name',		trans('Role'), 		array($this, '_cb_name_link_no_wrap'))
+			->column('kills',		trans('Kills'), 	'number_format')
+			->data_attr('img', 'class', 'img')
+			->data_attr('name', 'class', 'link')
+			;
+		$this->ps->mod_table($roles_table, 'roles_top5', $this->get['gametype'], $this->get['modtype']);
 
 		$data = array(
 			'total_players' => $total_players,
 			'total_clans' 	=> $total_clans,
 			'total_weapons'	=> $total_weapons,
+			'total_maps'	=> $total_maps,
+			'total_roles'	=> $total_roles,
 			'players_table'	=> $players_table->render(),
 			'clans_table'	=> $clans_table->render(),
 			'weapons_table'	=> $weapons_table->render(),
+			'maps_table'	=> $maps_table->render(),
+			'roles_table'	=> $roles_table->render(),
 		);
 
 		

@@ -15,7 +15,7 @@ class Psychosmarty extends Smarty
 	var $language_open	= '<#';
 	var $language_close	= '#>';
 	var $language_regex	= '/(?:<!--)?%s(.+?)%s(?:-->(.+?)<!---->)?/ms';
-	var $compress_output	= false;
+	var $enable_compression	= false;
 
 	function Psychosmarty()
 	{
@@ -49,7 +49,7 @@ class Psychosmarty extends Smarty
 			? $config['default_theme']
 			: 'default');
 
-		$this->compress_output = (bool)$config['compress_output'];
+		$this->enable_compression = (bool)$config['enable_compression'];
 
 		// allow open ended { ... } blocks to be treated as literal
 		// blocks (for css/js mainly) w/o having to use {literal} tags.
@@ -209,7 +209,7 @@ class Psychosmarty extends Smarty
 		
 		$output = '';
 		try {
-			$output = parent::fetch($file, null, null, $theme . '-' . $this->language);
+			$output = parent::fetch($file, null, $theme . '-' . $this->language);
 		} catch (Exception $e) {
 			//show_error($e->getMessage());
 			$output = $this->CI->load->view('smarty_error', array(
@@ -222,7 +222,7 @@ class Psychosmarty extends Smarty
 			// don't compress the output if we want the raw string
 			return $output;
 		} else {
-			if ($this->compress_output) {
+			if ($this->enable_compression) {
 				echo $this->ob_gzhandler($output, PHP_OUTPUT_HANDLER_END);
 				//ob_start(array($this, 'ob_gzhandler'));
 				//echo $output;
