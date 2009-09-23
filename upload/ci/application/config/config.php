@@ -84,11 +84,15 @@ $config['pct_bar'][  0] = 'AAAAFF';
 //$config['pct_bar'][ 25] = 'cccccc';
 $config['pct_bar'][100] = '003355';
 
+// Hard limit on search results. Set too high and some searches can take way
+// too long or take up too much memory to process.
+$config['limit_search'] = 1000;
+
 // Should page output be compressed (gzip, deflate)? This is a per-client
 // setting and is ignored for clients that do not support compression. It
 // should be safe to always leave this enabled, unless you are embedding
 // your stats into another page.
-$config['enable_compression'] = true;
+$config['enable_compression'] = false;
 
 /*
 |--------------------------------------------------------------------------

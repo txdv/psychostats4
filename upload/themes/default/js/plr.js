@@ -7,7 +7,6 @@ $(function(){
 	
 	// enable tab support
 	$('div.tabs').simpleTabs({ cookie: { expires: 30 } });
-	
 });
 
 function click_table(e) {

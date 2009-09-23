@@ -30,7 +30,8 @@ class Psychotable {
 	public $names = array('sort'  => 'sort',
 			      'order' => 'order',
 			      'start' => 'start',
-			      'limit' => 'limit');
+			      'limit' => 'limit',
+			      'search' => 'search');
 	public $sort = null;
 	public $order = 'asc';
 	
@@ -604,15 +605,15 @@ class Psychotable {
 	}
 
 	/**
-	 * Set the names used for sorting
+	 * Set the names used for sorting / searching
 	 * 
-	 * @param string $sort Name of the column that matches the sort.
-	 * @param string $order 'asc' or 'desc' specifing the sort order.
+	 * @param mixed  $key Name of the column that matches, or an array.
+	 * @param string $val String of the parameter.
 	 */
-	public function set_sort_names($key = array(), $val = null) {
+	public function set_names($key = array(), $val = null) {
 		if (is_array($key)) {
 			foreach ($key as $k => $v) {
-				$this->set_sort_names($k, $v);
+				$this->set_names($k, $v);
 			}
 			return $this;
 		}

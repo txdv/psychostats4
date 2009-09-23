@@ -72,7 +72,7 @@ class Role extends MY_Controller {
 		$this->topten_kills_table = $this->default_table->create()
 			->set_data($this->topten_kills)
 			->set_sort($this->get['ks'], $this->get['ko'], array($this, '_sort_header_callback'))
-			->set_sort_names(array('sort' => 'ks', 'order' => 'ko', 'start' => 'kst'))
+			->set_names(array('sort' => 'ks', 'order' => 'ko', 'start' => 'kst'))
 			->column('rank', 		trans('Rank'), 		array($this, '_cb_plr_rank'))
 			->column('name',		trans('Victim'), 	array($this, '_cb_name_link'))
 			->column('kills',		trans('Kills'), 	'number_format')

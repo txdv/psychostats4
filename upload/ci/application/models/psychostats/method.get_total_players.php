@@ -15,9 +15,9 @@ class Psychostats_Method_Get_Total_Players extends Psychostats_Method {
 		$criteria += array(
 			'where' 	=> null,
 			'is_ranked' 	=> false,	// false
+			'search'	=> null,
 		);
 
-		$ci =& get_instance();
 		if ($gametype === null) {
 			$gametype = $this->ps->gametype();
 		}
@@ -39,9 +39,34 @@ class Psychostats_Method_Get_Total_Players extends Psychostats_Method {
 			$criteria['where'][] = $this->ps->is_ranked_sql;
 		}
 
+		// apply search results
+		if ($criteria['search']) {
+			$matched = array();
+			if (is_array($criteria['search'])) {
+				// search is a full result array
+				$matched = $criteria['search']['results'];
+			} else {
+				// search is a search_id string
+				$search = $this->ps->get_search($criteria['search']);
+				if ($search) {
+					$matched = $search['results'];
+				}
+			}
+
+			if ($matched) {
+				// limit matches based on search results
+				$criteria['where'][] = 'plr.plrid IN (' . join(',',$matched) . ')';
+			} else {
+				// force an empty result set since the search
+				// didn't have any results
+				$criteria['where'] = array( '0=1' );
+			}
+			unset($matched);
+		}
+
 		$cmd .= $this->ps->where($criteria['where']);
 
-		$q = $ci->db->query($cmd);
+		$q = $this->ps->db->query($cmd);
 
 		$count = 0;
 		if ($q->num_rows()) {

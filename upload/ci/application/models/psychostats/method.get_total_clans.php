@@ -20,7 +20,6 @@ class Psychostats_Method_Get_Total_Clans extends Psychostats_Method {
 			'is_plr_ranked'	=> false,	// false
 		);
 
-		$ci =& get_instance();
 		if ($gametype === null) {
 			$gametype = $this->ps->gametype();
 		}
@@ -70,7 +69,7 @@ CMD;
 		$cmd .= $this->ps->where($criteria['where']);
 		//print "$cmd<br/>\n";
 		
-		$q = $ci->db->query($cmd);
+		$q = $this->ps->db->query($cmd);
 
 		$count = 0;
 		if ($q->num_rows()) {

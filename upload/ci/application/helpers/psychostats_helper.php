@@ -46,6 +46,115 @@ if (!function_exists('trans')) {
 	}
 }
 
+if (!function_exists('coalesce')) {
+	/**
+	 * Returns the first non-empty value.
+	 * 
+	 * @param mixed,mixed[,mixed,...]  2 or more parmaters to check
+	 * @return mixed
+	 */
+	function coalesce() {
+		$args = func_get_args();
+		foreach ($args as $arg) {
+		    if (!empty($arg)) {
+			return $arg;
+		    }
+		}
+		return $args ? $args[0] : null;
+	}
+}
+
+if (!function_exists('query_to_tokens')) {
+	/**
+	 * Tokenizes a string phrase for search queries and accounts for
+	 * double quoted strings properly (not 100% correct) (Multibyte safe).
+	 * 
+	 * @param string $string  Query string to tokenize
+	 * @return array  An array of query tokens (phrases)
+	 */
+	function query_to_tokens($string) {
+		if (!is_string($string)) {
+			return false;
+		}
+	
+		$x = trim($string);
+		// short circuit if the string is empty
+		if (empty($x)) {
+			return array();
+		}
+	       
+		// tokenize string into individual characters
+		$chars = mb_str_split($x);
+		$mode = 'normal';
+		$token = '';
+		$tokens = array();
+		for ($i=0, $j = count($chars); $i < $j; $i++) {
+			switch ($mode) {
+				case 'normal':
+					if ($chars[$i] == '"') {
+						if ($token != '') {
+							$tokens[] = $token;
+						}
+						$token = '';
+						$mode = 'quoting';
+					} else if (in_array($chars[$i], array(' ', "\t", "\n"))) {
+						if ($token != '') {
+							$tokens[] = $token;
+						}
+						$token = '';
+					} else {
+						$token .= $chars[$i];
+					}
+					break;
+	       
+				case 'quoting':
+					if ($chars[$i] == '"') {
+						if ($token != '') {
+							$tokens[] = $token;
+						}
+						$token = '';
+						$mode = 'normal';
+					} else {
+						$token .= $chars[$i];
+					}
+					break;
+			}
+		}
+		if ($token != '') {
+			$tokens[] = $token;
+		}
+	
+		return $tokens;
+	}   
+}
+
+if (!function_exists('mb_str_split')) {
+	/**
+	 * Multibyte safe str_split function. Splits a string into an array with
+	 * 1 character per element (note: 1 char does not always mean 1 byte).
+	 * 
+	 * @param string   $str     string to split.
+	 * @param integer  $length  character length of each array index. 
+	 * @return array            Array of characters
+	 */
+	function mb_str_split($str, $length = 1) {
+		// fall back to old str_split if mb_ functions are not available.
+		if (!function_exists('mb_substr')) {
+			return str_split($str, $length);
+		}
+	
+		if ($length < 1) return FALSE;
+	
+		$result = array();
+	
+		for ($i = 0; $i < mb_strlen($str); $i += $length) {
+			$result[] = mb_substr($str, $i, $length);
+		}
+	
+		return $result;
+	}
+}
+
 if (!function_exists('compact_time')) {
 	function compact_time($seconds, $format="hh:mm:ss") {
 		$d = $h = $m = $s = "00";
@@ -166,7 +275,7 @@ if (!function_exists('pct_bar')) {
 
 		$out = sprintf("<span %s%s>%s</span><span %s title='%s'%s><span style='width: %s; background-color: %s'></span></span>",
 			!empty($args['class']) ? "class='" . $args['class'] . "-text'" : "",
-			$textcolor ? "style='color: $textcolor'" : '',
+			$textcolor ? " style='color: $textcolor'" : '',
 			$title,
 			!empty($args['class']) ? "class='" . $args['class'] . "'" : "",
 			$title,
@@ -507,6 +616,18 @@ if (!function_exists('img_url')) {
 			array_pop($leafs);
 		}
 		return false;
+	}
+}
+
+if (!function_exists('uuid')) {
+	// generates a new UUID / GUID (version 4; random)
+	function uuid($dashes = true) {
+		return sprintf($dashes ? '%04x%04x-%04x-%04x-%04x-%04x%04x%04x' : '%04x%04x%04x%04x%04x%04x%04x%04x',
+			mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
+			mt_rand( 0, 0x0fff ) | 0x4000,
+			mt_rand( 0, 0x3fff ) | 0x8000,
+			mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
+		);
 	}
 }
 

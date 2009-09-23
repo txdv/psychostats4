@@ -14,6 +14,7 @@ class Psychostats extends Model {
 	public $allow_autoload_methods = true;
 	// @var string SQL string used to limit SQL results to players that are ranked.
 	public $is_ranked_sql = '(plr.rank IS NOT NULL AND plr.rank <> 0)';
+	public $is_not_ranked_sql = '(plr.rank IS NULL OR plr.rank=0)';
 	public $is_clan_ranked_sql = '(clan.rank IS NOT NULL)';
 	// @var array Array of methods that have been loaded.
 	protected $loaded_methods = array();
@@ -300,10 +301,9 @@ class Psychostats extends Model {
 			}
 		}
 
-		$ci =& get_instance();
 		$tbl = $this->tbl($tbl, false);
 		$sql = "SELECT gametype, modtype FROM $tbl WHERE $key = ? LIMIT 1";
-		$q = $ci->db->query($sql, $id);
+		$q = $this->db->query($sql, $id);
 		
 		if ($q->num_rows() == 0) {
 			// not found
@@ -314,7 +314,7 @@ class Psychostats extends Model {
 		if ($ret_obj) {
 			$r = $q->row();
 		} else {
-			$r = $g->row_array();
+			$r = $q->row_array();
 		}
 		$q->free_result();
 		return $r;
@@ -327,7 +327,6 @@ class Psychostats extends Model {
 	 * @param string $order 'asc' or 'desc' order applied to the $sort.
 	 */
 	public function order_by($sort, $order = 'asc') {
-		$ci =& get_instance();
 		$sql = '';
 		if ($sort) {
 			$list = explode(',', $sort);
@@ -341,7 +340,7 @@ class Psychostats extends Model {
 				if (!in_array(strtolower($o), array('asc','desc'))) {
 					$o = 'asc';
 				}
-				$sql .= ', ' . $ci->db->_protect_identifiers($s) . ' ' . strtoupper($o);
+				$sql .= ', ' . $this->db->_protect_identifiers($s) . ' ' . strtoupper($o);
 			}
 		}
 		if (!empty($sql)) {
@@ -355,7 +354,6 @@ class Psychostats extends Model {
 	 * Shortcut for LIMIT x,y. Returns a string for use in SQL queries.
 	 */
 	public function limit($limit, $start = null) {
-		$ci =& get_instance();
 		$sql = '';
 		if ($limit and $start) {
 			// 'LIMIT x OFFSET y' is compatible with PostgreSQL
@@ -394,7 +392,6 @@ class Psychostats extends Model {
 		}
 		$glue = ' ' . trim($glue) . ' ';
 		
-		$ci =& get_instance();
 		$sql = '';
 		foreach ($criteria as $key => $val) {
 			// $key is a numeric array index and val is a sub-array.
@@ -421,7 +418,7 @@ class Psychostats extends Model {
 			}
 			
 			$has_op = $this->has_op($key);
-			$where = ($has_op || !$escape) ? $key : $ci->db->_protect_identifiers($key);
+			$where = ($has_op || !$escape) ? $key : $this->db->_protect_identifiers($key);
 			
 			if (!$has_op) {
 				// No OP was given so default one depending on the value.
@@ -433,7 +430,7 @@ class Psychostats extends Model {
 					// convert boolean values into 1 or 0
 					$val = $val ? 1 : 0;
 				}
-				$where .= $escape ? $ci->db->escape($val) : $val;
+				$where .= $escape ? $this->db->escape($val) : $val;
 			}
 			
 			$sql .= $where . $glue;
@@ -466,8 +463,7 @@ class Psychostats extends Model {
 			$modtype = $this->modtype;
 		}
 		
-		$ci =& get_instance();
-		$tbl = $ci->db->dbprefix($tbl);
+		$tbl = $this->db->dbprefix($tbl);
 		if ($gametype) {
 			if ($modtype) {
 				$tbl .= '_' . $gametype . '_' . $modtype;
@@ -492,8 +488,7 @@ class Psychostats extends Model {
 			return $cache[$tbl][$keyed?1:0];
 		}
 		
-		$ci =& get_instance();
-		$q = $ci->db->query("EXPLAIN $tbl");
+		$q = $this->db->query("EXPLAIN $tbl");
 
 		if (!is_array($exclude)) {
 			$exclude = $exclude ? array($exclude) : array();
@@ -535,6 +530,19 @@ class Psychostats extends Model {
 	}
 
 	/**
+	 * Returns the is_not_ranked_sql string for players with a different
+	 * prefix string.
+	 * @param string $prefix Optional player prefix string.
+	 *
+	 */
+	public function is_not_ranked_sql($prefix = 'plr') {
+		if ($prefix == 'plr') {
+			return $this->is_not_ranked_sql;
+		}
+		return str_replace('plr.', $prefix.'.', $this->is_not_ranked_sql);
+	}
+
+	/**
 	 * Returns the is_clan_ranked_sql string for clans with a different
 	 * prefix string.
 	 * @param string $prefix Optional clan prefix string.
@@ -545,6 +553,116 @@ class Psychostats extends Model {
 			return $this->is_clan_ranked_sql;
 		}
 		return str_replace('clan.', $prefix.'.', $this->is_clan_ranked_sql);
+	}
+
+	/**
+	 * Generates a new unique search string.
+	 *
+	 * @return  string  A new unique search ID.
+	 */
+	function init_search() {
+		if (function_exists('uuid')) {
+			$id = uuid(false);
+		} else {
+			$id = sha1(uniqid(rand(), true));
+		}
+		return $id;
+	}
+
+	/*
+	 * Determines if the search id given is a valid search ID string.
+	 * 
+	 * @param  string  $search_id  Search ID string to validate.
+	 * @return boolean Returns true if the search is valid.
+	 */
+	function is_search($search_id) {
+		return preg_match('/^[a-z0-9-]{32,40}$/', $search_id);
+	}
+
+	/*
+	 * Saves the results of a search.
+	 * 
+	 * @param  array    $search  Search paramters to save.
+	 * @return boolean  Returns true if the search was saved, false otherwise.
+	 */
+	function save_search($search) {
+		$tbl = $this->tbl('search_results', false);
+		return $this->db->insert($tbl, $search);
+	}
+
+	/*
+	 * Touches a search (updates it's timestamp)
+	 * 
+	 * @param  string $search_id  Search ID to touch.
+	 */
+	function touch_search($search_id) {
+		$tbl = $this->tbl('search_results', false);
+		return $this->db->query("UPDATE $tbl SET updated=NOW() WHERE search_id=?", $search_id);
+	}
+
+
+	/*
+	 * Deletes the search results assoicated with the search ID given.
+	 * 
+	 * @param  string  $search_id  Search ID to delete
+	 * @return boolean  True if successful
+	 */
+	function delete_search($search_id) {
+		if ($this->is_search($search_id)) {
+			$tbl = $this->tbl('search_results', false);
+			return $this->db->delete($tbl, array( 'search_id' => $search_id ));
+		}
+		return false;
+	}
+
+	/*
+	 * Deletes stale searches more than a few hours old.
+	 * 
+	 * @param  integer  $hours  Maximum hours allowed to be stale (defaults to 4)
+	 */
+	function delete_stale_searches($hours = 4) {
+		if (!is_numeric($hours) or $hours < 0) $hours = 4;
+		$tbl = $this->tbl('search_results', false);
+		$this->db->query("DELETE FROM $tbl WHERE updated < NOW() - INTERVAL ? HOUR", $hours);
+	}
+
+	/*
+	 * Returns a saved search result.
+	 * 
+	 * @param  string  $search_id  Search_id to load.
+	 * @return array   Returns array of search results (empty array on failure)
+	 */
+	function get_search($search_id) {
+		$res = array();
+		if ($this->is_search($search_id)) {
+			$tbl = $this->tbl('search_results', false);
+			$sql = "SELECT * FROM $tbl WHERE search_id=? LIMIT 1";
+			$q = $this->db->query($sql, $search_id);
+			if ($q->num_rows()) {
+				$res = $q->row_array();
+				$res['results'] = explode(',', $res['results']);
+			}
+			$q->free_result();
+		}
+		return $res;
+	}
+
+	/*
+	 * Converts the token string into a SQL string based on the $mode given.
+	 * 
+	 * @param  string  $str  The token string
+	 * @param  string  $mode Token mode (contains, begins, ends, exact)
+	 * @return string  Returns the string ready to be used in a SQL statement.
+	 */
+	function token_to_sql($str, $mode = 'contains') {
+		$token = $this->db->escape_str($str);
+		switch ($mode) {
+			case 'exact':	return $token; break;
+			case 'begins':	return $token . '%'; break;
+			case 'ends':	return '%' . $token; break;
+			default:
+			case 'contains':return '%' . $token . '%'; break;
+		}
 	}
 	
 	/**

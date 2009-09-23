@@ -665,6 +665,10 @@ div.table {
 	text-align: center;
 }
 
+span.sparkline {
+	display: none;
+}
+
 .tabs { /* Overall container for a tab group; contains tab navigation and content */
 	padding: 0.2em;
 	margin-bottom: 1em;

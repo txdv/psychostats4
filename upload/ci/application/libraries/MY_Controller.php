@@ -168,15 +168,21 @@ class MY_Controller extends Controller {
 		$so  = $table->names['order'];
 		$sst = $table->names['start'];
 		$sl  = $table->names['limit'];
-		$order = array_key_exists($so,  $this->get) ? $this->get[$so] : 'asc';
-		$start = array_key_exists($sst, $this->get) ? $this->get[$sst] : 0;
-		$limit = array_key_exists($sl,  $this->get) ? $this->get[$sl] : 0;
+		$se  = $table->names['search'];
+		$order  = array_key_exists($so,  $this->get) ? $this->get[$so] : 'asc';
+		$start  = array_key_exists($sst, $this->get) ? $this->get[$sst] : 0;
+		$limit  = array_key_exists($sl,  $this->get) ? $this->get[$sl] : 0;
+		$search = array_key_exists($se,  $this->get) ? $this->get[$se] : '';
 		$params = array(
 			$ss	=> $name,
 			$so	=> ($order == 'asc') ? 'desc' : 'asc',
 			$sst	=> $start,
 			$sl 	=> $limit,
 		);
+
+		if ($search) {
+			$params[$se] = $search;
+		}
 
 		$label = $col['label'];
 		if (isset($col['attr']['header']['tooltip'])) {

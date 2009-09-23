@@ -18,7 +18,6 @@ class Psychostats_Method_Get_Total_Maps extends Psychostats_Method {
 			'is_ranked'	=> null
 		);
 
-		$ci =& get_instance();
 		if ($gametype === null) {
 			$gametype = $this->ps->gametype();
 		}
@@ -42,7 +41,7 @@ class Psychostats_Method_Get_Total_Maps extends Psychostats_Method {
 		
 		$cmd .= $this->ps->where($criteria['where']);
 
-		$q = $ci->db->query($cmd);
+		$q = $this->ps->db->query($cmd);
 
 		$count = 0;
 		if ($q->num_rows()) {

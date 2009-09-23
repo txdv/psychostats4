@@ -82,6 +82,11 @@ class Psychosmarty extends Smarty
 		// during page rendering so we assign refs instead of static.
 		$this->assign_by_ref('theme', $this->theme);
 		$this->assign_by_ref('force_compile', $this->force_compile);
+
+		// it's important to note that using $GET within a template
+		// can be insecure so be sure to escape any output! This is
+		// here as a helper and isn't really meant to be used that much.
+		$this->assign_by_ref('GET', $_REQUEST);
 	}
 	
 	/**

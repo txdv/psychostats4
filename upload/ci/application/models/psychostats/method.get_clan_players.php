@@ -51,7 +51,7 @@ class Psychostats_Method_Get_Clan_Players extends Psychostats_Method {
 		LEFT JOIN $t_plr_profile pp ON plr.uniqueid=pp.uniqueid
 		WHERE plr.clanid=?
 CMD;
-		$cmd = preg_replace('/^\s+/m', '', $cmd); // remove leading whitespace (I'm OCD)
+		//$cmd = preg_replace('/^\s+/m', '', $cmd); // remove leading whitespace (I'm OCD)
 
 		// add join clause for tables
 		$criteria['where'][] = 'plr.plrid=d.plrid';

@@ -36,17 +36,24 @@ if (!function_exists('page_url')) {
  */
 if (!function_exists('ps_site_url')) {
 	function ps_site_url($page, $path = '') {
-		$config =& get_config();
-		$url = '';
-		// lookup the page name in the config and if it exists use
-		// it for the base fragment of the URL.
-		if (array_key_exists($page . '_url', $config)) {
-			$url = $config[$page . '_url'];
-		} else {
-			$url = $page;
-		}
+		$url = ps_page_name($page);
 		// add the path to the base fragment and return a full URL.
 		return rel_site_url("$url/$path");
+	}
+}
+
+if (!function_exists('ps_page_name')) {
+	function ps_page_name($page) {
+		static $names = array();
+		if (!array_key_exists($page, $names)) {
+			$config =& get_config();
+			if (array_key_exists($page . '_url', $config)) {
+				$names[$page] = $config[$page . '_url'];
+			} else {
+				$names[$page] = $page;
+			}
+		}
+		return $names[$page];
 	}
 }
 
