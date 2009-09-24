@@ -118,7 +118,7 @@ class MY_Controller extends Controller {
 						'<br />' .
 						'You must create and fix permissions on that directory ' .
 						'or change the "<strong>compile_dir</strong>" ' .
-						'setting in your config.php to point to another directory ' .
+						'setting in your config to point to another directory ' .
 						'that will work.',
 						E_USER_ERROR
 					);

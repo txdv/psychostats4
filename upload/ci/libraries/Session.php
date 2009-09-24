@@ -6,7 +6,7 @@
  *
  * @package		CodeIgniter
  * @author		ExpressionEngine Dev Team
- * @copyright	Copyright (c) 2008, EllisLab, Inc.
+ * @copyright	Copyright (c) 2008 - 2009, EllisLab, Inc.
  * @license		http://codeigniter.com/user_guide/license.html
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -129,7 +129,7 @@ class CI_Session {
 	{
 		// Fetch the cookie
 		$session = $this->CI->input->cookie($this->sess_cookie_name);
-		
+
 		// No cookie?  Goodbye cruel world!...
 		if ($session === FALSE)
 		{
