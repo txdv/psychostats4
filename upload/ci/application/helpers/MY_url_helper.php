@@ -57,15 +57,36 @@ if (!function_exists('ps_page_name')) {
 	}
 }
 
-/**
- * Returns a relative URL based on the site_url configured. This is esentially
- * the same as site_url() within a protocol or domain on the URL. Most URL's
- * (if not all) should be created using this.
- */
 if (!function_exists('rel_site_url')) {
+	/**
+	 * Returns a relative URL based on the site_url configured. This is
+	 * esentially the same as site_url() within a protocol or domain on the
+	 * URL. Most dynamic URL's should be created using this.
+	 */
 	function rel_site_url($path) {
 		static $url = null;
 		if ($url === null) {
+			$config =& get_config();
+			$url = base_url();
+			$index = $config['index_page'] ? $config['index_page'] . '/' : '';
+			// strip off everything up to the first slash, ignoring
+			// the double // on the prefix.
+			$url = substr($url, strpos($url, '/', 9)) . $index;
+		}
+		return $url . $path;
+	}
+}
+
+if (!function_exists('rel_static_url')) {
+	/**
+	 * Almost the same as rel_site_url except the index_page is not
+	 * included. This should be used for static site content that is not
+	 * a theme asset.
+	 */
+	function rel_static_url($path = '') {
+		static $url = null;
+		if ($url === null) {
+			$config =& get_config();
 			$url = base_url();
 			// strip off everything up to the first slash, ignoring
 			// the double // on the prefix.

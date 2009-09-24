@@ -291,10 +291,20 @@ class Psychosmarty extends Smarty
 	 */
 	function trans($str)
 	{
-		$args = func_get_args();
-		array_shift($args);
-		if (count($args)) {
-			return vsprintf($str, $args);
+		// ignore first parameter $str
+		$args = array_slice(func_get_args(), 1);
+		if ($args) {
+			// if the first argument is an array then use it directly.
+			if (is_array($args[0])) {
+				// ignore args[0] if its an empty array
+				if ($args[0]) {
+					return vsprintf($str, $args[0]);
+				} else {
+					return $str;
+				}
+			} else {
+				return vsprintf($str, $args);
+			}
 		} else {
 			return $str;
 		}

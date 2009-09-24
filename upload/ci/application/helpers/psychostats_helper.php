@@ -37,10 +37,14 @@ if (!function_exists('trans')) {
 	 * @param mixed [$arg2, $arg3, ...] Extra sprintf() values for the translated string.
 	 */
 	function trans($str) {
-		$ci =& get_instance();
+		static $ci = null;
+		if (!$ci) {
+			$ci =& get_instance();
+		}
 		if (isset($ci->smarty)) {
 			$args = func_get_args();
-			return call_user_func_array(array(&$ci->smarty, 'trans'), $args);
+			return $ci->smarty->trans($str, array_slice($args, 1));
+			//return call_user_func_array(array(&$ci->smarty, 'trans'), $args);
 		}
 		return $str;
 	}
