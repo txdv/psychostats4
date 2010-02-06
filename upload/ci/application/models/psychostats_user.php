@@ -257,7 +257,7 @@ class Psychostats_user extends MY_Model {
 		if (!is_string($salt)) {
 			$salt = '';
 		}
-		return md5($salt . $str . strrev($salt));
+		return sha1($salt . $str . strrev($salt));
 	}
 
 	/**

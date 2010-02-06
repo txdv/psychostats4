@@ -34,7 +34,7 @@ class Charts {
 		
 		// set some common defaults for all charts
 		//$fc->setChartParams("animation=1;bgColor=C5CEDC;");
-		$fc->setChartParams("animation=1;bgColor=FFFFFF;");
+		$fc->setChartParams("animation=0;bgColor=FFFFFF;");
 		
 		// short-cut to allow caller to set some params via an array.
 		if ($params and is_array($params)) {

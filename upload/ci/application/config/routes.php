@@ -54,6 +54,7 @@ $route['(players|clans|weapons|maps|roles|servers|overview)/:any'] = '$1/index';
 // and also passes them to the function.
 // Be sure to use parent::view() within the controller::view() method.
 $route['(plr|clan|wpn|map|role|srv)/(:any)'] = '$1/view/$2';
+$route['admin/(:any)'] = 'admin/index/$1';
 
 
 /* End of file routes.php */

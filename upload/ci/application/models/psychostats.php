@@ -59,6 +59,40 @@ class Psychostats extends Model {
 		return $config;
 	}
 
+	public function get_keyed_config($glue = '.', $conftype = null, $section = null, $var = null) {
+		$list = $this->get_raw_config($conftype, $section, $var);
+		$conf = array();
+		foreach ($list as $c) {
+			if ($c['conftype'] == 'info') {
+				// ignore 'info' variables ...
+				continue;
+			}
+			$key = implode($glue, array(
+				$c['conftype'],
+				$c['section'] ? $c['section'] : '',
+				$c['var']
+			));
+			$conf[$key] = $c;
+		}
+		ksort($conf);
+		return $conf;
+	}
+
+	public function get_config_sections() {
+		// note: the space within the COALESCE() function below is
+		// required since the activeQuery routines in CI are buggy.
+		$this->db->select('conftype,section,COALESCE(label, section ) AS label,value');
+		$this->db->where('var IS NULL');
+		$this->db->order_by('conftype,label,section');
+		$query = $this->db->get('config');
+		$sections = array();
+		foreach ($query->result_array() as $row) {
+			$sections[ $row['conftype'] ][] = $row;
+		}
+		$query->finish;
+		return $sections;
+	}
+
 	// resets the config so get_config() will fetch a fresh result from db.
 	public function reset_config() {
 		$this->ps_config = null;
@@ -670,14 +704,19 @@ class Psychostats extends Model {
 	 * $allow_autoload_methods must be enabled for this to work.
 	 */
 	public function __call($name, $args) {
+		$loaded = true;
 		if (!array_key_exists($name, $this->loaded_methods)) {
 			if ($this->allow_autoload_methods) {
 				if ($this->gametype) {
-					$this->load_overloaded_method($name, $this->gametype, $this->modtype);
+					$loaded = $this->load_overloaded_method($name, $this->gametype, $this->modtype);
 				} else {
-					$this->load_method($name);
+					$loaded = $this->load_method($name);
 				}
-			} else {
+			}
+		}
+
+		$ret = null;
+		if (!array_key_exists($name, $this->loaded_methods)) {
 				$caller = debug_backtrace();
 				trigger_error('Call to undefined method '
 					. get_class()
@@ -688,9 +727,9 @@ class Psychostats extends Model {
 					. $caller[1]['line'],
 					E_USER_ERROR
 				);
-			}
+		} else {
+			$ret = call_user_func_array(array($this->loaded_methods[$name], 'execute'), $args);
 		}
-		$ret = call_user_func_array(array($this->loaded_methods[$name], 'execute'), $args);
 		return $ret;
 	} 
 }

@@ -19,11 +19,12 @@ class Login extends MY_Controller {
 		
 		$this->load->library('form_validation');
 		$this->load->helper('form');
-		
+
 		$data = array(
 			'title'		=> 'User Login',
 			'page_title' 	=> 'Please Login',
 			'form_error'	=> &$this->form_error,
+			'ref'		=> $_GET['ref'],
 			//'page_subtitle'	=> 'Sub Title',
 		);
 

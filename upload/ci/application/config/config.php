@@ -41,6 +41,9 @@ $config['compile_dir'] = BASEPATH . 'cache';
 // Default theme to use when a user has none selected.
 $config['default_theme'] = 'default';
 
+// Theme to use for the Administrator Control Panel (ACP)
+$config['admin_theme'] = 'admin';
+
 // Default view to load when the main home page is viewed. Example, if you want
 // the main players list to be displayed you put 'players' here. Any relative
 // URL will work.
@@ -67,6 +70,7 @@ $config['clan_url'] = 'clan';
 $config['role_url'] = 'role';
 
 // Overall header menu (order matters). The 'Label' is translated.
+// Note: If you change the header_menu you must delete your compiled templates
 // ['url'] = 'Label'
 $config['header_menu']['home'] = 'Home';
 $config['header_menu']['players'] = 'Players';
@@ -74,7 +78,7 @@ $config['header_menu']['clans'] = 'Clans';
 $config['header_menu']['weapons'] = 'Weapons';
 $config['header_menu']['maps'] = 'Maps';
 $config['header_menu']['roles'] = 'Roles';
-$config['header_menu']['awards'] = 'Awards';
+$config['header_menu']['achievements'] = 'Achievements';
 $config['header_menu']['servers'] = 'Servers';
 $config['header_menu']['admin'] = 'Admin'; // auto removed for non-admins
 

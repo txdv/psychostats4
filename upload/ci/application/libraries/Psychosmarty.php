@@ -15,17 +15,21 @@ class Psychosmarty extends Smarty
 	var $language_open	= '<#';
 	var $language_close	= '#>';
 	var $language_regex	= '/(?:<!--)?%s(.+?)%s(?:-->(.+?)<!---->)?/ms';
-	var $enable_compression	= false;
+	var $enable_compression	= false;	// true = output is GZIP'ed
+	var $compile_safe	= true; 	// true = compile_dir is optional
+	var $extra_compile_id	= '';
 
 	function Psychosmarty()
 	{
 		parent::__construct();
-		$this->CI =& get_instance();
 
+		$this->CI =& get_instance();
 		$config =& get_config();
 		
 		// greatly slows down page rendering!
 		//$this->force_compile = true;
+		
+		$this->error_reporting = E_ALL & ~E_STRICT & ~E_NOTICE & ~E_WARNING;
 		
 		// absolute path prevents "template not found" errors
 		$this->template_dir = (!empty($config['theme_dir'])
@@ -49,6 +53,8 @@ class Psychosmarty extends Smarty
 			? $config['default_theme']
 			: 'default');
 
+		// enable GZIP compression for client output (auto-detects if
+		// the client supports it.)
 		$this->enable_compression = (bool)$config['enable_compression'];
 
 		// allow open ended { ... } blocks to be treated as literal
@@ -57,10 +63,6 @@ class Psychosmarty extends Smarty
 
 		// Setup the prefilter so we can parse language strings
 		$this->load_filter('pre', 'translate_language');
-
-		// Prefilter for {asset} tags... experimenting to see if this
-		// will make certain compilations faster...
-		//$this->load_filter('pre', 'translate_assets');
 
 		//$this->load_filter('variable', 'htmlspecialchars');
 		//$this->enableVariableFilter();
@@ -214,7 +216,8 @@ class Psychosmarty extends Smarty
 		
 		$output = '';
 		try {
-			$output = parent::fetch($file, null, $theme . '-' . $this->language);
+			//$output = parent::fetch($file, null, $theme . '-' . $this->language);
+			$output = $this->fetch($file, null, $theme . '-' . $this->language);
 		} catch (Exception $e) {
 			//show_error($e->getMessage());
 			$output = $this->CI->load->view('smarty_error', array(
@@ -237,6 +240,41 @@ class Psychosmarty extends Smarty
 			}
 			return true;
 		}
+	}
+
+	/**
+	 * fetches a rendered Smarty template. Overrides parent to provide a
+	 * "safe" fetch mechanism if the compile_dir is not writable then the
+	 * template is returned normally but simply not compiled to disk.
+	 * A special header is sent "X-smarty-string: 1" for debugging purposes.
+	 */
+	function fetch($template, $cache_id = null, $compile_id = null, $parent = null) {
+		if ($this->extra_compile_id) {
+			$compile_id = $this->extra_compile_id . '_' . (string)$compile_id;
+		}
+
+		$output = '';
+		try {
+			$output = parent::fetch($template, $cache_id, $compile_id, $parent);
+			// temporary work-around until parent::fetch throws a
+			// proper exception when it fails to load a template.
+			if ($output == '') {
+				throw new Exception('compile_dir is not writable!');
+			}
+		} catch (Exception $e) {
+			if (stripos($e->getMessage(), 'not writable') !== false ||
+			    stripos($e->getMessage(), 'not exist') !== false) {
+				if ($this->compile_safe) {
+					// fetch the template using a STRING resource
+					// so the template is NOT compiled
+					header('X-smarty-string: 1');
+					$source = 'string:' . file_get_contents($this->template_dir . DIRECTORY_SEPARATOR . $template);
+					return parent::fetch($source, $cache_id, $compile_id, $parent);
+				}
+			}
+			throw $e; // re-throw
+		}
+		return $output;
 	}
 
 	/**
@@ -271,6 +309,7 @@ class Psychosmarty extends Smarty
 	 */
 	function theme_exists($theme, $template_dir = null)
 	{
+		if (empty($theme)) return false;
 		if (empty($template_dir)) {
 			$template_dir = $this->template_dir;
 		}
@@ -394,7 +433,10 @@ class Psychosmarty extends Smarty
 // about these being forgotten in the plugins directory. These functions are
 // used on almost all pages.
 
-function smarty_function_elapsed_time($params, $smarty, $template) {
+/**
+ * Returns the elapsed time since page rendering began. {elapsed_time}
+ */
+function smarty_function_elapsed_time($params, $smarty) {
         $ci =& get_instance();
         return $ci->benchmark->elapsed_time('total_execution_time_start');
 }
@@ -403,7 +445,6 @@ function smarty_function_elapsed_time($params, $smarty, $template) {
  * Generates the overall header menu for the theme. {ps_header_menu}
  */
 function smarty_function_ps_header_menu($params, $smarty, $template) {
-        //$ci =& get_instance();
 	$config =& get_config();
 
 	if (!user_is_admin()) {
@@ -445,18 +486,47 @@ function smarty_function_ps_header_menu($params, $smarty, $template) {
  * @param object $template template object
  * @return string 
  */
-function smarty_function_asset($params, $smarty, $template)
+//function smarty_function_asset($params, $smarty)
+//{
+//	if (empty($params['file']) and empty($params['static'])) {
+//		throw new Exception("asset: missing 'file' parameter");
+//	}
+//
+//	$file = $params['file'] ? $params['file'] : $params['static'];
+//	$static = empty($params['static']) ? false : true;
+//	$theme = empty($params['theme']) ? $smarty->theme : $params['theme'];
+//
+//	if ($static) {
+//		return $smarty->theme_url . $theme . '/' . $file;
+//	} else {
+//		// link to the theme_asset controller for the file
+//		return rel_site_url("ta/$theme/$file");
+//	}
+//}
+
+// The {asset} tag is a 'compiler' function so its statically added to the
+// compiled template which reduces overhead when the template is viewed.
+// Once an ASSET url is set there's no reason for it to be dynamic.
+function smarty_compiler_asset($params, $compiler)
 {
+	$ci =& get_instance();
+	
 	if (empty($params['file']) and empty($params['static'])) {
 		throw new Exception("asset: missing 'file' parameter");
 	}
-	
+
 	$file = $params['file'] ? $params['file'] : $params['static'];
 	$static = empty($params['static']) ? false : true;
-	$theme = empty($params['theme']) ? $smarty->theme : $params['theme'];
+	$theme = empty($params['theme']) ? $ci->smarty->theme : $params['theme'];
+
+	// remove quotes around string since this is a compiler function the
+	// full string as seen in the template file will be given to us.
+	if (in_array(substr($file,0,1), array("'",'"'))) {
+		$file = substr($file, 1, -1);
+	}
 
 	if ($static) {
-		return $smarty->theme_url . $theme . '/' . $file;
+		return $ci->smarty->theme_url . $theme . '/' . $file;
 	} else {
 		// link to the theme_asset controller for the file
 		return rel_site_url("ta/$theme/$file");
@@ -491,7 +561,9 @@ function smarty_prefilter_translate_language($source, &$smarty) {
 				     $source);
 }
 function smarty_prefilter_translate_language_callback($key) {
-	$smarty =& Smarty::instance();
+	$ci =& get_instance();
+	$smarty =& $ci->smarty;
+
 	if ($key[2]) {	// <!--<#KEYWORD#>-->english phrase here<!---->
 		$text = $smarty->trans($key[1]);
 		// If the translated text equals the key, then there is no
@@ -499,28 +571,6 @@ function smarty_prefilter_translate_language_callback($key) {
 		return $text == $key[1] ? $key[2] : $text;
 	} else {	// <#english phrase here#>
 		return $smarty->trans($key[1]);
-	}
-}
-
-/**
- * Prefilter's all static {asset} tags into a plain string since there's no
- * need to keep these as variables within the compiled template file.
- */
-function smarty_prefilter_translate_assets($source, &$smarty) {
-	$regex = '/\{asset\s+([^\s}]+)\s*\}/';
-	return preg_replace_callback($regex,
-				     'smarty_prefilter_translate_assets_callback',
-				     $source);
-}
-function smarty_prefilter_translate_assets_callback($key) {
-	$smarty =& Smarty::instance();
-	$str = str_replace("\n", " ", $key[1]);
-	list($type, $path) = explode('=', $str, 2);
-	if ($type == 'static') {
-		$path = substr($path, 1, -1); // remove quotes
-		return $smarty->theme_url . $smarty->theme . '/' . $path;
-	} else {
-		return $key[0];
 	}
 }
 

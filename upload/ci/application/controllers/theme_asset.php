@@ -7,7 +7,11 @@ class Theme_asset extends MY_Controller {
 		// we do not need Sessions or Users.
 		define('PS_NO_SESSION', true);
 		define('PS_NO_USER', true);
-		
+
+		// theme assets should always work, regardless if the
+		// compile_dir is valid or not.
+		define('PS_NO_SMARTY_VERIFY', true);
+
 		parent::MY_Controller();
 		$this->load->helper('file');
 	}
@@ -15,7 +19,7 @@ class Theme_asset extends MY_Controller {
 	function index() 
 	{
 		$config =& get_config();
-		
+
 		// get full segment path ...
 		$path = $this->uri->segment_array();
 		
@@ -45,6 +49,17 @@ class Theme_asset extends MY_Controller {
 		header("Content-Type: $mime; charset=" . $config['charset'], true);
 		$this->smarty->view($file, $params, $theme);
 	}
+}
+
+// not used yet.
+function setModifiedDate($contentDate) {
+    $ifModifiedSince = isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) ? stripslashes($_SERVER['HTTP_IF_MODIFIED_SINCE']) : false;
+    if ($ifModifiedSince && strtotime($ifModifiedSince) >= $contentDate) {
+        header('HTTP/1.0 304 Not Modified');
+        die; // stop processing
+    }
+    $lastModified = gmdate('D, d M Y H:i:s', $contentDate) . ' GMT';
+    header('Last-Modified: ' . $lastModified);
 }
 
 ?>
