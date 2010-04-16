@@ -18,6 +18,10 @@ class Psychostats_Method_Get_Roles extends Psychostats_Method {
 	 * 	default (from set_gametype or set_modtype)
 	 */
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
+		if (!$this->ps->has_roles()) {
+			return array();
+		}
+		
 		// set defaults
 		$criteria += array(
 			'limit' 	=> null,

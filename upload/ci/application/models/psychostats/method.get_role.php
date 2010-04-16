@@ -9,6 +9,10 @@
 
 class Psychostats_Method_Get_Role extends Psychostats_Method {
 	public function execute($criteria = array()) {
+		if (!$this->ps->has_roles()) {
+			return array();
+		}
+		
 		if (!is_array($criteria)) {
 			$criteria = array( 'id' => $criteria );
 		}

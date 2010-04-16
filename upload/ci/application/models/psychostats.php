@@ -36,22 +36,17 @@ class Psychostats extends Model {
 	}
 	
 	// Returns the raw config as an array.
-	public function get_raw_config($conftype = null, $section = null, $var = null) {
+	public function get_raw_config($group = null, $section = null) {
 		$this->db->select('*');
-		if (!is_null($conftype)) {
-			if (is_array($conftype)) {
-				$this->db->where_in('conftype', $conftype);
+		if (!is_null($group)) {
+			if (is_array($group)) {
+				$this->db->where_in('cfg_group', $group);
 			} else {
-				$this->db->where('conftype', $conftype);
+				$this->db->where('cfg_group', $group);
 			}
 		}
 		if (!is_null($section)) {
-			$this->db->where('section', $section);
-		}
-		if (!is_null($var)) {
-			$this->db->where('var', $var);
-		} else {
-			$this->db->where('var IS NOT NULL');
+			$this->db->where('cfg_section', $section);
 		}
 		
 		$query = $this->db->get('config');
@@ -59,8 +54,8 @@ class Psychostats extends Model {
 		return $config;
 	}
 
-	public function get_keyed_config($glue = '.', $conftype = null, $section = null, $var = null) {
-		$list = $this->get_raw_config($conftype, $section, $var);
+	public function get_keyed_config($glue = '.', $conftype = null, $section = null) {
+		$list = $this->get_raw_config($conftype, $section);
 		$conf = array();
 		foreach ($list as $c) {
 			if ($c['conftype'] == 'info') {
@@ -81,13 +76,13 @@ class Psychostats extends Model {
 	public function get_config_sections() {
 		// note: the space within the COALESCE() function below is
 		// required since the activeQuery routines in CI are buggy.
-		$this->db->select('conftype,section,COALESCE(label, section ) AS label,value');
-		$this->db->where('var IS NULL');
-		$this->db->order_by('conftype,label,section');
+		$this->db->select('cfg_group,cfg_section,COALESCE(cfg_label, cfg_section ) AS label, cfg_value');
+		//$this->db->where('var IS NULL');
+		$this->db->order_by('cfg_group,label,cfg_section');
 		$query = $this->db->get('config');
 		$sections = array();
 		foreach ($query->result_array() as $row) {
-			$sections[ $row['conftype'] ][] = $row;
+			$sections[ $row['cfg_group'] ][] = $row;
 		}
 		$query->finish;
 		return $sections;
@@ -99,27 +94,25 @@ class Psychostats extends Model {
 	}
 	
 	// Returns the config in an associated array for easy access.
-	public function get_ps_config($conftype = null, $section = null, $var = null) {
+	public function get_ps_config($group = null, $section = null, $var = null) {
 		// short-cut; return config if it was already loaded.
 		if (!is_null($this->ps_config)) {
 			return $this->ps_config;
 		}
 		
-		$this->db->select('conftype, section, var, value');
-		if (!is_null($conftype)) {
-			if (is_array($conftype)) {
-				$this->db->where_in('conftype', $conftype);
+		$this->db->select('cfg_group, cfg_section, cfg_var, cfg_value');
+		if (!is_null($group)) {
+			if (is_array($group)) {
+				$this->db->where_in('cfg_group', $group);
 			} else {
-				$this->db->where('conftype', $conftype);
+				$this->db->where('cfg_group', $group);
 			}
 		}
 		if (!is_null($section)) {
-			$this->db->where('section', $section);
+			$this->db->where('cfg_section', $section);
 		}
 		if (!is_null($var)) {
-			$this->db->where('var', $var);
-		} else {
-			$this->db->where('var IS NOT NULL');
+			$this->db->where('cfg_var', $var);
 		}
 		
 		$query = $this->db->get('config');
@@ -132,15 +125,18 @@ class Psychostats extends Model {
 		$config = array();
 		foreach ($query->result_array() as $row) {
 			if ($raw) {
-				$config[ $row['id'] ] = $row;
+				$config[ $row['cfg_var'] ] = $row;
 			} else {
-				if (!empty($row['section'])) {
-					$config[$row['conftype']][$row['section']][$row['var']] = $row['value'];
+				$config[ $row['cfg_var'] ] = $row['cfg_value'];
+				if (!empty($row['cfg_section'])) {
+					$config[$row['cfg_group']][$row['cfg_section']][$row['cfg_var']] = $row['cfg_value'];
 				} else {
-					$config[$row['conftype']][$row['var']] = $row['value'];
+					$config[$row['cfg_group']][$row['cfg_var']] = $row['cfg_value'];
 				}
 			}
 		}
+		$config['gametypes'] = $config['global']['gametypes'] = config_item('gametypes');
+		
 		return $config;
 	}
 

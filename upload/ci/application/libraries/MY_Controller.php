@@ -39,8 +39,7 @@ class MY_Controller extends Controller {
 			$this->load->model('psychostats', 'ps');
 			
 			// load the PS config
-			$this->ps_conf = $this->ps->get_ps_config(array('main','theme'));
-			$this->ps_conf['main']['gametypes'] = config_item('gametypes');
+			$this->ps_conf = $this->ps->get_ps_config();
 
 			// Load the user
 			if (!defined('PS_NO_USER')) {
@@ -102,7 +101,7 @@ class MY_Controller extends Controller {
 			$this->load->library('psychosmarty', null, 'smarty');
 			if (isset($this->ps_conf)) {
 				// assign the PS config to all smarty templates
-				$this->smarty->assign_by_ref('config', $this->ps_conf);
+				$this->smarty->assignByRef('config', $this->ps_conf);
 			}
 
 			// make sure the compile_dir is valid and create it if needed

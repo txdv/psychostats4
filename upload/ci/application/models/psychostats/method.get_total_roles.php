@@ -9,6 +9,10 @@
 
 class Psychostats_Method_Get_Total_Roles extends Psychostats_Method {
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
+		if (!$this->ps->has_roles()) {
+			return 0;
+		}
+		
 		// set defaults
 		if (!is_array($criteria)) {
 			$criteria = array();

@@ -12,6 +12,10 @@ class Psychostats_Method_Get_Clan_Roles extends Psychostats_Method {
 	 * 	Criteria that defines what roles will be returned.
 	 */
 	public function execute($criteria = array(), $gametype = null, $modtype = null) {
+		if (!$this->ps->has_roles()) {
+			return array();
+		}
+		
 		$ci =& get_instance();
 		// set defaults
 		$criteria += array(

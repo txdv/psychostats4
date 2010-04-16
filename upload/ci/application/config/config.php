@@ -54,12 +54,12 @@ $config['default_view'] = 'home';
 $config['login_regen_password_salt'] = true;
 
 // list each gametype and associated modtype's that are available for stats.
-$config['gametypes']['halflife'] = array('tf');
+$config['gametypes']['halflife'] = array('cstrike');
 $config['gametypes']['cod'] = array();
 //$config['gametypes']['soldat'] = array();
 
 $config['default_gametype'] = 'halflife';
-$config['default_modtype']  = 'tf';
+$config['default_modtype']  = 'cstrike';
 
 // URL fragments used for various pages.
 // Change these if you override any of the stock pages within Psychostats.

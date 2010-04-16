@@ -179,29 +179,33 @@ class Home extends MY_Controller {
 		$this->ps->mod_table($maps_table, 'maps_top5', $this->get['gametype'], $this->get['modtype']);
 
 		// ROLES
-		$criteria = array(
-			'select' => null,
-			'limit' => 5,
-			'start' => 0,
-			'sort' => 'kills desc', 
-		);
-		$roles = $this->ps->get_roles($criteria);
-
-		$roles_table = $this->psychotable->create()
-			->set_caption(sprintf('<a href="%s">%s</a>',
-					      rel_site_url('roles'),
-					      trans("Top %d roles out of %s",
-						    count($roles),
-						    number_format($total_roles))))
-			->set_data($roles)
-			->set_sort('kills', 'desc')
-			->column('+', 			'#', 			'')
-			->column('name',		trans('Role'), 		array($this, '_cb_name_link_no_wrap'))
-			->column('kills',		trans('Kills'), 	'number_format')
-			->data_attr('img', 'class', 'img')
-			->data_attr('name', 'class', 'link')
-			;
-		$this->ps->mod_table($roles_table, 'roles_top5', $this->get['gametype'], $this->get['modtype']);
+		$roles = array();
+		$roles_table = null;
+		if ($this->ps->has_roles()) {
+			$criteria = array(
+				'select' => null,
+				'limit' => 5,
+				'start' => 0,
+				'sort' => 'kills desc', 
+			);
+			$roles = $this->ps->get_roles($criteria);
+	
+			$roles_table = $this->psychotable->create()
+				->set_caption(sprintf('<a href="%s">%s</a>',
+						      rel_site_url('roles'),
+						      trans("Top %d roles out of %s",
+							    count($roles),
+							    number_format($total_roles))))
+				->set_data($roles)
+				->set_sort('kills', 'desc')
+				->column('+', 			'#', 			'')
+				->column('name',		trans('Role'), 		array($this, '_cb_name_link_no_wrap'))
+				->column('kills',		trans('Kills'), 	'number_format')
+				->data_attr('img', 'class', 'img')
+				->data_attr('name', 'class', 'link')
+				;
+			$this->ps->mod_table($roles_table, 'roles_top5', $this->get['gametype'], $this->get['modtype']);
+		}
 
 		$data = array(
 			'total_players' => $total_players,
@@ -213,7 +217,7 @@ class Home extends MY_Controller {
 			'clans_table'	=> $clans_table->render(),
 			'weapons_table'	=> $weapons_table->render(),
 			'maps_table'	=> $maps_table->render(),
-			'roles_table'	=> $roles_table->render(),
+			'roles_table'	=> $roles_table ? $roles_table->render() : '',
 		);
 
 		

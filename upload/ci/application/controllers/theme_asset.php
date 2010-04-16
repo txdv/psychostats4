@@ -43,11 +43,10 @@ class Theme_asset extends MY_Controller {
 			$mime = 'octet/stream';
 		}
 
-		$params = $this->ps->get_ps_config();
-		$params = $params['theme'];
+		$theme_data = $this->ps->get_ps_config();
 		
 		header("Content-Type: $mime; charset=" . $config['charset'], true);
-		$this->smarty->view($file, $params, $theme);
+		$this->smarty->view($file, $theme_data['theme'], $theme);
 	}
 }
 

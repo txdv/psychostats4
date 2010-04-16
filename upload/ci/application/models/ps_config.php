@@ -11,24 +11,25 @@ class Ps_config extends MY_Model {
 		$this->initialize('main');
 	}
 	
-	function initialize($conftype = null, $section = null) {
-		$this->db->select('conftype, section, var, value');
-		$this->db->where('var IS NOT NULL');
-		if ($conftype) {
-			$this->db->where('conftype', $conftype);
+	function initialize($group = null, $section = null) {
+		$this->db->select('cfg_group, cfg_section, cfg_var, cfg_value');
+		if ($group) {
+			$this->db->where('cfg_group', $group);
 		}
 		if ($section) {
-			$this->db->where('section', $section);
+			$this->db->where('cfg_section', $section);
 		}
 		
 		$query = $this->db->get('config');
 		foreach ($query->result() as $row) {
-			if (!empty($row->section)) {
-				$config[$row->conftype][$row->section][$row->var] = $row->value;
+			$config[$row->cfg_var] = $row->cfg_value;
+			if (!empty($row->cfg_section)) {
+				$config[$row->cfg_group][$row->cfg_section][$row->cfg_var] = $row->cfg_value;
 			} else {
-				$config[$row->conftype][$row->var] = $row->value;
+				$config[$row->cfg_group][$row->cfg_var] = $row->cfg_value;
 			}
 		}
+		print_r($config);
 	}
 
 	function __get($name) {

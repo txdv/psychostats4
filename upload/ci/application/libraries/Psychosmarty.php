@@ -62,9 +62,9 @@ class Psychosmarty extends Smarty
 		$this->auto_literal = true;
 
 		// Setup the prefilter so we can parse language strings
-		$this->load_filter('pre', 'translate_language');
+		$this->loadFilter('pre', 'translate_language');
 
-		//$this->load_filter('variable', 'htmlspecialchars');
+		//$this->loadFilter('variable', 'htmlspecialchars');
 		//$this->enableVariableFilter();
 		//$this->disableVariableFilter();
 		//$this->enableCaching();
@@ -82,13 +82,13 @@ class Psychosmarty extends Smarty
 		));
 		// it's possible for these variables to change at any point
 		// during page rendering so we assign refs instead of static.
-		$this->assign_by_ref('theme', $this->theme);
-		$this->assign_by_ref('force_compile', $this->force_compile);
+		$this->assignByRef('theme', $this->theme);
+		$this->assignByRef('force_compile', $this->force_compile);
 
 		// it's important to note that using $GET within a template
 		// can be insecure so be sure to escape any output! This is
 		// here as a helper and isn't really meant to be used that much.
-		$this->assign_by_ref('GET', $_REQUEST);
+		$this->assignByRef('GET', $_REQUEST);
 	}
 	
 	/**
