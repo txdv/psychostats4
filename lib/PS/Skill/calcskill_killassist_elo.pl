@@ -1,8 +1,8 @@
 sub calcskill_killassist_elo {
 	my ($self,$k,$v,$w) = @_;
 
-	my $kskill = $k->skill || $self->conf->main->baseskill;
-	my $vskill = $v->skill || $self->conf->main->baseskill;
+	my $kskill = $k->skill || $self->conf->baseskill;
+	my $vskill = $v->skill || $self->conf->baseskill;
 
 	my $diff = $kskill - $vskill;			# difference in skill
 	my $prob = 1 / ( 1 + 10 ** ($diff / 400) );	# find probability of kill

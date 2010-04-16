@@ -36,7 +36,7 @@ use Encode qw( encode_utf8 decode_utf8 );
 
 use PS::SourceFilter;
 use PS::Award;
-use PS::Conf;
+use PS::Config;
 use PS::Map;
 use PS::Plr;
 use PS::Map;
@@ -82,8 +82,7 @@ sub init {
 	my $self = shift;
 	my $db = $self->{db};
 	my $opt = $self->opt;
-	my $main = $self->conf->main;
-
+	
 	# prepare any queries we'll be running repeatedly...
 	#$db->prepare('get_clantags', 	'SELECT * FROM t_config_clantags WHERE type=? ORDER BY idx');
 	$db->prepare('get_clantags', 	'SELECT id,clantag,alias,pos,type,blacklist FROM t_config_clantags ORDER BY idx');
@@ -142,25 +141,21 @@ sub init {
 	$self->{banned}{name} = {};
 	$self->{banned_age} = time;
 
-	# load some config options locally... 
-	#$self->{baseskill} = $main->baseskill;
-	#$self->{maxdays} = $main->maxdays;
-
-	$self->{uniqueid} = $main->uniqueid;
+	$self->{uniqueid} = $self->conf->uniqueid;
 
 	# initialize the skill function for KILLS
-	$self->add_calcskill_func('kill', $main->calcskill_kill);
+	$self->add_calcskill_func('kill', $self->conf->calcskill_kill);
 	
 	# initialize the clantags from the config for pattern matching against
 	# player names.
-	if ($self->conf->main->clantag_detection) {
+	if ($self->conf->clantag_detection) {
 		$self->load_clantags;
 	}
 
 	# track the last time we saved all stats for this game.
 	$self->{last_saved} = time;
 	# how often to save game stats. 10 seconds by default (real time).
-	$self->{save_interval} = 10; #$self->conf->main->game_save_interval || 10;
+	$self->{save_interval} = 10; #$self->conf->game_save_interval || 10;
 
 	return $self;
 }
@@ -785,8 +780,8 @@ sub load_bonuses {
 	my $self = shift;
 	my ($gametype, $modtype) = @_;
 	my $db = $self->{db};
-	my $g = defined $gametype ? $gametype : $self->{gametype}; #$self->conf->main->gametype;
-	my $m = defined $modtype  ? $modtype  : $self->{modtype};  #$self->conf->main->modtype;
+	my $g = defined $gametype ? $gametype : $self->{gametype};
+	my $m = defined $modtype  ? $modtype  : $self->{modtype};
 	my $match = '';
 	my @bonuses = ();
 
@@ -1098,10 +1093,10 @@ sub update_plrs {
 	my ($self, $rank_timestamp, $quiet) = @_;
 	
 	$self->debug3("Updating player activity...", 0) unless $quiet;
-	$self->update_plr_activity( $self->conf->main->plr_min_activity );
+	$self->update_plr_activity( $self->conf->plr_min_activity );
 	
 	$self->debug3("Updating player rank flags...", 0) unless $quiet;
-	$self->update_allowed_plr_ranks( $self->conf->main->ranking->VARS );
+	$self->update_allowed_plr_ranks( $self->conf->global->ranking );
 	
 	$self->debug3("Updating player ranks...", 0) unless $quiet;
 	$self->update_plr_ranks($rank_timestamp);
@@ -1295,14 +1290,14 @@ sub daily_awards {
 	my $last = time;
 	my $oneday = 60 * 60 * 24;
 	my $oneweek = $oneday * 7;
-	my $startofweek = $conf->main->awards->startofweek;
+	my $startofweek = $conf->global->awards->startofweek;
 	my $weekcode = '%V'; #$startofweek eq 'monday' ? '%W' : '%U';
-	my $dodaily = $conf->main->awards->daily;
-	my $doweekly = $conf->main->awards->weekly;
-	my $domonthly = $conf->main->awards->monthly;
-	my $fullmonthonly = !$conf->main->awards->allow_partial_month;
-	my $fullweekonly = !$conf->main->awards->allow_partial_week;
-	my $fulldayonly = !$conf->main->awards->allow_partial_day;
+	my $dodaily = $conf->global->awards->daily;
+	my $doweekly = $conf->global->awards->weekly;
+	my $domonthly = $conf->global->awards->monthly;
+	my $fullmonthonly = !$conf->global->awards->allow_partial_month;
+	my $fullweekonly = !$conf->global->awards->allow_partial_week;
+	my $fulldayonly = !$conf->global->awards->allow_partial_day;
 
 	$self->info(sprintf("Daily 'awards' process running (Last updated: %s)", 
 		$lastupdate ? scalar localtime $lastupdate : 'never'
@@ -1314,8 +1309,8 @@ sub daily_awards {
 	}
 
 	# gather awards that match our gametype/modtype and are valid ...
-	my $g = $db->quote($conf->main->gametype);
-	my $m = $db->quote($conf->main->modtype);
+	my $g = $db->quote($conf->gametype);
+	my $m = $db->quote($conf->modtype);
 	my @awards = $db->get_rows_hash("SELECT * FROM $db->{t_config_awards} WHERE enabled=1 AND (gametype=$g or gametype='' or gametype IS NULL) AND (modtype=$m or modtype='' or modtype IS NULL)");
 
 	my ($oldest, $newest) = $db->get_row_array("SELECT MIN(statdate), MAX(statdate) FROM $db->{t_plr_data}");
@@ -1383,13 +1378,12 @@ sub daily_awards {
 # updates the decay of all players
 sub daily_decay {
 	my $self = shift;
-	my $conf = $self->conf;
 	my $db = $self->{db};
-	my $lastupdate = $self->conf->getinfo('daily_decay.lastupdate') || 0;
+	my $lastupdate = 0; #$self->conf->getinfo('daily_decay.lastupdate') || 0;
 	my $start = time;
-	my $decay_hours = $conf->main->decay->hours;
-	my $decay_type = $conf->main->decay->type;
-	my $decay_value = $conf->main->decay->value;
+	my $decay_hours = $self->conf->decay_hours;
+	my $decay_type = $self->conf->decay_type;
+	my $decay_value = $self->conf->decay_value;
 	my ($sth, $cmd);
 
 	if (!$decay_type) {
@@ -1429,7 +1423,7 @@ sub daily_decay {
 
 	$db->commit;
 
-	$self->conf->setinfo('daily_decay.lastupdate', time);
+	#$self->conf->setinfo('daily_decay.lastupdate', time);
 
 	$self->info("Daily process completed: 'decay' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
 }
@@ -1438,7 +1432,7 @@ sub daily_decay {
 sub daily_clans {
 	my $self = shift;
 	my $db = $self->{db};
-	my $lastupdate = $self->conf->getinfo('daily_clans.lastupdate');
+	my $lastupdate = 0; #$self->conf->getinfo('daily_clans.lastupdate');
 	my $start = time;
 	my $last = time;
 	my $types = PS::Player->get_types;
@@ -1451,7 +1445,7 @@ sub daily_clans {
 	return 0 unless $db->table_exists($db->{c_plr_data});
 
 	# gather our min/max rules ...
-	$rules = { %{$self->conf->main->ranking || {}} };
+	$rules = $self->conf->global->ranking;
 #	delete @$rules{ qw(IDX SECTION) };
 	@min = ( map { s/^clan_min_//; $_ } grep { /^clan_min_/ && $rules->{$_} ne '' } keys %$rules );
 	@max = ( map { s/^clan_max_//; $_ } grep { /^clan_max_/ && $rules->{$_} ne '' } keys %$rules );
@@ -1511,7 +1505,7 @@ sub daily_clans {
         $db->query("UPDATE $db->{t_plr} SET allowrank=0 WHERE plrid IN (" . join(',', @norank) . ")") if @norank;
 	$db->commit;
 
-	$self->conf->setinfo('daily_clans.lastupdate', time);
+	#$self->conf->setinfo('daily_clans.lastupdate', time);
 	$self->info("Daily process completed: 'clans' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
 }
 
@@ -1519,7 +1513,7 @@ sub daily_clans {
 sub daily_activity {
 	my $self = shift;
 	my $db = $self->{db};
-	my $lastupdate = $self->conf->getinfo('daily_activity.lastupdate');
+	my $lastupdate = 0; #$self->conf->getinfo('daily_activity.lastupdate');
 	my $start = time;
 	my $last = time;
 	my ($cmd, $sth);
@@ -1533,8 +1527,7 @@ sub daily_activity {
 	# the maps table is a small table and is a good target to determine the
 	# most recent timestamp in the database.
 	my $lasttime = $db->max($db->{c_map_data}, 'lasttime');
-	my $min_act = $self->conf->main->plr_min_activity || 5;
-	$min_act *= 60*60*24;
+	my $min_act = $self->conf->plr_min_activity * 60*60*24;
 	if ($lasttime) {
 		# this query is smart enough to only update the players that have new
 		# activity since the last time it was calculated.
@@ -1551,7 +1544,7 @@ sub daily_activity {
 		my $ok = $db->query($cmd);
 	}
 	
-	$self->conf->setinfo('daily_activity.lastupdate', time);
+	#$self->conf->setinfo('daily_activity.lastupdate', time);
 
 	$self->info("Daily process completed: 'activity' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
 }
@@ -1560,7 +1553,6 @@ sub _delete_stale_players {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my @delete;
 
@@ -1600,7 +1592,7 @@ sub _delete_stale_players {
 	$db->do("DELETE FROM $db->{t_plr_sessions} WHERE FROM_UNIXTIME(sessionstart,'%Y-%m-%d') <= $sql_oldest");
 
 	# only delete the compiled data if maxdays_exclusive is enabled
-	if ($self->conf->main->maxdays_exclusive) {
+	if ($self->conf->maxdays_exclusive) {
 		# Any player in deleteids hasn't played since the oldest date allowed, so get rid of them completely
 		$db->do("INSERT INTO deleteids SELECT plrid FROM $db->{c_plr_data} WHERE lastdate <= $sql_oldest");
 		$db->do("DELETE FROM $db->{t_plr} WHERE plrid IN (SELECT id FROM deleteids)");
@@ -1626,7 +1618,6 @@ sub _delete_stale_maps {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my @delete;
 
@@ -1645,7 +1636,7 @@ sub _delete_stale_maps {
 	$db->truncate('deleteids');
 
 	# only delete the compiled data if maxdays_exclusive is enabled
-	if ($self->conf->main->maxdays_exclusive) {
+	if ($self->conf->maxdays_exclusive) {
 		$db->do("DELETE FROM $db->{c_map_data} WHERE lastdate <= $sql_oldest");
 	}
 
@@ -1658,7 +1649,6 @@ sub _delete_stale_roles {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my @delete;
 
@@ -1677,7 +1667,7 @@ sub _delete_stale_roles {
 	$db->truncate('deleteids');
 
 	# only delete the compiled data if maxdays_exclusive is enabled
-	if ($self->conf->main->maxdays_exclusive) {
+	if ($self->conf->maxdays_exclusive) {
 		$db->do("DELETE FROM $db->{c_role_data} WHERE lastdate <= $sql_oldest");
 	}
 
@@ -1690,7 +1680,6 @@ sub _delete_stale_weapons {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my @delete;
 
@@ -1706,7 +1695,7 @@ sub _delete_stale_weapons {
 	$db->do("DELETE FROM $db->{t_weapon_data} WHERE statdate <= $sql_oldest");
 
 	# only delete the compiled data if maxdays_exclusive is enabled
-	if ($self->conf->main->maxdays_exclusive) {
+	if ($self->conf->maxdays_exclusive) {
 		$db->do("DELETE FROM $db->{c_weapon_data} WHERE lastdate <= $sql_oldest");
 	}
 
@@ -1719,7 +1708,6 @@ sub _delete_stale_hourly {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my @delete;
 
@@ -1742,7 +1730,6 @@ sub _delete_stale_spatial {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my @delete;
 
@@ -1765,12 +1752,11 @@ sub _update_player_stats {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my $total = 0;
 	my ($cmd, $fields, $o, $types, $sth);
 
-	return 0 unless $self->conf->main->maxdays_exclusive and $db->table_exists($db->{c_plr_data});
+	return 0 unless $self->conf->maxdays_exclusive and $db->table_exists($db->{c_plr_data});
 
 	$o = PS::Player->new(undef, $self);
 	$types = $o->get_types;
@@ -1808,12 +1794,11 @@ sub _update_player_weapons {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my $total = 0;
 	my ($cmd, $fields, $o, $types, $sth);
 
-	return 0 unless $self->conf->main->maxdays_exclusive and $db->table_exists($db->{c_plr_weapons});
+	return 0 unless $self->conf->maxdays_exclusive and $db->table_exists($db->{c_plr_weapons});
 
 	$o = PS::Player->new(undef, $self);
 	$types = $o->get_types_weapons;
@@ -1847,12 +1832,11 @@ sub _update_player_roles {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my $total = 0;
 	my ($cmd, $fields, $o, $types, $sth);
 
-	return 0 unless $self->conf->main->maxdays_exclusive and $db->table_exists($db->{c_plr_roles});
+	return 0 unless $self->conf->maxdays_exclusive and $db->table_exists($db->{c_plr_roles});
 
 	$o = PS::Player->new(undef, $self);
 	$types = $o->get_types_roles;
@@ -1887,12 +1871,11 @@ sub _update_player_victims {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my $total = 0;
 	my ($cmd, $fields, $o, $types, $sth);
 
-	return 0 unless $self->conf->main->maxdays_exclusive and $db->table_exists($db->{c_plr_victims});
+	return 0 unless $self->conf->maxdays_exclusive and $db->table_exists($db->{c_plr_victims});
 
 	$o = PS::Player->new(undef, $self);
 	$types = $o->get_types_victims;
@@ -1925,12 +1908,11 @@ sub _update_player_maps {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my $total = 0;
 	my ($cmd, $fields, $o, $types, $sth);
 
-	return 0 unless $self->conf->main->maxdays_exclusive and $db->table_exists($db->{c_plr_maps});
+	return 0 unless $self->conf->maxdays_exclusive and $db->table_exists($db->{c_plr_maps});
 
 	$o = PS::Player->new(undef, $self);
 	$types = $o->get_types_maps;
@@ -1964,14 +1946,13 @@ sub _update_map_stats {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my $total = 0;
 	my ($cmd, $fields, $o, $types, $sth);
 
-	return 0 unless $self->conf->main->maxdays_exclusive and $db->table_exists($db->{c_map_data});
+	return 0 unless $self->conf->maxdays_exclusive and $db->table_exists($db->{c_map_data});
 
-	$o = PS::Map->new(undef, $conf, $db);
+	$o = PS::Map->new(undef, $self->conf, $db);
 	$types = $o->get_types;
 	$types->{firstdate} = '=';		# need to add these so save_stats will write them
 	$types->{lastdate} = '=';
@@ -2003,14 +1984,13 @@ sub _update_weapon_stats {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my $total = 0;
 	my ($cmd, $fields, $o, $types, $sth);
 
-	return 0 unless $self->conf->main->maxdays_exclusive and $db->table_exists($db->{c_weapon_data});
+	return 0 unless $self->conf->maxdays_exclusive and $db->table_exists($db->{c_weapon_data});
 
-	$o = PS::Weapon->new(undef, $conf, $db);
+	$o = PS::Weapon->new(undef, $self->conf, $db);
 	$types = $o->get_types;
 	$types->{firstdate} = '=';		# need to add these so save_stats will write them
 	$types->{lastdate} = '=';
@@ -2041,14 +2021,13 @@ sub _update_role_stats {
 	my $self = shift;
 	my $oldest = shift || return;
 	my $db = $self->{db};
-	my $conf = $self->conf;
 	my $sql_oldest = $db->quote($oldest);
 	my $total = 0;
 	my ($cmd, $fields, $o, $types, $sth);
 
-	return 0 unless $self->conf->main->maxdays_exclusive and $db->table_exists($db->{c_role_data});
+	return 0 unless $self->conf->maxdays_exclusive and $db->table_exists($db->{c_role_data});
 
-	$o = PS::Role->new(undef, '', $conf, $db);
+	$o = PS::Role->new(undef, '', $self->conf, $db);
 	$types = $o->get_types;
 	$types->{firstdate} = '=';		# need to add these so save_stats will write them
 	$types->{lastdate} = '=';
@@ -2077,12 +2056,11 @@ sub _update_role_stats {
 	return $total;
 }
 
-# daily process for maxdays histories (this must be the longest and most complicated function in all of PS3)
+# daily process for trimming stats history
 sub daily_maxdays {
 	my $self = shift;
 	my $db = $self->{db};
-	my $conf = $self->conf;
-	my $lastupdate = $self->conf->getinfo('daily_maxdays.lastupdate');
+	my $lastupdate = 0; #$self->conf->getinfo('daily_maxdays.lastupdate');
 	my $start = time;
 	my $last = time;
 	my ($cmd, $sth, $ok, $fields, @delete, @ids, $o, $types, $total, $alltotal,%t);
@@ -2204,7 +2182,7 @@ sub daily_maxdays {
 MAXDAYS_DONE:
 	$db->droptable($_) for (qw( deleteids plrids mapids roleids weaponids ));
 
-	$self->conf->setinfo('daily_maxdays.lastupdate', time);
+	#$self->conf->setinfo('daily_maxdays.lastupdate', time);
 	$self->info("Daily process completed: 'maxdays' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
 }
 
@@ -2485,9 +2463,9 @@ sub save {
 # otherwise 0 is returned.
 sub minconnected { 
 	my ($self) = @_;
-	return 1 if $self->conf->main->minconnected == 0;
+	return 1 if $self->conf->minconnected == 0;
 	my $list = $self->get_online_plrs;
-	return @$list >= $self->conf->main->minconnected ? scalar @$list : 0;
+	return @$list >= $self->conf->minconnected ? scalar @$list : 0;
 }
 
 # takes an array of log filenames and returns a sorted result

@@ -193,8 +193,8 @@ sub parsesource {
 	$self->{_opts}{Host} = 'localhost';
 	$self->{_opts}{Port} = 21;
 	$self->{_opts}{Timeout} = 120;
-	$self->{_opts}{Passive} = $self->{conf}->get_opt('passive') ? 1 : 0;
-	$self->{_opts}{Debug} = $self->{conf}->get_opt('debug') ? 1 : 0;
+	$self->{_opts}{Passive} = $self->opt->passive ? 1 : 0;
+	$self->{_opts}{Debug} = $self->opt->debug ? 1 : 0;
 	$self->{_dir} = '';
 	$self->{_user} = '';
 	$self->{_pass} = '';
@@ -224,7 +224,7 @@ sub parsesource {
 		$self->{_pass} = $pass if $pass;
 		$self->{_dir}  = $dir  if $dir;
 
-		$self->{_opts}{Passive} = $self->{conf}->get_opt('passive') ? 1 : 0;
+		$self->{_opts}{Passive} = $self->opt->passive ? 1 : 0;
 
 		# see if a matching logsource already exists
 		my $exists = $db->get_row_hash(sprintf("SELECT * FROM $db->{t_config_logsources} " . 

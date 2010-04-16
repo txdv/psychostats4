@@ -1,8 +1,8 @@
 sub calcskill_kill_elo {
 	my ($self,$k,$v,$w) = @_;
 
-	my $kskill = $k->skill || $self->conf->main->baseskill;
-	my $vskill = $v->skill || $self->conf->main->baseskill;
+	my $kskill = $k->skill || $self->conf->baseskill;
+	my $vskill = $v->skill || $self->conf->baseskill;
 
 	my $diff = $kskill - $vskill;			# difference in skill
 	my $prob = 1 / ( 1 + 10 ** ($diff / 400) );	# find probability of kill
@@ -52,11 +52,11 @@ sub calcskill_kill_elo_init {
 	# initialize the adjustment levels for the ELO calculations
 	$self->{_adj_onlinetime} = [];
 	$self->{_adj} = [];
-	foreach my $key (sort grep { /^kill_onlinetime_\d+$/ } keys %{$self->conf->main->skillcalc}) {
+	foreach my $key (sort grep { /^kill_onlinetime_\d+$/ } keys %{$self->conf->global->skillcalc}) {
 		my $num = ($key =~ /(\d+)$/)[0];
 		my $adjkey = "kill_adj_$num";
-		next unless exists $self->conf->main->skillcalc->{$adjkey};			# only allow matching adjustments
-		push(@{$self->{_adj}}, $self->conf->main->skillcalc->{$adjkey});
-		push(@{$self->{_adj_onlinetime}}, $self->conf->main->skillcalc->{$key});
+		next unless exists $self->conf->global->skillcalc->{$adjkey};			# only allow matching adjustments
+		push(@{$self->{_adj}}, $self->conf->global->skillcalc->{$adjkey});
+		push(@{$self->{_adj_onlinetime}}, $self->conf->global->skillcalc->{$key});
 	}
 }

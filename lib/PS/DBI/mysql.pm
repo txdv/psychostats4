@@ -89,6 +89,9 @@ sub init {
 		$self->{dbh}->do("SET SESSION sql_mode=''");
 	} 
 
+	# Make sure MYSQL treats all times as UTC/GMT
+	$self->{dbh}->do('SET time_zone = \'+00:00\'');
+
 	$self->debug1("DB MYSQL v" . $self->db_version . " initialized.");
 	return $self;
 }

@@ -20,8 +20,8 @@ sub calcskill_kill_example {
 
 	# always make sure the skill values default to the base value
 	# if they have no skill to begin with.
-	my $kskill = $killer->skill || $self->{baseskill};
-	my $vskill = $victim->skill || $self->{baseskill};
+	my $kskill = $killer->skill || $self->conf->baseskill;
+	my $vskill = $victim->skill || $self->conf->baseskill;
 
 	# do some calculations and determine the new values of skill
 	# this example assigns 0 bonus to each player.

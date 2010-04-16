@@ -46,6 +46,7 @@ sub collect_state_vars {
 
 sub restore_state_vars {
 	my ($self, $state) = @_;
+	$self->SUPER::restore_state_vars($state);
 	$self->{cs_bombplanter} = PS::Plr->unfreeze($state->{cs_bombplanter});
 	$self->{cs_bombspawner} = PS::Plr->unfreeze($state->{cs_bombspawner});
 }
@@ -144,7 +145,7 @@ sub event_plrtrigger {
 		$p->action_misc($self, $trigger, $props);
 		
 	} else {
-		if ($self->conf->main->errlog->report_unknown) {
+		if ($self->conf->global->errlog->log_report_unknown) {
 			$self->warn("Unknown player trigger '$trigger' from src $self->{_src} line $self->{_line}: $self->{_event}");
 		}
 	}
@@ -207,7 +208,7 @@ sub event_teamtrigger {
 	#	return;
 
 	} else {
-		if ($self->conf->main->errlog->report_unknown) {
+		if ($self->conf->global->errlog->log_report_unknown) {
 			$self->warn("Unknown team trigger '$trigger' from source $self->{_src} line $self->{_line}: $self->{_event}");
 		}
 		return;		# return here so we don't calculate the 'won/lost' points below

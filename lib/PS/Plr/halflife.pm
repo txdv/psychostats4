@@ -119,8 +119,8 @@ BEGIN {
 # and do not allow them to be used.
 sub assign_plrid {
 	my ($self, $check_only) = @_;
-	my $uniqueid = $self->{ $self->conf->main->uniqueid };
-	if ($self->conf->main->uniqueid eq 'guid' and
+	my $uniqueid = $self->{ $self->conf->uniqueid };
+	if ($self->conf->uniqueid eq 'guid' and
 	    ($uniqueid eq 'STEAM_ID_PENDING' or $uniqueid eq 'STEAM_ID_LAN')) {
 		;;; $self->debug4("Delaying PLRID assignment for $self",0);
 		return 0;

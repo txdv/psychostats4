@@ -46,22 +46,22 @@ sub _getOptions {
 		'file=s'		=> \$self->{param}{file},
 
 		# BASIC SETTINGS
-		'config=s'	=> \$self->{param}{config},
-		'noconfig'	=> \$self->{param}{noconfig},
-		'help|?'	=> \$self->{param}{help},
-		'V|version'	=> \$self->{param}{version},
+		'config=s'		=> \$self->{param}{config},
+		'noconfig'		=> \$self->{param}{noconfig},
+		'help|?'		=> \$self->{param}{help},
+		'V|version'		=> \$self->{param}{version},
 
 		# DATABASE SETTINGS
-		'dbtype=s'	=> \$self->{param}{dbtype},
-		'dbhost=s'	=> \$self->{param}{dbhost},
-		'dbport=s'	=> \$self->{param}{dbpost},
-		'dbname=s'	=> \$self->{param}{dbname},
-		'dbuser=s'	=> \$self->{param}{dbuser},
-		'dbpass=s'	=> \$self->{param}{dbpass},
-		'dbtblprefix:s'	=> \$self->{param}{dbtblprefix},
+		'dbtype=s'		=> \$self->{param}{dbtype},
+		'dbhost=s'		=> \$self->{param}{dbhost},
+		'dbport=s'		=> \$self->{param}{dbpost},
+		'dbname=s'		=> \$self->{param}{dbname},
+		'dbuser=s'		=> \$self->{param}{dbuser},
+		'dbpass=s'		=> \$self->{param}{dbpass},
+		'dbtblprefix:s'		=> \$self->{param}{dbtblprefix},
 
 		# grab extra params that are not options
-		'<>'		=> sub { push(@PS::CmdLine::OPTS, shift) }
+		'<>'			=> sub { push(@PS::CmdLine::OPTS, shift) }
 	);
 
 	$self->{param}{debug} = 1 if defined $self->{param}{debug} and $self->{param}{debug} < 1;

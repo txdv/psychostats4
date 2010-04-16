@@ -3,8 +3,8 @@ sub calcskill_killassist_default {
 	my ($self,$k,$v,$w) = @_;
 	my ($kbonus, $vbonus);
 
-	my $kskill = $k->skill || $self->conf->main->baseskill;
-	my $vskill = $v->skill || $self->conf->main->baseskill;
+	my $kskill = $k->skill || $self->conf->baseskill;
+	my $vskill = $v->skill || $self->conf->baseskill;
 
 	# don't allow player skill to go negative ...
 	$kskill = 1 if $kskill < 1;

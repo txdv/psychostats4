@@ -45,10 +45,13 @@ sub new {
 	my $self = {
 		class => $class,
 		db => $db,
-		conf => $conf,
 		_verbose => 0
 	};
 	$ERRHANDLER = bless($self, $class);
+	{
+		no strict 'refs';
+		*{'conf'} = sub () { $conf };
+	}
 	return $self;
 }
 
@@ -126,8 +129,8 @@ sub fatal { shift->log(shift, 'fatal', @_) }
 # and total rows
 sub truncate {
 	my $self = shift;
-	my $maxrows = defined $_[0] ? shift : $self->{conf}->main->errlog->maxrows;
-	my $maxdays = defined $_[0] ? shift : $self->{conf}->main->errlog->maxdays;
+	my $maxrows = defined $_[0] ? shift : $self->conf->global->errlog->log_maxrows;
+	my $maxdays = defined $_[0] ? shift : $self->conf->global->errlog->log_maxdays;
 	my $db = $self->{db};
 	$maxrows = 5000 unless defined $maxrows;
 	$maxdays = 30 unless defined $maxdays;

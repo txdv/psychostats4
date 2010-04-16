@@ -106,7 +106,7 @@ use PS::Core;
 use PS::SourceFilter;
 use PS::CmdLine;
 use PS::DBI;
-use PS::Conf;
+use PS::Config;
 use PS::ErrLog;
 use PS::Feeder;
 use PS::Game;
@@ -184,13 +184,16 @@ $dbconf = {};
 if (!$opt->noconfig) {
 	if ($opt->config) {
 		;;; PS::Core->debug("Loading DB config from " . $opt->config);
-		$dbconf = PS::Conf->loadfile( $opt->config );
+		$dbconf = PS::Config->LOAD_FILE( $opt->config );
 	} elsif (-f catfile($FindBin::Bin, 'stats.cfg')) {
 		;;; PS::Core->debug("Loading DB config from " . catfile($FindBin::Bin, 'stats.cfg'));
-		$dbconf = PS::Conf->loadfile( catfile($FindBin::Bin, 'stats.cfg') );
+		$dbconf = PS::Config->LOAD_FILE( catfile($FindBin::Bin, 'stats.cfg') );
 	} else {
 		;;; PS::Core->debug("Loading DB config from __DATA__");
-		$dbconf = PS::Conf->loadfile( *DATA );
+		$dbconf = PS::Config->LOAD_FILE( *DATA );
+	}
+	if (!$dbconf) {
+		die "Error loading DB config!\n";
 	}
 } else {
 	;;; PS::Core->debug("-noconfig specified, No DB config loaded.");
@@ -209,9 +212,8 @@ $DBCONF = {
 	dbcompress	=> $opt->dbcompress || $dbconf->{dbcompress}
 };
 $db = new PS::DBI($DBCONF);
-$db->do('SET time_zone = \'+00:00\'');	# Make sure Mysql treats all times as UTC/GMT
 
-$conf = new PS::Conf($db, 'main', $opt);
+$conf = new PS::Config($db);
 $ERR = new PS::ErrLog($db, $conf);	# Errors will be logged to the DB
 PS::Core->set_verbose($opt->verbose and !$opt->quiet);
 PS::ErrLog->set_verbose($opt->verbose and !$opt->quiet);

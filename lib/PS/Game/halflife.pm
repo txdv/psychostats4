@@ -68,7 +68,7 @@ sub init {
 	$self->init_plrcache;
 	$self->init_ipcache;
 
-	#$self->{auto_plr_bans} = $self->{conf}->main->auto_plr_bans;
+	#$self->{auto_plr_bans} = $self->conf->auto_plr_bans;
 
 	# default map will be determined from the log source, since each log
 	# source can have a different default.
@@ -109,7 +109,7 @@ sub event {
 		$timestamp = $self->{last_timestamp};
 	} else {
 		if ($prefix !~ /^L (\d\d)\/(\d\d)\/(\d\d\d\d) - (\d\d):(\d\d):(\d\d)/) {
-			if ($self->conf->main->errlog->report_timestamps) {
+			if ($self->conf->global->errlog->log_report_timestamps) {
 				# do not warn on lines with "unable to contact
 				# the authentication server, 31)."
 				$self->warn("Invalid timestamp from source " . $feed->curlog . " line " . $feed->curline . ": $event")
@@ -144,7 +144,7 @@ sub event {
 		$self->{re_match} = $re;					# keep track of the event that matched
 		my $func = 'event_' . ($self->{evconf}{$re}{alias} || $re);	# use specified $event or 'event_$re'
 		$self->$func($timestamp, $params);				# call event handler
-	} elsif ($self->conf->main->errlog->report_unknown) {
+	} elsif ($self->conf->global->errlog->log_report_unknown) {
 		$self->warn("Unknown event was ignored from source " . $feed->curlog . " line " . $feed->curline . ": $event");
 	}
 
@@ -249,7 +249,7 @@ sub event_changed_role {
 
 sub event_chat {
 	my ($self, $timestamp, $args) = @_;
-	return unless $self->conf->main->plr_chat_max > 0;
+	return unless $self->conf->plr_chat_max > 0;
 	my ($plrstr, $teamonly, $msg, $propstr) = @$args;
 	my $p = $self->get_plr($plrstr);
 	my $props = $self->parseprops($propstr);
@@ -307,7 +307,7 @@ sub event_disconnected {
 	$self->del_plrcache($p);
 
 	# scan the player for a valid clantag
-	if ($self->conf->main->clantag_detection and !$p->clanid) {
+	if ($self->conf->clantag_detection and !$p->clanid) {
 		my ($tag, $clan) = $self->scan_for_clantag($p);
 		if ($tag and $clan->{clanid}) {
 			$p->clanid($clan->{clanid});
@@ -387,7 +387,7 @@ sub event_kill {
 	}
 	$self->calcskill_kill_func($k, $v, $w) unless $skill_handled;
 
-	#if ($self->conf->main->save_plr_on_kill) {
+	#if ($self->conf->save_plr_on_kill) {
 	#	# if we're configured for up-to-the-second real-time stats
 	#	# then we need to quick save these players.
 	#	$k->quick_save;
@@ -660,7 +660,7 @@ sub get_plr {
 	# For BOTS: replace STEAMID's with the player name otherwise all bots
 	# will be combined into the same STEAMID
 	if ($guid eq 'BOT') {
-		return if $self->conf->main->ignore_bots;
+		return if $self->conf->ignore_bots;
 		# limit the total characters (128 - 4)
 		$guid = "BOT_" . uc substr($name, 0, 124);
 	}
@@ -736,7 +736,7 @@ sub _get_plr {
 			undef $p;
 			$p = $p1;
 		} else {
-			$p->skill( $self->conf->main->baseskill );
+			$p->skill( $self->conf->baseskill );
 		}
 
 		$self->add_plrcache($p);

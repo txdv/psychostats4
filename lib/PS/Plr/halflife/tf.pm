@@ -276,7 +276,7 @@ sub action_kill {
 }
 
 # A kill assist is counted essentially the same as a real kill except we
-# increment the players 'assisted_kills' value as well. Skill is granted to the
+# increment the players 'assisted_kills' value as well. Skill is given to the
 # assister from the event caller.
 sub action_kill_assist {
 	my ($self, $game, $victim, $weapon, $map, $props) = @_;

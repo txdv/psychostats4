@@ -33,6 +33,7 @@ use util qw( deep_copy print_r int2ip );
 use PS::SourceFilter;
 use Time::Local;
 use Encode qw( encode_utf8 decode_utf8 );
+use Carp;
 
 our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
@@ -326,7 +327,7 @@ sub init_plr {
 	# assign the loaded skill to our public key for use
 	$self->{skill} = ($plr and defined $plr->{skill})
 		? $plr->{skill}
-		: $self->conf->main->baseskill;
+		: $self->conf->baseskill;
 
 	$self->{rank} = $plr ? $plr->{rank} : undef;
 
@@ -342,12 +343,13 @@ sub save_plr {
 	return unless $self->id;
 	$plr ||= $self->{plr};
 	# TODO: ...
+	croak("TODO: PS::Plr::save_plr called");
 }
 
 # Save accumulated stats and player information
 sub save {
 	my ($self, $game) = @_;
-	my $uniqueid = $self->{ $self->conf->main->uniqueid };
+	my $uniqueid = $self->{ $self->conf->uniqueid };
 	
 	# First, we need a new PLRID if this player doesn't already have one.
 	# If a PLRID can not be assigned then no data will be saved yet.
@@ -378,11 +380,11 @@ sub save {
 	}
 
 	# Update the player profile name [first, last, most] used as configured...
-	if ($self->conf->main->plr_primary_name ne 'first') {
+	if ($self->conf->plr_primary_name ne 'first') {
 		my $pp = $self->db->execute_fetchrow('get_plr_profile_basic', $uniqueid);
 		if ($pp and !$pp->{name_locked}) {
 			my $name = decode_utf8($pp->{name});
-			my $stname = sprintf('get_plr_%s_used_names', $self->conf->main->plr_primary_name);
+			my $stname = sprintf('get_plr_%s_used_names', $self->conf->plr_primary_name);
 			my ($newname) = $self->db->execute_selectall($stname, $self->{plrid}, 1);
 			$newname = decode_utf8($newname);
 			if (defined $newname and $name ne $newname) {
@@ -495,7 +497,7 @@ sub save_stats {
 			}
 
 			# Make sure the player has a default skill assigned
-			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
+			$self->{skill} = $self->conf->baseskill unless defined $self->{skill};
 			
 			# update some columns in ps_plr
 			push(@updates, $self->db->expr('lastseen', '>', $self->{timestamp}, \@bind));
@@ -521,7 +523,7 @@ sub save_stats {
 			#;;;warn "CMD:  ", $self->db->lastcmd(\@bind), "\n";
 
 			# Make sure the player has a default skill assigned
-			$self->{skill} = $self->conf->main->baseskill unless defined $self->{skill};
+			$self->{skill} = $self->conf->baseskill unless defined $self->{skill};
 
 			@bind = ();
 			# update some columns in ps_plr
@@ -613,7 +615,7 @@ sub save_history {
 			@bind = (
 				$self->{timestamp},
 				$self->{rank} || undef,
-				$self->{skill} || $self->conf->main->baseskill
+				$self->{skill} || $self->conf->baseskill
 			);
 			
 			foreach my $key (grep { exists $self->{data}{$_} } @{$ORDERED_HISTORY->{DATA}}) {
@@ -640,7 +642,7 @@ sub save_history {
 				$self->{firstseen},
 				$self->{timestamp},	# lastseen
 				$self->{rank} || undef,
-				defined $self->{skill} ? $self->{skill} : $self->conf->main->baseskill,
+				defined $self->{skill} ? $self->{skill} : $self->conf->baseskill,
 			)) {
 				# report error? 
 				return;
@@ -727,10 +729,10 @@ sub save_session {
 	my $plrid = $self->id || return;
 	my $m = $game->get_map->id;
 
-	return unless $self->conf->main->plr_sessions_max > 0 && $self->{timestamp};
+	return unless $self->conf->plr_sessions_max > 0 && $self->{timestamp};
 	return unless $self->onlinetime;
 
-	$threshold = $self->conf->main->plr_sessions_time unless defined $threshold;
+	$threshold = $self->conf->plr_sessions_time unless defined $threshold;
 	$threshold ||= 60*15;	# default to 15 minutes if nothing is configured
 
 	# get most recent session
@@ -820,7 +822,7 @@ sub save_plr_chat {
 sub trim_plr_chat {
 	my ($self) = @_;
 	my ($st, $total);
-	my $max = $self->conf->main->plr_chat_max || return;
+	my $max = $self->conf->plr_chat_max || return;
 	
 	if (!$self->db->prepared('total_plr_chat')) {
 		$self->db->prepare('total_plr_chat', 'SELECT COUNT(*) FROM t_plr_chat WHERE plrid=?');
@@ -859,7 +861,7 @@ sub save_plr_id {
 sub assign_plrid {
 	my ($self, $check_only) = @_;
 	return $self->{plrid} if $self->{plrid};
-	my $uniqueid = $self->{ $self->conf->main->uniqueid };
+	my $uniqueid = $self->{ $self->conf->uniqueid };
 	
 	$self->{plrid} = $self->db->execute_selectcol('find_plrid', $uniqueid,
 						      @$self{qw(gametype modtype)}) || 0;
@@ -869,7 +871,7 @@ sub assign_plrid {
 	unless ($check_only) {
 		if ($self->db->execute('insert_plr', $uniqueid,
 			@$self{qw(gametype modtype firstseen timestamp)},
-			$self->conf->main->baseskill)) {
+			$self->conf->baseskill)) {
 			$self->{plrid} = $self->db->last_insert_id;
 		} else {
 			$self->warn("Error inserting new player record for $self");
@@ -1146,7 +1148,7 @@ sub action_changed_role {
 # The player said something
 sub action_chat {
 	my ($self, $game, $msg, $teamonly, $props) = @_;
-	my $max = ($self->conf->main->plr_chat_max || 1) - 1;
+	my $max = ($self->conf->plr_chat_max || 1) - 1;
 	$self->timestamp($props->{timestamp});
 
 	$self->{chat} ||= [];

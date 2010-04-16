@@ -476,7 +476,7 @@ sub event_connected {
 	my $p1 = ref $plrstr ? $plrstr : $self->get_plr($plrstr) || return;
 
 	$p1->{_connected} = 1;
-	if (!$p1->is_bot or !$self->{ignore_bots_conn}) {
+	if (!$p1->is_bot or !$self->conf->ignore_bots_connect) {
 		$p1->{basic}{connections}++;
 		my $m = $self->get_map;
 		if ($m) {

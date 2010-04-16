@@ -186,7 +186,7 @@ sub parsesource {
 		$self->{_opts}{ssh_args}{port} = $log->{port} if defined $log->{port};
 		$self->{_opts}{user} = $log->{username};
 		$self->{_opts}{password} = $log->{password};
-		$self->{_opts}{debug} = $self->{conf}->get_opt('debug') ? 1 : 0;	# VERY LOUD!!!
+		$self->{_opts}{debug} = $self->opt->debug ? 1 : 0;	# VERY LOUD!!!
 		$self->{_dir} = $log->{path};
 		$db->update($db->{t_config_logsources}, { lastupdate => time }, [ 'id' => $log->{id} ]);
 

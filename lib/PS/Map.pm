@@ -353,7 +353,7 @@ sub onlinetime {
 sub action_connected {
 	my ($self, $game, $plr, $props) = @_;
 	$self->timestamp($props->{timestamp});
-	if (!$plr->is_bot or !$self->conf->main->ignore_bots_conn) {
+	if (!$plr->is_bot or !$self->conf->ignore_bots_connect) {
 		$self->{data}{connections}++;
 		#$self->hourly('connections', $props->{timestamp});
 	}

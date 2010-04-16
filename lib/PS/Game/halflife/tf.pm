@@ -34,7 +34,7 @@ sub init {
 	$self->SUPER::init;
 
 	# load the kill assist calculation. used in plrtrigger().
-	$self->add_calcskill_func('killassist', $self->conf->main->calcskill_kill);
+	$self->add_calcskill_func('killassist', $self->conf->calcskill_kill);
 
 	return $self;
 }
@@ -190,7 +190,7 @@ sub event_plrtrigger {
 		$p->action_misc($self, $trigger, $m, $props);
 		
 	} else {
-		if ($self->conf->main->errlog->report_unknown) {
+		if ($self->conf->global->errlog->log_report_unknown) {
 			$self->warn("Unknown player trigger '$trigger' from src $self->{_src} line $self->{_line}: $self->{_event}");
 		}
 	}

@@ -6,8 +6,8 @@ sub calcskill_kill_default {
 	my ($self,$k,$v,$w) = @_;
 	my ($kbonus, $vbonus);
 
-	my $kskill = $k->skill || $self->conf->main->baseskill;
-	my $vskill = $v->skill || $self->conf->main->baseskill;
+	my $kskill = $k->skill || $self->conf->baseskill;
+	my $vskill = $v->skill || $self->conf->baseskill;
 
 	# don't allow player skill to go negative ...
 	$kskill = 1 if $kskill < 1;
@@ -20,7 +20,7 @@ sub calcskill_kill_default {
 	} else {
 		# the victim is better than the killer
 		$kbonus = ($vskill + $kskill)**2 / $vskill**2 * $vskill / $kskill;
-		$vbonus = $kbonus * ($vskill + $self->conf->main->baseskill) / ($vskill + $kskill);
+		$vbonus = $kbonus * ($vskill + $self->conf->baseskill) / ($vskill + $kskill);
 	}
 
 	# do not allow the victim to lose more than X points

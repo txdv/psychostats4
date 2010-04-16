@@ -72,20 +72,20 @@ sub _getOptions {
 		'weapon=s'		=> \$self->{param}{weapon},
 
 		# BASIC SETTINGS
-		'config=s'	=> \$self->{param}{config},
-		'noconfig'	=> \$self->{param}{noconfig},
-		'help|h|?'	=> \$self->{param}{help},
-		'V|version'	=> \$self->{param}{version},
-		'quiet'		=> \$self->{param}{quiet},
+		'config=s'		=> \$self->{param}{config},
+		'noconfig'		=> \$self->{param}{noconfig},
+		'help|h|?'		=> \$self->{param}{help},
+		'V|version'		=> \$self->{param}{version},
+		'quiet'			=> \$self->{param}{quiet},
 
 		# DATABASE SETTINGS
-		'dbtype=s'	=> \$self->{param}{dbtype},
-		'dbhost=s'	=> \$self->{param}{dbhost},
-		'dbport=s'	=> \$self->{param}{dbpost},
-		'dbname=s'	=> \$self->{param}{dbname},
-		'dbuser=s'	=> \$self->{param}{dbuser},
-		'dbpass=s'	=> \$self->{param}{dbpass},
-		'dbtblprefix:s'	=> \$self->{param}{dbtblprefix},
+		'dbtype=s'		=> \$self->{param}{dbtype},
+		'dbhost=s'		=> \$self->{param}{dbhost},
+		'dbport=s'		=> \$self->{param}{dbpost},
+		'dbname=s'		=> \$self->{param}{dbname},
+		'dbuser=s'		=> \$self->{param}{dbuser},
+		'dbpass=s'		=> \$self->{param}{dbpass},
+		'dbtblprefix:s'		=> \$self->{param}{dbtblprefix},
 
 		# grab extra params that are not options
 		'<>'		=> sub { push(@{$self->{OPTS}}, shift) }
