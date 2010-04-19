@@ -71,6 +71,34 @@ class Psychostats_Method_Nav_Blocks_Player_Halflife extends Psychostats_Method {
 				'label' => trans('Suicides'),
 				'value' => number_format($stats['suicides']),
 			),
+			'damages' => array(
+				'row_class' => 'hdr',
+				'label' => trans('Damage'),
+			),
+			'damage' => array(
+				'row_class' => 'sub',
+				'label' => trans('Caused'),
+				'value' => number_format($stats['damage']),
+			),
+			'damage_absorbed' => array(
+				'row_class' => 'sub',
+				'label' => trans('Absorbed'),
+				'value' => $stats['damage']
+					? sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['damage_absorbed'] / $stats['damage'] * 100), number_format($stats['damage_absorbed']))
+					: $stats['damage_absorbed']
+			),
+			'damage_taken' => array(
+				'row_class' => 'sub',
+				'label' => trans('Taken'),
+				'value' => number_format($stats['damage_taken']),
+			),
+			'damage_mitigated' => array(
+				'row_class' => 'sub',
+				'label' => trans('Mitigated'),
+				'value' => $stats['damage']
+					? sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['damage_mitigated'] / $stats['damage'] * 100), number_format($stats['damage_mitigated']))
+					: $stats['damage_mitigated']
+			),
 		) + $blocks['player_kill_profile']['rows'];
 
 		if (!isset($blocks['player_accuracy_profile'])) {

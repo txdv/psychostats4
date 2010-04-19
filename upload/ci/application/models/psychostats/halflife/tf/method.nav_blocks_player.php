@@ -27,6 +27,34 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 		}
 		
 		$blocks['player_actions']['rows'] += array(
+			'games' => array(
+				'row_class' => 'hdr',
+				'label' => trans('Games'),
+			),
+			'team_wins' => array(
+				'row_class' => 'sub',
+				'label' => trans('Wins'),
+				'value' => sprintf('<div class="pct-stat">%s</div>%s',
+					$stats['wins'] ? dual_bar($bar + array(
+						'pct1'	=> $stats['blue_wins'] / $stats['wins'] * 100,
+						'pct2'	=> $stats['red_wins'] / $stats['wins'] * 100,
+						'title1'=> trans('%s Blu wins', number_format($stats['blue_wins'])),
+						'title2'=> trans('%s Red wins', number_format($stats['red_wins'])),
+					)) : '',
+					number_format($stats['wins'])),
+			),
+			'team_losses' => array(
+				'row_class' => 'sub',
+				'label' => trans('Losses'),
+				'value' => sprintf('<div class="pct-stat">%s</div>%s',
+					$stats['losses'] ? dual_bar($bar + array(
+						'pct1'	=> $stats['blue_losses'] / $stats['losses'] * 100,
+						'pct2'	=> $stats['red_losses'] / $stats['losses'] * 100,
+						'title1'=> trans('%s Blu losses', number_format($stats['blue_losses'])),
+						'title2'=> trans('%s Red losses', number_format($stats['red_losses'])),
+					)) : '',
+					number_format($stats['losses'])),
+			),
 			'flags' => array(
 				'row_class' => 'hdr',
 				'label' => trans('Flags'),
@@ -161,90 +189,90 @@ extends Psychostats_Method_Nav_Blocks_Player_Halflife {
 		);
 			
 		array_push_after($blocks['player_kill_profile']['rows'],
-				 'kills',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Killed'),
-					'value' => sprintf('<div class="pct-stat">%s</div>&nbsp;',
-						$stats['kills'] ? dual_bar($bar + array(
-							'pct1'	=> $stats['killed_blue'] / $stats['kills'] * 100,
-							'pct2'	=> $stats['killed_red'] / $stats['kills'] * 100,
-							'title1'=> trans('%s Blu kills', number_format($stats['killed_blue'])),
-							'title2'=> trans('%s Red kills', number_format($stats['killed_red'])),
-						)) : ''
-					),
-				 ),
-				 'killed'
+			'kills',
+			array( 
+			       'row_class' => 'sub',
+			       'label' => trans('Killed'),
+			       'value' => sprintf('<div class="pct-stat">%s</div>&nbsp;',
+				       $stats['kills'] ? dual_bar($bar + array(
+					       'pct1'	=> $stats['killed_blue'] / $stats['kills'] * 100,
+					       'pct2'	=> $stats['killed_red'] / $stats['kills'] * 100,
+					       'title1'=> trans('%s Blu kills', number_format($stats['killed_blue'])),
+					       'title2'=> trans('%s Red kills', number_format($stats['killed_red'])),
+				       )) : ''
+			       ),
+			),
+			'killed'
 		);
 
 		array_push_after($blocks['player_kill_profile']['rows'],
-				 'killed',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Assists'),
-					'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
-				 ),
-				 'assisted_kills'
+			'killed',
+			array( 
+			       'row_class' => 'sub',
+			       'label' => trans('Assists'),
+			       'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
+			),
+			'assisted_kills'
 		);
 
 		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_kills',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Dominations'),
-					'value' => number_format($stats['domination']), 
-					//'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
-				 ),
-				 'domination'
+			'headshot_kills',
+			array( 
+			       'row_class' => 'sub',
+			       'label' => trans('Dominations'),
+			       'value' => number_format($stats['domination']), 
+			       //'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
+			),
+			'domination'
 		);
 
 		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_kills',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Revenges'),
-					'value' => number_format($stats['revenge']), 
-					//'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
-				 ),
-				 'revenge'
+			'headshot_kills',
+			array( 
+			       'row_class' => 'sub',
+			       'label' => trans('Revenges'),
+			       'value' => number_format($stats['revenge']), 
+			       //'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['assisted_kills_pct']), number_format($stats['assisted_kills'])),
+			),
+			'revenge'
 		);
 
 		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_kills',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Backstabs'),
-					'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['backstab_kills_pct']), number_format($stats['backstab_kills'])),
-				 ),
-				 'backstab_kills'
+			'headshot_kills',
+			array( 
+			       'row_class' => 'sub',
+			       'label' => trans('Backstabs'),
+			       'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['backstab_kills_pct']), number_format($stats['backstab_kills'])),
+			),
+			'backstab_kills'
 		);
 
 		// deaths
 		array_push_after($blocks['player_kill_profile']['rows'],
-				 'deaths',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Deaths From'),
-					'value' => sprintf('<div class="pct-stat">%s</div>&nbsp;',
-						$stats['deaths'] ? dual_bar($bar + array(
-							'pct1'	=> $stats['deathsby_blue'] / $stats['deaths'] * 100,
-							'pct2'	=> $stats['deathsby_red'] / $stats['deaths'] * 100,
-							'title1'=> trans('%s deaths from Blu', number_format($stats['deathsby_blue'])),
-							'title2'=> trans('%s deaths from Red', number_format($stats['deathsby_red'])),
-						)) : ''
-					),
-				 ),
-				 'deathsby'
+			'deaths',
+			array( 
+			       'row_class' => 'sub',
+			       'label' => trans('Deaths From'),
+			       'value' => sprintf('<div class="pct-stat">%s</div>&nbsp;',
+				       $stats['deaths'] ? dual_bar($bar + array(
+					       'pct1'	=> $stats['deathsby_blue'] / $stats['deaths'] * 100,
+					       'pct2'	=> $stats['deathsby_red'] / $stats['deaths'] * 100,
+					       'title1'=> trans('%s deaths from Blu', number_format($stats['deathsby_blue'])),
+					       'title2'=> trans('%s deaths from Red', number_format($stats['deathsby_red'])),
+				       )) : ''
+			       ),
+			),
+			'deathsby'
 		);
 
 		array_push_after($blocks['player_kill_profile']['rows'],
-				 'headshot_deaths',
-				 array( 
-					'row_class' => 'sub',
-					'label' => trans('Backstabs'),
-					'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['backstab_deaths_pct']), number_format($stats['backstab_deaths'])),
-				 ),
-				 'backstab_deaths'
+			'headshot_deaths',
+			array( 
+			       'row_class' => 'sub',
+			       'label' => trans('Backstabs'),
+			       'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['backstab_deaths_pct']), number_format($stats['backstab_deaths'])),
+			),
+			'backstab_deaths'
 		);
 
 	

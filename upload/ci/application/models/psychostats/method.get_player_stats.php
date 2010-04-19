@@ -54,6 +54,7 @@ extends Psychostats_Method {
 			'*' 			=> 'd.*',
 			'kills_per_death' 	=> 'ROUND(IFNULL(kills / deaths, 0),2) kills_per_death',
 			'kills_per_minute' 	=> 'ROUND(IFNULL(kills / (online_time/60), 0),2) kills_per_minute',
+			'kills_per_round' 	=> 'ROUND(IFNULL(kills / rounds, 0),2) kills_per_round',
 			'headshot_kills_pct' 	=> 'IFNULL(headshot_kills / kills * 100, 0) headshot_kills_pct',
 			'headshot_deaths_pct' 	=> 'IFNULL(headshot_deaths / deaths * 100, 0) headshot_deaths_pct',
 		);
