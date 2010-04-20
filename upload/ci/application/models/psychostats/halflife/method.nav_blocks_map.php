@@ -25,11 +25,6 @@ class Psychostats_Method_Nav_Blocks_Map_Halflife extends Psychostats_Method {
 				'label' => trans('Headshots'),
 				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['headshot_kills_pct']), number_format($stats['headshot_kills'])),
 			),
-			'backstab_kills' => array(
-				'row_class' => 'sub',
-				'label' => trans('Backstabs'),
-				'value' => sprintf('<div class="pct-stat">%s</div>%s', pct_bar($stats['backstab_kills_pct']), number_format($stats['backstab_kills'])),
-			),
 			'team_kills' => array(
 				'row_class' => 'sub',
 				'label' => trans('Friendly'),

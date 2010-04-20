@@ -54,7 +54,7 @@ $config['default_view'] = 'home';
 $config['login_regen_password_salt'] = true;
 
 // list each gametype and associated modtype's that are available for stats.
-$config['gametypes']['halflife'] = array('cstrike');
+$config['gametypes']['halflife'] = array('cstrike','tf');
 $config['gametypes']['cod'] = array();
 //$config['gametypes']['soldat'] = array();
 
