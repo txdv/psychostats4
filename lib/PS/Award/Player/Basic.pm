@@ -81,7 +81,7 @@ sub calc {
 		GROUP BY data.plrid
 	};
 
-	if ($self->{where} or $self->{min_value}) {
+	if ($self->{where} or defined $self->{min_value}) {
 		# must use 'having' and not 'where', since we're using expressions
 		$cmd .= "HAVING ";
 	}
@@ -90,7 +90,7 @@ sub calc {
 		$cmd .= "$self->{where} ";
 	}
 
-	if ($self->{min_value}) {
+	if (defined $self->{min_value}) {
 		$cmd .= " AND " if $self->{where};
 		$cmd .= "$expr >= $self->{min_value} ";
 	}
