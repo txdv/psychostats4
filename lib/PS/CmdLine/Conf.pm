@@ -100,7 +100,7 @@ Commandline Configuration Helper *** NOT COMPLETED ***
 
 =item conf.pl <conf_type> [filename]
 
-=back 4
+=back
 
 =item B<Update a single option>
 
@@ -108,7 +108,9 @@ Commandline Configuration Helper *** NOT COMPLETED ***
 
 =item conf.pl -u <conf_type> <section.variable> <value> 
 
-=back 8
+=back
+
+=back
 
 =head1 COMMANDS
 

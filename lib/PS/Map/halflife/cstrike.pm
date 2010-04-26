@@ -36,7 +36,7 @@ BEGIN {
 	my $fields = __PACKAGE__->SUPER::FIELDS('DATA');
 	%{$fields->{halflife_cstrike}} = (
 		(map { $_ => '+' } qw(
-			team_kills		
+			headshot_kills		team_kills
 			killed_terrorist 	killed_ct 
 			terrorist_kills 	ct_kills 
 			joined_terrorist	joined_ct

@@ -155,7 +155,12 @@ sub new {
 # statements will be copied over too.
 sub clone {
 	my $self = shift;
-	my %args = ref $_[0] ? (@_==1 ? ( prepared => $_[0]?1:0 ) : %{$_[0]}) : @_;
+	my %args;
+	if (ref $_[0]) {
+		%args = (@_==1 ? ( prepared => $_[0]?1:0 ) : %{$_[0]});
+	} else {
+		$args{prepared} = $_[0] ? 1 : 0;
+	}
 	
 	my $clone = {};
 	foreach my $key (keys %$self) {
@@ -172,6 +177,8 @@ sub clone {
 			$clone->{$key} = $self->{$key};
 		}
 	}
+
+	$clone->{lastcmd} = '';
 
 	my $copy = bless($clone, ref $self);
 

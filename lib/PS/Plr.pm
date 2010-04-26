@@ -62,7 +62,8 @@ BEGIN {
 	$HISTORY->{DATA} = {
 		(map { $_ => $FIELDS->{DATA}{data}{$_} } qw(
 			kills		headshot_kills
-			deaths
+			kill_streak	death_streak
+			deaths		suicides
 			games		rounds
 			connections	online_time
 		))

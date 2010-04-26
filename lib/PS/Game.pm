@@ -35,7 +35,7 @@ use Safe;
 use Encode qw( encode_utf8 decode_utf8 );
 
 use PS::SourceFilter;
-use PS::Award;
+#use PS::Award;
 use PS::Config;
 use PS::Map;
 use PS::Plr;
@@ -1311,7 +1311,12 @@ sub daily_awards {
 	# gather awards that match our gametype/modtype and are valid ...
 	my $g = $db->quote($conf->gametype);
 	my $m = $db->quote($conf->modtype);
-	my @awards = $db->get_rows_hash("SELECT * FROM $db->{t_config_awards} WHERE enabled=1 AND (gametype=$g or gametype='' or gametype IS NULL) AND (modtype=$m or modtype='' or modtype IS NULL)");
+	my @awards = $db->get_rows_hash(qq{
+		SELECT * FROM $db->{t_config_awards}
+		WHERE enabled=1
+		  AND (gametype=$g or gametype='' or gametype IS NULL)
+		  AND (modtype=$m or modtype='' or modtype IS NULL)
+	});
 
 	my ($oldest, $newest) = $db->get_row_array("SELECT MIN(statdate), MAX(statdate) FROM $db->{t_plr_data}");
 	if (!$oldest and !$newest) {
@@ -1361,7 +1366,7 @@ sub daily_awards {
 
 	# loop through awards and calculate
 	foreach my $a (@awards) {
-		my $award = PS::Award->new($a, $self);
+		my $award = new PS::Award($a, $self);
 		if (!$award) {
 			$self->warn("Award '$a->{name}' can not be processed due to errors: $@");
 			next;
@@ -2386,6 +2391,10 @@ sub reset_game {
 				$db->truncate($_)
 			}
 		}
+		
+		# delete awards, since they are useless w/o the original plrid's
+		$db->truncate($db->{t_awards});
+		$db->truncate($db->{t_awards_plrs});
 	}
 
 	#$self->debug1("Unranking all clans ...", 0);
