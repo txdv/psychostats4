@@ -66,6 +66,15 @@ sub calc {
 
 	# join plr table with data
 	$cmd .= "WHERE plr.plrid=data.plrid ";
+
+	if ($self->{gametype} and $self->{modtype}) {
+		$cmd .= "AND plr.gametype=" . $self->{db}->quote($self->{gametype});
+		$cmd .= " AND plr.modtype=" . $self->{db}->quote($self->{modtype});
+		$cmd .= " ";
+	} elsif ($self->{gametype}) {
+		$cmd .= "AND plr.gametype=" . $self->{db}->quote($self->{gametype});
+		$cmd .= " ";
+	}
 	
 	# limit based on player ranks
 	if ($self->{max_rank}) {

@@ -347,6 +347,7 @@ sub process_streams {
 	my (@feeders, %args, $ev, $had_event, $feed, $srv, $game);
 	my $games = {};
 	my $feeds = {};
+	my $idle  = time;
 	
 	# setup some init parameters for the feeders (generic)
 	$args{verbose}	= ($opt->verbose && !$opt->quiet);
@@ -424,6 +425,15 @@ sub process_streams {
 		# taking up 100% CPU when no events are pending.
 		# I need to test this and make sure it works on Windows.
 		usleep(0) unless $had_event;
+		
+		# Make sure our DB connection(s) do not timeout and disconnect.
+		# check every 5 minutes.
+		if (time - $idle > 60*5) {
+			foreach (keys %$games) {
+				$games->{$_}{db}->idle, "\n";
+			}
+			$idle = time;
+		}
 	}
 	
 	# Save state for each game. Although, chances are the state of a stream

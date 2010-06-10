@@ -197,7 +197,7 @@ sub add_vars_from_table {
 			$self->{vars}{$key} = "$func($aggr)";
 		}
 
-		## try and assign fields from the game::mod table if it eveits
+		## try and assign fields from the game::mod table if it exists
 		#if ($gametype and $modtype and index($table, $gametype.'_') < 0) {
 		#	fields_by_table($fields, $db->{'t_plr_data'} . '_' . $gametype . '_' . $modtype);
 		#}

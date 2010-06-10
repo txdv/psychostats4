@@ -203,7 +203,7 @@ sub _update_client {
 sub echo_processing {
 	my ($self) = @_;
 	my $total = keys %{$self->{_clients}};
-	my $time = POSIX::strftime('%T', localtime);
+	my $time = POSIX::strftime('%H:%M:%S', localtime);
 	my $s = $total == 1 ? '' : 's';		# I'm OCD when it comes to outputting plurals.
 	$::ERR->verbose("[$time] Processing $total stream$s on $self->{listen_on} (" .
 			$self->lines_per_second . " lps / " .

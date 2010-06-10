@@ -43,7 +43,7 @@ use List::Util qw( first );
 use PS::SourceFilter;
 use PS::Core;
 use PS::CmdLine;
-use PS::Conf;
+use PS::Config;
 use PS::DBI;
 
 our $DEBUG;
@@ -62,10 +62,13 @@ $dbconf = {};
 if (!$opt->noconfig) {
 	if ($opt->config) {
 		;;; PS::Core->debug("Loading DB config from " . $opt->config);
-		$dbconf = PS::Conf->loadfile( $opt->config );
+		$dbconf = PS::Config->LOAD_FILE( $opt->config );
 	} elsif (-f catfile($FindBin::Bin, 'stats.cfg')) {
 		;;; PS::Core->debug("Loading DB config from " . catfile($FindBin::Bin, 'stats.cfg'));
-		$dbconf = PS::Conf->loadfile( catfile($FindBin::Bin, 'stats.cfg') );
+		$dbconf = PS::Config->LOAD_FILE( catfile($FindBin::Bin, 'stats.cfg') );
+	} elsif (-f catfile($FindBin::Bin, '..', 'stats.cfg')) {
+		;;; PS::Core->debug("Loading DB config from " . catfile($FindBin::Bin, '..', 'stats.cfg'));
+		$dbconf = PS::Config->LOAD_FILE( catfile($FindBin::Bin, '..', 'stats.cfg') );
 	} else {
 		#die "No DB configuration found. Use -config to specify file.\n";
 	}

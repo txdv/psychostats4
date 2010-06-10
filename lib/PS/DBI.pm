@@ -1049,6 +1049,13 @@ sub db_version () { '0.0.0' }
 
 sub type () { '' }
 
+# do something on the server, we don't care what.. Anything to keep the
+# connection alive and not idle.
+sub idle {
+	my ($self) = @_;
+	$self->{dbh}->do("SELECT VERSION()");
+}
+
 # cleans up the last used statement handle and free its memory
 sub finish { undef $_[0]->{sth} if $_[0]->{sth} }
 

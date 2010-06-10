@@ -211,7 +211,7 @@ if (!$gametype or !$modtype) {
 
 # Reset all awards? This is useful when the awards config is changed.
 if (defined $opt->reset) {
-	# NOTE: this should be changed to only delete awards that are part of
+	# TODO: this should be changed to only delete awards that are part of
 	# the gametype::modtype specified.
 	$db->delete($db->{t_awards});
 	$db->delete($db->{t_awards_plrs});
@@ -255,6 +255,7 @@ my $oneday = 60*60*24;
 my $oneweek = $oneday * 7;
 
 # fetch award configs
+# TODO: allow use of: -award "award name"
 my @awards = $db->get_rows_hash(qq{
 	SELECT *
 	FROM $db->{t_config_awards}
@@ -301,7 +302,6 @@ foreach my $award_conf (@awards) {
 			my $onemonth = $oneday * $award->days_in_month($curdate);
 			my $is_partial = $curdate + $onemonth - $oneday > $newest;
 			last if $fullmonthonly and $is_partial;
-			#last if $fullmonthonly and $curdate + $onemonth - $oneday > $newest;
 
 			# Ignore awards for this date if it was already complete
 			if (!$award->is_complete($curdate, $range, $award_conf->{id})) {
