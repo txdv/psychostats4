@@ -84,6 +84,7 @@ sub new_from_id {
 	if (!$logsource) {
 		return bless({ error => "Logsource ID $id does not exist." }, $proto);
 	}
+	
 
 	# determine the proper class to load
 	$class = $proto->_load_class(@$logsource{qw( type gametype modtype )});
@@ -100,7 +101,7 @@ sub new_from_string {
 	my $proto = shift;
 	my $str = shift;
 	my $db;
-	$db = pop if ref $_[ scalar @_ - 1 ];	# db is last param, optionally
+	$db = pop if ref $_[ scalar @_ - 1 ];		# db is last param, optionally
 	my ($gametype, $modtype) = @_;			# only used for non-existing logsources
 	my $baseclass = ref($proto) || $proto;
 	my $class = $baseclass;
@@ -442,6 +443,7 @@ sub load_logsource_from_hash {
 
 	my $cmd = 'SELECT * FROM t_config_logsources WHERE';
 	while (my($key,$val) = each(%$src)) {
+		next if $key =~ /^(?:pass)$/;
 		if (defined $val) {
 			$cmd .= ' ' . $key . '=? AND';
 			push(@bind, $val);
@@ -513,12 +515,14 @@ sub parse {
 	my $str = shift;
 	my $logsource = {};
 
-	if ($str =~ m|^([^:]+)://([^/:]+)(?::(\d+))?/?(.*)|) {
-		# type://host[:port][/path]
-		my ($type,$host,$port,$path) = ($1,$2,$3,$4);
+	if ($str =~ m|^(s?ftp)://(?:([^:@]+):{0,1}([\w.!#$%^&*()_=+,.?;:'`~-]+)*@)?([\w\d\-\.]+)(?::([0-9]+))?/?(.*)$|) {
+		# type://[user[:pass]@]host[:port][/path]
+		my ($type,$user,$pass,$host,$port,$path) = ($1,$2,$3,$4,$5,$6);
 		$logsource->{type} = $type;
+		$logsource->{username} = $user if defined $user;
+		$logsource->{password} = $pass if defined $pass;
 		$logsource->{host} = $host;
-		$logsource->{port} = $port if $port;
+		$logsource->{port} = $port if defined $port;
 		$logsource->{path} = $path if $path;
 
 	} elsif ($str =~ m|^(?:([^:]+)://)?(.+)|) {
@@ -546,6 +550,18 @@ sub get_logsources {
 		@list = $db->get_list("SELECT id FROM $db->{t_config_logsources} WHERE enabled=$enabled ORDER BY idx");
 	}
 	return wantarray ? @list : \@list;
+}
+
+sub logsort {
+	my $self = shift;
+	my $list = shift;		# array ref to a list of log filenames
+	#return [ sort { $self->logcompare($a, $b) } @$list ];
+	return [ sort { $a cmp $b } @$list ];
+}
+
+sub logcompare {
+	my ($self, $x, $y) = @_;
+	return $x cmp $y;
 }
 
 # each sub-class will override to return a properly formated logsource string.

@@ -351,8 +351,8 @@ sub process_streams {
 	
 	# setup some init parameters for the feeders (generic)
 	$args{verbose}	= ($opt->verbose && !$opt->quiet);
-	$args{maxlogs}	= $opt->maxlogs;
-	$args{maxlines}	= $opt->maxlines;
+	#$args{maxlogs}	= $opt->maxlogs;
+	#$args{maxlines}	= $opt->maxlines;
 
 	# stream specific paramaters
 	$args{echo}	= $opt->echo;
@@ -365,10 +365,12 @@ sub process_streams {
 			$ERR->warn("Error initializing logsource $feed: " . $feed->error);
 			next;
 		}
-		# restore the previous state, if there was one for this feed
-		if (!$feed->restore_state) {
-			$ERR->warn("Error loading state for logsource \"$feed\" (this is usually harmless): " . $feed->error);
-			# no need to require -force for streams
+		if (!$opt->nostate) {
+			# restore the previous state, if there was one for this feed
+			if (!$feed->restore_state) {
+				$ERR->warn("Error loading state for logsource \"$feed\" (this is usually harmless): " . $feed->error);
+				# no need to require -force for streams
+			}
 		}
 		push(@feeders, $feed);
 	}
@@ -394,7 +396,7 @@ sub process_streams {
 					$feed->modtype,
 					$db->clone		# clone it
 				);
-				$games->{$srv}->restore_state($feed);
+				$games->{$srv}->restore_state($feed) unless $opt->nostate;
 				# keep track of which feed each server is being
 				# processed from.
 				$feeds->{$srv} = $feed;
@@ -471,20 +473,22 @@ sub process_files {
 			$ERR->warn("Error initializing logsource $feed: " . $feed->error);
 			next;
 		}
-		# restore the previous state, if there was one for this feed
-		if (!$feed->restore_state) {
-			$ERR->warn("Error loading state for logsource \"$feed\": " . $feed->error);
-			if (!$opt->force) {
-				$ERR->warn("Use --force to force this logsource to start over.");
-				next;
+		if (!$opt->nostate) {
+			# restore the previous state, if there was one for this feed
+			if (!$feed->restore_state) {
+				$ERR->warn("Error loading state for logsource \"$feed\": " . $feed->error);
+				if (!$opt->force) {
+					$ERR->warn("Use --force to force this logsource to start over.");
+					next;
+				}
+				$feed->reset_state;
 			}
-			$feed->reset_state;
 		}
 		
 		# instantiate the game
 		$game = new PS::Game($feed->gametype, $feed->modtype, $db);
 		# restore the game to its previous state for the logsource feed
-		$game->restore_state($feed);
+		$game->restore_state($feed) unless $opt->nostate;
 
 		#&lps_reset;
 		#my $last = time - 3;
@@ -498,6 +502,12 @@ sub process_files {
 			++$total_events;
 
 			if ($feed->curlog ne $last_log) {
+				# stop processing the feed if we've reached the
+				# configured resource limits.
+				if ($args{maxlogs} and $total_logs >= $args{maxlogs}) {
+					$game->verbose(sprintf('Maximum logs (%d) reached. Exiting cleanly.', $args{maxlogs}));
+					last;
+				}
 				$last_log = $feed->curlog;
 				++$total_logs;
 			}
@@ -533,12 +543,8 @@ sub process_files {
 
 			# stop processing the feed if we've reached the
 			# configured resource limits.
-			if (($args{maxlines} and $total_events >= $args{maxlines}) ||
-			    ($args{maxlogs}  and $total_logs   >= $args{maxlogs})) {
-				$ERR->verbose(sprintf(
-					'Maximum events (%d) or logs (%d) reached. Exiting cleanly.',
-					$args{maxlines}, $args{maxlogs}
-				));
+			if ($args{maxlines} and $total_events >= $args{maxlines}) {
+				$ERR->verbose(sprintf('Maximum events (%d) reached. Exiting cleanly.', $opt->maxlines));
 				last;
 			}
 

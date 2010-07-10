@@ -31,15 +31,7 @@ our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 # of the sorted logs. Does not change original reference.
 sub logsort {
 	my $self = shift;
-	my $list = shift;		# array ref to a list of log filenames
-	#my %uniq;
-	#use util;
-	#for (@$list) {
-	#	my $key = substr($_, 0, 3);
-	#	$uniq{$key} = $_ if !exists $uniq{$key} || $_ lt $uniq{$key};
-	#}
-	#print_r(\%uniq);
-	#use util; print_r([ sort { $self->logcompare($a, $b) } @$list ]);
+	my $list = shift;
 	return [ sort { $self->logcompare($a, $b) } @$list ];
 }
 

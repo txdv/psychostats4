@@ -117,11 +117,12 @@ BEGIN {
 
 # Assign a plrid to the player, watch out for STEAM_ID_PENDING or STEAM_ID_LAN
 # and do not allow them to be used.
+# Game::handler->get_plr() strips off the leading "STEAM_" prefix
 sub assign_plrid {
 	my ($self, $check_only) = @_;
 	my $uniqueid = $self->{ $self->conf->uniqueid };
 	if ($self->conf->uniqueid eq 'guid' and
-	    ($uniqueid eq 'STEAM_ID_PENDING' or $uniqueid eq 'STEAM_ID_LAN')) {
+	    ($uniqueid eq 'ID_PENDING' or $uniqueid eq 'ID_LAN')) {
 		;;; $self->debug4("Delaying PLRID assignment for $self",0);
 		return 0;
 	}
@@ -129,10 +130,11 @@ sub assign_plrid {
 }
 
 # save plr_ids' but do not save STEAM_ID_PENDING or STEAM_ID_LAN as GUID's
+# Game::handler->get_plr() strips off the leading "STEAM_" prefix
 sub save_plr_id {
 	my $self = shift;	# 0=$type, 1=$id, 2=@$set
 	return if $_[0] eq 'guid' and
-		($_[1] eq 'STEAM_ID_PENDING' or $_[1] eq 'STEAM_ID_LAN');
+		($_[1] eq 'ID_PENDING' or $_[1] eq 'ID_LAN');
 	$self->SUPER::save_plr_id(@_);
 }
 
@@ -142,8 +144,8 @@ sub signature {
 	if (substr($steamid,0,4) eq 'BOT_') {
 		$steamid = "BOT";
 	} else {
-		# PS::Game::halflife::get_plr() strips the "STEAM_X:" prefix off
-		$steamid = "STEAM_0:" . $steamid;
+		# PS::Game::halflife::get_plr() strips off the prefix "STEAM_"
+		$steamid = "STEAM_" . $steamid;
 	}
 	return sprintf("%s<%s><%s><%s>",
 		$self->{name},

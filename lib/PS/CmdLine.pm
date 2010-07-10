@@ -83,6 +83,8 @@ sub _getOptions {
 		'V|ver|version'	=> \$self->{param}{version},
 		'quiet'		=> \$self->{param}{quiet},
 
+		'nostate'	=> \$self->{param}{nostate},	# ignore Feeder state 
+
 		# PERFORMANCE OPTIONS
 		'lps=f'		=> \$self->{param}{lps},	# Lines per second maximum processing speed
 
@@ -104,6 +106,8 @@ sub _getOptions {
 		'port=i'	=> \$self->{param}{port},	# Stream logsources' (bind port)
 		'echo'		=> \$self->{param}{echo},	# Stream logsource's
 		'force'		=> \$self->{param}{force},	# ignore invalid previous states
+		'username=s'	=> \$self->{param}{username},	# FTP username
+		'password=s'	=> \$self->{param}{password},	# FTP password
 
 		# DAEMON OPTIONS
 		'daemon'	=> \$self->{param}{daemon},

@@ -627,7 +627,8 @@ sub get_plr {
 	# Note: steamid could be STEAM_ID_PENDING or BOT
 	$guid = substr($str, rindex($str,'<'), 128, '');
 	$guid = substr($guid, 1, -1);
-	$guid =~ s/^STEAM_\d://;	# strip the leading STEAM_x prefix
+	$guid =~ s/^STEAM_//;		# strip the leading STEAM_ prefix
+	#$guid =~ s/^STEAM_\d://;	# strip the leading STEAM_x: prefix
 
 	# Ignore the HLTV client.
 	# Ignore some plugin(s) that log using <Console> as the guid (tf)

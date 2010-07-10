@@ -19,139 +19,82 @@
 #
 #	$Id$
 #
-#	FTP support. Requires Net::FTP
+#	FTP log support. Requires Net::FTP
 #
 package PS::Feeder::ftp;
 
 use strict;
 use warnings;
 use base qw( PS::Feeder );
-use Digest::MD5 qw( md5_hex );
 use File::Spec::Functions qw( splitpath catfile );
 use File::Path;
+use util qw( print_r );
 
-our $VERSION = '1.10.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
+our $VERSION = '4.00.' . (('$Rev$' =~ /(\d+)/)[0] || '000');
 
 sub init {
 	my $self = shift;
+	my %args = @_;
+	$self->SUPER::init(%args) or return;
+	
+	if ($self->{logsource}{recursive}) {
+		$self->warn("FTP logsources do not support recursive directories.");
+		return 0;
+	}
+	
+	$self->{_pos} = 0;
+	$self->{_logs} = [ ];
+	$self->{_dirs} = [ ];
+	$self->{_curdir} = '';
+	$self->{_log_regex} = qr/\.[Ll][Oo][Gg]$/o;
+	$self->{_protocol} = 'ftp';
+	$self->{_idle} = time;
+	$self->{max_idle} = 25;				# should be made a configurable option ...
+	$self->{reconnect} = 0;
 
 	eval "require Net::FTP";
 	if ($@) {
-		$::ERR->warn("Net::FTP not installed. Unable to load $self->{class} object.");
+		$self->warn("Net::FTP not installed. Unable to load $self->{class} object.");
 		return;
 	}
 
-	$self->{_logs} = [ ];
-	$self->{_curline} = 0;
-	$self->{_log_regexp} = qr/\.log$/io;
-	$self->{_protocol} = 'ftp';
-	$self->{_idle} = time;
-	$self->{_last_saved} = time;
-
-	$self->{max_idle} = 25;				# should be made a configurable option ...
-	$self->{type} = $PS::Feeder::WAIT;
-	$self->{reconnect} = 0;
-
 	return unless $self->_connect;
 
-	# if a savedir was configured and it's not a directory try to create it
-=pod
-	if ($self->{savedir} and !-d $self->{savedir}) {
-		if (-e $self->{savedir}) {
-			$::ERR->warn("Invalid directory configured for saving logs ('$self->{savedir}'): Is a file");
-			$self->{savedir} = '';
-		} else {
-			eval { mkpath($self->{savedir}) };
-			if ($@) {
-				$::ERR->warn("Error creating directory for saving logs ('$self->{savedir}'): $@");
-				$self->{savedir} = '';
-			}
-		}
-	}
-	if ($self->{savedir}) {
-		$::ERR->info("Downloaded logs will be saved to: $self->{savedir}");
-	}
-=cut
-
-	return unless $self->_readdir;
-
-	$self->{state} = $self->load_state;
-	$self->{_pos} = $self->{state}{pos};
-
-	# we have a previous state to deal with. We must "fast-forward" to the log we ended with.
-	if ($self->{state}{file}) {
-		my $statelog = $self->{state}{file};
-		# first: find the log that matches our previous state in the current log directory
-		while (scalar @{$self->{_logs}}) {
-			my $cmp = $self->{game}->logcompare($self->{_logs}[0], $statelog);
-			if ($cmp == 0) { # ==
-				$self->_opennextlog($self->{state}{pos}, 1);
-				# finally: fast-forward to the proper line
-				if (int($self->{state}{pos} || 0) > 0) {	# FAST forward quickly
-					$self->{_offsetbytes} = $self->{state}{pos};
-					$self->{_curline} = $self->{state}{line};
-					$::ERR->verbose("Resuming from source $self->{state}{file} (line: $self->{_curline}, pos: $self->{state}{pos})");
-					return $self->{type};
-				} else {					# move forward slowly
-					my $fh = $self->{_loghandle};
-					while (defined(my $line = <$fh>)) {
-						$self->{_offsetbytes} += length($line);
-						if (++$self->{_curline} >= $self->{state}{line}) {
-							$::ERR->verbose("Resuming from source $self->{_curlog} (line: $self->{_curline})");
-							return $self->{type};
-						}
-					}
-				}
-			} elsif ($cmp == -1) { # <
-				shift @{$self->{_logs}};
-			} else { # >
-				# if we get to a log that is 'newer' then the last log in our state then 
-				# we'll just continue from that log since the old log was apparently lost.
-				$::ERR->warn("Previous log from state '$statelog' not found. Continuing from " . $self->{_logs}[0] . " instead ...");
-				return $self->{type};
-			} 
-		}
-
-		if (!$self->{_curlog}) {
-			$::ERR->warn("Unable to find log $statelog from previous state in $self->{_dir}. Ignoring directory.");
-		}
+	$self->{_dirs} = [ $self->{logsource}{path} ];
+	while (!scalar @{$self->{_logs}} and scalar @{$self->{_dirs}}) {
+		$self->readnextdir;
 	}
 
-	return scalar @{$self->{_logs}} ? $self->{type} : 0;
-}
-
-# reads the contents of the current directory
-sub _readdir {
-	my $self = shift;
-	$self->{_logs} = [ grep { !/^\./ && !/WS_FTP/ && /$self->{_log_regexp}/ } $self->{ftp}->ls ];
-	if (scalar @{$self->{_logs}}) {
-		$self->{_logs} = $self->{game}->logsort($self->{_logs});
-	}
-	# skip the last log in the directory
-	if ($self->{logsource}{skiplast}) {
-		my $log = pop(@{$self->{_logs}});
-		$::ERR->verbose("Last log '$log' in '$self->{_dir}' will be skipped.");
-	}
-	$::ERR->verbose(scalar(@{$self->{_logs}}) . " logs found in $self->{_dir}");
-	return scalar @{$self->{_logs}};
+	return 1;
 }
 
 # establish a connection with the FTP host
 sub _connect {
 	my $self = shift;
 	my $reconnect = shift;
-	my $host = $self->{_opts}{Host};
+	my $prot = 'ftp';
+	my $host = $self->{logsource}{host} || 'localhost';
+	my $user = $self->opt->username || $self->{logsource}{username};
+	my $pass = $self->opt->password || $self->{logsource}{password};
+	my $port = $self->opt->port || $self->{logsource}{port} || '21';
+	my $pasv = $self->opt->passive || $self->{logsource}{passive};
+	my %opts = (
+		Port 	=> $port,
+		Timeout => 120,
+		Passive => $pasv ? 1 : 0,
+		Debug 	=> $self->opt->debug ? 1 : 0
+	);
 
 	$self->{reconnect}++ if $reconnect;
-	$self->info(($reconnect ? "Rec" : "C") . "onnecting to $self->{_protocol}://$self->{_user}\@$self->{_opts}{Host}:$self->{_opts}{Port} ...");
+	$self->info(($reconnect ? "Rec" : "C") . "onnecting to $prot://$user\@$host:$port ...");
 
-	$self->{ftp} = new Net::FTP($host, %{$self->{_opts}});
+	$self->{ftp} = new Net::FTP($host, %opts);
 	if (!$self->{ftp}) {
 		$::ERR->warn("$self->{class} error connecting to FTP server: $@");
 		return;
 	}
 
-	if (!$self->{ftp}->login($self->{_user}, $self->{_pass})) {
+	if (!$self->{ftp}->login($user, $pass)) {
 		chomp(my $msg = $self->{ftp}->message);
 		$::ERR->warn("Error logging into FTP server: $msg");
 		return;
@@ -166,16 +109,16 @@ sub _connect {
 		return;
 	}
 
-	# do transfers in binary. so we can use REST commands to fast forward
+	# do transfers in binary so we can use REST commands to fast forward
 	# log files when needed from a previous state.
 	$self->{ftp}->binary;
 	
 	$self->info(sprintf("Connected to %s://%s%s%s%s. HOME=%s, CWD=%s",
-		$self->{_protocol},
-		$self->{_user} ? $self->{_user} . '@' : '',
-		$self->{_opts}{Host},
-		$self->{_opts}{Port} ne '21' ? ':' . $self->{_opts}{Port} : '',
-		$self->{_opts}{Passive} ? " (pasv)" : "",
+		$prot,
+		$user ? $user . '@' : '',
+		$host,
+		$port ne '21' ? ':' . $port : '',
+		$pasv ? ' (pasv)' : '',
 		$self->{_logindir},
 		$self->{ftp}->pwd
 	));
@@ -183,98 +126,56 @@ sub _connect {
 	return 1;
 }
 
-# parse the logsource and strip off it's parts for connection options
-sub parsesource {
+# reads the contents of the next directory
+sub readnextdir {
 	my $self = shift;
-	my $db = $self->{db};
-	my $log = $self->{logsource};
+	return unless @{$self->{_dirs}};
+	my $dir = shift @{$self->{_dirs}};
 
-	$self->{_opts} = {};
-	$self->{_opts}{Host} = 'localhost';
-	$self->{_opts}{Port} = 21;
-	$self->{_opts}{Timeout} = 120;
-	$self->{_opts}{Passive} = $self->opt->passive ? 1 : 0;
-	$self->{_opts}{Debug} = $self->opt->debug ? 1 : 0;
-	$self->{_dir} = '';
-	$self->{_user} = '';
-	$self->{_pass} = '';
+	$self->{_curdir} = $dir;
+	$self->{_logs} = [];
 
-	if (ref $log) {
-		$self->{_opts}{Host} = $log->{host} if defined $log->{host};
-		$self->{_opts}{Port} = $log->{port} if defined $log->{port};
-		# allow -passive to override the saved logsource setting; {Passive} is set a few lines above
-		$self->{_opts}{Passive} = $log->{passive} if defined $log->{passive} and !$self->{_opts}{Passive};
-		$self->{_user} = $log->{username};
-		$self->{_pass} = $log->{password};
-		$self->{_dir}  = $log->{path};
-		$db->update($db->{t_config_logsources}, { lastupdate => time }, [ 'id' => $log->{id} ]);
-
-	} elsif ($log =~ /^([^:]+):\/\/(?:([^:]+)(?::([^@]+))?@)?([^\/]+)\/?(.*)/) {
-		# ftp://user:pass@hostname.com/some/path/
-		my ($protocol,$user,$pass,$host,$dir) = ($1,$2,$3,$4,$5);
-		if ($host =~ /^([^:]+):(.+)/) {
-			$self->{_opts}{Host} = $1;
-			$self->{_opts}{Port} = $2;
-		} else {
-			$self->{_opts}{Host} = $host;
-		}
-
-		# user & pass are optional
-		$self->{_user} = $user if $user;
-		$self->{_pass} = $pass if $pass;
-		$self->{_dir}  = $dir  if $dir;
-
-		$self->{_opts}{Passive} = $self->opt->passive ? 1 : 0;
-
-		# see if a matching logsource already exists
-		my $exists = $db->get_row_hash(sprintf("SELECT * FROM $db->{t_config_logsources} " . 
-			"WHERE type='ftp' AND host=%s AND port=%s AND path=%s AND username=%s", 
-			$db->quote($self->{_opts}{Host}),
-			$db->quote($self->{_opts}{Port}),
-			$db->quote($self->{_dir}),
-			$db->quote($self->{_user})
-		));
-
-		if (!$exists) {
-			# fudge a new logsource record and save it
-			$self->{logsource} = {
-				'id'		=> $db->next_id($db->{t_config_logsources}),
-				'type'		=> 'ftp',
-				'path'		=> $self->{_dir},
-				'host'		=> $self->{_opts}{Host},
-				'port'		=> $self->{_opts}{Port},
-				'passive'	=> $self->{_opts}{Passive},
-				'username'	=> $self->{_user},
-				'password'	=> $self->{_pass},
-				'recursive'	=> 0,
-				'depth'		=> 0,
-				'skiplast'	=> 1,
-				'delete'	=> 0,
-				'options'	=> undef,
-				'defaultmap'	=> 'unknown',
-				'enabled'	=> 0,		# leave disabled since this was given from -log on command line
-				'idx'		=> 0x7FFFFFFF,
-				'lastupdate'	=> time
-			};
-			$db->insert($db->{t_config_logsources}, $self->{logsource});
-		} else {
-			$self->{logsource} = $exists;
-			$db->update($db->{t_config_logsources}, { lastupdate => time }, [ 'id' => $exists->{id} ]);
-		}
-	} else {
-		$::ERR->warn("Invalid logsource syntax. Valid example: ftp://user:pass\@host.com/path/to/logs");
+	if (!$self->{ftp}->cwd($dir)) {
+		chomp(my $msg = $self->{ftp}->message);
+		$::ERR->warn("$self->{class} error changing FTP directory: $msg");
 		return;
 	}
-	return 1;
+
+	$self->{_logs} = [ grep { !/^\./ && !/WS_FTP/ && /$self->{_log_regex}/ } $self->{ftp}->ls ];
+	# change back to original directory so our full paths will be valid
+	$self->{ftp}->cwd($self->{_logindir});
+
+	# sort the logs we have ...
+	if (scalar @{$self->{_logs}}) {
+		$self->{_logs} = $self->logsort($self->{_logs});
+	}
+
+	$self->info(scalar(@{$self->{_logs}}) . " logs found in $self->{_curdir}");
+
+	# skip the last log in the directory
+	if ($self->{logsource}{skiplast}) {
+		$self->verbose("Last log will be skipped.");
+		pop(@{$self->{_logs}});
+	}
+
+	return scalar @{$self->{_logs}};
 }
 
 sub _opennextlog {
 	my $self = shift;
-	my $offset = shift;	# byte offset to fast-foward to
 	my $fastforward = shift;
-	
-	# delete previous log if we had one, and we have 'delete' enabled in the logsource_ftp config
-	if ($self->{delete} and $self->{_curlog}) {
+
+	# close the previous log, if there was one
+	undef $self->{_loghandle};
+	$self->{_offsetbytes} = 0;
+	$self->{_filesize} = 0;
+	$self->{_lastprint} = time;
+	$self->{_lastprint_bytes} = 0;
+
+
+	# delete previous log if we had one, and we have 'delete' enabled in the
+	# logsource_ftp config
+	if ($self->delete and $self->{_curlog}) {
 		$self->debug2("Deleting log $self->{_curlog}");
 		if (!$self->{ftp}->delete($self->{_curlog})) {
 			chomp(my $msg = $self->{ftp}->message);
@@ -282,83 +183,54 @@ sub _opennextlog {
 		}
 	}
 
-	undef $self->{_loghandle};				# close the previous log, if there was one
-	return if !scalar @{$self->{_logs}};		# no more logs or directories to scan
-
-	$self->{_offsetbytes} = defined $offset ? int($offset)+0 : 0;
-	$self->{_lastprint} = time;
-	$self->{_lastprint_bytes} = 0;
-
 	# we're done if the maximum number of logs has been reached
 	if (!$fastforward and $self->{_maxlogs} and $self->{_totallogs} >= $self->{_maxlogs}) {
-		$self->save_state;
+		#$self->save_state;
 		return;
 	}
 
-	$self->{_curlog} = shift @{$self->{_logs}};
-	$self->{_curline} = 0;	
+	# no more logs in current directory, get next directory
+	while (!scalar @{$self->{_logs}} and scalar @{$self->{_dirs}}) {
+		$self->readnextdir;
+	}
+	return if !scalar @{$self->{_logs}};		# no more logs or directories to scan
+
+	$self->{_curlog} = catfile($self->{_curdir}, shift @{$self->{_logs}});
+	$self->{_curline} = 0;
 	$self->{_filesize} = 0;
 
-	# keep trying logs until we get one that works (however, chances are if 1 log fails to load they all will)
+	# keep trying logs until we get one that works (however, chances are if
+	# 1 log fails to load they all will)
 	while (!$self->{_loghandle}) {
-		$self->{_loghandle} = new_tmpfile IO::File;
+		$self->{_loghandle} = IO::File->new_tmpfile;
 		if (!$self->{_loghandle}) {
 			$::ERR->warn("Error creating temporary file for download: $!");
 			undef $self->{_loghandle};
-			last;					# that's it, we give up
+			last;				# that's it, we give up
 		}
 
-#		if ($offset) {
-#			# do not attempt to download the log if the position
-#			# from the previous state (offset) is actually EOF.
-#			# Just skip to the next instead.
-#			my $size = $self->{ftp}->size($self->{_curlog}) || 0;
-#			if (!$size or $offset >= $size) {
-#				$self->debug2("Skipping log $self->{_curlog} (EOF from previous state)");
-##				$self->{_curlog} = shift @{$self->{_logs}} || return;
-#			}
-#		}
 		$self->debug2("Downloading log $self->{_curlog}");
-		if (!$self->{ftp}->get( $self->{_curlog}, $self->{_loghandle}, $offset )) {
+		if (!$self->{ftp}->get($self->{_curlog}, $self->{_loghandle})) {
 			undef $self->{_loghandle};
 			chomp(my $msg = $self->{ftp}->message);
 			$::ERR->warn("Error downloading file: $self->{_curlog}: " . ($msg ? $msg : "Unknown Error"));
-			my $ok = undef;
-#			unshift(@{$self->{_logs}}, $self->{_curlog});		# add current log back on stack
+			my $ok;
 			$ok = $self->_connect(1) unless $self->{reconnect} > 3; # limit the times we reconnect
 			last unless $ok;
-#			last; # don't try and process any more logs if one fails
-#			if (scalar @{$self->{_logs}}) {
-#				$self->{_curlog} = shift @{$self->{_logs}};	# try next log
-#			} else {
-#				last;						# no more logs, we're done
-#			}
+			#last; # don't try and process any more logs if one fails
+			#if (scalar @{$self->{_logs}}) {
+			#	$self->{_curlog} = shift @{$self->{_logs}};	# try next log
+			#} else {
+			#	last;						# no more logs, we're done
+			#}
 		} else {
 			if ($self->{reconnect}) {
 				$self->{reconnect} = 0;		# we got a log successfully, so reset our reconnect flag
-#				$::ERR->verbose("Reattmpting to process log $self->{_curlog}");
+				#$::ERR->verbose("Reattmpting to process log $self->{_curlog}");
 			}
 			seek($self->{_loghandle},0,0);		# back up to the beginning of the file, so we can read it
-
-			#if ($self->{savedir}) {			# save entire file to our local directory ...
-			#	my $file = catfile($self->{savedir}, $self->{_curlog});
-			#	my $path = (splitpath($file))[1] || '';
-			#	eval { mkpath($path) } if $path and !-d $path;
-			#	if (open(F, ">$file")) {
-			#		my $fh = $self->{_loghandle};
-			#		while (defined(my $line = <$fh>)) {
-			#			print F $line;
-			#		}
-			#		close(F);
-			#		seek($self->{_loghandle},0,0);
-			#	} else {
-			#		$::ERR->warn("Error creating local file for writting ($file): $!");
-			#	}
-			#}
 		}
 	}
-
-	$self->save_state if time - $self->{_last_saved} > 60;
 
 	$self->{_idle} = time;
 
@@ -369,6 +241,18 @@ sub _opennextlog {
 	return $self->{_loghandle};
 }
 
+sub has_event {
+	my ($self) = @_;
+	if (time - $self->{_lastprint} > $self->{_lastprint_threshold}) {
+		$self->echo_processing(1);
+		$self->{_lastprint} = time;
+	}
+	return 1 if @{$self->{_logs}} or @{$self->{_dirs}};
+	return 0;
+}
+
+# returns undef if there are no more events, or 
+# returns a 2 element array (line, server).
 sub next_event {
 	my $self = shift;
 	my $line;
@@ -377,8 +261,9 @@ sub next_event {
 
 	# User is trying to ^C out, try to exit cleanly (save our state)
 	# Or we've reached our maximum allowed lines
-	if ($::GRACEFUL_EXIT > 0 or ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines})) {
-		$self->save_state;
+	#if ($::GRACEFUL_EXIT > 0 or ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines})) {
+	if ($self->{_maxlines} and $self->{_totallines} >= $self->{_maxlines}) {
+		#$self->save_state;
 		return;
 	}
 
@@ -388,7 +273,7 @@ sub next_event {
 		if ($self->{_loghandle}) {
 			$self->echo_processing;
 		} else {
-			$self->save_state;
+			#$self->save_state;
 			return;
 		}
 	}
@@ -400,14 +285,14 @@ sub next_event {
 		if ($self->{_loghandle}) {
 			$self->echo_processing;
 		} else {
-			$self->save_state;
+			#$self->save_state;
 			return;
 		}
 	}
 	# skip the last line if we're at EOF and there are no more logs in the directory
 	# do not increment the line counter, etc.
 	if ($self->{logsource}{skiplastline} and eof($fh) and !scalar @{$self->{_logs}}) {
-		$self->save_state;
+		#$self->save_state;
 		return;
 	}
 	$self->{_curline}++;
@@ -417,9 +302,6 @@ sub next_event {
 		$self->{_totallines}++;
 		$self->{_totalbytes} += length($line);
 		$self->{_lastprint_bytes} += length($line);
-#		$self->{_prevlines} = $self->{_totallines};
-#		$self->{_prevbytes} = $self->{_totalbytes};
-#		$self->{_lasttime} = time;
 
 		if (time - $self->{_lastprint} > $self->{_lastprint_threshold}) {
 			$self->echo_processing(1);
@@ -427,22 +309,108 @@ sub next_event {
 		}
 	}
 
-#	my $logsrc = "ftp://" . $self->{_opts}{Host} . ($self->{_opts}{Port} ne '21' ? ':' . $self->{_opts}{Host} : '' ) . '/' . $self->{_dir};
-#	my @ary = ( $logsrc, $line, ++$self->{_curline} );
-	my @ary = ( $self->{_curlog}, $line, $self->{_curline} );
-	return wantarray ? @ary : [ @ary ];
+	#$self->save_state if time - $self->{_last_saved} > 60;
+
+	# return the event and the server if in array context
+	return wantarray ? ($line, scalar $self->server) : $line;
 }
 
-sub save_state {
-	my $self = shift;
+sub capture_state {
+	my ($self) = @_;
+	my $state = $self->SUPER::capture_state;
+	$state->{pos} = $self->{_pos};
+	return $state;
+}
 
-	$self->{state}{file} = $self->{_curlog};
-	$self->{state}{line} = $self->{_curline};
-	$self->{state}{pos}  = $self->{_pos};
+# Restore the previous state for file logsources. This means finding the last
+# log we were processing and "fast-forward" to that file in the directory and
+# scanning ahead to the line we left off on.
+sub restore_state {
+	my ($self, $db) = @_;
+	$db ||= $self->db;
+	my ($st, $state);
 
-	$self->{_last_saved} = time;
+	# load the generic state information for this logsource
+	$st = $db->prepare('SELECT line,pos,file FROM t_state WHERE id=?');
+	$st->execute($self->id) or return;	# SQL error ...
+	$state = $st->fetchrow_hashref;
+	$st->finish;
 
-	$self->SUPER::save_state;
+	# if there's no state, or no file saved then we do nothing.
+	return 1 unless ref $state eq 'HASH' and $state->{file};
+
+	# separate the path from the filename.
+	my ($statepath, $statelog) = (splitpath($state->{file}))[1,2];
+
+	# first: find the proper sub-directory for our logsource.
+	# speeds up the fast-forward when there's more than 1 sub-dir.
+	#while (scalar @{$self->{_dirs}}) {
+	#	print catfile($statepath,'') . " == " . catfile($self->{_curdir},'') . "\n";
+	#	last if catfile($statepath,'') eq catfile($self->{_curdir},'');
+	#	$self->readnextdir;
+	#}
+
+	# second: find the log that matches our previous state in the directory
+	while (scalar @{$self->{_logs}}) {
+		my $cmp = $self->logcompare($self->{_logs}[0], $statelog);
+		if ($cmp == 0) { 				# == EQUAL
+			$self->_opennextlog(1);
+			# finally: fast-forward to the proper line
+			if (int($state->{pos} || 0) > 0) {
+				# FAST forward quickly using seek position
+				seek($self->{_loghandle}, $state->{pos}, 0);
+				$self->{_offsetbytes} = $state->{pos};
+				$self->{_curline} = $state->{line};
+				$self->verbose("Resuming from previous state file \"$state->{file}\" (line: $self->{_curline}, pos: $state->{pos})");
+				return 1;
+			} else {
+				# move forward slowly using the line number
+				my $fh = $self->{_loghandle};
+				while (defined(my $line = <$fh>)) {
+					$self->{_offsetbytes} += length($line);
+					if (++$self->{_curline} >= $state->{line}) {
+						$self->verbose("Resuming from previous state file \"$state->{file}\" (line: $self->{_curline})");
+						return 1;
+					}
+				}
+			}
+
+		} elsif ($cmp == -1) { 				# < LESS THAN
+			shift @{$self->{_logs}};
+
+		} else { 					# > GREATER THAN
+			# if we get to a log that is 'newer' then the log in our
+			# state then we'll just continue from that log since the
+			# old log was apparently lost.
+			$self->warn("Previous log from state '$statelog' not found. Continuing from " . $self->{_logs}[0] . " instead.");
+			return 1;
+		}
+	}
+
+	# if we couldn't find the log then we'll skip the directory and move on.
+	if (!$self->{_curlog}) {
+		$self->warn("Unable to find log $statelog from previous state in $statepath. Ignoring directory.");
+		$self->readnextdir;
+	}
+
+	return 1;
+}
+
+# returns the 'id' of a logsource if it exists in the database already.
+# the criteria used to search is the type and path (files)
+sub logsource_exists {
+	my ($self, $logsource) = @_;
+	my $db = $self->db;
+
+	# prepare a new statement to find the logsource.	
+	if (!$db->prepared('find_logsource_ftp')) {
+		$db->prepare('find_logsource_ftp',
+			"SELECT id FROM t_config_logsources WHERE type=? AND host=? AND port=? AND path=?"
+		);
+	}
+	
+	my $exists = $db->execute_selectcol('find_logsource_ftp', @$logsource{qw( type host port path )});
+	return $exists;
 }
 
 sub done {
@@ -452,19 +420,31 @@ sub done {
 	$self->{ftp} = undef;
 }
 
-# called in the next_event method for each event. Used as an anti-idle timeout for FTP
+# Called in the next_event method for each event. Used as an anti-idle timeout
+# for FTP
 sub idle {
 	my ($self) = @_;
 	if (time - $self->{_idle} > $self->{max_idle}) {
 		$self->{_idle} = time;
 		$self->{ftp}->pwd;
 #		$self->{ftp}->site("NOP");
-		# sending a site NOP command will usually just send back a 500 error
-		# but the server will see the connection as being active.
-		# This has not been widely tested on various servers. Some servers
-		# might be smart enough to see repeated commands... I'm not sure.
-		# in which case the idle timeout may still disconnect us.
+		# sending a site NOP command will usually just send back a 500
+		# error but the server will see the connection as being active.
+		# This has not been widely tested on various servers. Some
+		# servers might be smart enough to see repeated commands... I'm
+		# not sure. In which case the idle timeout may still disconnect
+		# us.
 	}
 }
 
+sub string {
+	my ($self) = @_;
+	return sprintf('%s://%s%s%d/%s',
+		$self->type,
+		$self->username ? $self->username . '@' : '',
+		$self->host,
+		$self->port || '',
+		$self->path || ''
+	);
+}
 1;

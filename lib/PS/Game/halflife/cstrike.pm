@@ -84,15 +84,20 @@ sub event_plrtrigger {
 	} elsif ($trigger eq 'address') {			# PIP 'address' (ipaddress) events
 		$self->add_ipcache($p->uid, ip2int($props->{address}), $timestamp);
 
-	} elsif ($trigger =~ /^(killed|touched|rescued)_a_hostage/) {
+	#} elsif ($trigger =~ /^(killed|touched|rescued)_a_hostage/) {
+	} elsif ($trigger eq 'killed_a_hostage'	# faster then regex
+		 or $trigger eq 'touched_a_hostage'
+		 or $trigger eq 'rescued_a_hostage') {
 		$p->action_hostage($self, $1, $m, $props);
 		$m->action_hostage($self, $1, $p, $props);
 
-	} elsif ($trigger =~ /^begin_bomb_defuse/) {		# ignore: _with_kit, _without_kit
+	} elsif ($trigger eq 'begin_bomb_defuse_with_kit'
+		 or $trigger eq 'begin_bomb_defuse_without_kit') {
+	#} elsif ($trigger =~ /^begin_bomb_defuse/) {		# ignore: _with_kit, _without_kit
 		$p->action_bomb($self, 'defuse_attempts', $m, $props);
 		$m->action_bomb($self, 'defuse_attempts', $p, $props);
 
-	} elsif ($trigger =~ /^(planted|defused|spawned_with|got|dropped)_the_bomb/) {
+	} elsif ($trigger =~ /^(planted|defused|got|dropped|spawned_with)_the_bomb/) {
 		my $action = $1;
 		$p->action_bomb($self, $action, $m, $props);
 		$m->action_bomb($self, $action, $p, $props);
@@ -118,7 +123,7 @@ sub event_plrtrigger {
 		#	$self->{cs_bombspawner} = undef;
 		}
 
-	} elsif ($trigger =~ /^(became|escaped_as|assassinated_the)_vip/) {
+	#} elsif ($trigger =~ /^(became|escaped_as|assassinated_the)_vip/) {
 		# VIP games are a thing of the past. No one plays them anymore.
 		#my $action = $1;
 		#$action = (split '_', $action, 2)[0];	# remove '_as' or '_the'

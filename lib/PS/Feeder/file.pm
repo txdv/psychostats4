@@ -158,14 +158,14 @@ sub _opennextlog {
 			$self->warn("Error opening log '$self->{_curlog}': $!");
 			undef $self->{_loghandle};
 			last;
-#			undef $self->{_curlog};
-#			if (@{$self->{_logs}}) {
-#				$self->{_curlog} = catfile($self->{_curdir}, shift @{$self->{_logs}});
-#			} else {
-#				last;
-#			}
+			#undef $self->{_curlog};
+			#if (@{$self->{_logs}}) {
+			#	$self->{_curlog} = catfile($self->{_curdir}, shift @{$self->{_logs}});
+			#} else {
+			#	last;
+			#}
 		}
-#		binmode($self->{_loghandle}, ":encoding(UTF-8)");
+		#binmode($self->{_loghandle}, ":encoding(UTF-8)");
 	}
 
 	if ($self->{_loghandle}) {
@@ -329,7 +329,7 @@ sub restore_state {
 }
 
 # returns the 'id' of a logsource if it exists in the database already.
-# the criteria used to search is the host and port (Streams)
+# the criteria used to search is the type and path (files)
 sub logsource_exists {
 	my ($self, $logsource) = @_;
 	my $db = $self->db;
@@ -343,18 +343,6 @@ sub logsource_exists {
 	
 	my $exists = $db->execute_selectcol('find_logsource_file', @$logsource{qw( type path )});
 	return $exists;
-}
-
-sub logsort {
-	my $self = shift;
-	my $list = shift;		# array ref to a list of log filenames
-	#return [ sort { $self->logcompare($a, $b) } @$list ];
-	return [ sort { $a cmp $b } @$list ];
-}
-
-sub logcompare {
-	my ($self, $x, $y) = @_;
-	return $x cmp $y;
 }
 
 sub string {
