@@ -51,6 +51,11 @@ BEGIN {
 	$FIELDS->{DATA} = { data => {
 		(map { $_ => '+' } qw(
 			kills		headshot_kills
+			kills_round_1
+			kills_round_2
+			kills_round_3
+			kills_round_4
+			kills_round_5
 			deaths 		headshot_deaths 	suicides
 			games 		rounds
 			connections	online_time
@@ -62,6 +67,11 @@ BEGIN {
 	$HISTORY->{DATA} = {
 		(map { $_ => $FIELDS->{DATA}{data}{$_} } qw(
 			kills		headshot_kills
+			kills_round_1
+			kills_round_2
+			kills_round_3
+			kills_round_4
+			kills_round_5
 			kill_streak	death_streak
 			deaths		suicides
 			games		rounds
@@ -181,6 +191,7 @@ sub new {
 		maps		=> {}, 		# map stats
 		roles		=> {}, 		# role stats
 		victims		=> {}, 		# victim stats
+		round		=> {},		# round stats {round}
 		#history	=> {},		# historical stats, keyed on date
 
 		#chat		=> [],		# track chat messages, if enabled in config
@@ -253,7 +264,7 @@ sub freeze {
 		# copy hashes
 		$state->{$_} = deep_copy($self->{$_}) for
 			grep { defined $self->{$_} and scalar keys %{$self->{$_}} }
-			qw( ids data weapons maps roles victims track );
+			qw( ids data weapons maps roles victims round track );
 
 		# copy arrays
 		$state->{$_} = deep_copy($self->{$_}) for
@@ -276,7 +287,7 @@ sub unfreeze {
 
 	$plr->{$_} = deep_copy($state->{$_}) for
 		grep { defined $state->{$_} }
-		qw( ids data weapons maps roles victims chat track );
+		qw( ids data weapons maps roles victims round chat track );
 
 	return $plr;
 }
@@ -409,7 +420,10 @@ sub save {
 	$self->{data}{online_time} = $self->onlinetime;
 
 	# save session stats if a game object is passed in
-	$self->save_session($game) if $game;
+	if ($game) {
+		$self->save_session($game);
+		#$self->save_match($game);
+	}
 
 	# finally, save stats
 	for (qw( data maps roles weapons victims )) {
@@ -734,7 +748,7 @@ sub save_session {
 	return unless $self->onlinetime;
 
 	$threshold = $self->conf->plr_sessions_time unless defined $threshold;
-	$threshold ||= 60*15;	# default to 15 minutes if nothing is configured
+	$threshold ||= 60*5;	# default to X minutes if nothing is configured
 
 	# get most recent session
 	my ($dataid, $start, $end) = $self->db->execute_selectall('find_plr_session', $plrid, $m);
@@ -744,9 +758,8 @@ sub save_session {
 
 	if (!$dataid) {
 		# get skill from previous session
-		my $prevskill = $self->db->execute_selectcol('get_plr_session_prev_skill',
-							     $self->{plrid});
-		
+		my $prevskill = $self->db->execute_selectcol('get_plr_session_prev_skill', $self->{plrid});
+
 		# insert a new session
 		$self->db->execute('insert_plr_sessions',
 			$self->{plrid},
@@ -1340,6 +1353,13 @@ sub action_kill {
 	# track the kill streak for this player
 	$self->end_streak('death_streak');
 	$self->inc_streak('kill_streak');
+
+	# record round based kills
+	if (!$kt or $vt ne $kt) {
+		# only record the round kill if there are no teams or if
+		# the killer/victim teams are different.
+		$self->{round}{kills}++;
+	}
 	
 	# track team based stats if possible
 	return unless $vt && $kt;
@@ -1368,17 +1388,32 @@ sub action_misc_plr {
 	#my $m = $map ? $map->id : undef;
 }
 
-# occurs for each player at the start of every round.
+# occurs for each player at the start/end of every round.
 sub action_round {
-	my ($self, $game, $map, $props) = @_;
+	my ($self, $game, $trigger, $map, $props) = @_;
 	my $m = $map->id;
 	$self->timestamp($props->{timestamp});
-	
-	# reset the player's DEAD flag since the round restarted.
-	$self->is_dead(0);
-	
-	$self->{data}{rounds}++;
-	$self->{maps}{$m}{rounds}++;
+
+	if ($trigger eq 'round_start') {
+		# reset the player's DEAD flag since the round restarted.
+		$self->is_dead(0);
+		$self->{data}{rounds}++;
+		$self->{maps}{$m}{rounds}++;
+		$self->{round}{kills} = 0;
+	} elsif ($trigger eq 'round_end') {
+		# Do not record ZERO kills for the round. This might sound good
+		# to track, but consider the rounds where you get no kills due
+		# to a bomb being planted, etc. That is not an indication of the
+		# player being bad.
+		if ($self->{round}{kills}) {
+			# record the player's total kill threshold for this
+			# round: 1k, 2k, 3k, 4k, 5k
+			my $v = 'kills_round_' . ($self->{round}{kills} || 0);
+			$self->{data}{$v}++;
+			warn $self->name . "(" . $self->id . ")/" . $self->team . " killed " . ($self->{round}{kills} || 0) . "\n";
+			$self->{round}{kills} = 0;
+		}
+	}
 }
 
 # The player commited suicide... oops!

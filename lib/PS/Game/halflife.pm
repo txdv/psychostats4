@@ -464,12 +464,12 @@ sub event_round {
 
 	if ($trigger eq 'round_start') {
 		$self->{roundstart} = $timestamp;
-		$m->action_round($self, $props);
-
-		foreach my $p ($self->get_online_plrs) {
-			# do some per-round cleanup (ie: reset dead flag)
-			$p->action_round($self, $m, $props);
-		}
+		warn "********** Round started: " . date('%H:%i:%s', $timestamp) . "\n";
+	}
+	
+	$m->action_round($self, $trigger, $props);
+	foreach my $p ($self->get_online_plrs) {
+		$p->action_round($self, $trigger, $m, $props);
 	}
 }
 
@@ -741,6 +741,7 @@ sub _get_plr {
 		}
 
 		$self->add_plrcache($p);
+		$self->plr_online($p);
 	}
 	return $p;
 }
@@ -797,7 +798,11 @@ sub weapon_normal {
 	my ($self, $weapon) = @_;
 	$weapon ||= 'unknown';
 	#$weapon = lc $weapon;
-	$weapon = 'grenade' if $weapon eq 'hegrenade';
+	if ($weapon eq 'hegrenade') {
+		$weapon = 'grenade'
+	} elsif ($weapon eq 'glock') {
+		$weapon = 'glock18';
+	}
 	return $weapon;
 }
 

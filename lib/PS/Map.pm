@@ -403,19 +403,20 @@ sub action_mapended {
 	#warn "Map ended '$self' ($time)\n";
 }
 
-# A new round started.
+# A new round started/ended
 sub action_round {
-	my ($self, $game, $props) = @_;
+	my ($self, $game, $trigger, $props) = @_;
 	
-	$self->{data}{rounds}++;
-
-	# make sure a game is recorded. Logs that do not start with a 'map
-	# started' event will end up having 1 less game recorded than normal
-	# unless we fudge it here.
-	if (!$self->{data}{games}) {
-		$self->{data}{games}++;
+	if ($trigger eq 'round_start') {
+		$self->{data}{rounds}++;
+	
+		# make sure a game is recorded. Logs that do not start with a
+		# 'map started' event will end up having 1 less game recorded
+		# than normal unless we fudge it here.
+		if (!$self->{data}{games}) {
+			$self->{data}{games}++;
+		}
 	}
-
 }
 
 # A player committed suicide
