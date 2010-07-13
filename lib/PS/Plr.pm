@@ -51,6 +51,11 @@ BEGIN {
 	$FIELDS->{DATA} = { data => {
 		(map { $_ => '+' } qw(
 			kills		headshot_kills
+			kills_1v1
+			kills_1v2
+			kills_1v3
+			kills_1v4
+			kills_1v5
 			kills_round_1
 			kills_round_2
 			kills_round_3
@@ -67,6 +72,11 @@ BEGIN {
 	$HISTORY->{DATA} = {
 		(map { $_ => $FIELDS->{DATA}{data}{$_} } qw(
 			kills		headshot_kills
+			kills_1v1
+			kills_1v2
+			kills_1v3
+			kills_1v4
+			kills_1v5
 			kills_round_1
 			kills_round_2
 			kills_round_3
@@ -1116,7 +1126,8 @@ sub onlinetime {
 
 # The player attacked another player and did damage to them. $props may
 # contain hitgroup information on where they hit the victim on their body.
-# This is not a kill.
+# This is not a kill. Assists can be tracked using this for games that do not
+# have a native assist event.
 sub action_attacked {
 	my ($self, $game, $victim, $weapon, $map, $props) = @_;
 	my $v = $victim->id;
@@ -1410,7 +1421,7 @@ sub action_round {
 			# round: 1k, 2k, 3k, 4k, 5k
 			my $v = 'kills_round_' . ($self->{round}{kills} || 0);
 			$self->{data}{$v}++;
-			warn $self->name . "(" . $self->id . ")/" . $self->team . " killed " . ($self->{round}{kills} || 0) . "\n";
+			#;;;warn $self->name . "(" . $self->id . ")/" . $self->team . " killed " . ($self->{round}{kills} || 0) . "\n";
 			$self->{round}{kills} = 0;
 		}
 	}
@@ -1461,6 +1472,12 @@ sub action_teamlost {
 	$self->{data}{$team . '_losses'}++;
 	$self->{maps}{$m}{'losses'}++;
 	$self->{maps}{$m}{$team . '_losses'}++;
+}
+
+# Player succeeded in a 1vX round by killing 
+sub action_versus {
+	my ($self, $game, $kills) = @_;	
+	$self->{data}{'kills_1v' . $kills}++;
 }
 
 # allow remote callers to add arbitrary data stats to the player.

@@ -2393,6 +2393,7 @@ sub reset_game {
 		}
 		
 		# delete awards, since they are useless w/o the original plrid's
+		# TODO: only delete those for the matching gametype::modtype
 		$db->truncate($db->{t_awards});
 		$db->truncate($db->{t_awards_plrs});
 	}
@@ -2400,6 +2401,7 @@ sub reset_game {
 	#$self->debug1("Unranking all clans ...", 0);
 	#$db->do("UPDATE t_clan SET rank=NULL");
 	$self->debug1("Deleting clans ...",0);
+	# TODO: only delete those for the matching gametype::modtype
 	$db->truncate($db->{t_clan});
 	if ($del->{clans}) {
 		$db->truncate($db->{t_clan_profile});
@@ -2467,9 +2469,8 @@ sub save {
 	}
 }
 
-# returns true if the total number of players connected is >= the configured
-# 'minconnected' option (the return value is actually total connected).
-# otherwise 0 is returned.
+# returns the total connected players if the total number of players connected
+# is >= the configured 'minconnected' option, otherwise 0 is returned.
 sub minconnected { 
 	my ($self) = @_;
 	return 1 if $self->conf->minconnected == 0;

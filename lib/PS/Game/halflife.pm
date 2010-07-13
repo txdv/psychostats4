@@ -56,6 +56,7 @@ sub init {
 
 	# keep track of when a round started.
 	$self->{roundstart} = 0;
+	$self->{versus} = {};		# track "versus" stat (1v1, v2, v3, v4, v5)
 
 #	$self->{bans}{ipaddr} = {};	# Current 'permanent' bans from the current log by IP ADDR
 #	$self->{bans}{worldid} = {};	# ... by guid / steamid
@@ -189,6 +190,7 @@ sub event_attacked {
 	$v->action_injured($self,  $k, $w, $m, $props);
 }
 
+# "Player<uid><STEAM_ID><TEAM>" changed name to "name"
 sub event_changed_name {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $name) = @$args;
@@ -236,6 +238,7 @@ sub event_changed_name {
 	}
 }
 
+# "Player<uid><STEAM_ID><TEAM>" changed role to "role"
 sub event_changed_role {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $role) = @$args;
@@ -247,6 +250,8 @@ sub event_changed_role {
 	$p->action_changed_role($self, $r, $props);
 }
 
+# "Player<uid><STEAM_ID><TEAM>" say "chat message" (dead)
+# "Player<uid><STEAM_ID><TEAM>" say_team "chat message" (dead)
 sub event_chat {
 	my ($self, $timestamp, $args) = @_;
 	return unless $self->conf->plr_chat_max > 0;
@@ -339,7 +344,7 @@ sub event_entered_game {
 	$self->plr_online($p);
 }
 
-# "Player<uid><STEAM_ID><>" joined team "CT"
+# "Player<uid><STEAM_ID><>" joined team "TEAM"
 sub event_joined_team {
 	my ($self, $timestamp, $args) = @_;
 	my ($plrstr, $team, $propstr) = @$args;
@@ -381,6 +386,24 @@ sub event_kill {
 	$kr->action_kill($self,  $k, $v, $w, $m, $props) if $kr;
 	$vr->action_death($self, $v, $k, $w, $m, $props) if $vr;
 
+	# track "versus" information, but only if teams exist. It makes no sense
+	# to track this w/o a team (or on team kills)
+	my $kt = $k->team;
+	if ($kt) {
+		if ($kt ne $v->team) {
+			if (!$self->{versus}{plr} or $self->{versus}{plr}->uid != $k->uid) {
+				$self->{versus}{plr} = $k;
+				$self->{versus}{kills} = 1;
+			} else {
+				$self->{versus}{kills}++;
+			}
+			#warn "VERSUS: " . $k->name . " 1v" . $self->{versus}{kills} . "\n";
+		} else {
+			# reset it on team kills
+			%{$self->{versus}} = ();
+		}
+	}
+
 	my $skill_handled = 0;
 	if ($self->can('mod_event_kill')) {
 		$skill_handled = $self->mod_event_kill($k, $v, $w, $m, $kr, $vr, $props);
@@ -404,6 +427,7 @@ sub event_kill {
 	#}
 }
 
+# Log file started (file "logs\L0116028.log") (game "c:\valve\orangebox\tf") (version "3351")
 sub event_logstartend {
 	my ($self, $timestamp, $args) = @_;
 	my ($startedorclosed) = @$args;
@@ -419,6 +443,7 @@ sub event_logstartend {
 	$self->clean_ipcache;		# remove stale IP's from cache
 }
 
+# Started map "mapname" (CRC "794707506")
 sub event_mapstarted {
 	my ($self, $timestamp, $args) = @_;
 	my ($startorload, $mapname, $propstr) = @$args;
@@ -462,15 +487,34 @@ sub event_round {
 	#;;; warn @$plrs . " players are online\n";
 	#;;; warn join("\n", sort map { "\t$_" } grep { $_ =~ /13242553/ } @$plrs) . "\n";
 
-	if ($trigger eq 'round_start') {
-		$self->{roundstart} = $timestamp;
-		warn "********** Round started: " . date('%H:%i:%s', $timestamp) . "\n";
-	}
-	
 	$m->action_round($self, $trigger, $props);
 	foreach my $p ($self->get_online_plrs) {
 		$p->action_round($self, $trigger, $m, $props);
 	}
+
+	if ($trigger eq 'round_start') {
+		# not sure I even have a use for the round start timestamp
+		#warn ">>>>> Round Start " . date('%H:%i:%s', $timestamp) . "\n";
+		$self->{roundstart} = $timestamp;
+
+		# reset "versus" player information ...
+		%{$self->{versus}} = ();
+	} elsif ($trigger eq 'round_end') {
+		#warn "<<<<< Round End " . date('%H:%i:%s', $timestamp) . "\n";
+		# record the "versus" stat for the last plr that killed
+		if ($self->{versus}{plr}) {
+			my $p = $self->{versus}{plr};
+			my @kteam = grep { !$_->is_dead } $self->get_online_plrs($p->team);
+			# The stat only counts when the killer is the only one
+			# left alive on their team.
+			if (@kteam == 1) {
+				#warn ">>>>> " . $p->name . " succeeded in 1v" . $self->{versus}{kills} . "\n";
+				$p->action_versus($self, $self->{versus}{kills});
+			}
+			%{$self->{versus}} = ();
+		}
+	}
+	
 }
 
 sub event_spatial {
