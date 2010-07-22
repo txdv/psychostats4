@@ -38,9 +38,19 @@ BEGIN {
 			killed_terrorist	deathsby_terrorist
 			killed_ct 		deathsby_ct 
 			joined_terrorist	joined_ct
-			wins			losses
+			terrorist_kills_1v1	ct_kills_1v1
+			terrorist_kills_1v2	ct_kills_1v2
+			terrorist_kills_1v3	ct_kills_1v3
+			terrorist_kills_1v4	ct_kills_1v4
+			terrorist_kills_1v5	ct_kills_1v5
+			terrorist_kills_round_1 ct_kills_round_1
+			terrorist_kills_round_2 ct_kills_round_2
+			terrorist_kills_round_3 ct_kills_round_3
+			terrorist_kills_round_4 ct_kills_round_4
+			terrorist_kills_round_5 ct_kills_round_5
 			terrorist_wins		ct_wins
 			terrorist_losses	ct_losses
+			terrorist_rounds	ct_rounds
 			hostages_killed		hostages_rescued 	hostages_touched
 			bomb_planted		bomb_exploded
 			bomb_defuse_attempts	bomb_defused

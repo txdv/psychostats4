@@ -33,9 +33,6 @@ sub init {
 	my $self = shift;
 	$self->SUPER::init;
 
-	# TF logs assists natively
-	$self->{native_assist} = 1;
-	
 	# load the kill assist calculation. used in plrtrigger().
 	$self->add_calcskill_func('killassist', $self->conf->calcskill_kill);
 

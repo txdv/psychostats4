@@ -65,6 +65,7 @@ BEGIN {
 			games 		rounds
 			connections	online_time
 			bonus_points
+			wins	  	losses
 		)),
 		kill_streak	=> '>',
 		death_streak	=> '>',
@@ -1124,10 +1125,10 @@ sub onlinetime {
 	return $self->{timestamp} - $self->{timestart};
 }
 
-# The player attacked another player and did damage to them. $props may
-# contain hitgroup information on where they hit the victim on their body.
-# This is not a kill. Assists can be tracked using this for games that do not
-# have a native assist event.
+# The player attacked another player and did damage to them. $props may contain
+# hitgroup information on where they hit the victim on their body. This is not a
+# kill. Assists can be tracked using this for games that do not have a native
+# assist event.
 sub action_attacked {
 	my ($self, $game, $victim, $weapon, $map, $props) = @_;
 	my $v = $victim->id;
@@ -1324,6 +1325,11 @@ sub action_joined_team {
 	my $m = $map->id;
 	;;; $self->debug7("$self joined team $team", 0);
 	$self->timestamp($props->{timestamp});
+
+	# reset round kills when plr changes teams
+	$self->{round}{kills} = 0;
+	$self->{round}{$self->team . '_kills'} = 0 if $self->team;	# prev team
+	$self->{round}{$team . '_kills'} = 0;				# new team
 	
 	$self->team($team);
 	$self->{data}{'joined_' . $team}++;
@@ -1370,6 +1376,7 @@ sub action_kill {
 		# only record the round kill if there are no teams or if
 		# the killer/victim teams are different.
 		$self->{round}{kills}++;
+		$self->{round}{$kt . '_kills'}++;
 	}
 	
 	# track team based stats if possible
@@ -1408,10 +1415,16 @@ sub action_round {
 	if ($trigger eq 'round_start') {
 		# reset the player's DEAD flag since the round restarted.
 		$self->is_dead(0);
+		$self->{round}{kills} = 0;
+		$self->{round}{$self->team . '_kills'} = 0;
+	} elsif ($trigger eq 'round_end') {
+		# record total rounds at the end of each round
 		$self->{data}{rounds}++;
 		$self->{maps}{$m}{rounds}++;
-		$self->{round}{kills} = 0;
-	} elsif ($trigger eq 'round_end') {
+		if ($self->team) {
+			$self->{data}{$self->team . '_rounds'}++;
+			$self->{maps}{$m}{$self->team . '_rounds'}++;
+		}
 		# Do not record ZERO kills for the round. This might sound good
 		# to track, but consider the rounds where you get no kills due
 		# to a bomb being planted, etc. That is not an indication of the
@@ -1419,9 +1432,8 @@ sub action_round {
 		if ($self->{round}{kills}) {
 			# record the player's total kill threshold for this
 			# round: 1k, 2k, 3k, 4k, 5k
-			my $v = 'kills_round_' . ($self->{round}{kills} || 0);
-			$self->{data}{$v}++;
-			#;;;warn $self->name . "(" . $self->id . ")/" . $self->team . " killed " . ($self->{round}{kills} || 0) . "\n";
+			$self->{data}{'kills_round_' . $self->{round}{kills}}++;
+			$self->{data}{$self->team . '_kills_round_' . $self->{round}{kills}}++ if $self->team;
 			$self->{round}{kills} = 0;
 		}
 	}
@@ -1478,6 +1490,7 @@ sub action_teamlost {
 sub action_versus {
 	my ($self, $game, $kills) = @_;	
 	$self->{data}{'kills_1v' . $kills}++;
+	$self->{data}{$self->team . '_kills_1v' . $kills}++ if $self->team;
 }
 
 # allow remote callers to add arbitrary data stats to the player.

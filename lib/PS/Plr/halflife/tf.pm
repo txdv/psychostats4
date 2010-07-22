@@ -45,6 +45,7 @@ BEGIN {
 			wins				losses
 			red_wins			blue_wins
 			red_losses			blue_losses
+			red_rounds			blue_rounds
 			destroyed_objects		built_objects
 			destroyed_dispenser		built_dispenser
 			destroyed_sentrygun		built_sentrygun
