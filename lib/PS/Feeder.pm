@@ -44,7 +44,7 @@ BEGIN {
 	eval { require DateTime };
 	$DATETIME = $@ ? 0 : 1;
 	__PACKAGE__->warn(
-		"DateTime module not available for log sources. " . 
+		"DateTime module not available for log sources. " .
 		"GMT offset will be calculated from local time only."
 	) unless $DATETIME;
 }
@@ -74,23 +74,23 @@ sub new_from_id {
 	my $class = $baseclass;
 	my $self = {};
 	$db ||= $DB;
-	
+
 	# must have an active DB handle
 	if (!$db) {
 		return bless({ error => 'No DB handle available to lookup logsource.' }, $proto);
 	}
-	
+
 	my $logsource = $proto->load_logsource($id, $db);
 	if (!$logsource) {
 		return bless({ error => "Logsource ID $id does not exist." }, $proto);
 	}
-	
+
 
 	# determine the proper class to load
 	$class = $proto->_load_class(@$logsource{qw( type gametype modtype )});
 	# If a reference was returned then an error occured loading the class.
 	return $class if ref $class;
-	
+
 	$self->{logsource} = $logsource;
 	$self->{class} = $class;
 	bless($self, $class);
@@ -109,7 +109,7 @@ sub new_from_string {
 	my $logsource;
 	my $self = {};
 	$db ||= $DB;
-	
+
 	# must have an active DB handle
 	#if (!$db) {
 	#	return bless({ error => 'No DB handle available to lookup logsource.' }, $proto);
@@ -145,7 +145,7 @@ sub new_from_string {
 	$class = $proto->_load_class(@$logsource{qw( type gametype modtype )});
 	# If a reference was returned then an error occured loading the class.
 	return $class if ref $class;
-	
+
 	$self->{logsource} = $logsource;
 	$self->{class} = $class;
 	bless($self, $class);
@@ -161,7 +161,7 @@ sub new_from_hash {
 	my $logsource;
 	my $self = {};
 	$db ||= $DB;
-	
+
 	# only do a lookup if we have a DB handle
 	if ($db) {
 		$logsource = $proto->load_logsource_from_hash($src, $db);
@@ -178,13 +178,13 @@ sub new_from_hash {
 	# gametype is required for logsources
 	if (!exists $logsource->{gametype}) {
 		return bless({ error => 'A GAMETYPE is required.' }, $proto);
-	}	
+	}
 
 	# determine the proper class to load
 	$class = $proto->_load_class(@$logsource{qw( type gametype modtype )});
 	# If a reference was returned then an error occured loading the class
 	return $class if ref $class;
-	
+
 	$self->{logsource} = $logsource;
 	$self->{class} = $class;
 	bless($self, $class);
@@ -204,14 +204,14 @@ sub _load_class {
 	my $class;
 
 	return $CLASSES->{$cached} if exists $CLASSES->{$cached};
-	
+
 	# build a list of classes to try
 	while (@ary) {
 		push(@classes, join("::", $baseclass, @ary, $type));
 		pop @ary;
 	}
 	push(@classes, join('::', $baseclass, $type));
-	
+
 	# try to load each class until we find one that works
 	while (defined($class = shift @classes)) {
 		eval "require $class";
@@ -221,7 +221,7 @@ sub _load_class {
 		# If an error occured and the file was found then we failed
 		if ($@ !~ /^Can't locate/i) {
 			return bless({ error => "Compile error in class $class:\n$@\n" }, $proto);
-		} 
+		}
 	}
 
 	# return the class found, or an error.
@@ -239,13 +239,13 @@ sub _load_class {
 sub init {
 	my $self = shift;
 	my %args = @_;
-	
+
 	# setup some generic parameters to change our behavior
 	$self->{_verbose}  = $args{verbose}  || 0;
 	$self->{_maxlogs}  = $args{maxlogs}  || 0;
 	$self->{_maxlines} = $args{maxlines} || 0;
 	$self->{_echo}     = $args{echo}     || 0;
-	
+
 	$self->{_curlog} = '';
 	$self->{_curline} = 0;
 
@@ -261,7 +261,7 @@ sub init {
 	$self->{_totalbytes} = 0;
 	$self->{_prevbytes} = 0;
 	$self->{_offsetbytes} = 0;
-	
+
 	$self->{_iniized} = 1;
 
 	return 1;
@@ -337,17 +337,17 @@ sub save_state {
 	my $state = $self->capture_state;
 	my ($st, $set);
 	$db ||= $self->db;
-	
+
 	# do not allow the feeder to change the game state.
 	delete $state->{game_state};
 
 	$set = join(', ', map { $_ . '=' . $db->quote($state->{$_}) } grep { $_ ne 'id' } keys %$state);
-	
+
 	$st = $db->prepare(
-		'INSERT INTO t_state SET id=' . $db->quote($state->{id}) . ', ' . 
-		$set . 
+		'INSERT INTO t_state SET id=' . $db->quote($state->{id}) . ', ' .
+		$set .
 		' ON DUPLICATE KEY UPDATE ' .
-		$set 
+		$set
 	);
 	#print $st->{Statement}, "\n";
 	if (!$st->execute) {
@@ -368,7 +368,7 @@ sub reset_state {
 	my $state = $self->capture_state;
 	return unless $state->{id};
 	$db ||= $self->db;
-	
+
 	my $st = $db->prepare('DELETE FROM t_state WHERE id=?');
 	$st->execute($state->{id});
 	$st->finish;
@@ -391,16 +391,16 @@ sub save_logsource {
 	my ($st, $exists);
 	return unless ref $logsource eq 'HASH' and keys %$logsource;
 	$db ||= $self->db || return;
-	
+
 	# NULL certain empty fields before we save the logsource
 	$logsource->{$_} = undef for (
 		grep { defined $logsource->{$_} and !$logsource->{$_} }
 		qw( tz path host port username password depth options lastupdate )
 	);
-	
+
 	# capture the state
 	my $state = delete $logsource->{state};
-	
+
 	# if an ID is already assigned then we assume it exists in the DB.
 	# This allows us to avoid using any DB calls prematurely, instead of
 	# attempting to search for a matching logsource in the DB.
@@ -422,15 +422,15 @@ sub load_logsource {
 	my ($self, $id, $db) = @_;
 	my ($st, $logsource);
 	$db ||= $self->db || return;
-	
+
 	if (!$db->prepared('load_logsource')) {
 		$db->prepare('load_logsource',"SELECT * FROM t_config_logsources WHERE id=?");
 	}
-	
+
 	$st = $db->execute('load_logsource', $id);
 	$logsource = $st->fetchrow_hashref;
 	$st->finish;
-	
+
 	return $logsource;
 }
 
@@ -515,15 +515,25 @@ sub parse {
 	my $str = shift;
 	my $logsource = {};
 
-	if ($str =~ m|^(s?ftp)://(?:([^:@]+):{0,1}([\w.!#$%^&*()_=+,.?;:'`~-]+)*@)?([\w\d\-\.]+)(?::([0-9]+))?/?(.*)$|) {
-		# type://[user[:pass]@]host[:port][/path]
-		my ($type,$user,$pass,$host,$port,$path) = ($1,$2,$3,$4,$5,$6);
+	if ($str =~ m|^(s?ftp)://(?:([^:@]+):{0,1}(.*)@)?([\w\-\.]+)(?::([0-9]+))?/?([^;\s]*)(;.*)?$|) {
+		# type://[user[:pass]@]host[:port][/path][;option1=value;option2=value]
+		my ($type,$user,$pass,$host,$port,$path,$opts) = ($1,$2,$3,$4,$5,$6,$7);
 		$logsource->{type} = $type;
 		$logsource->{username} = $user if defined $user;
 		$logsource->{password} = $pass if defined $pass;
 		$logsource->{host} = $host;
 		$logsource->{port} = $port if defined $port;
 		$logsource->{path} = $path if $path;
+		if ($opts) {
+			my @list = grep { $_ ne '' } split(/;/, $opts);
+			if (@list) {
+				$logsource->{options} = {};
+				foreach my $piece (@list) {
+					my ($key,$val) = map { s/^\s+//; s/\s+$//; $_ } split(/=/,$piece);
+					$logsource->{options}{$key} = $val;
+				}
+			}
+		}
 
 	} elsif ($str =~ m|^(?:([^:]+)://)?(.+)|) {
 		# [type://]absolute/path/
@@ -535,6 +545,8 @@ sub parse {
 		return;
 	}
 
+	print "'$str'\n";
+	use Data::Dumper; print Dumper($logsource); die;
 	return $logsource;
 }
 
@@ -595,7 +607,7 @@ sub curlog { $_[0]->{_curlog} }
 sub curline { $_[0]->{_curline} }
 sub server { wantarray ? qw( 127.0.0.1 27015 ) : '127.0.0.1:27015' }
 sub done { $_[0]->save }
-sub has_event { undef } 
+sub has_event { undef }
 sub next_event { undef }
 sub normalize_line { $_[1] }
 sub idle { undef }

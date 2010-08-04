@@ -81,6 +81,7 @@ sub new {
 		errlog
 		heatmaps
 		geoip_cc geoip_ip
+		match
 		map map_data map_hourly map_statial
 		plr plr_bans plr_chat plr_data
 		plr_ids_ipaddr plr_ids_name plr_ids_guid
