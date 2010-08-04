@@ -545,8 +545,6 @@ sub parse {
 		return;
 	}
 
-	print "'$str'\n";
-	use Data::Dumper; print Dumper($logsource); die;
 	return $logsource;
 }
 
