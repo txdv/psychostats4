@@ -74,8 +74,8 @@ sub _connect {
 	my $reconnect = shift;
 	my $prot = 'ftp';
 	my $host = $self->{logsource}{host} || 'localhost';
-	my $user = $self->opt->username || $self->{logsource}{username};
-	my $pass = $self->opt->password || $self->{logsource}{password};
+	my $user = $self->opt->username || $self->{logsource}{username} || '';
+	my $pass = $self->opt->password || $self->{logsource}{password} || '';
 	my $port = $self->opt->port || $self->{logsource}{port} || '21';
 	my $pasv = $self->opt->passive || $self->{logsource}{passive};
 	my %opts = (
@@ -86,7 +86,7 @@ sub _connect {
 	);
 
 	$self->{reconnect}++ if $reconnect;
-	$self->info(($reconnect ? "Rec" : "C") . "onnecting to $prot://$user\@$host:$port ...");
+	$self->info(($reconnect ? "Rec" : "C") . "onnecting to $prot://" . ($user ne '' ? "$user@" : "") . "$host:$port ...");
 
 	$self->{ftp} = new Net::FTP($host, %opts);
 	if (!$self->{ftp}) {
@@ -439,9 +439,9 @@ sub idle {
 
 sub string {
 	my ($self) = @_;
-	return sprintf('%s://%s%s%d/%s',
+	return sprintf('%s://%s%s%s/%s',
 		$self->type,
-		$self->username ? $self->username . '@' : '',
+		$self->username ne '' ? $self->username . '@' : '',
 		$self->host,
 		$self->port || '',
 		$self->path || ''
