@@ -36,12 +36,12 @@ sub init {
 	my $self = shift;
 	my %args = @_;
 	$self->SUPER::init(%args) or return;
-	
+
 	if ($self->{logsource}{recursive}) {
 		$self->warn("FTP logsources do not support recursive directories.");
 		return 0;
 	}
-	
+
 	$self->{_pos} = 0;
 	$self->{_logs} = [ ];
 	$self->{_dirs} = [ ];
@@ -112,7 +112,7 @@ sub _connect {
 	# do transfers in binary so we can use REST commands to fast forward
 	# log files when needed from a previous state.
 	$self->{ftp}->binary;
-	
+
 	$self->info(sprintf("Connected to %s://%s%s%s%s. HOME=%s, CWD=%s",
 		$prot,
 		$user ? $user . '@' : '',
@@ -150,7 +150,7 @@ sub readnextdir {
 		$self->{_logs} = $self->logsort($self->{_logs});
 	}
 
-	$self->info(scalar(@{$self->{_logs}}) . " logs found in $self->{_curdir}");
+	$self->info(scalar(@{$self->{_logs}}) . " logs found in " . ($self->{_curdir} || '/'));
 
 	# skip the last log in the directory
 	if ($self->{logsource}{skiplast}) {
@@ -251,7 +251,7 @@ sub has_event {
 	return 0;
 }
 
-# returns undef if there are no more events, or 
+# returns undef if there are no more events, or
 # returns a 2 element array (line, server).
 sub next_event {
 	my $self = shift;
@@ -354,7 +354,7 @@ sub restore_state {
 	while (scalar @{$self->{_logs}}) {
 		my $cmp = $self->logcompare($self->{_logs}[0], $statelog);
 		if ($cmp == 0) { 				# == EQUAL
-			$self->_opennextlog(1);
+			next unless $self->_opennextlog(1);
 			# finally: fast-forward to the proper line
 			if (int($state->{pos} || 0) > 0) {
 				# FAST forward quickly using seek position
@@ -402,13 +402,13 @@ sub logsource_exists {
 	my ($self, $logsource) = @_;
 	my $db = $self->db;
 
-	# prepare a new statement to find the logsource.	
+	# prepare a new statement to find the logsource.
 	if (!$db->prepared('find_logsource_ftp')) {
 		$db->prepare('find_logsource_ftp',
 			"SELECT id FROM t_config_logsources WHERE type=? AND host=? AND port=? AND path=?"
 		);
 	}
-	
+
 	my $exists = $db->execute_selectcol('find_logsource_ftp', @$logsource{qw( type host port path )});
 	return $exists;
 }

@@ -60,7 +60,7 @@ sub new {
 		modtype => $modtype,
 		db => $db,
 	};
-	
+
 	__PACKAGE__->fatal("A 'gametype' must be specified to create a $class object.") unless $gametype;
 	$class .= "::$gametype";
 	$class .= "::$modtype" if $modtype;
@@ -82,7 +82,7 @@ sub init {
 	my $self = shift;
 	my $db = $self->{db};
 	my $opt = $self->opt;
-	
+
 	# prepare any queries we'll be running repeatedly...
 	#$db->prepare('get_clantags', 	'SELECT * FROM t_config_clantags WHERE type=? ORDER BY idx');
 	$db->prepare('get_clantags', 	'SELECT id,clantag,alias,pos,type,blacklist FROM t_config_clantags ORDER BY idx');
@@ -104,7 +104,7 @@ sub init {
 	$self->load_events(undef,undef);	# load events for the game:mod
 	$self->init_events;
 
-	# initialize player action bonuses ... 
+	# initialize player action bonuses ...
 	$self->{bonuses} = {};
 	$self->load_bonuses('','');		# load global bonuses
 	$self->load_bonuses(undef,'');		# load bonuses for the gametype
@@ -119,7 +119,7 @@ sub init {
 	#	}
 	#	printf("%-${width}s %5s %5s %5s %5s\n", "Player Bonuses", "E","ET", "V", "VT");
 	#	foreach my $ev (sort keys %{$self->{bonuses}}) {
-	#		printf("%-${width}s %5d,%5d,%5d,%5d\n", 
+	#		printf("%-${width}s %5d,%5d,%5d,%5d\n",
 	#			$ev,
 	#			$self->{bonuses}{$ev}{enactor},
 	#			$self->{bonuses}{$ev}{enactor_team},
@@ -145,7 +145,7 @@ sub init {
 
 	# initialize the skill function for KILLS
 	$self->add_calcskill_func('kill', $self->conf->calcskill_kill);
-	
+
 	# initialize the clantags from the config for pattern matching against
 	# player names.
 	if ($self->conf->clantag_detection) {
@@ -172,7 +172,7 @@ sub load_clantags {
 	# shown warnings for any invalid regex's that will be ignored...
 	foreach my $ct (@$clantags) {
 		$ct->{$_} = decode_utf8($ct->{$_}) for qw( clantag alias );
-		
+
 		if ($ct->{type} eq 'regex') {
 			if (!is_regex($ct->{clantag})) {
 				$self->warn("Error in clantag #$ct->{id} definition: /$ct->{clantag}/: $@");
@@ -260,7 +260,7 @@ sub scan_for_clantag {
 	my ($self, $p) = @_;
 	my $name = ref $p ? $p->name : $p;
 	my ($match, $ct, $tag, $clan);
-	
+
 	;;; warn "Scanning \"$name\" for clantags.\n" if $clantag_debug;
 	($match, $ct) = $self->clantag_match($name, @$self{qw( clantags clantags_blacklist )});
 	# $match = matched clantag string
@@ -286,11 +286,11 @@ sub get_clan {
 	my ($self, $clantag, $check_only) = @_;
 	my $clan;
 	if (time - $self->{_clans_age} > 60*10) {
-		# clear the cache after X minutes ... 
+		# clear the cache after X minutes ...
 		%{$self->{_clans}} = ();
 		$self->{_clans_age} = time;
 	}
-	
+
 	$clan = $self->{_clans}{$clantag}
 		|| $self->{db}->execute_fetchrow('get_clan', $clantag, $self->{gametype}, $self->{modtype});
 	if ($clan or $check_only) {
@@ -319,7 +319,7 @@ sub get_clan {
 			$self->warn("Error inserting clan profile for '$clantag' into DB: " . $self->{db}->lasterr);
 		}
 	}
-	
+
 	return $clan;
 }
 
@@ -331,11 +331,11 @@ sub add_calcskill_func {
 	my $calcskill_func = $calcskill . '_' . $func;	# calcskill_kill_default
 	my $calcskill_init = $calcskill_func . '_init';	# calcskill_kill_init
 
-	# If the function exists there is no reason to redefine it...	
+	# If the function exists there is no reason to redefine it...
 	if ($self->can($calcskill_func)) {
-		return;	
+		return;
 	}
-	
+
 	# try to load the skill calculation code
 	my $file = catfile($FindBin::Bin, 'lib', 'PS', 'Skill', $calcskill_func . '.pl');
 	if (-f $file) {
@@ -360,16 +360,16 @@ sub add_calcskill_func {
 		}
 	} else {
 		$self->fatal(
-			"Error reading skill code '" . $func . "' file $file\n" . 
-			"File does not exist.\n" . 
-			"Are you sure you're using the correct skill calculation?\n" . 
+			"Error reading skill code '" . $func . "' file $file\n" .
+			"File does not exist.\n" .
+			"Are you sure you're using the correct skill calculation?\n" .
 			"Try changing the 'Skill Calculation' config setting to 'default'."
 		);
 	}
 
-	# if there is still no method available, we die ... 
+	# if there is still no method available, we die ...
 	if (!$self->can($calcskill_func)) { # or $self->{$calcskill} eq 'func' or $self->{$calcskill} eq 'init') {
-		$self->fatal("Invalid skill function configured ($func) " . 
+		$self->fatal("Invalid skill function configured ($func) " .
 			"Try using 'default' or 'alternative' instead."
 		);
 	}
@@ -400,8 +400,8 @@ sub init_ipcache {
 	$_[0]->{ipcache} = {};		# player IPADDR cache, keyed on UID
 }
 
-# there are anomalys that cause players to not always be detected by a single 
-# criteria. So we cache each way we know we can reference a player. 
+# there are anomalys that cause players to not always be detected by a single
+# criteria. So we cache each way we know we can reference a player.
 sub init_plrcache {
 	my $self = shift;
 
@@ -591,7 +591,7 @@ sub get_role {
 	return $self->{roles}{$name} = new PS::Role($name, $team, @$self{qw( gametype modtype timestamp )});
 }
 
-# Add's a player BAN to the database. 
+# Add's a player BAN to the database.
 # Does nothing If the ban already exists unless $overwrite is true
 # ->addban(plr, {extra})
 sub addban {
@@ -645,7 +645,7 @@ sub addban {
 	}
 }
 
-# Removes a player BAN from the database. 
+# Removes a player BAN from the database.
 # ->unban(plr)
 sub unban {
 	my $self = shift;
@@ -665,8 +665,8 @@ sub unban {
 	# update the active ban record for the player
 	my ($active) = $db->get_row_array("SELECT ban_date FROM $db->{t_plr_bans} WHERE plrid=" . $plr->plrid . " AND unban_date IS NULL");
 	if ($active) {
-		$db->update($db->{t_plr_bans}, 
-			{ unban_date => $opts->{unban_date} || time, 'unban_reason' => $opts->{reason} }, 
+		$db->update($db->{t_plr_bans},
+			{ unban_date => $opts->{unban_date} || time, 'unban_reason' => $opts->{reason} },
 			[ plrid => $plr->plrid, 'ban_date' => $active ]
 		);
 	}
@@ -694,9 +694,9 @@ sub isbanned {
 		next unless exists $m->{$match} and defined $m->{$match};
 		return $self->{banned}{$match}{ $m->{$match} } if exists $self->{banned}{$match}{ $m->{$match} };
 
-		$matchstr = ($match eq 'ipaddr') ? int2ip($m->{$match}) : $m->{$match}; 
+		$matchstr = ($match eq 'ipaddr') ? int2ip($m->{$match}) : $m->{$match};
 		($banned) = $self->{db}->get_row_array(
-			"SELECT id FROM $self->{db}{t_config_plrbans} " . 
+			"SELECT id FROM $self->{db}{t_config_plrbans} " .
 			"WHERE enabled=1 AND matchtype='$match' AND " . $self->{db}->quote($matchstr) . " LIKE matchstr"
 		);
 		$self->{banned}{$match}{ $m->{$match} } = $banned;
@@ -752,7 +752,7 @@ sub create_event_regex_func {
 		}
 		$code .= "  return ('$ev',\\\@parms) if \@parms = (\$_[0] =~ $regex);\n";
 	}
-	
+
 	# debug: -dumpevents on command line to see the sub that is created
 	if ($self->opt->dumpevents) {
 		print "sub {\n  my \@parms = ();\n$code  return (undef,undef);\n}\n";
@@ -870,7 +870,7 @@ sub load_events {
 		$self->{evconf}{$e->{eventname}} = {
 			alias		=> $e->{alias},
 			regex		=> $e->{regex},
-			idx		=> $i, 
+			idx		=> $i,
 			ignore		=> $e->{ignore},
 			codefile	=> $e->{codefile}
 		};
@@ -916,7 +916,7 @@ sub collect_state_vars {
 	foreach my $p ($self->get_online_plrs) {
 		push(@{$state->{players}}, $p->freeze);
 	}
-	
+
 	return $state;
 }
 
@@ -928,7 +928,7 @@ sub restore_state_vars {
 	$self->{timestamp} 	= $state->{timestamp} || 0;
 	$self->{curmap} 	= $state->{curmap} || 'unknown';
 	$self->{ipcache}	= $state->{ipcache} ? deep_copy($state->{ipcache}) : {};
-	
+
 	# restore the players that were online
 	if ($state->{players}) {
 		foreach my $plr (@{$state->{players}}) {
@@ -1002,14 +1002,14 @@ sub restore_state {
 
 	# Must decode string as UTF8
 	$str = decode_utf8($str);
-	
+
 	$state = $self->unserialize_state($str);
 	$self->post_process_state($state);
 
 	# If there is no state saved for the specified server then we're done
 	return 0 unless exists $state->{$srv};
 	$self->restore_state_vars($state->{$srv});
-	
+
 	return 1;
 }
 
@@ -1091,13 +1091,13 @@ sub plrbonus {
 # and activity values, etc.
 sub update_plrs {
 	my ($self, $rank_timestamp, $quiet) = @_;
-	
+
 	$self->debug3("Updating player activity...", 0) unless $quiet;
 	$self->update_plr_activity( $self->conf->plr_min_activity );
-	
+
 	$self->debug3("Updating player rank flags...", 0) unless $quiet;
 	$self->update_allowed_plr_ranks( $self->conf->global->ranking );
-	
+
 	$self->debug3("Updating player ranks...", 0) unless $quiet;
 	$self->update_plr_ranks($rank_timestamp);
 }
@@ -1112,7 +1112,7 @@ sub update_plr_activity {
 
 	$plr_min_activity = abs($plr_min_activity || 0);
 	return unless $plr_min_activity or $force_all;
-	
+
 	# determine the most recent timestamp available for players
 	$lastseen = $db->max($db->{t_plr}, 'lastseen');
 	return unless $lastseen;
@@ -1122,9 +1122,9 @@ sub update_plr_activity {
 	} else {
 		my $min_act = $plr_min_activity * 60*60*24;
 		$st = $db->prepare(qq{
-			UPDATE t_plr SET 
-			activity = IF($min_act > $lastseen - lastseen, 
-			LEAST(100, 100 / $min_act * ($min_act - ($lastseen - lastseen)) ), 0) 
+			UPDATE t_plr SET
+			activity = IF($min_act > $lastseen - lastseen,
+			LEAST(100, 100 / $min_act * ($min_act - ($lastseen - lastseen)) ), 0)
 		});
 	}
 
@@ -1150,7 +1150,7 @@ sub update_allowed_plr_ranks {
 	my $type = $self->{modtype} ? $self->{gametype} . '_' . $self->{modtype} : $self->{gametype};
 
 	if (!ref $rules) {
-		# force all players 
+		# force all players
 		if ($rules) {	# everyone ranks
 			# rank=0 means a player can rank, but has no actual rank
 			# value yet. The update_plr_ranks() needs to be called
@@ -1159,32 +1159,32 @@ sub update_allowed_plr_ranks {
 		} else {	# no one ranks
 			$st = $db->prepare('UPDATE t_plr SET rank=NULL WHERE rank IS NOT NULL');
 		}
-		
+
 	} elsif (!($st = $db->prepared('update_allowed_plr_ranks_' . $type))) {
 		# prepare the queries if they haven't been already
-	
+
 		# collect min/max rule keys
 		@min = ( map { s/^player_min_//; $_ } grep { /^player_min_/ && $rules->{$_} ne '' } keys %$rules );
 		@max = ( map { s/^player_max_//; $_ } grep { /^player_max_/ && $rules->{$_} ne '' } keys %$rules );
 
 		# build where clause to match players that meet requirements
-		$where = join(' AND ', 
+		$where = join(' AND ',
 			(map { $_ . ' >= ' . $rules->{'player_min_' . $_} } @min),
 			(map { $_ . ' <= ' . $rules->{'player_max_' . $_} } @max)
 		);
-		
+
 		# fudge skill and rank to point to the main player table prefix
 		# to avoid ambiguity.
 		$where =~ s/(?<![\w\.])(skill|rank)/p.$1/g;
-		
+
 		$self->debug3("Ranking rules for players: $where", 0);
 		$where = '1' unless $where;	# force all if no rules are defined
 
 		# query to update rank flag for all players based on rules
 		$st = $db->prepare('update_allowed_plr_ranks_' . $type, qq{
-			UPDATE t_plr p, ${cpref}plr_data_${type} d 
-			SET p.rank=IF($where, IF(p.rank,p.rank,0), NULL) 
-			WHERE p.plrid=d.plrid 
+			UPDATE t_plr p, ${cpref}plr_data_${type} d
+			SET p.rank=IF($where, IF(p.rank,p.rank,0), NULL)
+			WHERE p.plrid=d.plrid
 		});
 	}
 
@@ -1207,7 +1207,7 @@ sub update_plr_ranks {
 	my $db = $self->{db};
 	my ($plrid, $rank, $skill);
 	my ($get, $set, $setprev, $newrank, $prevskill);
-	$timestamp ||= $self->{timestamp}; #|| timegm(localtime);
+	$timestamp ||= $self->{timestamp} || return;	# do not update ranks if timestamp is invalid
 
 	my ($d, $m, $y) = (gmtime($timestamp))[3,4,5];
 	my $statdate = sprintf('%04u-%02u-%02u', $y+1900, $m+1, $d);
@@ -1217,10 +1217,10 @@ sub update_plr_ranks {
 		# TODO: Allow this query to be customizable so different ranking
 		# calculations can be done.
 		$get = $db->prepare('get_plr_ranks', qq{
-			SELECT plrid,rank,skill FROM t_plr 
+			SELECT plrid,rank,skill FROM t_plr
 			WHERE rank IS NOT NULL
-			AND skill IS NOT NULL 
-			AND gametype=? AND modtype=? 
+			AND skill IS NOT NULL
+			AND gametype=? AND modtype=?
 			ORDER BY skill DESC
 		});
 	}
@@ -1235,7 +1235,7 @@ sub update_plr_ranks {
 			$setprev = $db->prepare('set_prev_rank', q{
 				UPDATE t_plr
 				SET rank_prev=rank, skill_prev=skill, prev_time=?
-				WHERE prev_time IS NULL 
+				WHERE prev_time IS NULL
 				OR DATE(FROM_UNIXTIME(?)) > DATE(FROM_UNIXTIME(prev_time))
 			});
 		}
@@ -1243,14 +1243,14 @@ sub update_plr_ranks {
 		$setprev->execute($timestamp, $timestamp);
 		;;;bench('update_plr_prev_ranks');
 	}
-	
+
 	# prepare the query that will update a player rank
 	if (!defined($set = $db->prepared('set_plr_rank'))) {
 		$set = $db->prepare('set_plr_rank', q{
 			UPDATE t_plr p
 			LEFT JOIN t_plr_data d ON d.plrid=p.plrid AND d.statdate=?
-			SET p.rank=?, d.rank=p.rank 
-			WHERE p.plrid=? 
+			SET p.rank=?, d.rank=p.rank
+			WHERE p.plrid=?
 		});
 	}
 
@@ -1276,7 +1276,7 @@ sub update_plr_ranks {
 
 	;;;$self->debug3("$affected players changed rank.", 0) if $affected;
 	;;;bench('update_plr_ranks');
-	
+
 	return 1;
 }
 
@@ -1299,7 +1299,7 @@ sub daily_awards {
 	my $fullweekonly = !$conf->global->awards->allow_partial_week;
 	my $fulldayonly = !$conf->global->awards->allow_partial_day;
 
-	$self->info(sprintf("Daily 'awards' process running (Last updated: %s)", 
+	$self->info(sprintf("Daily 'awards' process running (Last updated: %s)",
 		$lastupdate ? scalar localtime $lastupdate : 'never'
 	));
 
@@ -1370,7 +1370,7 @@ sub daily_awards {
 		if (!$award) {
 			$self->warn("Award '$a->{name}' can not be processed due to errors: $@");
 			next;
-		} 
+		}
 		$award->calc('month', $months) if $domonthly;
 		$award->calc('week', $weeks) if $doweekly;
 		$award->calc('day', $days) if $dodaily;
@@ -1396,7 +1396,7 @@ sub daily_decay {
 		return;
 	}
 
-	$self->info(sprintf("Daily 'decay' process running (Last updated: %s)", 
+	$self->info(sprintf("Daily 'decay' process running (Last updated: %s)",
 		$lastupdate ? scalar localtime $lastupdate : 'never'
 	));
 
@@ -1443,7 +1443,7 @@ sub daily_clans {
 	my $types = PS::Player->get_types;
 	my ($cmd, $sth, $sth2, $rules, @min, @max, $allowed, $fields);
 
-	$self->info(sprintf("Daily 'clans' process running (Last updated: %s)", 
+	$self->info(sprintf("Daily 'clans' process running (Last updated: %s)",
 		$lastupdate ? scalar localtime $lastupdate : 'never'
 	));
 
@@ -1456,7 +1456,7 @@ sub daily_clans {
 	@max = ( map { s/^clan_max_//; $_ } grep { /^clan_max_/ && $rules->{$_} ne '' } keys %$rules );
 
 	# add extra fields to our query that match values in our min/max arrays
-	# if the matching type in $types is a reference then we know it's a calculated field and should 
+	# if the matching type in $types is a reference then we know it's a calculated field and should
 	# be an average instead of a summary.
 	my %uniq = ( 'members' => 1 );
 	$fields = join(', ', map { (ref $types->{$_} ? 'avg' : 'sum') . "($_) $_" } grep { !$uniq{$_}++ } (@min,@max));
@@ -1467,7 +1467,7 @@ sub daily_clans {
 	$cmd .= "FROM $db->{t_clan} c, $db->{t_plr} plr, $db->{c_plr_data} data ";
 	$cmd .= "WHERE (c.clanid=plr.clanid AND plr.allowrank) AND data.plrid=plr.plrid ";
 	$cmd .= "GROUP BY c.clanid ";
-#	print "$cmd\n";	
+#	print "$cmd\n";
 	if (!($sth = $db->query($cmd))) {
 		$db->fatal("Error executing DB query:\n$cmd\n" . $db->errstr . "\n--end of error--");
 	}
@@ -1477,13 +1477,13 @@ sub daily_clans {
 	while (my $row = $sth->fetchrow_hashref) {
 		# does the clan meet all the requirements for ranking?
 		$allowed = (
-			((grep { ($row->{$_}||0) < $rules->{'clan_min_'.$_} } @min) == 0) 
-			&& 
+			((grep { ($row->{$_}||0) < $rules->{'clan_min_'.$_} } @min) == 0)
+			&&
 			((grep { ($row->{$_}||0) > $rules->{'clan_max_'.$_} } @max) == 0)
 		) ? 1 : 0;
 		if (!$allowed and $::DEBUG) {
-			$self->info("Clan failed to rank \"$row->{clantag}\" => " . 
-				join(', ', 
+			$self->info("Clan failed to rank \"$row->{clantag}\" => " .
+				join(', ',
 					map { "$_: " . $row->{$_} . " < " . $rules->{"clan_min_$_"} } grep { $row->{$_} < $rules->{"clan_min_$_"} } @min,
 					map { "$_: " . $row->{$_} . " > " . $rules->{"clan_max_$_"} } grep { $row->{$_} > $rules->{"clan_max_$_"}} @max
 				)
@@ -1525,7 +1525,7 @@ sub daily_activity {
 
 	return 0 unless $db->table_exists($db->{c_map_data}) and $db->table_exists($db->{c_plr_data});
 
-	$self->info(sprintf("Daily 'activity' process running (Last updated: %s)", 
+	$self->info(sprintf("Daily 'activity' process running (Last updated: %s)",
 		$lastupdate ? scalar localtime $lastupdate : 'never'
 	));
 
@@ -1537,10 +1537,10 @@ sub daily_activity {
 		# this query is smart enough to only update the players that have new
 		# activity since the last time it was calculated.
 		if ($db->type eq 'mysql') {
-			$cmd = "UPDATE $db->{t_plr} p, $db->{c_plr_data} d SET " . 
-				"p.lastactivity = $lasttime, " . 
-				"p.activity = IF($min_act > $lasttime - d.lasttime, " . 
-				"LEAST(100, 100 / $min_act * ($min_act - ($lasttime - d.lasttime)) ), 0) " . 
+			$cmd = "UPDATE $db->{t_plr} p, $db->{c_plr_data} d SET " .
+				"p.lastactivity = $lasttime, " .
+				"p.activity = IF($min_act > $lasttime - d.lasttime, " .
+				"LEAST(100, 100 / $min_act * ($min_act - ($lasttime - d.lasttime)) ), 0) " .
 				"WHERE p.plrid=d.plrid AND $lasttime > p.lastactivity";
 		} else {
 			# need to figure something out for SQLite
@@ -1548,7 +1548,7 @@ sub daily_activity {
 		}
 		my $ok = $db->query($cmd);
 	}
-	
+
 	#$self->conf->setinfo('daily_activity.lastupdate', time);
 
 	$self->info("Daily process completed: 'activity' (Time elapsed: " . compacttime(time-$start,'mm:ss') . ")");
@@ -1565,7 +1565,7 @@ sub _delete_stale_players {
 
 	$db->begin;
 
-	# keep track of what stats are being deleted 
+	# keep track of what stats are being deleted
 	$db->do("INSERT INTO plrids SELECT DISTINCT plrid FROM $db->{t_plr_data} WHERE statdate <= $sql_oldest");
 	my $total = $db->count('plrids');
 
@@ -1588,7 +1588,7 @@ sub _delete_stale_players {
 		$db->do("DELETE FROM $db->{t_plr_roles} WHERE dataid IN (SELECT id FROM deleteids)");
 		$db->truncate('deleteids');
 	}
-	
+
 	# delete remaining historical stats (no 'mod' tables for these)
 	$db->do("DELETE FROM $db->{t_plr_victims} WHERE statdate <= $sql_oldest");
 	$db->do("DELETE FROM $db->{t_plr_weapons} WHERE statdate <= $sql_oldest");
@@ -1606,7 +1606,7 @@ sub _delete_stale_players {
 		$db->do("DELETE FROM $db->{t_plr_ids_worldid} WHERE plrid IN (SELECT id FROM deleteids)");
 		$db->truncate('deleteids');
 
-		# delete the compiled data. 
+		# delete the compiled data.
 		$db->do("DELETE FROM $db->{c_plr_data} WHERE lastdate <= $sql_oldest");
 		$db->do("DELETE FROM $db->{c_plr_maps} WHERE lastdate <= $sql_oldest");
 		$db->do("DELETE FROM $db->{c_plr_roles} WHERE lastdate <= $sql_oldest");
@@ -1630,10 +1630,10 @@ sub _delete_stale_maps {
 
 	$db->begin;
 
-	# keep track of what stats are being deleted 
+	# keep track of what stats are being deleted
 	$db->do("INSERT INTO mapids SELECT DISTINCT mapid FROM $db->{t_map_data} WHERE statdate <= $sql_oldest");
 	my $total = $db->count('mapids');
-	
+
 	# delete basic data
 	$db->do("INSERT INTO deleteids SELECT dataid FROM $db->{t_map_data} WHERE statdate <= $sql_oldest");
 	$db->do("DELETE FROM $db->{t_map_data_mod} WHERE dataid IN (SELECT id FROM deleteids)") if $db->{t_map_data_mod};
@@ -1661,10 +1661,10 @@ sub _delete_stale_roles {
 
 	$db->begin;
 
-	# keep track of what stats are being deleted 
+	# keep track of what stats are being deleted
 	$db->do("INSERT INTO roleids SELECT DISTINCT roleid FROM $db->{t_role_data} WHERE statdate <= $sql_oldest");
 	my $total = $db->count('roleids');
-	
+
 	# delete basic data
 	$db->do("INSERT INTO deleteids SELECT dataid FROM $db->{t_role_data} WHERE statdate <= $sql_oldest");
 	$db->do("DELETE FROM $db->{t_role_data_mod} WHERE dataid IN (SELECT id FROM deleteids)") if $db->{t_role_data_mod};
@@ -1692,7 +1692,7 @@ sub _delete_stale_weapons {
 
 	$db->begin;
 
-	# keep track of what stats are being deleted 
+	# keep track of what stats are being deleted
 	$db->do("INSERT INTO weaponids SELECT DISTINCT weaponid FROM $db->{t_weapon_data} WHERE statdate <= $sql_oldest");
 	my $total = $db->count('weaponids');
 
@@ -1720,7 +1720,7 @@ sub _delete_stale_hourly {
 
 	$db->begin;
 
-	# keep track of what stats are being deleted 
+	# keep track of what stats are being deleted
 	my $total = $db->count($db->{t_map_hourly}, "statdate <= $sql_oldest");
 
 	# delete basic data
@@ -1742,7 +1742,7 @@ sub _delete_stale_spatial {
 
 	$db->begin;
 
-	# keep track of what stats are being deleted 
+	# keep track of what stats are being deleted
 	my $total = $db->count($db->{t_map_spatial}, "statdate <= $sql_oldest");
 
 	# delete basic data
@@ -1790,7 +1790,7 @@ sub _update_player_stats {
 	$db->commit;
 
 	# remove and update clans now that players were updated
-	
+
 
 	return $total;
 }
@@ -2070,7 +2070,7 @@ sub daily_maxdays {
 	my $last = time;
 	my ($cmd, $sth, $ok, $fields, @delete, @ids, $o, $types, $total, $alltotal,%t);
 
-	$self->info(sprintf("Daily 'maxdays' process running (Last updated: %s)", 
+	$self->info(sprintf("Daily 'maxdays' process running (Last updated: %s)",
 		$lastupdate ? scalar localtime $lastupdate : 'never'
 	));
 
@@ -2199,7 +2199,7 @@ sub rescan_clans {
 	my $where = [ '(clanid IS NULL OR clanid=0)' => undef ];
 	push(@$where, (gametype => $gametype)) if $gametype;
 	push(@$where, (modtype => $modtype)) if $modtype;
-	
+
 	my $total = $db->count($db->{t_plr}, $where);
 	$self->info("$total players will be scanned for clantags.");
 
@@ -2216,7 +2216,7 @@ sub rescan_clans {
 	};
 	$cmd .= $db->where($where);
 	my $sth = $db->query($cmd);
-	
+
 	my ($plrid,$name);
 	$sth->bind_columns(\$plrid, \$name);
 	while ($sth->fetch) {
@@ -2224,12 +2224,12 @@ sub rescan_clans {
 		$cur++;
 		next unless defined $name;
 
-		# throttle verbose output ... 		
+		# throttle verbose output ...
 		if (Time::HiRes::time - $time >= 0.5 or $cur >= $total) {
 			$time = Time::HiRes::time;
 			$self->verbose(sprintf("Scanning player %d / %d [%6.2f%%]\r", $cur, $total, $cur / $total * 100), 1);
 		}
-		
+
 		# scan player name for a clantag
 		$name = decode_utf8($name); # must decode the name
 		my ($tag, $clan) = $self->scan_for_clantag($name);
@@ -2243,7 +2243,7 @@ sub rescan_clans {
 		#$db->update($db->{t_plr}, { clanid => $clan->{clanid} }, [ plrid => $plrid ]);
 	}
 	$self->verbose('');
-	
+
 	# batch update players; to limit the number of UPDATE's
 	if (keys %$clans) {
 		$self->verbose('Updating players ...');
@@ -2254,12 +2254,12 @@ sub rescan_clans {
 				$self->warn("Error adding players to clan #$clanid: " . $db->{dbh}->errstr);
 			}
 		}
-		
+
 		$self->info(sprintf("%d clans updated with %d members.", $total_clans, $members));
 	} else {
 		$self->info('No new clans found.');
 	}
-	
+
 	return ($clans, $members);
 }
 
@@ -2277,7 +2277,7 @@ sub reset_all {
 	my $self = shift;
 	my $db = $self->{db};
 	my $del = @_ == 1 ? { map { $_  => $_[0] } qw(players clans weapons heatmaps) } : { @_ };
-	
+
 }
 
 # Resets the current "gametype_modtype" in the database. Does not remove shared
@@ -2302,8 +2302,8 @@ sub reset_game {
 		my $t2 = $db->{'t_' . $t . '_data'};
 		my $t3 = $t2 . '_' . $type;
 		my $st = $db->prepare(qq{
-			DELETE QUICK t2 FROM $t1 t, $t2 t2 
-			WHERE $where AND t2.${t}id=t.${t}id 
+			DELETE QUICK t2 FROM $t1 t, $t2 t2
+			WHERE $where AND t2.${t}id=t.${t}id
 		});
 		$self->debug1("Deleting ${t}s ...",0);
 		if (!$st->execute(@bind)) {
@@ -2323,8 +2323,8 @@ sub reset_game {
 		}
 		$st->finish;
 	}
-	
-	# Delete player specific stats 
+
+	# Delete player specific stats
 	for my $t (qw(data map role session victim weapon)) {
 		my $t2 = $db->{'t_plr_' . $t . ($t ne 'data' ? 's' : '')};
 		my $t3 = $t2 . '_' . $type;
@@ -2383,7 +2383,7 @@ sub reset_game {
 	} else {
 		$db->optimize($db->{t_plr}, $db->{t_plr_profile});
 		# truncate the plr tables if no more players exist so the
-		# 'auto_increment' counter will reset to 1. 
+		# 'auto_increment' counter will reset to 1.
 		if (!$db->count($db->{t_plr})) {
 			$db->truncate($db->{t_plr});
 			foreach (map { $db->{"t_plr_$_"} }
@@ -2391,7 +2391,7 @@ sub reset_game {
 				$db->truncate($_)
 			}
 		}
-		
+
 		# delete awards, since they are useless w/o the original plrid's
 		# TODO: only delete those for the matching gametype::modtype
 		$db->truncate($db->{t_awards});
@@ -2417,7 +2417,7 @@ sub reset_game {
 			$errors++;
 		}
 	}
-	
+
 	# Delete current state
 	$st = $db->prepare("DELETE s FROM t_state s, t_config_logsources l " .
 			   "WHERE l.gametype=? AND l.modtype" . ($modtype ? '=?' : ' IS NULL')
@@ -2439,9 +2439,9 @@ sub reset_game {
 sub save {
 	my ($self, $end) = @_;
 	my ($id, $tag, $clan, $o);
-	
+
 	$self->{last_saved} = time;
-	
+
 	# SAVE PLAYERS
 	foreach $o ($self->get_plrcache) {
 		$o->save($self);
@@ -2471,7 +2471,7 @@ sub save {
 
 # returns the total connected players if the total number of players connected
 # is >= the configured 'minconnected' option, otherwise 0 is returned.
-sub minconnected { 
+sub minconnected {
 	my ($self) = @_;
 	return 1 if $self->conf->minconnected == 0;
 	my $list = $self->get_online_plrs;
@@ -2498,4 +2498,3 @@ sub configure {
 }
 
 1;
-
