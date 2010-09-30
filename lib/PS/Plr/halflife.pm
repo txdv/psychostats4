@@ -51,6 +51,13 @@ BEGIN {
 		latency_sum	=> '+',
 		latency_total	=> '+',
 	);
+	$history = __PACKAGE__->SUPER::HISTORY('DATA');
+	%$history = (
+		%$history, 
+		(map { $_ => $fields->{halflife}{$_} } qw(
+			damage
+		))
+	);
 
 	# Player map fields
 	$fields = __PACKAGE__->SUPER::FIELDS('MAPS');

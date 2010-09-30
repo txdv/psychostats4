@@ -86,6 +86,7 @@ BEGIN {
 			kill_streak	death_streak
 			deaths		suicides
 			games		rounds
+			wins		losses
 			connections	online_time
 		))
 	};
@@ -1318,6 +1319,10 @@ sub action_injured {
 
 	$self->{weapons}{$w}{damage_taken} += $dmg;	
 	$self->{weapons}{$w}{damage_mitigated} += $absorbed;
+}
+
+sub action_item_pickup {
+	my ($self, $game, $item) = @_;
 }
 
 sub action_joined_team {
